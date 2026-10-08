@@ -962,16 +962,16 @@ def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
 
     while True:
         magic = exact(8)
-        if magic in (b"PAXFB01", b"PAXSS01"):
+        if magic in (b"PAPPFB01", b"PAPPSS01"):
             _, width, height, size, _seq = STREAM_HEADER.unpack(magic + exact(STREAM_HEADER.size - 8))
             if size != width * height * 2 or size > 4 * 1024 * 1024:
                 raise BridgeError("The device sent a malformed screen stream header.")
             payload = exact(size)
-            if magic == b"PAXSS01":
+            if magic == b"PAPPSS01":
                 if width == 0 or height == 0:
                     raise BridgeError("No PAX is running on the device, so there is nothing to capture. Launch one first.")
                 return width, height, payload
-        elif magic == b"PAXAU01":
+        elif magic == b"PAPPAU01":
             header = STREAM_AUDIO_HEADER.unpack(magic + exact(STREAM_AUDIO_HEADER.size - 8))
             exact(header[4])
         else:
@@ -991,7 +991,7 @@ def read_stream_file(sock: socket.socket) -> bytes:
 
     while True:
         magic = exact(8)
-        if magic == b"PAXFL01":
+        if magic == b"PAPPFL01":
             _, status, size, _seq = STREAM_FILE_HEADER.unpack(magic + exact(STREAM_FILE_HEADER.size - 8))
             if size > 1024 * 1024:
                 raise BridgeError("The device sent a malformed file header.")
@@ -999,12 +999,12 @@ def read_stream_file(sock: socket.socket) -> bytes:
             if status:
                 raise BridgeError(f"The file {FILE_STATUS.get(status, f'failed (status {status})')}.")
             return payload
-        if magic in (b"PAXFB01", b"PAXSS01"):
+        if magic in (b"PAPPFB01", b"PAPPSS01"):
             _, width, height, size, _seq = STREAM_HEADER.unpack(magic + exact(STREAM_HEADER.size - 8))
             if size > 4 * 1024 * 1024:
                 raise BridgeError("The device sent a malformed screen stream header.")
             exact(size)
-        elif magic == b"PAXAU01":
+        elif magic == b"PAPPAU01":
             header = STREAM_AUDIO_HEADER.unpack(magic + exact(STREAM_AUDIO_HEADER.size - 8))
             exact(header[4])
         else:

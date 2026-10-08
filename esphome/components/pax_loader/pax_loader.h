@@ -1,5 +1,5 @@
 #pragma once
-#include "/home/nonasuomy/code/esphomebrew/esphome/pax_launcher_regions.h"
+#include "pax_launcher_regions.h"
 
 #include <memory>
 #include <string>

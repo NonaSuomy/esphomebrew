@@ -15,7 +15,7 @@ for repo in sorted(p.parent for p in root.rglob('.git') if not any(x in p.parts 
 with tarfile.open(dest / 'working-source.tar.gz','w:gz') as tar:
     def include(info):
         parts = Path(info.name).parts
-        if any(p in {'.git','.cache','.esphome','idf','backups','build_pax','firmware','__pycache__'} or p.startswith('build-') for p in parts): return None
+        if any(p in {'.git','.cache','.esphome','idf','platformio','data','.venv','venv','backups','build_pax','firmware','__pycache__'} or p.startswith('build-') for p in parts): return None
         return info
     for path in root.iterdir():
         if path.name != '.git': tar.add(path,arcname=path.name,filter=include)

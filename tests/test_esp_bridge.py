@@ -596,15 +596,15 @@ class ScreenshotTests(unittest.TestCase):
             eb.rgb565_to_png(b"\x00" * 6, 2, 2)
 
     def test_screenshot_is_read_past_thumbnails_and_audio(self):
-        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAXAU01", 22050, 2, 16, 8, 1) + b"\x00" * 8
-        packets = stream_packet(b"PAXFB01", 1, 1, b"\x00\x00") + audio + stream_packet(b"PAXSS01", 2, 2, self.frame())
+        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAPPAU01", 22050, 2, 16, 8, 1) + b"\x00" * 8
+        packets = stream_packet(b"PAPPFB01", 1, 1, b"\x00\x00") + audio + stream_packet(b"PAPPSS01", 2, 2, self.frame())
         port = fake_stream_server(packets)
         import socket
         with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
             self.assertEqual(eb.read_screenshot(sock), (2, 2, self.frame()))
 
     def test_no_running_app_is_reported(self):
-        port = fake_stream_server(stream_packet(b"PAXSS01", 0, 0, b""))
+        port = fake_stream_server(stream_packet(b"PAPPSS01", 0, 0, b""))
         import socket
         with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
             with self.assertRaises(eb.BridgeError) as caught:
@@ -612,7 +612,7 @@ class ScreenshotTests(unittest.TestCase):
         self.assertIn("No PAX is running", str(caught.exception))
 
     def test_screenshot_job_posts_a_png(self):
-        port = fake_stream_server(stream_packet(b"PAXSS01", 2, 2, self.frame()))
+        port = fake_stream_server(stream_packet(b"PAPPSS01", 2, 2, self.frame()))
         calls = []
 
         class FakeService:
@@ -666,7 +666,7 @@ class ScreenshotTests(unittest.TestCase):
 
 
 def file_packet(status: int, payload: bytes) -> bytes:
-    return eb.STREAM_FILE_HEADER.pack(b"PAXFL01", status, len(payload), 1) + payload
+    return eb.STREAM_FILE_HEADER.pack(b"PAPPFL01", status, len(payload), 1) + payload
 
 
 class ReadFileTests(unittest.TestCase):
@@ -694,8 +694,8 @@ class ReadFileTests(unittest.TestCase):
             eb.validate(self.req('readfile "path=/sd/a b"'), self.cfg)
 
     def test_file_is_read_past_thumbnails_and_audio(self):
-        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAXAU01", 22050, 2, 16, 4, 1) + b"\x00" * 4
-        port = fake_stream_server(stream_packet(b"PAXFB01", 1, 1, b"\x00\x00") + audio + file_packet(0, b"CRC[0]=1\n"))
+        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAPPAU01", 22050, 2, 16, 4, 1) + b"\x00" * 4
+        port = fake_stream_server(stream_packet(b"PAPPFB01", 1, 1, b"\x00\x00") + audio + file_packet(0, b"CRC[0]=1\n"))
         import socket
         with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
             self.assertEqual(eb.read_stream_file(sock), b"CRC[0]=1\n")
