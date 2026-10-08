@@ -9,11 +9,12 @@ python - "$root" "$dest" <<'BACKUP'
 from pathlib import Path
 import sys, tarfile
 root, dest = map(Path, sys.argv[1:])
-skip = {'.cache','.esphome','idf','platformio','data','.venv','venv','backups','build_pax','__pycache__'}
+skip = {'.cache','.esphome','.venv','venv','backups','build_pax','__pycache__'}
 with tarfile.open(dest / 'workspace.tar.gz','w:gz',compresslevel=1) as tar:
     def include(info):
         parts = Path(info.name).parts
-        if any(p in skip or p.startswith('build-') for p in parts): return None
+        if any(p in skip for p in parts): return None
+        if parts[:2] in {('pax-tools','idf'),('pax-tools','platformio'),('pax-dev','data')}: return None
         if info.name.endswith(('.pyc','.o','.obj')):return None
         return info
     for path in root.iterdir():
