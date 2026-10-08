@@ -12,9 +12,9 @@
 #include "stb_image.h"
 #include "gnutil.h"
 
-#ifdef NEOGEO_PAPP
-extern void neogeo_papp_log(const char *fmt, ...);
-#define NEO_DIAG(...) neogeo_papp_log(__VA_ARGS__)
+#ifdef NEOGEO_PAX
+extern void neogeo_pax_log(const char *fmt, ...);
+#define NEO_DIAG(...) neogeo_pax_log(__VA_ARGS__)
 #else
 #define NEO_DIAG(...) do { } while (0)
 #endif

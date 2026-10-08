@@ -1,0 +1,17 @@
+--- a/common/vqatask.cpp
++++ b/common/vqatask.cpp
+@@ -112,7 +112,14 @@
+         }
+ 
+         while (mode != 1) {
++#ifdef PAPP_APP_SIDE
++            // Loader EOF is not playback EOF: its ring may still contain the
++            // last frames. Keep drawing until NOBUFFER below marks completion.
++            // A user skip sets flag 8 as well and must remain immediate.
++            if (data->Flags & VQA_DATA_FLAG_8) {
++#else
+             if (data->Flags & (VQA_DATA_FLAG_VIDEO_MEMORY_SET | VQA_DATA_FLAG_8)) {
++#endif
+                 break;
+             }
+ 

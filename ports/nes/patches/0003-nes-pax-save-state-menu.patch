@@ -1,0 +1,197 @@
+diff --git a/apps/psram_nes/papp_main.c b/apps/psram_nes/papp_main.c
+--- a/apps/psram_nes/papp_main.c
++++ b/apps/psram_nes/papp_main.c
+@@ -48,11 +48,8 @@ static void nes_watchdog(void *arg)
+ {
+     (void)arg;
+-    papp_gamepad_state_t pad;
+     int held = 0;
+     for (;;) {
+-        _papp_svc->input_gamepad_read(&pad);
+-        if (pad.values[PAPP_INPUT_MENU] ||
+-            (_papp_svc->input_l3_read && _papp_svc->input_l3_read())) {
++        if (_papp_svc->input_l3_read && _papp_svc->input_l3_read()) {
+             if (++held >= 3) {
+                 papp_nes_exit = 1;
+                 papp_exit_requested = 1;
+diff --git a/apps/psram_nes/papp_osd.c b/apps/psram_nes/papp_osd.c
+--- a/apps/psram_nes/papp_osd.c
++++ b/apps/psram_nes/papp_osd.c
+@@ -9,6 +9,7 @@
+ #include "vid_drv.h"
+ #include "event.h"
+ #include "nesinput.h"
++#include "papp_nes_options.h"
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -86,5 +87,6 @@ void osd_getinput(void)
+ {
+     static int old;
++    static int menu_was_down;
+     papp_gamepad_state_t p;
+     int now = 0;
+     _papp_svc->input_gamepad_read(&p);
+@@ -100,18 +102,36 @@ void osd_getinput(void)
+     if (p.values[PAPP_INPUT_LEFT])   now |= 1 << 7;
+     if (p.values[PAPP_INPUT_A])      now |= 1 << 13;
+     if (p.values[PAPP_INPUT_B])      now |= 1 << 14;
+-    if (p.values[PAPP_INPUT_MENU] || (p.values[PAPP_INPUT_L] && p.values[PAPP_INPUT_R]) || papp_exit_requested) {
++    const int menu_down = p.values[PAPP_INPUT_MENU];
++    const int menu_pressed = menu_down && !menu_was_down;
++    menu_was_down = menu_down;
++    if ((p.values[PAPP_INPUT_L] && p.values[PAPP_INPUT_R]) || papp_exit_requested ||
++        (_papp_svc->input_l3_read && _papp_svc->input_l3_read())) {
+         /* osd_getinput() runs inside the emulation call stack.  Do not call
+          * main_quit() here: it destroys the NES machine while the current
+          * frame is still unwinding and corrupts the heap.  Request a clean
+          * return, then let main_loop() perform teardown exactly once. */
+         papp_exit_requested = 1;
+         papp_nes_exit = 1;
+         nofrendo_quit_flag = 1;
+         nes_poweroff();
+         /* Stop processing input events in the same frame as shutdown. */
+         old = now;
+         return;
+     }
++    if (menu_pressed || papp_nes_menu_swipe_down_pressed(_papp_svc)) {
++        if (_papp_svc->log_printf)
++            _papp_svc->log_printf("NES PAPP: in-game menu trigger (menu=%d)\n", menu_down);
++        if (papp_nes_menu_run(_papp_svc, rgb565, W, H)) {
++            papp_exit_requested = 1;
++            papp_nes_exit = 1;
++            nofrendo_quit_flag = 1;
++            nes_poweroff();
++        }
++        /* Discard buttons used by the modal menu rather than leaking them
++         * into the next game's controller event. */
++        old = now;
++        return;
++    }
+     int changed = now ^ old;
+     const int events[16] = { event_joypad1_select,0,0,event_joypad1_start,event_joypad1_up,event_joypad1_right,event_joypad1_down,event_joypad1_left,0,0,0,0,0,event_joypad1_a,event_joypad1_b,0 };
+diff --git a/apps/psram_nes/papp_platform.c b/apps/psram_nes/papp_platform.c
+--- a/apps/psram_nes/papp_platform.c
++++ b/apps/psram_nes/papp_platform.c
+@@ -42,6 +42,1 @@ void papp_nes_cleanup(void) { if (papp_nes_rom_data) _papp_svc->mem_free(papp_nes_rom_data); papp_nes_rom_data = NULL; }
+ void app_return_to_launcher(void) { papp_exit_requested = 1; papp_nes_request_exit(); }
+-
+-/* Save states are intentionally disabled in the first PAPP port. */
+-void save_sram(void) {}
+-void load_sram(void) {}
+-void state_setslot(int slot) { (void)slot; }
+diff --git a/components/nofrendo/include/nesstate.h b/components/nofrendo/include/nesstate.h
+--- a/components/nofrendo/include/nesstate.h
++++ b/components/nofrendo/include/nesstate.h
+@@ -31,6 +31,8 @@
+ extern void state_setslot(int slot);
+ //extern int state_load();
+ //extern int state_save();
++int papp_nes_state_save(const char *filename);
++int papp_nes_state_load(const char *filename);
+ 
+ void save_sram();
+ void load_sram();
+diff --git a/components/nofrendo/nes/nesstate.c b/components/nofrendo/nes/nesstate.c
+--- a/components/nofrendo/nes/nesstate.c
++++ b/components/nofrendo/nes/nesstate.c
+@@ -35,13 +35,17 @@
+ #include <libsnss.h>
+ #include "nes6502.h"
+ 
++#if !defined(PAPP_APP_SIDE)
+ #include "odroid_sdcard.h"
+ #include "odroid_settings.h"
+ #include "odroid_display.h"
++#endif
+ 
+ extern nes_t* console_nes;
++#if !defined(PAPP_APP_SIDE)
+ extern nes6502_context cpu;
+ extern const char* SD_BASE_PATH;
++#endif
+ 
+ #define  FIRST_STATE_SLOT  0
+ #define  LAST_STATE_SLOT   9
+@@ -374,9 +378,9 @@ void load_mapperblock(nes_t *state, SNSS_FILE *snssFile)
+ }
+ 
+ 
+-static int state_save(char* fn)
++int papp_nes_state_save(const char *fn)
+ {
+-   SNSS_FILE *snssFile;
++   SNSS_FILE *snssFile = NULL;
+    SNSS_RETURN_CODE status;
+ 
+    nes_t *machine;
+@@ -446,21 +450,18 @@ static int state_save(char* fn)
+ _error:
+    printf("error: %s", SNSS_GetErrorString(status));
+    SNSS_CloseFile(&snssFile);
+-   abort();
++   return -1;
+ }
+ 
+ 
+-extern bool forceConsoleReset;
+-
+-static int state_load(char* fn)
++int papp_nes_state_load(const char *fn)
+ {
+-   SNSS_FILE *snssFile;
++   SNSS_FILE *snssFile = NULL;
+    SNSS_RETURN_CODE status;
+    SNSS_BLOCK_TYPE block_type;
+ 
+    unsigned int i;
+    nes_t *machine;
+-   nes_t nes;
+ 
+    /* get our machine's context pointer */
+    machine = console_nes;
+@@ -474,9 +475,8 @@ int papp_nes_state_load(const char *fn)
+    if (SNSS_OK != status)
+    {
+        printf("state_load: file '%s' could not be opened.\n", fn);
+-       forceConsoleReset = true;
+-       return 0; //goto _error;
+-  }
++       goto _error;
++   }
+ 
+ 
+    /* iterate through all present blocks */
+@@ -527,6 +527,8 @@
+ 
+    /* close file, we're done */
+    status = SNSS_CloseFile(&snssFile);
++   if (SNSS_OK != status)
++      goto _error;
+ 
+    printf("State %d restored", state_slot);
+ 
+@@ -535,10 +537,11 @@ static int state_load(char* fn)
+ _error:
+    gui_sendmsg(GUI_RED, "error: %s", SNSS_GetErrorString(status));
+    SNSS_CloseFile(&snssFile);
+-   abort();
++   return -1;
+ }
+ 
+ 
++#if !defined(PAPP_APP_SIDE)
+ void save_sram()
+ {
+     odroid_display_lock_nes_display();
+@@ -623,6 +626,10 @@ void load_sram()
+ 
+     odroid_display_unlock_nes_display();
+ }
++#else
++void save_sram(void) {}
++void load_sram(void) {}
++#endif
+ 
+ /*
+ ** $Log: nesstate.c,v $

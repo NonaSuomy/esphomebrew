@@ -31,7 +31,7 @@ class UsbMidi : public Component {
 
   bool is_connected() const { return this->connected_.load(); }
   // Copies up to len received MIDI bytes into buf and returns how many.
-  // One reader at a time (the PAPP loader, or a lambda).
+  // One reader at a time (the PAX loader, or a lambda).
   size_t read(uint8_t *buf, size_t len);
   // Sends whole MIDI messages (status byte first; SysEx F0 ... F7 included).
   // False when no device is connected or the queue is full.

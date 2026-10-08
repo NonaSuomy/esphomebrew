@@ -1,0 +1,28 @@
+# Local PAX development
+
+`dev-paxs/` is an intentionally gitignored folder for local PAX builds. It
+is useful for testing an app over the LAN without uploading it to the SD card
+or waiting for GitHub Actions and Pages.
+
+From the repository root:
+
+```sh
+mkdir -p dev-paxs
+source /home/nonasuomy/esp/esp-idf/export.sh
+python3 tools/build_pax.py --out dev-paxs lvgl
+python3 -m http.server 8000 --bind 10.20.30.158 \
+  --directory /home/nonasuomy/code/pax/pax-dev
+```
+
+Build another app by replacing `lvgl` with its manifest name, or omit
+the app name to build every app. `build_pax.py` writes the `.pax` and its
+sidecar JSON into `dev-paxs/`; the JSON contains the app version, listing
+metadata, and embedded icon.
+
+The Elecrow YAML already points its LAN source at
+`http://10.20.30.158:8000/`. On the device, refresh the LAN/library source,
+open the app, and choose **Stream**. The PAX is downloaded into PSRAM and
+run directly; it is not written to the SD card.
+
+Keep the server terminal open while the device loads the app. Stop it with
+`Ctrl-C` when finished.

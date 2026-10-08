@@ -84,8 +84,8 @@ class ParseTests(unittest.TestCase):
                 self.assertIsNone(eb.parse_request(text, None, "esp-bridge"))
         req = eb.parse_request("It took `@esp-bridge listening …` as a command. Now:\n\n@esp-bridge status", None, "esp-bridge")
         self.assertEqual(req.action, "status")
-        req = eb.parse_request("> @ESP-Bridge launch url=https://x.invalid/a.papp", None, "esp-bridge")
-        self.assertEqual((req.action, req.url), ("launch", "https://x.invalid/a.papp"))
+        req = eb.parse_request("> @ESP-Bridge launch url=https://x.invalid/a.pax", None, "esp-bridge")
+        self.assertEqual((req.action, req.url), ("launch", "https://x.invalid/a.pax"))
         self.assertEqual(eb.parse_request("@esp-bridge status.", None, "esp-bridge").action, "status")
 
     def test_a_lone_request_line_with_a_typo_gets_help(self):
@@ -193,8 +193,8 @@ class CommandTests(unittest.TestCase):
         self.assertEqual((code, len(out), truncated), (0, 100, True))
 
 
-STORE = "https://nonasuomy.github.io/esphomebrew/lvgl-0.3.0.papp"
-RELEASE = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.papp"
+STORE = "https://nonasuomy.github.io/esphomebrew/lvgl-0.3.0.pax"
+RELEASE = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.pax"
 
 
 def make_api_config(tmp: Path) -> eb.Config:
@@ -220,12 +220,12 @@ class DeviceApiTests(unittest.TestCase):
     def req(self, text):
         return eb.parse_request("@esp-bridge " + text, None, "esp-bridge")
 
-    def test_launch_urls_must_be_store_papps(self):
+    def test_launch_urls_must_be_store_paxs(self):
         eb.validate(self.req(f"launch url={STORE}"), self.cfg)
-        for url in ["http://github.com/NonaSuomy/papp-conversions/releases/download/a/b.papp",
-                    "https://evil.example/x.papp",
+        for url in ["http://github.com/NonaSuomy/papp-conversions/releases/download/a/b.pax",
+                    "https://evil.example/x.pax",
                     "https://github.com/NonaSuomy/esphomebrew/releases/download/a/readme.txt",
-                    "https://github.com/NonaSuomy/esphomebrew/releases/download/../../other/x.papp",
+                    "https://github.com/NonaSuomy/esphomebrew/releases/download/../../other/x.pax",
                     ""]:
             with self.subTest(url=url), self.assertRaises(eb.BridgeError):
                 eb.validate(self.req(f"launch url={url}"), self.cfg)
@@ -239,7 +239,7 @@ class DeviceApiTests(unittest.TestCase):
     def test_encryption_key_comes_from_secrets_by_name(self):
         self.assertEqual(self.cfg.api_key, "c2VjcmV0LWtleS1ieXRlcy0xMjM0NTY3ODkwMTI=")
 
-    def test_launch_calls_the_papp_launch_api_action(self):
+    def test_launch_calls_the_pax_launch_api_action(self):
         calls = []
 
         class FakeService:
@@ -254,7 +254,7 @@ class DeviceApiTests(unittest.TestCase):
                 calls.append(("connect", login))
 
             async def list_entities_services(self):
-                return [], [FakeService("papp_launch"), FakeService("papp_close")]
+                return [], [FakeService("pax_launch"), FakeService("pax_close")]
 
             async def execute_service(self, service, data):
                 calls.append(("execute", service.name, data))
@@ -268,10 +268,10 @@ class DeviceApiTests(unittest.TestCase):
         result = eb.Runner(self.cfg).execute(self.req(f"launch url={STORE}"))
         self.assertTrue(result.ok, result.summary)
         self.assertIn(("init", "10.0.0.5", 6053, self.cfg.api_key), calls)
-        self.assertIn(("execute", "papp_launch", {"url": STORE}), calls)
+        self.assertIn(("execute", "pax_launch", {"url": STORE}), calls)
         self.assertEqual(calls[-1], ("disconnect",))
         with self.assertRaises(eb.BridgeError):  # device without the package's actions
-            eb.call_device_action(self.cfg, "papp_refresh_catalog", {})
+            eb.call_device_action(self.cfg, "pax_refresh_catalog", {})
 
 
 def fake_stream_server(packets: bytes):
@@ -309,7 +309,7 @@ class AppLogTests(unittest.TestCase):
                 self.message = text
 
         class FakeService:
-            name = "papp_launch"
+            name = "pax_launch"
 
         class FakeClient:
             def __init__(self, *args, **kwargs):
@@ -328,8 +328,8 @@ class AppLogTests(unittest.TestCase):
 
             async def execute_service(self, service, data):
                 events.append("launch")
-                self.on_log(Message(b"\x1b[0;32m[I][papp_loader]: RA: starting\x1b[0m"))
-                self.on_log(Message("[E][papp]: crash"))
+                self.on_log(Message(b"\x1b[0;32m[I][pax_loader]: RA: starting\x1b[0m"))
+                self.on_log(Message("[E][pax]: crash"))
 
             async def disconnect(self):
                 return None
@@ -355,7 +355,7 @@ class AppLogTests(unittest.TestCase):
             finally:
                 asyncio.sleep = real_sleep
         self.assertEqual(events, ["subscribe", "launch", "unsubscribe"])  # log starts before the launch
-        self.assertIn("[I][papp_loader]: RA: starting", result.log)
+        self.assertIn("[I][pax_loader]: RA: starting", result.log)
         self.assertNotIn("\x1b", result.log)
         self.assertIn("Device log for 5s attached", result.summary)
         plain = eb.parse_request(f"@esp-bridge launch url={STORE}", None, "esp-bridge")
@@ -375,7 +375,7 @@ class CrashCaptureTests(unittest.TestCase):
                 self.message = text
 
         class FakeService:
-            name = "papp_launch"
+            name = "pax_launch"
 
         class FakeClient:
             def __init__(self, *args, **kwargs):
@@ -393,7 +393,7 @@ class CrashCaptureTests(unittest.TestCase):
 
             async def execute_service(self, service, data):
                 events.append("launch")
-                self.on_log(Message(b"[I][papp_loader]: RA: video mode 640x400 8 bpp"))
+                self.on_log(Message(b"[I][pax_loader]: RA: video mode 640x400 8 bpp"))
 
             async def disconnect(self):
                 raise ConnectionResetError("device rebooted")
@@ -443,7 +443,7 @@ class CrashCaptureTests(unittest.TestCase):
             eb.validate(req, cfg)
             asyncio.sleep = short
             try:
-                with mock.patch.object(eb, "load_papp_symbols", return_value=[]):
+                with mock.patch.object(eb, "load_pax_symbols", return_value=[]):
                     result = eb.Runner(cfg).execute(req)
             finally:
                 asyncio.sleep = real_sleep
@@ -467,7 +467,7 @@ class CrashCaptureTests(unittest.TestCase):
 
 
 PANIC = """\
-[I][papp_loader:1985][redalert]: PAPP: RA: video mode 640x400 8 bpp
+[I][pax_loader:1985][redalert]: PAX: RA: video mode 640x400 8 bpp
 
 abort() was called at PC 0x40093715 on core 0
 Core  0 register dump:
@@ -517,11 +517,11 @@ class CrashDecodeTests(unittest.TestCase):
 
         def fake_run(argv, **kwargs):
             seen["argv"] = argv
-            out = "0x40093715: abort at abort.c:38\n0x4ff0a146: ?? ??:0\n0x400e8782: esphome::papp_loader::PappLoader::svc_file_close(void*) at papp_loader.cpp:1950\n"
+            out = "0x40093715: abort at abort.c:38\n0x4ff0a146: ?? ??:0\n0x400e8782: esphome::pax_loader::PaxLoader::svc_file_close(void*) at pax_loader.cpp:1950\n"
             return eb.subprocess.CompletedProcess(argv, 0, out, "")
 
         self.cfg.addr2line = "riscv32-esp-elf-addr2line"
-        url = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.papp"
+        url = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.pax"
         with mock.patch.object(eb.subprocess, "run", fake_run):
             text = eb.decode_crash(self.cfg, PANIC.format(sha=self.sha), url, opener=opener)
         self.assertIn("0x4a0bbede  _fclose_r + 0x76", text)
@@ -539,7 +539,7 @@ class CrashDecodeTests(unittest.TestCase):
             "[E][esp32.crash:302]:   BT1: 0x4FF0A0FC  (backtrace)\n"
             "[E][esp32.crash:302]:   BT3: 0x4009744C  (stack scan)\n"
             "[E][esp32.crash:358]: Use: addr2line -pfiaC -e firmware.elf 0x4FF0A146 0x4009744C\n"
-            "[I][papp_loader:532]: PAPP catalog request started: http://10.13.37.84:8000/\n"
+            "[I][pax_loader:532]: PAX catalog request started: http://10.13.37.84:8000/\n"
         )
         firmware, app = eb.crash_addresses(report)
         self.assertEqual(firmware[:3], [0x4FF0A146, 0x4FF0A0FC, 0x4009744C])
@@ -557,23 +557,23 @@ class ProxyTests(unittest.TestCase):
     def test_github_downloads_are_served_to_the_device_from_here(self):
         import io
         import struct as st
-        papp = st.pack("<8I", 0x50415050, 1, 0, 4, 0, 0, 0, 0) + b"\x01\x02\x03\x04"
+        pax = st.pack("<8I", 0x50415050, 1, 0, 4, 0, 0, 0, 0) + b"\x01\x02\x03\x04"
         with tempfile.TemporaryDirectory() as tmp:
             cfg = make_api_config(Path(tmp))
             cfg.api_host, cfg.proxy_port = "127.0.0.1", 0  # any free port
-            url = eb.proxy_url(cfg, RELEASE, opener=lambda u, timeout=None: io.BytesIO(papp))
+            url = eb.proxy_url(cfg, RELEASE, opener=lambda u, timeout=None: io.BytesIO(pax))
             self.assertTrue(url.startswith("http://127.0.0.1:"), url)
-            self.assertTrue(url.endswith("-redalert.papp"), url)
+            self.assertTrue(url.endswith("-redalert.pax"), url)
             with urllib.request.urlopen(url, timeout=5) as response:
-                self.assertEqual(response.read(), papp)
+                self.assertEqual(response.read(), pax)
             with self.assertRaises(urllib.error.HTTPError):  # only the exact file, no listing
                 urllib.request.urlopen(url.rsplit("/", 1)[0] + "/", timeout=5)
             with self.assertRaises(eb.BridgeError):
-                eb.proxy_url(cfg, RELEASE, opener=lambda u, timeout=None: io.BytesIO(b"<html>not a papp</html>" * 4))
+                eb.proxy_url(cfg, RELEASE, opener=lambda u, timeout=None: io.BytesIO(b"<html>not a pax</html>" * 4))
 
 
 class ScreenshotTests(unittest.TestCase):
-    # Pixels as PAPPs draw them: RGB565 with red in the high 5 bits (Touch test's
+    # Pixels as PAXs draw them: RGB565 with red in the high 5 bits (Touch test's
     # C_RED is 0xF800; the live screenshot matched a photo of the panel).
     RED, GREEN, BLUE, WHITE = 0xF800, 0x07E0, 0x001F, 0xFFFF
 
@@ -596,23 +596,23 @@ class ScreenshotTests(unittest.TestCase):
             eb.rgb565_to_png(b"\x00" * 6, 2, 2)
 
     def test_screenshot_is_read_past_thumbnails_and_audio(self):
-        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAPPAU01", 22050, 2, 16, 8, 1) + b"\x00" * 8
-        packets = stream_packet(b"PAPPFB01", 1, 1, b"\x00\x00") + audio + stream_packet(b"PAPPSS01", 2, 2, self.frame())
+        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAXAU01", 22050, 2, 16, 8, 1) + b"\x00" * 8
+        packets = stream_packet(b"PAXFB01", 1, 1, b"\x00\x00") + audio + stream_packet(b"PAXSS01", 2, 2, self.frame())
         port = fake_stream_server(packets)
         import socket
         with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
             self.assertEqual(eb.read_screenshot(sock), (2, 2, self.frame()))
 
     def test_no_running_app_is_reported(self):
-        port = fake_stream_server(stream_packet(b"PAPPSS01", 0, 0, b""))
+        port = fake_stream_server(stream_packet(b"PAXSS01", 0, 0, b""))
         import socket
         with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
             with self.assertRaises(eb.BridgeError) as caught:
                 eb.read_screenshot(sock)
-        self.assertIn("No PAPP is running", str(caught.exception))
+        self.assertIn("No PAX is running", str(caught.exception))
 
     def test_screenshot_job_posts_a_png(self):
-        port = fake_stream_server(stream_packet(b"PAPPSS01", 2, 2, self.frame()))
+        port = fake_stream_server(stream_packet(b"PAXSS01", 2, 2, self.frame()))
         calls = []
 
         class FakeService:
@@ -627,7 +627,7 @@ class ScreenshotTests(unittest.TestCase):
                 return None
 
             async def list_entities_services(self):
-                return [], [FakeService("papp_screenshot")]
+                return [], [FakeService("pax_screenshot")]
 
             async def execute_service(self, service, data):
                 calls.append(service.name)
@@ -659,14 +659,14 @@ class ScreenshotTests(unittest.TestCase):
                                  "text": "@esp-bridge screenshot"}, cfg, FakeHub(), eb.Runner(cfg))
         finally:
             sys.modules.pop("aioesphomeapi", None)
-        self.assertEqual(calls, ["papp_screenshot"])
+        self.assertEqual(calls, ["pax_screenshot"])
         self.assertEqual(uploaded[0][1:], (b"\x89PNG\r\n\x1a\n", "image/png"))
         self.assertEqual(posted[-1]["attachment_ids"], ["att-1"])
         self.assertIn("2×2", posted[-1]["text"])
 
 
 def file_packet(status: int, payload: bytes) -> bytes:
-    return eb.STREAM_FILE_HEADER.pack(b"PAPPFL01", status, len(payload), 1) + payload
+    return eb.STREAM_FILE_HEADER.pack(b"PAXFL01", status, len(payload), 1) + payload
 
 
 class ReadFileTests(unittest.TestCase):
@@ -694,8 +694,8 @@ class ReadFileTests(unittest.TestCase):
             eb.validate(self.req('readfile "path=/sd/a b"'), self.cfg)
 
     def test_file_is_read_past_thumbnails_and_audio(self):
-        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAPPAU01", 22050, 2, 16, 4, 1) + b"\x00" * 4
-        port = fake_stream_server(stream_packet(b"PAPPFB01", 1, 1, b"\x00\x00") + audio + file_packet(0, b"CRC[0]=1\n"))
+        audio = eb.STREAM_AUDIO_HEADER.pack(b"PAXAU01", 22050, 2, 16, 4, 1) + b"\x00" * 4
+        port = fake_stream_server(stream_packet(b"PAXFB01", 1, 1, b"\x00\x00") + audio + file_packet(0, b"CRC[0]=1\n"))
         import socket
         with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
             self.assertEqual(eb.read_stream_file(sock), b"CRC[0]=1\n")
@@ -747,7 +747,7 @@ class ReadFileTests(unittest.TestCase):
                 return None
 
             async def list_entities_services(self):
-                return [], [FakeService("papp_read_file")]
+                return [], [FakeService("pax_read_file")]
 
             async def execute_service(self, service, data):
                 calls.append((service.name, data))
@@ -775,7 +775,7 @@ class ReadFileTests(unittest.TestCase):
         eb.handle_event({"from": "claude", "from_kind": "agent", "channel": "general", "id": "m",
                          "text": "@esp-bridge readfile path=/sd/roms/redalert/DESYNCLOG.TXT"},
                         self.cfg, FakeHub(), eb.Runner(self.cfg))
-        self.assertEqual(calls, [("papp_read_file", {"path": "/sd/roms/redalert/DESYNCLOG.TXT"})])
+        self.assertEqual(calls, [("pax_read_file", {"path": "/sd/roms/redalert/DESYNCLOG.TXT"})])
         self.assertIn("CRC[0]=0000abcd", posted[-1]["text"])
         self.assertEqual(uploaded, [])
 
@@ -807,7 +807,7 @@ class WriteFileTests(unittest.TestCase):
 
     def test_writefile_is_limited(self):
         eb.validate(self.req(), self.cfg)
-        refused = [self.req(requester="someone"), self.req(path="/sd/app.papp"), self.req(path="/sd/roms/"),
+        refused = [self.req(requester="someone"), self.req(path="/sd/app.pax"), self.req(path="/sd/roms/"),
                    self.req(path="/sd/../boot.ini"), self.req(path="/etc/x.ini"),
                    self.req(content="Password=***\n"), self.req(content="x" * (eb.WRITEFILE_MAX_BYTES + 1))]
         for req in refused:
@@ -829,7 +829,7 @@ class WriteFileTests(unittest.TestCase):
     def test_write_is_verified_by_reading_back(self):
         result, capture, action = self.run_write([b"[Network]\nProtocol=udp\n", self.INI.encode()])
         self.assertTrue(result.ok)
-        action.assert_called_once_with(self.cfg, "papp_write_file",
+        action.assert_called_once_with(self.cfg, "pax_write_file",
                                        {"path": "/sd/roms/redalert/redalert.ini", "data": self.INI})
         self.assertEqual(capture.call_count, 2)
         self.assertIn("+Protocol=tcp", result.summary)
@@ -861,7 +861,7 @@ class DeleteFileTests(unittest.TestCase):
     def test_deletefile_is_limited(self):
         for path in ["/sd/roms/redalert/SYNC001.TXT", "/sd/roms/redalert/redalert.ini.bak", "/sd/x/crash.log"]:
             eb.validate(self.req(path), self.cfg)
-        refused = [self.req(requester="someone"), self.req("/sd/roms/redalert/MAIN.MIX"), self.req("/sd/apps/doom.papp"),
+        refused = [self.req(requester="someone"), self.req("/sd/roms/redalert/MAIN.MIX"), self.req("/sd/apps/doom.pax"),
                    self.req("/sd/roms/"), self.req("/sd/../x.txt"), self.req("/boot/x.txt")]
         for req in refused:
             with self.subTest(path=req.path, requester=req.requester), self.assertRaises(eb.BridgeError):
@@ -878,7 +878,7 @@ class DeleteFileTests(unittest.TestCase):
         before = b"REDALERT.MIX\t25046328\nsync001.txt\t6755\n"
         result, capture, action = self.run_delete([before, b"REDALERT.MIX\t25046328\n"])
         self.assertTrue(result.ok)
-        action.assert_called_once_with(self.cfg, "papp_delete_file", {"path": "/sd/roms/redalert/SYNC001.TXT"})
+        action.assert_called_once_with(self.cfg, "pax_delete_file", {"path": "/sd/roms/redalert/SYNC001.TXT"})
         self.assertEqual([call.args[1] for call in capture.call_args_list], ["/sd/roms/redalert/"] * 2)
         self.assertIn("6755 bytes", result.summary)
 
@@ -1008,7 +1008,7 @@ class DeviceStageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = make_api_config(Path(tmp))
             with self.assertRaises(eb.BridgeError) as caught:
-                eb.call_device_action(cfg, "papp_close", {}, timeout=0.5)
+                eb.call_device_action(cfg, "pax_close", {}, timeout=0.5)
         self.assertIn("listing the device's actions", str(caught.exception))
 
     def test_unresolvable_names_are_left_to_aioesphomeapi(self):
@@ -1411,7 +1411,7 @@ class FallbackDecisionTests(unittest.TestCase):
             with self.subTest(error=repr(error)):
                 self.assertTrue(eb.is_network_error(error))
         for error in [e["InvalidAuthAPIError"]("bad password"), e["InvalidEncryptionKeyAPIError"]("bad key"),
-                      e["BadNameAPIError"]("expected device-a"), eb.BridgeError("no `papp_close` API action"),
+                      e["BadNameAPIError"]("expected device-a"), eb.BridgeError("no `pax_close` API action"),
                       ValueError("x")]:
             with self.subTest(error=repr(error)):
                 self.assertFalse(eb.is_network_error(error))
@@ -1437,12 +1437,12 @@ class FallbackDecisionTests(unittest.TestCase):
             cfg = make_api_config(Path(tmp))
             self.fake_api(e["ReadFailedAPIError"]("[Errno 104] Connection reset by peer"))
             with self.assertRaises(eb.DeviceUnreachable) as caught:
-                eb.call_device_action(cfg, "papp_close", {})
+                eb.call_device_action(cfg, "pax_close", {})
             self.assertEqual(str(caught.exception), INCIDENT)  # the incident's message, unchanged
             self.assertIsNotNone(eb.probe_network(cfg, "10.0.0.5"))
             self.fake_api(e["InvalidAuthAPIError"]("Invalid password"))
             with self.assertRaises(eb.BridgeError) as caught:
-                eb.call_device_action(cfg, "papp_close", {})
+                eb.call_device_action(cfg, "pax_close", {})
             self.assertNotIsInstance(caught.exception, eb.DeviceUnreachable)
             self.assertIsNone(eb.probe_network(cfg, "10.0.0.5"))  # it answered: the path works
 
@@ -1463,7 +1463,7 @@ class FallbackDecisionTests(unittest.TestCase):
             cfg = fallback_config(Path(tmp))
             runner, _ = fake_runner(cfg)
             device = Device(up=True)
-            missing = eb.BridgeError("The device has no `papp_close` API action.")
+            missing = eb.BridgeError("The device has no `pax_close` API action.")
             with device.patch(), mock.patch.object(eb, "call_device_action", side_effect=missing) as action:
                 with self.assertRaises(eb.BridgeError) as caught:
                     runner.execute(eb.parse_request("@esp-bridge close", None, "esp-bridge"))

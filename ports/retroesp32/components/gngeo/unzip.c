@@ -29,9 +29,9 @@
 #include <errno.h>
 #include "unzip.h"
 
-#ifdef NEOGEO_PAPP
-extern void neogeo_papp_log(const char *fmt, ...);
-#define ZIP_DIAG(...) neogeo_papp_log(__VA_ARGS__)
+#ifdef NEOGEO_PAX
+extern void neogeo_pax_log(const char *fmt, ...);
+#define ZIP_DIAG(...) neogeo_pax_log(__VA_ARGS__)
 #else
 #define ZIP_DIAG(...) do { } while (0)
 #endif
@@ -126,7 +126,7 @@ static int search_sig32(PKZIP *zf, uint8_t sig[4]) {
 	if (!zf || !zf->file)
 		return -1;
 	//pos=ftell(zf->file);
-	/* PAPP FILE handles are owned by the launcher, so app-side feof() may
+	/* PAX FILE handles are owned by the launcher, so app-side feof() may
 	 * inspect a different libc FILE state.  Use the wrapped fread() result as
 	 * the end-of-file signal instead. */
 	while (fread(&a, sizeof(char), 1, zf->file) == 1) {

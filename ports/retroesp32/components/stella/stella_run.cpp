@@ -44,14 +44,14 @@ using std::string;
 
 #include "stella_run.h"
 
-#ifdef PAPP_APP_SIDE
-/* The standalone PAPP has no initialized newlib stdout. Route the native
+#ifdef PAX_APP_SIDE
+/* The standalone PAX has no initialized newlib stdout. Route the native
  * wrapper's diagnostics through the launcher service table instead of letting
  * printf dereference a foreign FILE object. */
 #include "psram_app.h"
-extern const app_services_t *_papp_svc;
-#define printf(...) (_papp_svc && _papp_svc->log_printf ? \
-                     _papp_svc->log_printf(__VA_ARGS__) : 0)
+extern const app_services_t *_pax_svc;
+#define printf(...) (_pax_svc && _pax_svc->log_printf ? \
+                     _pax_svc->log_printf(__VA_ARGS__) : 0)
 #endif
 
 /* ===================================================================
@@ -200,9 +200,9 @@ static void st_videoTask(void *arg)
     vTaskDelete(NULL);
 }
 
-/* PAPP execution is single-threaded. Keep the native video's conversion
+/* PAX execution is single-threaded. Keep the native video's conversion
  * behavior, but submit the completed frame inline so a private FreeRTOS task
- * cannot leave a PAPP with a frozen display. */
+ * cannot leave a PAX with a frozen display. */
 static void stella_render_frame_direct(const uint8_t *param)
 {
     memcpy(st_framebuffer, param, sizeof(st_framebuffer));
@@ -895,8 +895,8 @@ extern "C" void stella_run(const char *rom_path)
         }
     }
 
-    /* Native firmware uses a video task; PAPPs submit frames inline below. */
-#ifndef PAPP_APP_SIDE
+    /* Native firmware uses a video task; PAXs submit frames inline below. */
+#ifndef PAX_APP_SIDE
     st_vidQueue = xQueueCreate(1, sizeof(uint8_t *));
     xTaskCreatePinnedToCore(&st_videoTask, "st_vidTask", 1024 * 4, NULL, 5,
                             &st_videoTaskHandle, 1);
@@ -963,7 +963,7 @@ extern "C" void stella_run(const char *rom_path)
         {
             TIA &tia = st_console->tia();
             uint8_t *fb = tia.currentFrameBuffer();
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
             stella_render_frame_direct(fb);
 #else
             xQueueSend(st_vidQueue, &fb, portMAX_DELAY);
@@ -978,8 +978,8 @@ extern "C" void stella_run(const char *rom_path)
         totalElapsedTime += (stopTime - startTime);
         frame++;
 
-#ifdef PAPP_TEST_FRAMES
-        if (frame >= PAPP_TEST_FRAMES) {
+#ifdef PAX_TEST_FRAMES
+        if (frame >= PAX_TEST_FRAMES) {
             st_exitRequested = true;
             continue;
         }

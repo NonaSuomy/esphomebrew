@@ -648,7 +648,7 @@ int lastLcdDisabled = 0;
 
 void IRAM_ATTR lcd_refreshline()
 {
-#ifdef PAPP_GB
+#ifdef PAX_GB
 	if (!fb.enabled) return;
 #endif
 	byte *dest;

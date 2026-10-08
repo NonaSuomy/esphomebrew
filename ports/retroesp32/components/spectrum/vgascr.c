@@ -43,10 +43,10 @@ extern void vga_setpalvec();
 #define WIDTH      256
 #define HEIGHT     192
 
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
 /* The original VGA backend only used this palette-index scratch array when
  * drawing through svgalib. Keep the symbol for the shared initialization
- * path even though the PAPP writes RGB565 directly. */
+ * path even though the PAX writes RGB565 directly. */
 extern unsigned char sp_colors[COLORNUM];
 #endif
 

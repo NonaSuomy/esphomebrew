@@ -1,0 +1,29 @@
+diff --git a/apps/psram_nes/papp_osd.c b/apps/psram_nes/papp_osd.c
+--- a/apps/psram_nes/papp_osd.c
++++ b/apps/psram_nes/papp_osd.c
+@@ -117,6 +117,7 @@ void osd_getinput(void)
+     static int menu_was_down;
+     papp_gamepad_state_t p;
+     int now = 0;
++    const int shared_menu = papp_nes_shared_menu_attach(_papp_svc, rgb565, W, H);
+     _papp_svc->input_gamepad_read(&p);
+     if (p.values[PAPP_INPUT_SELECT]) now |= 1 << 0;
+     if (p.values[PAPP_INPUT_START])  now |= 1 << 3;
+@@ -143,7 +144,7 @@ void osd_getinput(void)
+         old = now;
+         return;
+     }
+-    if (menu_pressed || papp_nes_menu_swipe_down_pressed(_papp_svc)) {
++    if (!shared_menu && (menu_pressed || papp_nes_menu_swipe_down_pressed(_papp_svc))) {
+         if (_papp_svc->log_printf)
+             _papp_svc->log_printf("NES PAPP: in-game menu trigger (menu=%d)\n", menu_down);
+         if (papp_nes_menu_run(_papp_svc, rgb565, W, H)) {
+@@ -167,7 +168,7 @@ void osd_getinput(void)
+ }
+ 
+ int osd_init(void) { indexed = _papp_svc->mem_alloc(W * H); rgb565 = _papp_svc->mem_caps_alloc(W * H * 2, PAPP_MEM_CAP_SPIRAM | PAPP_MEM_CAP_DMA); return indexed && rgb565 ? 0 : -1; }
+-void osd_shutdown(void) { bmp_destroy(&screen); if (indexed) _papp_svc->mem_free(indexed); if (rgb565) _papp_svc->mem_free(rgb565); if (cropped_rgb565) _papp_svc->mem_free(cropped_rgb565); indexed = NULL; rgb565 = NULL; cropped_rgb565 = NULL; sound_cb = NULL; }
++void osd_shutdown(void) { papp_nes_shared_menu_detach(); bmp_destroy(&screen); if (indexed) _papp_svc->mem_free(indexed); if (rgb565) _papp_svc->mem_free(rgb565); if (cropped_rgb565) _papp_svc->mem_free(cropped_rgb565); indexed = NULL; rgb565 = NULL; cropped_rgb565 = NULL; sound_cb = NULL; }
+ void osd_main_dummy(void) {}
+ 
+ /* Called by the nofrendo APU bridge in papp_audio.c. */

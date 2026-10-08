@@ -1,4 +1,4 @@
-// Host lookup for the Red Alert PAPP's socket layer: this device, or a name/address
+// Host lookup for the Red Alert PAX's socket layer: this device, or a name/address
 // resolved by the loader (TCP `Host=`).
 #pragma once
 

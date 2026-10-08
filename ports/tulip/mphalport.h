@@ -1,4 +1,4 @@
-// MicroPython HAL for Tulip on the PAPP loader (papp_mphal.c).
+// MicroPython HAL for Tulip on the PAX loader (pax_mphal.c).
 #pragma once
 
 #include <stdint.h>
@@ -8,8 +8,8 @@
 
 static inline void mp_hal_delay_us(mp_uint_t us)
 {
-    extern void papp_mp_delay_us(mp_uint_t us);
-    papp_mp_delay_us(us);
+    extern void pax_mp_delay_us(mp_uint_t us);
+    pax_mp_delay_us(us);
 }
 
 // Tulip's keyboard input (tulip_helpers.c tx_char) fills this ring; the REPL

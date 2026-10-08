@@ -1,24 +1,24 @@
-# Tulip Creative Computer on the PAPP loader (work in progress)
+# Tulip Creative Computer on the PAX loader (work in progress)
 
 [Tulip CC](https://github.com/shorepine/tulipcc) built from Tulip Desktop's
 code (`tulip/shared` of [NonaSuomy/tulipcc](https://github.com/NonaSuomy/tulipcc))
-as a small MicroPython port for the ESP32-P4 PAPP loader. The upstream sources
-are fetched at pinned commits (`apps/tulip/papp.json`: tulipcc, and its
+as a small MicroPython port for the ESP32-P4 PAX loader. The upstream sources
+are fetched at pinned commits (`apps/tulip/pax.json`: tulipcc, and its
 `micropython` and `amy` submodules); only the glue below lives here.
 
 | File | What it does |
 | --- | --- |
 | `gen_tulip.py` | Prebuild: MicroPython's generated headers (qstrs, modules, root pointers, version), the LVGL binding (`lv_mpy.c`), frozen Python (bytecode via a host-built `mpy-cross`) and Tulip's `/sys` files as a tar |
-| `mpconfigport.h`, `mphalport.h`, `papp_mphal.c`, `papp_modtime.c` | The MicroPython port: config, console, clocks |
-| `papp_main.c` | `app_entry`, the MicroPython task (heap, LVGL, `_boot.py`, REPL), quitting |
-| `papp_display.c` | Tulip's compositor into a 1024x600 loader canvas, or scaled to 800x480 on older loaders (30 fps target), keyboard, gamepad and touch input |
-| `papp_audio.c` | AMY rendered into the loader's speaker (44.1 kHz), AMY's platform hooks |
-| `papp_vfs.c` | `_papp`: `/sd` (files by name), the block device for Tulip's filesystem image, `/sys` tar, `quit()` |
-| `papp_net.c` | `_pappnet`: the loader's network services (UDP, TCP, DNS, TLS, the device's address) for the Python modules below |
-| `papp_syscalls.c` | newlib: heap (PSRAM, freed on quit), files, time, spinlocks |
+| `mpconfigport.h`, `mphalport.h`, `pax_mphal.c`, `pax_modtime.c` | The MicroPython port: config, console, clocks |
+| `pax_main.c` | `app_entry`, the MicroPython task (heap, LVGL, `_boot.py`, REPL), quitting |
+| `pax_display.c` | Tulip's compositor into a 1024x600 loader canvas, or scaled to 800x480 on older loaders (30 fps target), keyboard, gamepad and touch input |
+| `pax_audio.c` | AMY rendered into the loader's speaker (44.1 kHz), AMY's platform hooks |
+| `pax_vfs.c` | `_pax`: `/sd` (files by name), the block device for Tulip's filesystem image, `/sys` tar, `quit()` |
+| `pax_net.c` | `_paxnet`: the loader's network services (UDP, TCP, DNS, TLS, the device's address) for the Python modules below |
+| `pax_syscalls.c` | newlib: heap (PSRAM, freed on quit), files, time, spinlocks |
 | `py/_boot.py` | Replaces Tulip's `_boot.py`: filesystems, `/sys`, then Tulip's own start-up |
 | `py/socket.py`, `py/tls.py`, `py/ssl.py`, `py/network.py` | Networking through the loader (below) |
-| `patches/` | `tulip.board()` = `"PAPP"`, AMY's queue lock |
+| `patches/` | `tulip.board()` = `"PAX"`, AMY's queue lock |
 
 ## Tasks and memory
 
@@ -54,7 +54,7 @@ are fetched at pinned commits (`apps/tulip/papp.json`: tulipcc, and its
 - Gamepad: directions are arrow keys; held buttons appear in `tulip.keys()`
   as the scan codes `tulip_graphics.joyk()` maps to Tulip's `Joy` bits.
 - Touch: Tulip's touch (`tulip.touch()`, touch callbacks) and LVGL's pointer.
-- Quit: Menu (or Escape) held 3 s, the loader's close control, `_papp.quit()`,
+- Quit: Menu (or Escape) held 3 s, the loader's close control, `_pax.quit()`,
   or Ctrl-D on an empty REPL line (a Tulip soft reboot restarts the chip).
 
 ## Network

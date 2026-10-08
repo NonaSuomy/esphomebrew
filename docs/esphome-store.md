@@ -1,22 +1,22 @@
-# Adding the PAPP Store page to an ESPHome device
+# Adding the PAX Store page to an ESPHome device
 
-`esphome/store_page.yaml` is a drop-in [package](https://esphome.io/components/packages.html). It adds an LVGL page, **PAPP STORE**, that lists every app in the store and launches the one you tap.
+`esphome/store_page.yaml` is a drop-in [package](https://esphome.io/components/packages.html). It adds an LVGL page, **PAX STORE**, that lists every app in the store and launches the one you tap.
 
 ## 1. Load the loader from this repo
 
-Replace the local `papp_loader` source with this repository:
+Replace the local `pax_loader` source with this repository:
 
 ```yaml
 external_components:
   - source: github://NonaSuomy/esphomebrew@main
-    components: [papp_loader]
+    components: [pax_loader]
 ```
 
 ## 2. Point the loader at the store
 
 ```yaml
-papp_loader:
-  id: papp_runtime
+pax_loader:
+  id: pax_runtime
   catalog_url: https://nonasuomy.github.io/esphomebrew/
   lvgl_id: lvgl_component
   data_root: /sd          # where app data (game files) goes; default /sd
@@ -27,13 +27,13 @@ papp_loader:
 
 ### Several library sources
 
-Instead of one `catalog_url`, list up to eight named sources. Each is an HTTP(S) catalog page or a folder of `.papp` files:
+Instead of one `catalog_url`, list up to eight named sources. Each is an HTTP(S) catalog page or a folder of `.pax` files:
 
 ```yaml
-papp_loader:
+pax_loader:
   catalogs:
     - name: SD / USB
-      url: /sd/roms/papp/          # a folder: the .papp files there on every data_search root
+      url: /sd/roms/pax/          # a folder: the .pax files there on every data_search root
     - name: Network
       url: http://192.168.1.10:8000/
     - name: Store
@@ -42,33 +42,33 @@ papp_loader:
 ```
 
 - With more than one source, the library list starts with a `◀ Store ▶` row. Tap it, or press **left/right** on the d-pad or buttons, to switch; up/down still move through the apps.
-- A folder source lists the folder on each `data_search` root, so `/sd/roms/papp/` also shows `/usb0/roms/papp/`. Apps from the second and later roots are labelled, for example `doom (usb0)`. Folder sources work offline.
+- A folder source lists the folder on each `data_search` root, so `/sd/roms/pax/` also shows `/usb0/roms/pax/`. Apps from the second and later roots are labelled, for example `doom (usb0)`. Folder sources work offline.
 - Switching while a catalog is still loading shows the one you picked once the fetch returns, so pages no longer need a "refresh twice" script.
-- From YAML lambdas: `id(papp_runtime)->select_catalog("Network");`, `->next_catalog(1)` / `(-1)`, and `->refresh_catalog()`.
+- From YAML lambdas: `id(pax_runtime)->select_catalog("Network");`, `->next_catalog(1)` / `(-1)`, and `->refresh_catalog()`.
 - `catalogs` and `catalog_url` can't be used together. `catalog_url` alone behaves as before.
 
 ### Store view (ESPHOMEBREW)
 
 ```yaml
-papp_loader:
+pax_loader:
   library_style: grid        # default: list
-  install_dir: /sd/roms/papp # default; where Install puts apps
+  install_dir: /sd/roms/pax # default; where Install puts apps
 ```
 
 With `library_style: grid` the library becomes an app store, like the Switch Homebrew App Store:
 
-- **Grid.** Each app is a tile with its icon, title, version and download size (the PAPP plus its data). A green tick marks an installed app; an amber arrow marks one with a newer version in the store. Apps without a listing get a coloured tile with their initials.
-- **Detail page.** Tap a tile, or press **A**, to open it: a large icon, the author, version, category and licence, the PAPP size and data size, the about text, the controls, the original project the port is based on (e.g. PrBoom 2.5.0), and the repo and commit it is built from.
-- **Buttons.** **Stream** runs the app straight from the network, as the list does. **Install** downloads the `.papp` (checked against its sha256) and its data into `install_dir` and saves its listing next to it, so the app appears in a folder source such as `SD / USB` and runs offline. An installed app shows **Launch**, plus **Update to vX** when the store has a newer version, and **Uninstall**. **Back** closes the page.
+- **Grid.** Each app is a tile with its icon, title, version and download size (the PAX plus its data). A green tick marks an installed app; an amber arrow marks one with a newer version in the store. Apps without a listing get a coloured tile with their initials.
+- **Detail page.** Tap a tile, or press **A**, to open it: a large icon, the author, version, category and licence, the PAX size and data size, the about text, the controls, the original project the port is based on (e.g. PrBoom 2.5.0), and the repo and commit it is built from.
+- **Buttons.** **Stream** runs the app straight from the network, as the list does. **Install** downloads the `.pax` (checked against its sha256) and its data into `install_dir` and saves its listing next to it, so the app appears in a folder source such as `SD / USB` and runs offline. An installed app shows **Launch**, plus **Update to vX** when the store has a newer version, and **Uninstall**. **Back** closes the page.
 - **Files on the card.** An app whose listing has `requires` ([building.md](building.md#store-listing-optional)), or data the store downloads, lists those files and folders on its page: a green tick when the loader finds one under any data root (with the root, as in "(on usb0)", when it is not the card), a red cross when a required one is missing, amber for optional ones and for data the store will download at Install or first launch. The check is a `stat` (or one folder listing for a pattern) per data root, done each time the page opens, never for the whole catalog.
-- **Uninstall** asks first, in a dialog over the page. It removes `<install_dir>/<app>.papp` and its listing (`<app>.json`), so the app shows as not installed again. When the store has downloaded data for the app, a check box (off by default) also deletes that data. Only files the store itself downloaded are deleted: the loader records each one, with its size, in `<install_dir>/<app>.installed.json` as it downloads it (for Install and for Stream), and deletes a file only if it is still that size. Saves, settings (`settings.json`, including the Screen setting), files you copied yourself and the `requires` files stay. Folders the deleted files leave empty go too, except top-level ones such as `/sd/roms`. Uninstall is refused while an app is loading or running, or during an install. From lambdas: `id(papp_runtime)->uninstall_app("doom", true)`.
+- **Uninstall** asks first, in a dialog over the page. It removes `<install_dir>/<app>.pax` and its listing (`<app>.json`), so the app shows as not installed again. When the store has downloaded data for the app, a check box (off by default) also deletes that data. Only files the store itself downloaded are deleted: the loader records each one, with its size, in `<install_dir>/<app>.installed.json` as it downloads it (for Install and for Stream), and deletes a file only if it is still that size. Saves, settings (`settings.json`, including the Screen setting), files you copied yourself and the `requires` files stay. Folders the deleted files leave empty go too, except top-level ones such as `/sd/roms`. Uninstall is refused while an app is loading or running, or during an install. From lambdas: `id(pax_runtime)->uninstall_app("doom", true)`.
 - **Controls.** The d-pad moves between tiles and buttons, **A** opens or presses, **B** goes back, **L/R** switch sources and **Select** opens the side menu. Touch works on everything.
 - **Side menu.** A tab on the right edge of the library page slides out a menu for the source on screen: its name, where it reads from, how many apps it has, **Refresh**, and any buttons you give that source:
 
   ```yaml
   catalogs:
     - name: Storage
-      url: /sd/roms/papp/
+      url: /sd/roms/pax/
       actions:
         - label: Mount SD
           then:
@@ -81,15 +81,15 @@ With `library_style: grid` the library becomes an app store, like the Switch Hom
   ```
 
   Up to six buttons per source, each running any ESPHome actions. The menu starts parked, so the grid can use the whole page width: give the list (`set_catalog_container`) the full width and leave the right edge free for the tab (34 px).
-- **Listings** come from the `.json` file next to each `.papp` (`doom-0.2.1.json`; see [building.md](building.md#store-listing-optional)). The GitHub store publishes them. They load in the background after the list: tiles appear at once and their icons fill in.
+- **Listings** come from the `.json` file next to each `.pax` (`doom-0.2.1.json`; see [building.md](building.md#store-listing-optional)). The GitHub store publishes them. They load in the background after the list: tiles appear at once and their icons fill in.
 - **A LAN server or SD folder** gets its listings from `tools/make_listing.py`:
 
   ```sh
-  python3 tools/make_listing.py /srv/papp --base-url http://10.20.30.158:8000/
-  python3 tools/make_listing.py /srv/papp --base-url http://10.20.30.158:8000/ --mirror-data
+  python3 tools/make_listing.py /srv/pax --base-url http://10.20.30.158:8000/
+  python3 tools/make_listing.py /srv/pax --base-url http://10.20.30.158:8000/ --mirror-data
   ```
 
-  It writes `<app>.json` next to every `.papp`, with that file's size and sha256 (checked by Install). Apps that are also in the store (`doom.papp` matches `doom`) get the store's title, icon, about, controls, licence and upstream project, plus an `<app>.files` data list, so their game data downloads like it does from the store. With `--mirror-data` the data files are downloaded into `data/` on the server and listed from there. Other apps get a basic listing; put a `<app>.png` (up to 256×256) next to one for its icon. Edit a `.json` by hand if you like: rerunning keeps your changes (`--force` starts over).
+  It writes `<app>.json` next to every `.pax`, with that file's size and sha256 (checked by Install). Apps that are also in the store (`doom.pax` matches `doom`) get the store's title, icon, about, controls, licence and upstream project, plus an `<app>.files` data list, so their game data downloads like it does from the store. With `--mirror-data` the data files are downloaded into `data/` on the server and listed from there. Other apps get a basic listing; put a `<app>.png` (up to 256×256) next to one for its icon. Edit a `.json` by hand if you like: rerunning keeps your changes (`--force` starts over).
 - The icons are drawn as plain LVGL objects, so no extra LVGL widgets are needed. Larger title text and smaller detail text are used when the config has those Montserrat sizes (e.g. `montserrat_28` and `montserrat_16`); otherwise everything uses the default font.
 - **Screen.** Apps that can choose their canvas size (see [Canvas size](#canvas-size)) also get a **Screen** button on their detail page.
 
@@ -98,7 +98,7 @@ With `library_style: grid` the library becomes an app store, like the Switch Hom
 Apps draw on a *canvas* centred on the panel. Every app starts with the 800×480 canvas the loader has always used, so existing apps look and behave exactly as before. Apps written for it can switch to another size, up to the whole panel ([building.md](building.md#canvas-size-for-app-authors)): Tulip, for example, can use all 1024×600 pixels.
 
 ```yaml
-papp_loader:
+pax_loader:
   canvas_width: 1024    # the canvas offered to apps that choose their size;
   canvas_height: 600    # default: the whole panel, or 800x480 if the display reports no size
   panel_width: 1024     # optional: the panel's size; default: the display's own
@@ -116,7 +116,7 @@ papp_loader:
 
 When the listing recommends a size (`canvas_recommended`) that fits the panel, that size replaces **Default**: the button marks it with an asterisk, an app with no saved setting is offered it instead of `canvas_width`/`canvas_height`, and choosing it again clears the saved setting.
 
-The settings live in `<install_dir>/settings.json` (by default `/sd/roms/papp/settings.json`), by app name — the `.papp` file name without its `-version` suffix, so a streamed and an installed copy share one:
+The settings live in `<install_dir>/settings.json` (by default `/sd/roms/pax/settings.json`), by app name — the `.pax` file name without its `-version` suffix, so a streamed and an installed copy share one:
 
 ```json
 {
@@ -124,13 +124,13 @@ The settings live in `<install_dir>/settings.json` (by default `/sd/roms/papp/se
 }
 ```
 
-Edit it by hand (or with the bridge's `writefile`) if you like; other entries and fields are kept when the store rewrites it. From lambdas: `id(papp_runtime)->get_app_canvas("tulip")` (`""` for Default), `->set_app_canvas("tulip", "800x480")` (`""` resets it; false for a size this panel can't show) and `->canvas_choices()`.
+Edit it by hand (or with the bridge's `writefile`) if you like; other entries and fields are kept when the store rewrites it. From lambdas: `id(pax_runtime)->get_app_canvas("tulip")` (`""` for Default), `->set_app_canvas("tulip", "800x480")` (`""` resets it; false for a size this panel can't show) and `->canvas_choices()`.
 
 ## 3. Include the page
 
 ```yaml
 packages:
-  papp_store: github://NonaSuomy/esphomebrew/esphome/store_page.yaml@main
+  pax_store: github://NonaSuomy/esphomebrew/esphome/store_page.yaml@main
 ```
 
 The page appears in the LVGL page order, so the existing ◀ / ▶ buttons in `top_layer` reach it. To add a shortcut on `main_page`:
@@ -144,27 +144,27 @@ The page appears in the LVGL page order, so the existing ◀ / ▶ buttons in `t
     widgets:
       - label: {text: "STORE", align: CENTER, text_font: roboto10}
     on_click:
-      - lvgl.page.show: papp_store_page
+      - lvgl.page.show: pax_store_page
 ```
 
 If your ids differ, override them before the include:
 
 ```yaml
 substitutions:
-  papp_loader_id: papp_runtime       # your papp_loader id
-  papp_lvgl_id: lvgl_component       # your lvgl id
-  papp_font_small: roboto10          # a small font id you already define
-  papp_store_refresh: 10min          # auto-refresh interval
-  papp_store_bottom_clearance: "56"  # space kept free for a bottom nav bar
+  pax_loader_id: pax_runtime       # your pax_loader id
+  pax_lvgl_id: lvgl_component       # your lvgl id
+  pax_font_small: roboto10          # a small font id you already define
+  pax_store_refresh: 10min          # auto-refresh interval
+  pax_store_bottom_clearance: "56"  # space kept free for a bottom nav bar
 ```
 
 ## How it behaves
 
 - **On opening the page:** the loader is handed the list (`set_catalog_container`) and the catalog reloads (`refresh_catalog`).
-- **REFRESH** reloads it on demand. It also reloads every `papp_store_refresh`, but only while the store page is on screen and no app is running (LVGL is paused while a PAPP runs).
-- Each button is labelled with the file name, e.g. `lvgl-0.3.0.papp`, so a new version appears as a new label after a refresh. Tapping streams the app from GitHub Pages into PSRAM. The app itself is not cached on the SD card.
-- **App data.** Before a game starts, the loader reads its data list (`doom-0.2.1.files`, next to the `.papp`). It first looks for each file under `data_root` and every `data_search` root (`/sd/roms/doom/doom1.wad`, `/usb0/roms/doom/doom1.wad`, ...). Only files found nowhere are downloaded, into `data_root`. Each download goes to `<file>.part`, is checked against its sha256, and is only then renamed, so an interrupted download never leaves a broken file. A file that is already on any of those storages is **never replaced or downloaded again**, whatever its size, so your own full `duke3d.grp` stays. An app without a list starts straight away. If a download fails, the app does not start; the status line says why, and the test report (if `report_url` is set) says `data_failed`. A close request (the `papp_close` API action, or a tap on the loader's close area) cancels a data download.
-- **Progress.** While the data and then the `.papp` download, a bar and a status line (`1/2 doom1.wad  1.2 / 4.1 MB`, then `Loading doom-0.2.1.papp  120 / 513 KB`) appear under the header. The bar hides again when the app starts; the status line stays after a failure until the next launch.
+- **REFRESH** reloads it on demand. It also reloads every `pax_store_refresh`, but only while the store page is on screen and no app is running (LVGL is paused while a PAX runs).
+- Each button is labelled with the file name, e.g. `lvgl-0.3.0.pax`, so a new version appears as a new label after a refresh. Tapping streams the app from GitHub Pages into PSRAM. The app itself is not cached on the SD card.
+- **App data.** Before a game starts, the loader reads its data list (`doom-0.2.1.files`, next to the `.pax`). It first looks for each file under `data_root` and every `data_search` root (`/sd/roms/doom/doom1.wad`, `/usb0/roms/doom/doom1.wad`, ...). Only files found nowhere are downloaded, into `data_root`. Each download goes to `<file>.part`, is checked against its sha256, and is only then renamed, so an interrupted download never leaves a broken file. A file that is already on any of those storages is **never replaced or downloaded again**, whatever its size, so your own full `duke3d.grp` stays. An app without a list starts straight away. If a download fails, the app does not start; the status line says why, and the test report (if `report_url` is set) says `data_failed`. A close request (the `pax_close` API action, or a tap on the loader's close area) cancels a data download.
+- **Progress.** While the data and then the `.pax` download, a bar and a status line (`1/2 doom1.wad  1.2 / 4.1 MB`, then `Loading doom-0.2.1.pax  120 / 513 KB`) appear under the header. The bar hides again when the app starts; the status line stays after a failure until the next launch.
 - **Files on other storage.** Apps open their files at fixed `/sd/...` paths. When an app opens a file for reading and it is not on the SD card, the loader tries the same path under `data_root` and the `data_search` roots, for example `/usb0/roms/quake/id1/pak0.pak`. Data kept on a USB drive, or downloaded there with `data_root: /usb0`, works without changing the apps. Writes (save games, configs) always go where the app asked, normally the SD card. A root that isn't mounted is simply skipped.
 - The status line shows `Refreshing...`, then `N apps - tap to launch` about 4 s later. The loader has no "catalog loaded" callback, so on a slow link the count can lag. Tap REFRESH again.
 
@@ -187,10 +187,10 @@ If you use your own store page instead of the package, add a track with a fill o
 
 ```yaml
 on_load:
-  - lambda: id(papp_runtime)->set_progress_widgets(id(my_progress), id(my_progress_label));
+  - lambda: id(pax_runtime)->set_progress_widgets(id(my_progress), id(my_progress_label));
 ```
 
-From lambdas you can also read `id(papp_runtime)->is_loading()`, `get_load_progress()` (0..1, or -1) and `get_load_status()`.
+From lambdas you can also read `id(pax_runtime)->is_loading()`, `get_load_progress()` (0..1, or -1) and `get_load_status()`.
 
 ## USB keyboard and mouse in apps
 
@@ -227,7 +227,7 @@ If your YAML already calls `enqueue_keyboard_text()` or `enqueue_mouse_delta()` 
 
 The package has not been compiled or run on a device yet. Things to watch on the first build:
 
-- `id(papp_store_list)` must be an `lv_obj_t *` for a plain `obj` widget, and `id(papp_store_page)->obj` must be the page's screen object.
+- `id(pax_store_list)` must be an `lv_obj_t *` for a plain `obj` widget, and `id(pax_store_page)->obj` must be the page's screen object.
 - Page `on_load` needs an ESPHome version whose LVGL pages support it.
 - The app data download and progress widgets are new: CI compiles the loader for the P4 without LVGL, and host-tests the list parser and SHA-256, but the LVGL progress code is only compiled in a real device build.
 - The canvas size is compiled for the P4 by CI and its geometry (canvas and close-button placement, sizes, app names) is host-tested, but it has not run on a panel yet: the store's Screen button is LVGL code, and a full-panel canvas has not been drawn on a device.

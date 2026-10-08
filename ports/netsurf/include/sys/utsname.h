@@ -1,7 +1,7 @@
-// <sys/utsname.h> for the NetSurf PAPP: uname() (papp_syscalls.c) names
+// <sys/utsname.h> for the NetSurf PAX: uname() (pax_syscalls.c) names
 // the platform in NetSurf's user agent string.
-#ifndef PAPP_SYS_UTSNAME_H
-#define PAPP_SYS_UTSNAME_H
+#ifndef PAX_SYS_UTSNAME_H
+#define PAX_SYS_UTSNAME_H
 
 #ifdef __cplusplus
 extern "C" {

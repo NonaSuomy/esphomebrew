@@ -43,9 +43,9 @@ You need `git` and Python 3.11 or newer (`pacman -S --needed git python`). The b
    - Don't paste the token into chat. The agent's page can issue a new one.
 2. **Get the tool.** It imports `tools/esp_bridge/esp_bridge.py`, so keep the whole checkout:
    ```sh
-   git clone https://github.com/NonaSuomy/esphomebrew.git ~/code/papp-bridge/tool
+   git clone https://github.com/NonaSuomy/esphomebrew.git ~/code/pax-bridge/tool
    mkdir -p ~/.config/device-bridge
-   cp ~/code/papp-bridge/tool/tools/device_bridge/config.example.toml ~/.config/device-bridge/bridge.toml
+   cp ~/code/pax-bridge/tool/tools/device_bridge/config.example.toml ~/.config/device-bridge/bridge.toml
    chmod 600 ~/.config/device-bridge/bridge.toml
    ```
 3. **Edit `bridge.toml`:**
@@ -60,7 +60,7 @@ You need `git` and Python 3.11 or newer (`pacman -S --needed git python`). The b
 5. **Check, then try it without doing anything:**
    ```sh
    set -a; . ~/.config/device-bridge/env; set +a
-   B=~/code/papp-bridge/tool/tools/device_bridge/device_bridge.py
+   B=~/code/pax-bridge/tool/tools/device_bridge/device_bridge.py
    python $B --config ~/.config/device-bridge/bridge.toml local "status"          # no hub needed
    python $B --config ~/.config/device-bridge/bridge.toml check                   # hub connectivity
    python $B --config ~/.config/device-bridge/bridge.toml --dry-run serve         # validate only
@@ -81,7 +81,7 @@ EnvironmentFile=%h/.config/device-bridge/env
 # For `push` over ssh, point git at your agent's socket (pick yours):
 # Environment=SSH_AUTH_SOCK=%t/ssh-agent.socket
 # Environment=SSH_AUTH_SOCK=%t/gcr/ssh
-ExecStart=/usr/bin/python %h/code/papp-bridge/tool/tools/device_bridge/device_bridge.py --config %h/.config/device-bridge/bridge.toml serve
+ExecStart=/usr/bin/python %h/code/pax-bridge/tool/tools/device_bridge/device_bridge.py --config %h/.config/device-bridge/bridge.toml serve
 Restart=on-failure
 RestartSec=10
 NoNewPrivileges=yes

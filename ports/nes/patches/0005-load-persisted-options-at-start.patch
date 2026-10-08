@@ -1,0 +1,17 @@
+diff --git a/apps/psram_nes/papp_main.c b/apps/psram_nes/papp_main.c
+--- a/apps/psram_nes/papp_main.c
++++ b/apps/psram_nes/papp_main.c
+@@ -4,5 +4,6 @@
+ #include "runtime.h"
+ #include "psram_app.h"
++#include "papp_nes_options.h"
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -115,5 +116,6 @@
+     int result = -1;
+     if (papp_nes_load_rom(rom_path) == 0) {
++        papp_nes_options_load_for_current_rom(svc);
+         char *argv[] = { rom_path, NULL };
+         result = nofrendo_main(1, argv);
+     }

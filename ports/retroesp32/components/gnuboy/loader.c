@@ -316,8 +316,8 @@ int rom_load()
 	ram.sbank = malloc(sram_length);
 	if (!ram.sbank)
 	{
-#ifdef PAPP_GB
-		/* PAPP allocations are individually tracked. An interior pointer
+#ifdef PAX_GB
+		/* PAX allocations are individually tracked. An interior pointer
 		 * into the ROM allocation cannot safely be freed during unwind. */
 		die("out of memory allocating cartridge SRAM\n");
 #else

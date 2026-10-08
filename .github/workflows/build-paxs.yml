@@ -1,0 +1,74 @@
+name: Build PAXs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # The ESP-IDF image ships the riscv32-esp-elf toolchain the ESP32-P4 needs.
+    container: espressif/idf:v6.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache upstream sources
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: pax-sources-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py') }}
+          restore-keys: pax-sources-
+
+      - name: Build every app
+        shell: bash
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh" > /dev/null
+          riscv32-esp-elf-gcc --version | head -1
+          python3 tools/build_pax.py --out dist
+
+      - name: Summary
+        shell: bash
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          apps = json.load(open("dist/build.json"))["apps"]
+          print("| App | Version | Size | text | bss | sha256 |")
+          print("|---|---|---:|---:|---:|---|")
+          for a in apps:
+              print(f"| {a['file']} | {a['version']} | {a['size']:,} | {a['text_size']:,} | {a['bss_size']:,} | `{a['sha256'][:16]}` |")
+          EOF
+
+      # Publish store refuses a new binary under an already released version.
+      # Catch that here, before merge: compare with the live store.
+      - name: Changed binaries have a new version
+        shell: bash
+        run: |
+          python3 - <<'EOF'
+          import json, sys, urllib.request
+          try:
+              with urllib.request.urlopen("https://nonasuomy.github.io/esphomebrew/store.json", timeout=30) as r:
+                  published = {(a["name"], a["version"]): a["sha256"] for a in json.load(r)["apps"]}
+          except Exception as error:  # first publish, or Pages unreachable: nothing to compare
+              print(f"store.json not available ({error}); skipping")
+              sys.exit(0)
+          bad = []
+          for a in json.load(open("dist/build.json"))["apps"]:
+              old = published.get((a["name"], a["version"]))
+              if old and old != a["sha256"]:
+                  bad.append(f"{a['name']} {a['version']}: published {old[:12]}, built {a['sha256'][:12]}")
+          for line in bad:
+              print(f"::error::{line}. Bump \"version\" in apps/{line.split()[0]}/pax.json.")
+          sys.exit(1 if bad else 0)
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paxs
+          path: dist/
+          if-no-files-found: error

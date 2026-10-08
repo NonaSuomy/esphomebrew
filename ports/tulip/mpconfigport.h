@@ -1,10 +1,10 @@
-// MicroPython configuration for Tulip on the ESP32-P4 PAPP loader.
+// MicroPython configuration for Tulip on the ESP32-P4 PAX loader.
 //
 // A bare-metal style port: no OS underneath, only the loader's service table
-// (papp_svc). Modelled on Tulip's esp32s3 port (tulip/esp32s3/mpconfigport.h)
+// (pax_svc). Modelled on Tulip's esp32s3 port (tulip/esp32s3/mpconfigport.h)
 // minus the hardware drivers, threads and native code. Networking is not
 // MicroPython's own (no lwIP or mbedTLS in the app): socket, tls/ssl and
-// network are frozen Python in py/ over the loader's services (papp_net.c).
+// network are frozen Python in py/ over the loader's services (pax_net.c).
 #pragma once
 
 #include <stdint.h>
@@ -54,20 +54,20 @@
 #define MICROPY_PY_BUILTINS_INPUT           (1)
 #define MICROPY_PY_IO                       (1)
 #define MICROPY_PY_IO_BUFFEREDWRITER        (1)
-#define MICROPY_PY_SYS_PLATFORM             "papp"
+#define MICROPY_PY_SYS_PLATFORM             "pax"
 #define MICROPY_PY_SYS_STDFILES             (1)
 #define MICROPY_PY_SYS_STDIO_BUFFER         (1)
 #define MICROPY_PY_SYS_EXIT                 (1)
 #define MICROPY_PY_SYS_ATEXIT               (1)
 #define MICROPY_PY_TIME_GMTIME_LOCALTIME_MKTIME (1)
 #define MICROPY_PY_TIME_TIME_TIME_NS        (1)
-#define MICROPY_PY_TIME_INCLUDEFILE         "papp_modtime.c"
+#define MICROPY_PY_TIME_INCLUDEFILE         "pax_modtime.c"
 #define MICROPY_EPOCH_IS_1970               (1)
 #define MICROPY_PY_OS_UNAME                 (0)
 #define MICROPY_PY_OS_URANDOM               (0)
 #define MICROPY_PY_OS_SYNC                  (0)
 #define MICROPY_PY_OS_DUPTERM               (0)
-#define MICROPY_PY_RANDOM_SEED_INIT_FUNC    (papp_random_seed())
+#define MICROPY_PY_RANDOM_SEED_INIT_FUNC    (pax_random_seed())
 #define MICROPY_PY_HASHLIB                  (1)
 #define MICROPY_PY_HASHLIB_MD5              (0)
 #define MICROPY_PY_HASHLIB_SHA1             (0)
@@ -94,7 +94,7 @@
 #define MICROPY_MODULE_FROZEN_STR           (1)
 #define MICROPY_QSTR_EXTRA_POOL             mp_qstr_frozen_const_pool
 
-#define MICROPY_HW_BOARD_NAME               "Tulip4 PAPP"
+#define MICROPY_HW_BOARD_NAME               "Tulip4 PAX"
 #define MICROPY_HW_MCU_NAME                 "ESP32-P4"
 
 #define MP_STATE_PORT                       MP_STATE_VM
@@ -102,33 +102,33 @@
 
 // The display and audio tasks schedule callbacks (frame, touch, keys,
 // sequencer) into the MicroPython task: the scheduler queue is shared.
-unsigned papp_atomic_begin(void);
-void papp_atomic_end(unsigned state);
-#define MICROPY_BEGIN_ATOMIC_SECTION()      papp_atomic_begin()
-#define MICROPY_END_ATOMIC_SECTION(state)   papp_atomic_end(state)
+unsigned pax_atomic_begin(void);
+void pax_atomic_end(unsigned state);
+#define MICROPY_BEGIN_ATOMIC_SECTION()      pax_atomic_begin()
+#define MICROPY_END_ATOMIC_SECTION(state)   pax_atomic_end(state)
 
 // Waiting for input or sleeping: give the other tasks the CPU. The poll also
 // lets the quit request park the MicroPython task at a safe point.
-void papp_mp_poll(void);
-void papp_mp_wait(void);
-#define MICROPY_INTERNAL_WFE(TIMEOUT_MS)    papp_mp_wait()
+void pax_mp_poll(void);
+void pax_mp_wait(void);
+#define MICROPY_INTERNAL_WFE(TIMEOUT_MS)    pax_mp_wait()
 #define MICROPY_EVENT_POLL_HOOK \
     do { \
         extern void mp_handle_pending(bool); \
         mp_handle_pending(true); \
-        papp_mp_wait(); \
+        pax_mp_wait(); \
     } while (0);
 
 #define MICROPY_VM_HOOK_COUNT               (256)
 #define MICROPY_VM_HOOK_INIT                static unsigned vm_hook_divisor = MICROPY_VM_HOOK_COUNT;
 #define MICROPY_VM_HOOK_POLL                if (--vm_hook_divisor == 0) { \
         vm_hook_divisor = MICROPY_VM_HOOK_COUNT; \
-        papp_mp_poll(); \
+        pax_mp_poll(); \
 }
 #define MICROPY_VM_HOOK_LOOP                MICROPY_VM_HOOK_POLL
 #define MICROPY_VM_HOOK_RETURN              MICROPY_VM_HOOK_POLL
 
-uint32_t papp_random_seed(void);
+uint32_t pax_random_seed(void);
 extern const char tulip_desktop_help_text[];  // tulip/shared/help.c
 
 #define MP_SSIZE_MAX (0x7fffffff)  // newlib's limits.h has no SSIZE_MAX here

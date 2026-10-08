@@ -1374,8 +1374,8 @@ void DigitalRenderer::calc_buffer(int16 *buf, long count)
 #elif defined(__riscos__)
 #include "SID_Acorn.i"
 
-#elif defined(ESP32) && defined(PAPP_APP_SIDE)
-#include "SID_PAPP.i"
+#elif defined(ESP32) && defined(PAX_APP_SIDE)
+#include "SID_PAX.i"
 #elif defined(ESP32)
 #include "SID_ESP32.i"
 #else	// No sound

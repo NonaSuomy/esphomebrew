@@ -22,7 +22,7 @@ Request format (reply in any channel, mention the bridge):
     @esp-bridge upload esphome/device.yaml ref=claude/fix device=/dev/ttyUSB0
     @esp-bridge run device.yaml source=local device=10.13.37.60 seconds=90
     @esp-bridge logs device.yaml source=local device=/dev/ttyUSB0 seconds=60
-    @esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/…/app.papp
+    @esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/…/app.pax
     @esp-bridge close
     @esp-bridge catalog
     @esp-bridge status
@@ -32,7 +32,7 @@ Request format (reply in any channel, mention the bridge):
                                                                # content is the message's code block
     @esp-bridge launch url=… seconds=30 serial=/dev/ttyUSB0   # also read the serial port
     @esp-bridge reset serial=/dev/ttyUSB0 seconds=10          # hard reset over serial + boot log
-launch/close/catalog call the papp_loader API actions from esphome/device_control.yaml
+launch/close/catalog call the pax_loader API actions from esphome/device_control.yaml
 over the ESPHome native API (needs aioesphomeapi, which the ESPHome venv already has).
 With seconds=N they also return N seconds of device log; serial= (a port from
 [esphome].devices) adds the serial console, where a crash's full panic dump goes.
@@ -76,16 +76,16 @@ from pathlib import Path
 ACTIONS = ("status", "config", "compile", "upload", "logs", "run", "launch", "close", "catalog", "screenshot",
            "readfile", "writefile", "deletefile", "view", "edit", "reset")
 # Bridge action -> ESPHome API action (esphome/device_control.yaml).
-DEVICE_API_ACTIONS = {"launch": "papp_launch", "close": "papp_close", "catalog": "papp_refresh_catalog",
-                      "screenshot": "papp_screenshot", "readfile": "papp_read_file",
-                      "writefile": "papp_write_file", "deletefile": "papp_delete_file"}
+DEVICE_API_ACTIONS = {"launch": "pax_launch", "close": "pax_close", "catalog": "pax_refresh_catalog",
+                      "screenshot": "pax_screenshot", "readfile": "pax_read_file",
+                      "writefile": "pax_write_file", "deletefile": "pax_delete_file"}
 NEEDS_YAML = {"config", "compile", "upload", "logs", "run", "view", "edit"}
 EDIT_TEXT_MAX = 4000  # characters in `find` / `replace`
-# writefile: small text files only (a written .papp or firmware image would be
+# writefile: small text files only (a written .pax or firmware image would be
 # code); the loader checks the same list.
 WRITEFILE_MAX_BYTES = 16 * 1024
 WRITEFILE_EXTENSIONS = (".ini", ".cfg", ".conf", ".txt", ".json", ".yaml", ".yml", ".csv")
-# deletefile also takes leftovers, but never game data (.mix) or apps (.papp).
+# deletefile also takes leftovers, but never game data (.mix) or apps (.pax).
 DELETEFILE_EXTENSIONS = (*WRITEFILE_EXTENSIONS, ".bak", ".log")
 CODE_FENCE = re.compile(r"```[^\n`]*\n(.*?)```", re.S)
 MASKED_VALUE = re.compile(r"(?m)[:=]\s*\*\*\*\s*$")
@@ -467,11 +467,11 @@ def validate(req: Request, cfg: Config) -> Path | None:
             raise BridgeError("This bridge has no [device_api] host configured.")
         if req.action == "launch":
             if not req.url or not req.url.startswith("https://"):
-                raise BridgeError("`launch` needs `url=https://…/app.papp`.")
+                raise BridgeError("`launch` needs `url=https://…/app.pax`.")
             if not any(req.url.startswith(p) for p in cfg.allowed_url_prefixes):
                 raise BridgeError(f"That URL is not in the allowed prefixes ({', '.join(cfg.allowed_url_prefixes)}).")
-            if not req.url.lower().endswith(".papp") or ".." in req.url or any(c.isspace() for c in req.url):
-                raise BridgeError("`url` must point at a .papp file.")
+            if not req.url.lower().endswith(".pax") or ".." in req.url or any(c.isspace() for c in req.url):
+                raise BridgeError("`url` must point at a .pax file.")
         if req.action == "readfile":
             path = req.path or ""
             if (not path.startswith("/sd/") or ".." in path or len(path) >= READFILE_PATH_MAX
@@ -575,7 +575,7 @@ def mask(text: str, secrets: list[str]) -> str:
     return text
 
 
-# ── device API (papp_loader actions over the ESPHome native API) ────────────
+# ── device API (pax_loader actions over the ESPHome native API) ────────────
 
 
 def resolve_host(host: str, port: int) -> str:
@@ -786,8 +786,8 @@ class SerialCapture:
 # ── crash decoding ──────────────────────────────────────────────────────────
 # A panic dump is only addresses. Firmware addresses are looked up in the
 # firmware ELF this machine built (the dump's "ELF file SHA256" picks the
-# right one); PAPP addresses (linked at 0x4A000000) in the app's symbol list,
-# which dev builds publish next to the .papp.
+# right one); PAX addresses (linked at 0x4A000000) in the app's symbol list,
+# which dev builds publish next to the .pax.
 
 # A live panic dump (serial), or the report ESPHome's esp32 crash handler logs
 # after the reboot ("[E][esp32.crash:...]:   BT0: 0x4FF0A146 (backtrace)").
@@ -797,7 +797,7 @@ PANIC_LINE = re.compile(r"assert failed|abort\(\) was called|Guru Meditation|pan
                         r"MSPI PSRAM error|psram (?:pms|read address|rx|tx)|Stack protection|^E \w+: ", re.M)
 ELF_SHA = re.compile(r"ELF file SHA256:\s*([0-9a-fA-F]{8,64})")
 HEX = re.compile(r"0x([0-9a-fA-F]{8})\b")
-PAPP_BASE, PAPP_END = 0x4A000000, 0x4C000000
+PAX_BASE, PAX_END = 0x4A000000, 0x4C000000
 PSRAM = (0x48000000, 0x4C000000)  # ESP32-P4: stacks and heap there are data, not code
 DEFAULT_ELF_GLOBS = [".esphome/build/*/.pioenvs/*/firmware.elf", ".esphome/build/*/build/*.elf"]
 ADDR2LINE_GLOBS = [
@@ -818,7 +818,7 @@ def crash_addresses(text: str) -> tuple[list[int], list[int]]:
     firmware, app = [], []
     for match in HEX.finditer(dump):
         address = int(match.group(1), 16)
-        if PAPP_BASE <= address < PAPP_END:
+        if PAX_BASE <= address < PAX_END:
             if address not in app:
                 app.append(address)
         elif 0x40000000 <= address < 0x50000000 and not PSRAM[0] <= address < PSRAM[1] and address not in firmware:
@@ -858,12 +858,12 @@ def find_addr2line(cfg: Config, elf: Path) -> str | None:
     return next((t for t in tools if t and Path(t).name.startswith(arch)), None)
 
 
-def load_papp_symbols(url: str | None, cfg: Config, opener=urllib.request.urlopen) -> list[tuple[int, str, bool]]:
-    """(address, name, is_code) from the .sym published next to a dev-build .papp."""
-    if not url or not url.endswith(".papp") or not url.startswith(tuple(cfg.allowed_url_prefixes)):
+def load_pax_symbols(url: str | None, cfg: Config, opener=urllib.request.urlopen) -> list[tuple[int, str, bool]]:
+    """(address, name, is_code) from the .sym published next to a dev-build .pax."""
+    if not url or not url.endswith(".pax") or not url.startswith(tuple(cfg.allowed_url_prefixes)):
         return []
     try:
-        with opener(url[: -len(".papp")] + ".sym", timeout=60) as response:
+        with opener(url[: -len(".pax")] + ".sym", timeout=60) as response:
             text = response.read(16 * 1024 * 1024).decode("utf-8", "replace")
     except (urllib.error.URLError, TimeoutError, OSError):
         return []
@@ -882,19 +882,19 @@ def decode_crash(cfg: Config, text: str, url: str | None = None, opener=urllib.r
         return ""
     out = []
     if app:
-        symbols = load_papp_symbols(url, cfg, opener)
+        symbols = load_pax_symbols(url, cfg, opener)
         if symbols:
             import bisect
 
             starts = [s[0] for s in symbols]
-            out.append("PAPP (app symbols):")
+            out.append("PAX (app symbols):")
             for address in app:
                 i = bisect.bisect_right(starts, address) - 1
                 base, name, code = symbols[i] if i >= 0 else (address, "", False)
                 if name and address - base < 0x4000:  # further away: unnamed data (strings, tables)
                     out.append(f"  0x{address:08x}  {'' if code else 'data: '}{name} + 0x{address - base:x}")
         else:
-            out.append("PAPP addresses (no symbol list for this app): " + " ".join(f"0x{a:08x}" for a in app))
+            out.append("PAX addresses (no symbol list for this app): " + " ".join(f"0x{a:08x}" for a in app))
     if firmware:
         sha = ELF_SHA.search(text)
         elf, where = find_firmware_elf(cfg, sha.group(1) if sha else None)
@@ -914,11 +914,11 @@ def decode_crash(cfg: Config, text: str, url: str | None = None, opener=urllib.r
     return "\n".join(out)
 
 
-# ── screenshots (papp_loader diagnostic stream, TCP port 3233) ──────────────
+# ── screenshots (pax_loader diagnostic stream, TCP port 3233) ──────────────
 
-STREAM_HEADER = struct.Struct("<8sHHII")         # PAPPFB01 thumbnail / PAPPSS01 screenshot
-STREAM_AUDIO_HEADER = struct.Struct("<8sIHHII")  # PAPPAU01
-STREAM_FILE_HEADER = struct.Struct("<8sIII")      # PAPPFL01: status, size, sequence
+STREAM_HEADER = struct.Struct("<8sHHII")         # PAXFB01 thumbnail / PAXSS01 screenshot
+STREAM_AUDIO_HEADER = struct.Struct("<8sIHHII")  # PAXAU01
+STREAM_FILE_HEADER = struct.Struct("<8sIII")      # PAXFL01: status, size, sequence
 READFILE_PATH_MAX = 128   # the loader's request buffer, including the terminator
 READFILE_INLINE_CHARS = 15000
 FILE_STATUS = {1: "not found", 2: "larger than the loader sends (1 MiB)", 3: "not an allowed path",
@@ -926,9 +926,9 @@ FILE_STATUS = {1: "not found", 2: "larger than the loader sends (1 MiB)", 3: "no
 
 
 def rgb565_to_png(raw: bytes, width: int, height: int) -> bytes:
-    """PNG of a papp_loader frame: little-endian RGB565, red in the high 5 bits.
+    """PNG of a pax_loader frame: little-endian RGB565, red in the high 5 bits.
 
-    That is how PAPPs draw (e.g. 0xF800 is red). Checked on the first live
+    That is how PAXs draw (e.g. 0xF800 is red). Checked on the first live
     screenshot against a photo of the panel running Touch test."""
     if len(raw) != width * height * 2:
         raise BridgeError(f"Screenshot is {len(raw)} bytes, expected {width * height * 2}.")
@@ -950,7 +950,7 @@ def rgb565_to_png(raw: bytes, width: int, height: int) -> bytes:
 
 
 def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
-    """Read stream packets until the PAPPSS01 screenshot; thumbnails and audio are skipped."""
+    """Read stream packets until the PAXSS01 screenshot; thumbnails and audio are skipped."""
     def exact(size: int) -> bytes:
         data = bytearray()
         while len(data) < size:
@@ -962,16 +962,16 @@ def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
 
     while True:
         magic = exact(8)
-        if magic in (b"PAPPFB01", b"PAPPSS01"):
+        if magic in (b"PAXFB01", b"PAXSS01"):
             _, width, height, size, _seq = STREAM_HEADER.unpack(magic + exact(STREAM_HEADER.size - 8))
             if size != width * height * 2 or size > 4 * 1024 * 1024:
                 raise BridgeError("The device sent a malformed screen stream header.")
             payload = exact(size)
-            if magic == b"PAPPSS01":
+            if magic == b"PAXSS01":
                 if width == 0 or height == 0:
-                    raise BridgeError("No PAPP is running on the device, so there is nothing to capture. Launch one first.")
+                    raise BridgeError("No PAX is running on the device, so there is nothing to capture. Launch one first.")
                 return width, height, payload
-        elif magic == b"PAPPAU01":
+        elif magic == b"PAXAU01":
             header = STREAM_AUDIO_HEADER.unpack(magic + exact(STREAM_AUDIO_HEADER.size - 8))
             exact(header[4])
         else:
@@ -979,7 +979,7 @@ def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
 
 
 def read_stream_file(sock: socket.socket) -> bytes:
-    """Read stream packets until the PAPPFL01 file packet; other packets are skipped."""
+    """Read stream packets until the PAXFL01 file packet; other packets are skipped."""
     def exact(size: int) -> bytes:
         data = bytearray()
         while len(data) < size:
@@ -991,7 +991,7 @@ def read_stream_file(sock: socket.socket) -> bytes:
 
     while True:
         magic = exact(8)
-        if magic == b"PAPPFL01":
+        if magic == b"PAXFL01":
             _, status, size, _seq = STREAM_FILE_HEADER.unpack(magic + exact(STREAM_FILE_HEADER.size - 8))
             if size > 1024 * 1024:
                 raise BridgeError("The device sent a malformed file header.")
@@ -999,12 +999,12 @@ def read_stream_file(sock: socket.socket) -> bytes:
             if status:
                 raise BridgeError(f"The file {FILE_STATUS.get(status, f'failed (status {status})')}.")
             return payload
-        if magic in (b"PAPPFB01", b"PAPPSS01"):
+        if magic in (b"PAXFB01", b"PAXSS01"):
             _, width, height, size, _seq = STREAM_HEADER.unpack(magic + exact(STREAM_HEADER.size - 8))
             if size > 4 * 1024 * 1024:
                 raise BridgeError("The device sent a malformed screen stream header.")
             exact(size)
-        elif magic == b"PAPPAU01":
+        elif magic == b"PAXAU01":
             header = STREAM_AUDIO_HEADER.unpack(magic + exact(STREAM_AUDIO_HEADER.size - 8))
             exact(header[4])
         else:
@@ -1121,7 +1121,7 @@ def proxy_url(cfg: Config, url: str, opener=urllib.request.urlopen) -> str:
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         raise BridgeError(f"Could not download {url}: {error}.") from error
     if len(body) > 64 * 1024 * 1024 or len(body) < 32 or struct.unpack_from("<I", body)[0] != 0x50415050:
-        raise BridgeError(f"{url} is not a .papp file.")
+        raise BridgeError(f"{url} is not a .pax file.")
     if _proxy is None:
         try:
             _proxy = _ProxyServer(cfg.proxy_port)
@@ -1544,7 +1544,7 @@ class Runner:
                 serial_route=lambda port, fb: self.reset_and_retry(port, host, lambda: capture_screenshot(self.cfg), fb))
             png = rgb565_to_png(raw, width, height)
             name = time.strftime("screenshot-%Y%m%d-%H%M%S.png")
-            return JobResult(True, f"{fb.prefix()}📸 Screenshot of the running PAPP ({width}×{height}) from {host}.",
+            return JobResult(True, f"{fb.prefix()}📸 Screenshot of the running PAX ({width}×{height}) from {host}.",
                              mask(fb.log, self.secrets), time.monotonic() - start, [(name, png, "image/png")])
         if req.action == "readfile":
             if self.dry_run:

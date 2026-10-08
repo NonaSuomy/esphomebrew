@@ -29,7 +29,7 @@ def sha(data: bytes) -> str:
 
 
 def app(name="psram_doom", data=True) -> dict:
-    a = {"name": name, "title": "Doom", "version": "0.1.0", "description": "d", "file": f"{name}.papp",
+    a = {"name": name, "title": "Doom", "version": "0.1.0", "description": "d", "file": f"{name}.pax",
          "size": 40, "sha256": "ab" * 32, "abi": 1, "source": {"repo": "r", "ref": "f" * 40, "path": "p"}}
     if data:
         a["data"] = {
@@ -67,7 +67,7 @@ class DataTests(unittest.TestCase):
         opener = FakeOpener({raw("SDcard/roms/doom/doom1.wad"): WAD, raw("SDcard/roms/quake/id1/pak0.pak"): PAK})
         text = mc.publish_data(REPO, app(), self.out, None, opener)
         lines = text.splitlines()
-        self.assertEqual(lines[0], "# papp-data 1")
+        self.assertEqual(lines[0], "# pax-data 1")
         size, digest, target, url = lines[2].split(" ")
         self.assertEqual((int(size), digest, target), (len(WAD), sha(WAD), "roms/doom/doom1.wad"))
         self.assertEqual(url, "https://nonasuomy.github.io/esphomebrew/data/psram_doom/roms/doom/doom1.wad")
@@ -115,7 +115,7 @@ class DataTests(unittest.TestCase):
         self.assertEqual(store["psram_doom"]["data"]["list_url"], "https://nonasuomy.github.io/esphomebrew/psram_doom-0.1.0.files")
         self.assertNotIn("data", store["psram_lvgl"])
         page = (self.out / "index.html").read_text()
-        self.assertNotIn(".files", page)  # the device only follows .papp links
+        self.assertNotIn(".files", page)  # the device only follows .pax links
 
     def test_listing_sidecar_and_icon(self):
         dist = Path(self.tmp.name) / "dist"
@@ -159,7 +159,7 @@ class DataTests(unittest.TestCase):
                                                  "url": "https://nonasuomy.github.io/esphomebrew/psram_lvgl-0.1.0-screen1.png"}])
         self.assertEqual((self.out / "psram_lvgl-0.1.0-screen1.png").read_bytes(), mc_png(800, 480))
         self.assertEqual(json.loads((self.out / "psram_lvgl-0.1.0.json").read_text()), entry)
-        # Sizes for "PAPP X KB + data Y MB", also for apps without listing extras.
+        # Sizes for "PAX X KB + data Y MB", also for apps without listing extras.
         self.assertEqual((store["psram_doom"]["size"], store["psram_doom"]["data_size"]), (40, len(WAD) + len(PAK)))
         self.assertNotIn("icon", store["psram_doom"])
         self.assertTrue((self.out / "psram_doom-0.1.0.json").exists())

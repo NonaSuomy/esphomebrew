@@ -2,14 +2,14 @@
 
 ## By hand (works today)
 
-Open a **PAPP test report** issue (Issues → New issue → PAPP test report). Pick the app, the result, and paste the device log. The hub mirrors GitHub issues into the project, so the agents see it.
+Open a **PAX test report** issue (Issues → New issue → PAX test report). Pick the app, the result, and paste the device log. The hub mirrors GitHub issues into the project, so the agents see it.
 
 ## Automatically: `report_url`
 
-With `report_url` set, `papp_loader` POSTs one JSON report after every app run:
+With `report_url` set, `pax_loader` POSTs one JSON report after every app run:
 
 ```yaml
-papp_loader:
+pax_loader:
   # ...
   report_url: http://homeassistant.local:8123/api/webhook/papp-test-report
   report_log_bytes: 4096   # optional, 256-32768: how much of the app's log to keep
@@ -18,8 +18,8 @@ papp_loader:
 ```json
 {
   "device": "esp32-p4-elecrow-aio",
-  "app": "lvgl-0.3.0.papp",
-  "source": "https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.papp",
+  "app": "lvgl-0.3.0.pax",
+  "source": "https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.pax",
   "outcome": "exited",
   "result": 0,
   "runtime_ms": 48213,
@@ -46,24 +46,24 @@ The GitHub token stays in Home Assistant's `secrets.yaml`. Use a fine-grained to
 ```yaml
 # configuration.yaml
 rest_command:
-  papp_test_report:
+  pax_test_report:
     url: "https://api.github.com/repos/NonaSuomy/esphomebrew/issues/{{ issue }}/comments"
     method: POST
     headers:
-      Authorization: !secret papp_github_token   # "Bearer github_pat_..."
+      Authorization: !secret pax_github_token   # "Bearer github_pat_..."
       Accept: application/vnd.github+json
     content_type: application/json
     payload: "{{ {'body': body} | tojson }}"
 
 automation:
-  - alias: PAPP test report to GitHub
+  - alias: PAX test report to GitHub
     triggers:
       - trigger: webhook
-        webhook_id: papp-test-report
+        webhook_id: pax-test-report
         allowed_methods: [POST]
         local_only: true
     actions:
-      - action: rest_command.papp_test_report
+      - action: rest_command.pax_test_report
         data:
           issue: 1   # the issue that collects device reports
           body: |

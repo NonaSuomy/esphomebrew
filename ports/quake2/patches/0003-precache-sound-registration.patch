@@ -1,0 +1,20 @@
+diff --git a/components/quake2/source/client/snd_dma.c b/components/quake2/source/client/snd_dma.c
+--- a/components/quake2/source/client/snd_dma.c
++++ b/components/quake2/source/client/snd_dma.c
+@@ -393,13 +393,15 @@ void S_EndRegistration (void)
+ 
+ 	}
+ 
+-	// load everything in
++	/* With reclaimable arena blocks and correctly sized 8-bit caches,
++	 * precache at map startup: SD reads on first use starve the mixer. */
++	Com_Printf ("QUAKE2 AUDIO precaching %d registered sounds\n", num_sfx);
+ 	for (i=0, sfx=known_sfx ; i < num_sfx ; i++,sfx++)
+ 	{
+ 		if (!sfx->name[0])
+ 			continue;
+ 		S_LoadSound (sfx);
+ 	}
+ 
+ 	s_registering = false;
+ }

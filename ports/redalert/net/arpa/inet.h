@@ -1,4 +1,4 @@
-// Address text conversion for the Red Alert PAPP's socket layer.
+// Address text conversion for the Red Alert PAX's socket layer.
 #pragma once
 
 #include <netinet/in.h>

@@ -23,6 +23,7 @@ class UsbMsc : public Component {
   // After usb_host has installed the USB host library.
   float get_setup_priority() const override { return setup_priority::LATE; }
 
+  bool is_connected() const { return this->connected_; }
   bool is_mounted() const { return this->vfs_ != nullptr; }
   // Mounts a connected stick again after unmount(). False when none is plugged in.
   bool mount();
@@ -37,6 +38,7 @@ class UsbMsc : public Component {
   std::string mount_point_{"/usb0"};
   int max_files_{8};
   volatile uint8_t connected_address_{0};  // set by the driver task, 0 = none
+  volatile bool connected_{false};
   volatile bool disconnected_{false};
   msc_host_device_handle_t device_{nullptr};
   msc_host_vfs_handle_t vfs_{nullptr};

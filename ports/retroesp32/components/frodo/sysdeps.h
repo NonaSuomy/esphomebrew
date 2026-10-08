@@ -185,8 +185,8 @@ typedef long int32;
 
 #define UNUSED(x) (x = x)
 #ifdef ESP32
-#ifdef PAPP_APP_SIDE
-#include "papp_c64_compat.h"
+#ifdef PAX_APP_SIDE
+#include "pax_c64_compat.h"
 #else
 #include "LibOdroidGo.h"
 #endif

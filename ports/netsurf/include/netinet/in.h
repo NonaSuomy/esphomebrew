@@ -1,7 +1,7 @@
-// <netinet/in.h> for the NetSurf PAPP: the address types NetSurf's URL
+// <netinet/in.h> for the NetSurf PAX: the address types NetSurf's URL
 // database uses to recognise numeric hosts (IPv4 only: NO_IPV6).
-#ifndef PAPP_NETINET_IN_H
-#define PAPP_NETINET_IN_H
+#ifndef PAX_NETINET_IN_H
+#define PAX_NETINET_IN_H
 
 #include <stdint.h>
 #include <sys/socket.h>

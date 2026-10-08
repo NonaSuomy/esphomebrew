@@ -1,0 +1,171 @@
+{
+  "name": "nes",
+  "title": "NES (nofrendo)",
+  "version": "0.6.0",
+  "description": "Nintendo Entertainment System emulator as a PSRAM app. Add .nes ROMs under /sd/roms/nes/ or /usb0/roms/nes/.",
+  "author": "nofrendo; P4 PAPP port by NonaSuomy",
+  "category": "Emulator",
+  "license": "LGPL-2.0",
+  "icon": "icon_nes_platform.png",
+  "about": "The classic nofrendo 2.0 NES core running as an ESP32-P4 PAX. The launcher selects a .nes ROM from the configured storage; no ROMs are bundled.",
+  "changelog": "0.6.0 swaps NES save/load and video pages inside the shared GAME MENU without closing the overlay, and fixes legacy menu rendering; 0.5.0 adds NES OPTIONS to GAME MENU; 0.3.0 adds per-ROM screenshots and video options; 0.2.0 adds ten SNSS save slots and previews.",
+  "controls": [
+    "D-pad: D-pad",
+    "A / B: A / B",
+    "Start / Select: Start / Select",
+    "Switch Capture/Picture button: open the slide-down GAME MENU",
+    "NES OPTIONS: swap GAME MENU rows for NES controls",
+    "Swipe down from the top edge: open GAME MENU",
+    "GAME MENU: choose RESUME GAME to return to play",
+    "L+R or L3 / on-screen close: quit to launcher",
+    "A select; D-pad move; Left/Right adjust; B previous page",
+    "Save/load states: 10 per-ROM slots with previews",
+    "Options: palette, side crop, 1.5x/2x/2.5x zoom",
+    "Screenshot: saves a BMP under /sd/roms/nes/.states/"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/nes/",
+      "note": "Place .nes or .zip ROMs here; Select game scans this folder",
+      "optional": true
+    }
+  ],
+  "upstream": {
+    "project": "nofrendo",
+    "version": "2.0",
+    "url": "https://github.com/NonaSuomy/RetroESP32-P4/tree/main/components/nofrendo"
+  },
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "b72144c85f74017c8c4bcaaa6d82fe65d8c0a6b5",
+    "path": "apps/psram_nes"
+  },
+  "patches": [
+    "local:ports/nes/patches/*.patch"
+  ],
+  "includes": [
+    "local:ports/nes",
+    "apps/psram_nes",
+    "apps/papp_emulator_common",
+    "components/psram_app_loader/include",
+    "components/nofrendo/include"
+  ],
+  "cflags": [
+    "-DPAPP_APP_SIDE=1",
+    "-DPAPP_NES=1",
+    "-DIRAM_ATTR=",
+    "-std=gnu99",
+    "-O2",
+    "-fno-common",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-Wall",
+    "-Wno-format",
+    "-Wno-unused-variable",
+    "-Wno-unused-function",
+    "-Wno-maybe-uninitialized",
+    "-Wno-implicit-function-declaration",
+    "-Wno-pointer-sign",
+    "-Wno-int-conversion",
+    "-Wno-incompatible-pointer-types",
+    "-Wno-sign-compare",
+    "-Wno-missing-braces"
+  ],
+  "groups": [
+    {
+      "dir": "components/nofrendo",
+      "files": [
+        "bitmap.c",
+        "config.c",
+        "event.c",
+        "gui.c",
+        "gui_elem.c",
+        "intro.c",
+        "log.c",
+        "memguard.c",
+        "nofrendo.c",
+        "pcx.c",
+        "vid_drv.c",
+        "cpu/dis6502.c",
+        "cpu/nes6502.c",
+        "libsnss/libsnss.c",
+        "mappers/map000.c",
+        "mappers/map001.c",
+        "mappers/map002.c",
+        "mappers/map003.c",
+        "mappers/map004.c",
+        "mappers/map005.c",
+        "mappers/map007.c",
+        "mappers/map008.c",
+        "mappers/map009.c",
+        "mappers/map010.c",
+        "mappers/map011.c",
+        "mappers/map015.c",
+        "mappers/map016.c",
+        "mappers/map018.c",
+        "mappers/map019.c",
+        "mappers/map024.c",
+        "mappers/map032.c",
+        "mappers/map033.c",
+        "mappers/map034.c",
+        "mappers/map040.c",
+        "mappers/map041.c",
+        "mappers/map042.c",
+        "mappers/map046.c",
+        "mappers/map050.c",
+        "mappers/map064.c",
+        "mappers/map065.c",
+        "mappers/map066.c",
+        "mappers/map070.c",
+        "mappers/map073.c",
+        "mappers/map075.c",
+        "mappers/map078.c",
+        "mappers/map079.c",
+        "mappers/map085.c",
+        "mappers/map087.c",
+        "mappers/map093.c",
+        "mappers/map094.c",
+        "mappers/map099.c",
+        "mappers/map160.c",
+        "mappers/map229.c",
+        "mappers/map231.c",
+        "mappers/mapvrc.c",
+        "nes/mmclist.c",
+        "nes/nes.c",
+        "nes/nes_mmc.c",
+        "nes/nes_pal.c",
+        "nes/nes_ppu.c",
+        "nes/nes_rom.c",
+        "nes/nesinput.c",
+        "nes/nesstate.c",
+        "sndhrdw/fds_snd.c",
+        "sndhrdw/mmc5_snd.c",
+        "sndhrdw/nes_apu.c",
+        "sndhrdw/vrcvisnd.c"
+      ]
+    },
+    {
+      "dir": "apps/psram_nes",
+      "files": [
+        "papp_main.c",
+        "papp_osd.c",
+        "papp_platform.c",
+        "papp_libc.c"
+      ]
+    },
+    {
+      "dir": "apps/psram_opentyrian",
+      "files": [
+        "papp_syscalls.c"
+      ]
+    },
+    {
+      "dir": "local:ports/nes",
+      "files": [
+        "pax_nes_options.c"
+      ]
+    }
+  ],
+  "newlib": true
+}

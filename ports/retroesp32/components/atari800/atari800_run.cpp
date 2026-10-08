@@ -482,7 +482,7 @@ static void videoTask(void *arg)
     while (1) {}
 }
 
-/* PAPP execution is single-threaded. Convert the indexed Atari frame and
+/* PAX execution is single-threaded. Convert the indexed Atari frame and
  * submit it inline so the app never depends on a private FreeRTOS task. */
 static void a800_render_frame_direct(const uint8_t *param)
 {
@@ -786,7 +786,7 @@ static void emu_step(odroid_gamepad_state *gamepad)
             src += ATARI_SCREEN_WIDTH;
         }
         uint8_t *fb_ptr = framebuffer[fb_index];
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
         a800_render_frame_direct(fb_ptr);
 #else
         xQueueOverwrite(vidQueue, &fb_ptr);
@@ -814,8 +814,8 @@ static void emu_step(odroid_gamepad_state *gamepad)
         sbuf[i * 2 + 1] = s16;
     }
 
-#ifdef PAPP_APP_SIDE
-    /* PAPPs submit audio on the emulation thread; no private task/queue is
+#ifdef PAX_APP_SIDE
+    /* PAXs submit audio on the emulation thread; no private task/queue is
      * available inside the launcher-owned execution context. */
     odroid_audio_submit(sbuf, samples_per_frame);
 #else
@@ -1247,9 +1247,9 @@ extern "C" void atari800_run(const char *rom_path)
         }
     }
 
-    /* Video/audio tasks are used by the native firmware wrapper. PAPPs run
+    /* Video/audio tasks are used by the native firmware wrapper. PAXs run
      * their frame and audio submission inline on the launcher task. */
-#ifndef PAPP_APP_SIDE
+#ifndef PAX_APP_SIDE
     /* Video queue and task */
     vidQueue = xQueueCreate(1, sizeof(uint8_t *));
     xTaskCreatePinnedToCore(&videoTask, "a800_video", 1024 * 4, NULL, 5, &videoTaskHandle, 1);
@@ -1266,7 +1266,7 @@ extern "C" void atari800_run(const char *rom_path)
         int64_t totalElapsedTime = 0;
         int frame = 0;
         int totalFrames = 0;
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
         int64_t nextFrameDeadline = esp_timer_get_time();
 #endif
         bool ignoreMenuButton = previousState.values[ODROID_INPUT_MENU];
@@ -1282,7 +1282,7 @@ extern "C" void atari800_run(const char *rom_path)
             /* MENU button → in-game menu */
             if (!ignoreMenuButton && previousState.values[ODROID_INPUT_MENU] &&
                 !joystick.values[ODROID_INPUT_MENU]) {
-#ifndef PAPP_APP_SIDE
+#ifndef PAX_APP_SIDE
                 uint8_t *dummy;
                 while (xQueueReceive(vidQueue, &dummy, 0) == pdTRUE) {}
 #endif
@@ -1369,14 +1369,14 @@ extern "C" void atari800_run(const char *rom_path)
             ++frame;
             ++totalFrames;
 
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
             /* The native wrapper's audio task naturally throttles the loop.
-             * A PAPP submits inline, so retain the NTSC 60 Hz cadence here. */
+             * A PAX submits inline, so retain the NTSC 60 Hz cadence here. */
             nextFrameDeadline += 1000000 / 60;
             int64_t now = esp_timer_get_time();
             if (nextFrameDeadline > now) {
                 int delay = (int)((nextFrameDeadline - now) / 1000);
-                if (delay > 0) papp_delay_ms(delay);
+                if (delay > 0) pax_delay_ms(delay);
             } else if (now - nextFrameDeadline > 50000) {
                 nextFrameDeadline = now;
             }
@@ -1389,8 +1389,8 @@ extern "C" void atari800_run(const char *rom_path)
                 frame = 0;
                 totalElapsedTime = 0;
             }
-#ifdef PAPP_TEST_FRAMES
-            if (totalFrames >= PAPP_TEST_FRAMES) {
+#ifdef PAX_TEST_FRAMES
+            if (totalFrames >= PAX_TEST_FRAMES) {
                 a800_quit_flag = true;
                 break;
             }
@@ -1399,7 +1399,7 @@ extern "C" void atari800_run(const char *rom_path)
     }
 
 cleanup:
-#ifndef PAPP_APP_SIDE
+#ifndef PAX_APP_SIDE
     /* Stop audio task */
     if (audioQueue && audioTaskIsRunning) {
         audio_msg_t poison = { NULL, 0 };
@@ -1432,7 +1432,7 @@ cleanup:
     }
     if (lcdfb[0]) { heap_caps_free(lcdfb[0]); lcdfb[0] = NULL; }
     if (lcdfb[1]) { heap_caps_free(lcdfb[1]); lcdfb[1] = NULL; }
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
     if (s_vid_rgb565) { heap_caps_free(s_vid_rgb565); s_vid_rgb565 = NULL; }
 #endif
     if (vidQueue)   { vQueueDelete(vidQueue);   vidQueue   = NULL; }

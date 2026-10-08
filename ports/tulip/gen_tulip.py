@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Code generation for the Tulip PAPP (the "prebuild" step of apps/psram_tulip).
+"""Code generation for the Tulip PAX (the "prebuild" step of apps/psram_tulip).
 
 MicroPython ports build with make rules (py/mkrules.mk) that generate headers
-before compiling; tools/build_papp.py compiles the sources itself, so this
+before compiling; tools/build_pax.py compiles the sources itself, so this
 script does the same generation from the list of compile units it is given:
 
   genhdr/mpversion.h         py/makeversionhdr.py
@@ -70,7 +70,7 @@ def mp_version(mp: Path) -> str:
 
 
 def gen_version(mp: Path, gen: Path, mp_ref: str) -> None:
-    env = {**os.environ, "MICROPY_GIT_TAG": mp_version(mp) + "-tulip-papp", "MICROPY_GIT_HASH": mp_ref}
+    env = {**os.environ, "MICROPY_GIT_TAG": mp_version(mp) + "-tulip-pax", "MICROPY_GIT_HASH": mp_ref}
     run([sys.executable, str(mp / "py/makeversionhdr.py"), str(gen / "genhdr/mpversion.h")], env=env)
 
 
@@ -230,9 +230,9 @@ def gen_sys(src: Path, gen: Path) -> None:
     with open(gen / "sys_tar.c", "w") as out:
         out.write("// Tulip's /sys files (tulip/fs/tulip), made by ports/tulip/gen_tulip.py.\n")
         out.write("#include <stddef.h>\n")
-        out.write(f'const char papp_sys_version[] = "{version}";\n')
-        out.write(f"const size_t papp_sys_tar_len = {len(data)};\n")
-        out.write("const unsigned char papp_sys_tar[] = {\n")
+        out.write(f'const char pax_sys_version[] = "{version}";\n')
+        out.write(f"const size_t pax_sys_tar_len = {len(data)};\n")
+        out.write("const unsigned char pax_sys_tar[] = {\n")
         for i in range(0, len(data), 32):
             out.write(",".join(str(b) for b in data[i:i + 32]) + ",\n")
         out.write("};\n")

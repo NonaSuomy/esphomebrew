@@ -7,7 +7,7 @@ The first device with a USB-MIDI (Audio class, MIDI Streaming) interface is
 used; it is picked up when plugged in and released when pulled. Incoming
 messages are kept as plain MIDI bytes until read. From lambdas:
 id(usb_midi_port).read(buf, len), id(usb_midi_port).write(bytes, len) (whole
-messages), id(usb_midi_port).is_connected(). The PAPP loader passes them to
+messages), id(usb_midi_port).is_connected(). The PAX loader passes them to
 apps.
 """
 

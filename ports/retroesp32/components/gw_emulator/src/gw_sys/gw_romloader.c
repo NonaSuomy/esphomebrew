@@ -335,7 +335,7 @@ bool gw_romloader()
 
    bool rom_status = gw_romloader_rom2ram();
 
-   /* A malformed or unsupported SD image is a normal PAPP load error.  Do
+   /* A malformed or unsupported SD image is a normal PAX load error.  Do
     * not assert here: aborting would reset the launcher instead of returning
     * cleanly to its library screen. */
    if (!rom_status)

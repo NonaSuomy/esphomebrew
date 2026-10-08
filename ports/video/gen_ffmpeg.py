@@ -3,7 +3,7 @@
 
 FFmpeg's configure needs a host shell toolchain and probes the build machine;
 this writes the few files it would generate, for a fixed configuration that
-suits the ESP32-P4 PAPP loader (plain C, no threads, no asm):
+suits the ESP32-P4 PAX loader (plain C, no threads, no asm):
 
   <gen>/config.h                 every CONFIG_*, HAVE_* and ARCH_* macro the
                                  sources use, 0 or 1, plus configure's strings
@@ -16,7 +16,7 @@ suits the ESP32-P4 PAPP loader (plain C, no threads, no asm):
 
 The enabled components are COMPONENTS below plus everything configure's
 *_select / *_deps rules pull in (read from the pinned configure). The C files
-compiled are listed explicitly in apps/video/papp.json; they are what
+compiled are listed explicitly in apps/video/pax.json; they are what
 FFmpeg's Makefiles build for this set.
 
 Macros are found by scanning the sources, so every one the code tests is
@@ -56,7 +56,7 @@ CONFIG_ON = """
 """.split()
 
 # HAVE_ features newlib and GCC give this build (plus the syscalls the port
-# supplies in ports/video/papp_syscalls.c). Everything else is 0: no threads,
+# supplies in ports/video/pax_syscalls.c). Everything else is 0: no threads,
 # asm, SIMD, sockets or OS services.
 HAVE_ON = """
     atan2f atanf cbrt cbrtf copysign cosf erf exp2 exp2f expf hypot isfinite isinf isnan

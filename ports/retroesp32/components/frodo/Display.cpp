@@ -89,8 +89,8 @@ void C64Display::UpdateLEDs(int l0, int l1, int l2, int l3)
 #elif defined(__riscos__)
 #include "Display_Acorn.i"
 #elif defined(ESP32)
-#ifdef PAPP_APP_SIDE
-#include "Display_PAPP.i"
+#ifdef PAX_APP_SIDE
+#include "Display_PAX.i"
 #else
 #include "Display_ESP32.i"
 #endif

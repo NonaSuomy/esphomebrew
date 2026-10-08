@@ -1,4 +1,4 @@
-// IPv4 addresses for the Tiberian Dawn PAPP's socket layer (see sys/socket.h).
+// IPv4 addresses for the Tiberian Dawn PAX's socket layer (see sys/socket.h).
 #pragma once
 
 #include <stdint.h>

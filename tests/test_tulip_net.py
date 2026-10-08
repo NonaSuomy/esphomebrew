@@ -1,6 +1,6 @@
 """Tests for the Tulip port's network modules (ports/tulip/py: socket, tls,
-ssl, network) under CPython, with a fake _pappnet (the loader's services,
-papp_net.c) and a fake MicroPython clock.
+ssl, network) under CPython, with a fake _paxnet (the loader's services,
+pax_net.c) and a fake MicroPython clock.
 
 Run: python3 -m unittest discover -s tests
 """
@@ -98,7 +98,7 @@ class FakeConn:
 
 
 class FakeNet:
-    """_pappnet: which services exist, the network state and the connections made."""
+    """_paxnet: which services exist, the network state and the connections made."""
 
     def __init__(self):
         self.services = {"ipv4", "resolve", "udp", "tcp", "tcp_server", "tls"}
@@ -151,13 +151,13 @@ def code(error):
 
 
 def load_port(net, clock):
-    """Import the port's modules with _pappnet and time faked, then put the
+    """Import the port's modules with _paxnet and time faked, then put the
     real (CPython) modules back in sys.modules."""
-    names = PORT_MODULES + ("_pappnet", "time")
+    names = PORT_MODULES + ("_paxnet", "time")
     saved = {name: sys.modules.get(name) for name in names}
     loaded = {}
     try:
-        sys.modules["_pappnet"] = net
+        sys.modules["_paxnet"] = net
         sys.modules["time"] = clock
         for name in PORT_MODULES:
             sys.modules.pop(name, None)
@@ -211,7 +211,7 @@ class AddressTest(PortTest):
             with self.assertRaises(OSError) as e:
                 call()
             self.assertEqual(code(e.exception), errno.ENODEV)
-            self.assertIn("newer PAPP loader", str(e.exception))
+            self.assertIn("newer PAX loader", str(e.exception))
 
 
 class TcpTest(PortTest):

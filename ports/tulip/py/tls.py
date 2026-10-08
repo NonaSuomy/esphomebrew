@@ -1,4 +1,4 @@
-# tls for Tulip on the ESP32-P4 PAPP loader (MicroPython's TLS module;
+# tls for Tulip on the ESP32-P4 PAX loader (MicroPython's TLS module;
 # ssl.py builds on it).
 #
 # The loader makes the TLS connection (esp-tls, net_tls_* in psram_app.h):
@@ -13,7 +13,7 @@
 # has no place for custom CAs or client certificates. Only clients.
 import errno
 
-import _pappnet
+import _paxnet
 import socket as _socket
 
 PROTOCOL_TLS_CLIENT = 0
@@ -23,7 +23,7 @@ PROTOCOL_DTLS_SERVER = 3
 CERT_NONE = 0
 CERT_OPTIONAL = 1
 CERT_REQUIRED = 2
-MBEDTLS_VERSION = "esp-tls (the PAPP loader)"
+MBEDTLS_VERSION = "esp-tls (the PAX loader)"
 
 
 def _failed(host, port):
@@ -111,7 +111,7 @@ def _wrap(sock, server_hostname, do_handshake):
     peer = sock._peer
     # The loader opens its own connection to the same server.
     sock.close()
-    conn = _socket._open(_pappnet.tls_connect, host, port)
+    conn = _socket._open(_paxnet.tls_connect, host, port)
     if conn is None:
         raise OSError(errno.ENOBUFS,
                       "the loader could not start a TLS connection "

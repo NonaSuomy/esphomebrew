@@ -1,4 +1,4 @@
-// Address text conversion for the Tiberian Dawn PAPP's socket layer.
+// Address text conversion for the Tiberian Dawn PAX's socket layer.
 #pragma once
 
 #include <netinet/in.h>

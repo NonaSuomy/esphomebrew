@@ -1,4 +1,4 @@
-# _boot.py for Tulip on the ESP32-P4 PAPP loader.
+# _boot.py for Tulip on the ESP32-P4 PAX loader.
 # Replaces tulip/shared/py/_boot.py; the rest of Tulip's Python is frozen as is.
 #
 # Filesystems, as on a Tulip with its flash partitions:
@@ -11,7 +11,7 @@ import gc
 import sys
 import os
 import vfs
-import _papp
+import _pax
 
 _IMAGES = ('/sd/roms/tulip/tulip.lfs', '/sd/roms/tulip.lfs')
 _BLOCK = 4096
@@ -56,19 +56,19 @@ def _mount_lfs(bdev):
 
 def _mount_filesystems():
     try:
-        vfs.mount(_papp.VfsSd(), '/sd')
+        vfs.mount(_pax.VfsSd(), '/sd')
     except Exception as e:
-        print('papp: /sd not mounted:', e)
+        print('pax: /sd not mounted:', e)
     for image in _IMAGES:
         try:
-            bdev = _papp.BlockDev(image, _BLOCK, _BLOCKS)
+            bdev = _pax.BlockDev(image, _BLOCK, _BLOCKS)
         except OSError:
             continue
         try:
             _mount_lfs(bdev)
             return image
         except Exception as e:
-            print('papp: cannot use', image, e)
+            print('pax: cannot use', image, e)
     _mount_lfs(_RAMBlockDev(256))
     return None
 
@@ -86,15 +86,15 @@ def _makedirs(path):
 def _install_sys():
     # Tulip's system files (examples, images: tulip/fs/tulip) are built into
     # this app as a tar; unpack them into /sys once per build.
-    version = _papp.sys_version()
+    version = _pax.sys_version()
     try:
-        with open('/sys/.papp_version') as f:
+        with open('/sys/.pax_version') as f:
             if f.read() == version:
                 return
     except OSError:
         pass
     print('Installing Tulip system files in /sys...')
-    tar = _papp.sys_tar()
+    tar = _pax.sys_tar()
     pos, count = 0, 0
     while pos + 512 <= len(tar):
         header = bytes(tar[pos:pos + 512])
@@ -113,7 +113,7 @@ def _install_sys():
                 f.write(tar[pos:pos + size])
             count += 1
         pos += (size + 511) // 512 * 512
-    with open('/sys/.papp_version', 'w') as f:
+    with open('/sys/.pax_version', 'w') as f:
         f.write(version)
     print(count, 'files')
 
@@ -124,7 +124,7 @@ for _d in ('/user', '/sys', '/user/lib'):
 try:
     _install_sys()
 except Exception as e:
-    print('papp: /sys not installed:', e)
+    print('pax: /sys not installed:', e)
 os.chdir('/user')
 sys.path.append('/user/lib')
 sys.path.append('/sys/ex')
@@ -162,7 +162,7 @@ except Exception as e:
     import _tulip
     _tulip.set_screen_as_repl(1)
 
-print('Tulip on the ESP32-P4 PAPP loader. Files: /user (%s), card: /sd.' %
+print('Tulip on the ESP32-P4 PAX loader. Files: /user (%s), card: /sd.' %
       (_image or 'in RAM, not kept: no card'))
 print('Hold Menu (or Escape) for 3 s to quit. Ctrl-D returns to the launcher.')
 del _d

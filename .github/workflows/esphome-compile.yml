@@ -30,5 +30,5 @@ jobs:
           key: esphome-p4-2026.8.2-${{ hashFiles('esphome/components/**') }}
           restore-keys: esphome-p4-2026.8.2-
       - run: pip install esphome==2026.8.2
-      # Builds the papp_loader C++ (including report_url) for the ESP32-P4.
+      # Builds the pax_loader C++ (including report_url) for the ESP32-P4.
       - run: esphome compile esphome/tests/p4_loader_compile.yaml

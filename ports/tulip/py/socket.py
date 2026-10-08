@@ -1,7 +1,7 @@
-# socket for Tulip on the ESP32-P4 PAPP loader.
+# socket for Tulip on the ESP32-P4 PAX loader.
 #
 # TCP and UDP over the device's own network (Ethernet or Wi-Fi, set up by its
-# firmware), through the loader's net_* services (_pappnet, papp_net.c). IPv4
+# firmware), through the loader's net_* services (_paxnet, pax_net.c). IPv4
 # only; addresses are (host, port) tuples and host may be a name.
 #
 # Sockets block by default. settimeout()/setblocking() work as usual: waits
@@ -15,7 +15,7 @@ import errno
 import gc
 import time
 
-import _pappnet
+import _paxnet
 
 try:
     from io import IOBase as _IOBase
@@ -49,12 +49,12 @@ _POLL_HUP = 0x0010
 
 
 def _need(service, what):
-    if not _pappnet.has(service):
-        raise OSError(errno.ENODEV, "%s needs a newer PAPP loader (it has no %s service)" % (what, service))
+    if not _paxnet.has(service):
+        raise OSError(errno.ENODEV, "%s needs a newer PAX loader (it has no %s service)" % (what, service))
 
 
 def _network_up():
-    return not _pappnet.has("ipv4") or _pappnet.ipv4() is not None
+    return not _paxnet.has("ipv4") or _paxnet.ipv4() is not None
 
 
 def _is_ip(host):
@@ -79,7 +79,7 @@ def _resolve(host):
     _need("resolve", "Looking up a host name")
     if not _network_up():
         raise OSError(errno.EHOSTUNREACH, "no network: the device is not connected")
-    ip = _pappnet.resolve(host)
+    ip = _paxnet.resolve(host)
     if ip is None:
         raise OSError(errno.EHOSTUNREACH, "host not found: %s" % host)
     return ip
@@ -145,7 +145,7 @@ class socket(_IOBase):
 
     def _setup(self, type):
         self.type = type
-        self._conn = None       # the _pappnet.Conn
+        self._conn = None       # the _paxnet.Conn
         self._timeout = None    # None: blocking, 0: non-blocking, else seconds
         self._rbuf = b""        # read ahead by readline()
         self._eof = False
@@ -189,8 +189,8 @@ class socket(_IOBase):
 
     def getsockname(self):
         ip = "0.0.0.0"
-        if _pappnet.has("ipv4"):
-            up = _pappnet.ipv4()
+        if _paxnet.has("ipv4"):
+            up = _paxnet.ipv4()
             if up is not None:
                 ip = up[0]
         return (ip, self._port)
@@ -216,7 +216,7 @@ class socket(_IOBase):
             raise OSError(errno.EALREADY)
         if not _network_up():
             raise OSError(errno.EHOSTUNREACH, "no network: the device is not connected")
-        conn = _open(_pappnet.tcp_connect, ip, port)
+        conn = _open(_paxnet.tcp_connect, ip, port)
         if conn is None:
             raise OSError(errno.ENOBUFS, "the loader could not open a connection (too many open?)")
         self._conn = conn
@@ -243,7 +243,7 @@ class socket(_IOBase):
         if self.type == SOCK_DGRAM:
             if self._conn is not None:
                 raise OSError(errno.EINVAL, "already bound")
-            self._conn = _open(_pappnet.udp_open, port, self._broadcast)
+            self._conn = _open(_paxnet.udp_open, port, self._broadcast)
             if self._conn is None:
                 raise OSError(errno.EADDRINUSE, "cannot open UDP port %d" % port)
         self._port = port
@@ -252,7 +252,7 @@ class socket(_IOBase):
         if self.type != SOCK_STREAM:
             raise OSError(errno.EOPNOTSUPP)
         _need("tcp_server", "A listening socket")
-        self._conn = _open(_pappnet.tcp_listen, self._port)
+        self._conn = _open(_paxnet.tcp_listen, self._port)
         if self._conn is None:
             raise OSError(errno.EADDRINUSE, "cannot listen on port %d" % self._port)
 
@@ -477,7 +477,7 @@ class socket(_IOBase):
         if self._closed:
             raise OSError(errno.EBADF)
         if self._conn is None:
-            self._conn = _open(_pappnet.udp_open, self._port, self._broadcast)
+            self._conn = _open(_paxnet.udp_open, self._port, self._broadcast)
             if self._conn is None:
                 raise OSError(errno.EADDRINUSE, "cannot open a UDP socket")
         return self._conn

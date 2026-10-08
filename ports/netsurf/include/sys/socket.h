@@ -1,8 +1,8 @@
-// <sys/socket.h> for the NetSurf PAPP. NetSurf only needs the types for
+// <sys/socket.h> for the NetSurf PAX. NetSurf only needs the types for
 // its headers (utils/inet.h); all networking goes through the loader's
-// net_* services (papp_http.c).
-#ifndef PAPP_SYS_SOCKET_H
-#define PAPP_SYS_SOCKET_H
+// net_* services (pax_http.c).
+#ifndef PAX_SYS_SOCKET_H
+#define PAX_SYS_SOCKET_H
 
 #include <stdint.h>
 #include <sys/types.h>

@@ -1,6 +1,6 @@
-# Building PAPPs
+# Building PAXs
 
-Every app in this store lives in `apps/<name>/papp.json`. GitHub Actions (`.github/workflows/build-papps.yml`) builds all of them on every push and pull request, and uploads the `.papp` files as the `papps` artifact.
+Every app in this store lives in `apps/<name>/pax.json`. GitHub Actions (`.github/workflows/build-paxs.yml`) builds all of them on every push and pull request, and uploads the `.pax` files as the `paxs` artifact.
 
 ## App manifest
 
@@ -16,7 +16,7 @@ Every app in this store lives in `apps/<name>/papp.json`. GitHub Actions (`.gith
 }
 ```
 
-- `name` must match the folder name. It becomes `<name>.papp`, and the file name is what the device's store list shows.
+- `name` must match the folder name. It becomes `<name>.pax`, and the file name is what the device's store list shows.
 - `source` is fetched at the exact commit. Pin a full SHA, not a branch, so a build can be reproduced.
 - `build` is one of:
   - `lvgl`: compiles LVGL's `src/` except `src/drivers`, plus the app's `*.c`, and links `libgcc`.
@@ -60,9 +60,9 @@ What a store screen shows before an app is downloaded:
   - Up to 24 entries. The loader looks for each one under every data root (`data_root`, then `data_search`, such as `/sd` and `/usb0`), only when the app's page opens.
   - The files under `data` (below), which the store downloads, count as required too: Publish store adds each one to the listing's `requires` as `{"path": "/sd/<target>", "download": true}`.
 - `icon` is a PNG in the app's folder, at most 256×256 and 64 KB; `screenshots` lists up to three PNGs of at most 1024×600 and 300 KB. Use your own or freely licensed art, not official game logos.
-- Publish store puts all of it, with the icon as base64, the `.papp` size and the data size, into `store.json` and into a sidecar next to each app (`doom-0.2.1.json`, found by swapping `.papp` for `.json`). The icon is also published as `doom-0.2.1.png`, which the web page shows, and screenshots as `doom-0.2.1-screen1.png`, … (listed by URL only, to keep the JSON small). A LAN server or SD folder can carry the same sidecar next to its `.papp` files.
+- Publish store puts all of it, with the icon as base64, the `.pax` size and the data size, into `store.json` and into a sidecar next to each app (`doom-0.2.1.json`, found by swapping `.pax` for `.json`). The icon is also published as `doom-0.2.1.png`, which the web page shows, and screenshots as `doom-0.2.1-screen1.png`, … (listed by URL only, to keep the JSON small). A LAN server or SD folder can carry the same sidecar next to its `.pax` files.
 
-Sources come from the `source` repository at a pinned commit, and so does the PAPP SDK (`psram_app.h`, `psram_app.ld`, `pack_papp.py`), so an app always builds against the loader ABI of its own tree. They are fetched at build time rather than copied here, because upstream has no license file. Today the apps come from [NonaSuomy/RetroESP32-P4](https://github.com/NonaSuomy/RetroESP32-P4) (`papp-serial-upload`) and [giltal/RetroESP32-P4](https://github.com/giltal/RetroESP32-P4).
+Sources come from the `source` repository at a pinned commit, and so does the PAX SDK (`psram_app.h`, `psram_app.ld`, `pack_pax.py`), so an app always builds against the loader ABI of its own tree. They are fetched at build time rather than copied here, because upstream has no license file. Today the apps come from [NonaSuomy/RetroESP32-P4](https://github.com/NonaSuomy/RetroESP32-P4) (`pax-serial-upload`) and [giltal/RetroESP32-P4](https://github.com/giltal/RetroESP32-P4).
 
 ### Canvas size (for app authors)
 
@@ -82,9 +82,9 @@ uint16_t *fb = svc->display_get_framebuffer();   // w x h RGB565, stride w
 
 - Call `display_set_canvas` once, before drawing, from the task that draws. Sizes are even, at least 320×240 and at most the panel; `display_get_size`'s answer always qualifies. A switch clears the framebuffer and the panel to black.
 - Everything on the display side then uses the new size: the framebuffer and `display_flush`, `display_clear`, `display_write_frame_rgb565` (one full canvas), `display_write_rect`, `display_write_frame_custom` and `display_emu_flush` (the scaled frame centred in the canvas), `touch_read` (canvas coordinates) and screenshots.
-- An app with fixed sizes (a build-time resolution, say) picks the largest of its own sizes that fits in what `display_get_size` returns, or simply asks for the one size it has, and lists them under `canvas` in `papp.json`. An app built only for 1024×600 can call `display_set_canvas(1024, 600)` directly and draw scaled down (for example with `display_write_frame_custom`) if that fails.
+- An app with fixed sizes (a build-time resolution, say) picks the largest of its own sizes that fits in what `display_get_size` returns, or simply asks for the one size it has, and lists them under `canvas` in `pax.json`. An app built only for 1024×600 can call `display_set_canvas(1024, 600)` directly and draw scaled down (for example with `display_write_frame_custom`) if that fails.
 - On a canvas as wide as the panel the loader's close button is not drawn: taps in the canvas's top-right 58×58 pixels (plus a small margin) reach the app, and only a touch held there for 2 s closes it. Offer your own way out too.
-- Apps in this repository's `ports/` include `esphome/components/papp_loader/psram_app.h` and get the services from it. An app built against an older SDK header (such as RetroESP32-P4's) needs the two fields added after `net_resolve`, in the same order, or a newer header. For apps built from RetroESP32-P4, `ports/retroesp32/patches/0001-sdk-canvas-services.patch` adds them to its SDK header; list it in the manifest's `"patches"` before the app's own patches, as the touch test, the LVGL demo and Doom do (`"patches": ["local:ports/retroesp32/patches/*.patch", "local:ports/touchtest/patches/*.patch"]`). Patches apply in that order to the pinned checkout, for any `build` type.
+- Apps in this repository's `ports/` include `esphome/components/pax_loader/psram_app.h` and get the services from it. An app built against an older SDK header (such as RetroESP32-P4's) needs the two fields added after `net_resolve`, in the same order, or a newer header. For apps built from RetroESP32-P4, `ports/retroesp32/patches/0001-sdk-canvas-services.patch` adds them to its SDK header; list it in the manifest's `"patches"` before the app's own patches, as the touch test, the LVGL demo and Doom do (`"patches": ["local:ports/retroesp32/patches/*.patch", "local:ports/touchtest/patches/*.patch"]`). Patches apply in that order to the pinned checkout, for any `build` type.
 
 ### MIDI and multi-touch (for app authors)
 
@@ -96,7 +96,7 @@ int n = svc->midi_read ? svc->midi_read(buf, sizeof buf) : 0;  // plain MIDI byt
 static const uint8_t note_off[] = {0x80, 0x3C, 0x00};
 if (svc->midi_write) svc->midi_write(note_off, sizeof note_off); // whole messages, SysEx included
 
-papp_touch_point_t fingers[5];
+pax_touch_point_t fingers[5];
 int count = svc->touch_read_points ? svc->touch_read_points(fingers, 5) : 0;
 ```
 
@@ -151,11 +151,11 @@ if (svc->app_open) {
 }
 
 // Any app, at start: the argument it was launched with ("" from the store).
-char arg[PAPP_APP_ARG_MAX];
+char arg[PAX_APP_ARG_MAX];
 int len = svc->app_get_arg ? svc->app_get_arg(arg, sizeof arg) : 0;   // 0: none
 ```
 
-- `app_open(target, arg, return_after)`: `target` is an app's name (`"video"`), the `http(s)://` URL of a `.papp`, or a `/sd/...` path of one. A name is looked up the way the store and library do: the installed copy (`<install_dir>/<name>.papp`), then each library source in the order the YAML lists them, a folder (its `.papp` files under every data search root) or an HTTP catalog page (fetched, which can take a few seconds). A source's `name-<version>.papp` counts too; with several versions the highest wins. It returns 0 when the request is accepted and -1 when the app is unknown, the device is offline (for a URL), `arg` is longer than `PAPP_APP_ARG_MAX - 1` (2047) bytes, the app is already closing or has a hand-off waiting, or `return_after` would make more than two apps wait.
+- `app_open(target, arg, return_after)`: `target` is an app's name (`"video"`), the `http(s)://` URL of a `.pax`, or a `/sd/...` path of one. A name is looked up the way the store and library do: the installed copy (`<install_dir>/<name>.pax`), then each library source in the order the YAML lists them, a folder (its `.pax` files under every data search root) or an HTTP catalog page (fetched, which can take a few seconds). A source's `name-<version>.pax` counts too; with several versions the highest wins. It returns 0 when the request is accepted and -1 when the app is unknown, the device is offline (for a URL), `arg` is longer than `PAX_APP_ARG_MAX - 1` (2047) bytes, the app is already closing or has a hand-off waiting, or `return_after` would make more than two apps wait.
 - After 0, the loader closes the caller exactly as its close control does (the app sees the usual quit buttons), so an app that already quits on those needs nothing more; it may also return from `app_entry` at once. Then the target starts, and `app_get_arg` gives it `arg`.
 - With `return_after`, the loader starts the caller again when the target quits, however it quits (its own exit, Menu held, the loader's close control), and also when the target fails to load. The caller then gets its resume argument from `app_get_arg`: what it last passed to `app_set_resume_arg`, else its own launch argument. Without `return_after` the target replaces the caller; if another app opened the caller with `return_after`, that app still comes back after the target.
 - At most two apps wait to be returned to. Opening an app without coming back always works (it replaces the running one). A launch from the menu, a button or a remote command gets an empty argument and forgets any apps waiting.
@@ -180,7 +180,7 @@ It returns how many entries it wrote (-1 when the folder cannot be opened). Each
 Four services follow `file_list_dir` (NULL on older loaders), for apps that manage files on the card, such as an archive extractor:
 
 ```c
-papp_file_stat_t st;
+pax_file_stat_t st;
 if (svc->file_mkdir && svc->file_stat && svc->file_rename && svc->file_remove) {
     svc->file_mkdir("/sd/roms/game/levels");               // and any missing parents
     if (svc->file_stat("/sd/roms/game/levels/1.dat", &st) == 0 && !st.is_dir)
@@ -196,22 +196,22 @@ if (svc->file_mkdir && svc->file_stat && svc->file_rename && svc->file_remove) {
 - `file_mkdir` creates the folder and any missing parents; 0 also when it already exists, -1 when a file is in the way.
 - `file_remove` deletes a file, or a folder only when it is empty. A root itself (`/sd`) is never removed.
 - `file_rename` renames or moves; it never replaces an existing file (-1), and cannot move between two roots (`/sd` to `/usb0`): copy those.
-- `file_stat` fills a `papp_file_stat_t` (`size`, `is_dir`, and `mtime` in seconds since 1970 where the file system keeps one, else 0); -1 when the path does not exist.
+- `file_stat` fills a `pax_file_stat_t` (`size`, `is_dir`, and `mtime` in seconds since 1970 where the file system keeps one, else 0); -1 when the path does not exist.
 
 ### Custom recipes
 
-`custom` mirrors the upstream `tools/build_<game>_papp.ps1` scripts. Every path is relative to the source checkout, and none may leave it. Example (trimmed from our `apps/quake/papp.json`; its `source` paths point into the upstream checkout):
+`custom` mirrors the upstream `tools/build_<game>_pax.ps1` scripts. Every path is relative to the source checkout, and none may leave it. Example (trimmed from our `apps/quake/pax.json`; its `source` paths point into the upstream checkout):
 
 ```json
 {
   "build": "custom",
   "source": { "repo": "https://github.com/NonaSuomy/RetroESP32-P4", "ref": "<SHA>", "path": "apps/psram_quake" },
   "includes": ["apps/psram_quake/compat", "components/psram_app_loader/include", "components/quake/winquake"],
-  "cflags": ["-std=gnu99", "-DPAPP_APP_SIDE=1", "-Os", "-fcommon", "-ffunction-sections", "-fdata-sections"],
-  "cxxflags": ["-std=gnu++17", "-fno-exceptions", "-fno-rtti", "-DPAPP_APP_SIDE=1", "-Os"],
+  "cflags": ["-std=gnu99", "-DPAX_APP_SIDE=1", "-Os", "-fcommon", "-ffunction-sections", "-fdata-sections"],
+  "cxxflags": ["-std=gnu++17", "-fno-exceptions", "-fno-rtti", "-DPAX_APP_SIDE=1", "-Os"],
   "groups": [
     { "dir": "components/quake/winquake", "files": ["chase.c", "cmd.c"] },
-    { "dir": "apps/psram_quake", "files": ["papp_mp3.cpp"], "prefix": "mp3_", "includes": ["apps/psram_quake/third_party/micro-mp3/opencore-mp3dec"] }
+    { "dir": "apps/psram_quake", "files": ["pax_mp3.cpp"], "prefix": "mp3_", "includes": ["apps/psram_quake/third_party/micro-mp3/opencore-mp3dec"] }
   ],
   "ldflags": ["-Wl,--allow-multiple-definition"],
   "newlib": true
@@ -221,7 +221,7 @@ if (svc->file_mkdir && svc->file_stat && svc->file_rename && svc->file_remove) {
 - `-march=rv32imafc_zicsr_zifencei -mabi=ilp32f -mcmodel=medany` are always added. Everything else comes from `cflags`, and from `cxxflags` for `.cpp` files. g++ links if there is any C++.
 - `groups` lists source files per directory. `prefix` keeps object names unique when two directories have a file with the same name (the build refuses a collision), and a group's `includes` apply only to its files.
 - `newlib: true` links `-lc -lgcc -lm` and wraps `malloc`/`free`/`calloc`/`realloc`, their `_r` variants and the `__retarget_lock_*` functions, so newlib's heap goes through the loader, as the upstream scripts do.
-- The loader's `mem_alloc`, `mem_calloc` and `mem_realloc` give PSRAM, whatever the size. ESPHome's firmware serves plain `malloc()` from internal RAM only, and on the P4 that is the DMA-capable RAM the speaker (I2S), SD card and network need while an app runs: an app that filled it with small blocks lost its sound and the device's API (Doom, #28). Internal RAM is used only when PSRAM is full, and never its last 64 KB (`papp_memory.h`). Ask for internal RAM with `mem_caps_alloc(size, PAPP_MEM_CAP_INTERNAL)` only for the few buffers that need it. The board's log shows the heaps as an app starts, as it starts audio, every 30 s while it runs and after it ends (`Heap ...: internal DMA RAM ... free, largest block ...`).
+- The loader's `mem_alloc`, `mem_calloc` and `mem_realloc` give PSRAM, whatever the size. ESPHome's firmware serves plain `malloc()` from internal RAM only, and on the P4 that is the DMA-capable RAM the speaker (I2S), SD card and network need while an app runs: an app that filled it with small blocks lost its sound and the device's API (Doom, #28). Internal RAM is used only when PSRAM is full, and never its last 64 KB (`pax_memory.h`). Ask for internal RAM with `mem_caps_alloc(size, PAX_MEM_CAP_INTERNAL)` only for the few buffers that need it. The board's log shows the heaps as an app starts, as it starts audio, every 30 s while it runs and after it ends (`Heap ...: internal DMA RAM ... free, largest block ...`).
 - Only the directories named in `source.path`, `groups`, `includes` and `paths` (plus the SDK files) are checked out. `paths` lists extra upstream files a `prebuild` step reads.
 - `"files": ["core/**/*.c"]` also finds files in subfolders; each object is named after its path (`core_lv_obj.o`), so same-named files in different folders do not collide.
 
@@ -245,7 +245,7 @@ Some upstreams generate sources before compiling (MicroPython's qstr headers, fr
 "prebuild": [["{python}", "{repo}/ports/tulip/gen_tulip.py", "--src", "{src}", "--gen", "{gen}", "--units", "{units}"]]
 ```
 
-`{src}` is the checkout, `{repo}` this repository, `{gen}` the folder `.papp-gen` inside the checkout (emptied first; compile its files with a group whose `dir` is `.papp-gen`), `{units}` a JSON list of every compile unit with its compiler and flags (for generators that preprocess the sources), `{python}` the Python running the build and `{jobs}` the parallel job count. The build's `SOURCE_DATE_EPOCH` applies, so generated files are reproducible too.
+`{src}` is the checkout, `{repo}` this repository, `{gen}` the folder `.pax-gen` inside the checkout (emptied first; compile its files with a group whose `dir` is `.pax-gen`), `{units}` a JSON list of every compile unit with its compiler and flags (for generators that preprocess the sources), `{python}` the Python running the build and `{jobs}` the parallel job count. The build's `SOURCE_DATE_EPOCH` applies, so generated files are reproducible too.
 
 ### App data
 
@@ -266,13 +266,13 @@ An app that needs files on the card lists them under `data`. Publish store puts 
 
 ## What the build does
 
-`tools/build_papp.py` mirrors upstream `tools/build_lvgl_papp.ps1` (and, for `custom`, the game scripts):
+`tools/build_pax.py` mirrors upstream `tools/build_lvgl_pax.ps1` (and, for `custom`, the game scripts):
 
-1. Compile with `riscv32-esp-elf-gcc -march=rv32imafc_zicsr_zifencei -mabi=ilp32f -mcmodel=medany -ffreestanding -fno-tree-loop-distribute-patterns -Os -DPAPP_APP_SIDE=1` (for `custom`, with the manifest's flags instead).
-   Builds are reproducible: `SOURCE_DATE_EPOCH` is the source commit's time (WinQuake, PrBoom and Duke3D embed `__DATE__`/`__TIME__`), and `-ffile-prefix-map` hides the checkout path. The same commit always gives the same `.papp`, which Publish store relies on.
+1. Compile with `riscv32-esp-elf-gcc -march=rv32imafc_zicsr_zifencei -mabi=ilp32f -mcmodel=medany -ffreestanding -fno-tree-loop-distribute-patterns -Os -DPAX_APP_SIDE=1` (for `custom`, with the manifest's flags instead).
+   Builds are reproducible: `SOURCE_DATE_EPOCH` is the source commit's time (WinQuake, PrBoom and Duke3D embed `__DATE__`/`__TIME__`), and `-ffile-prefix-map` hides the checkout path. The same commit always gives the same `.pax`, which Publish store relies on.
 2. Link with `psram_app.ld` at `0x4A000000`, entry `app_entry`, `--gc-sections --no-relax`.
 3. `objcopy -O binary`, then work out `.bss` from the `_bss_end` symbol. The build refuses to pack without it, because a wrong `.bss` size corrupts the device heap.
-4. Pack with `pack_papp.py` (32-byte header: magic `PAPP`, ABI 1, entry/text/data/bss sizes).
+4. Pack with `pack_pax.py` (32-byte header: magic `PAX`, ABI 1, entry/text/data/bss sizes).
 5. Check the header, and write `<name>.json` (size, sha256, sizes, pinned sources, checked `data` list) plus `dist/build.json`.
 
 ## Building locally
@@ -281,12 +281,12 @@ With ESP-IDF installed (it provides `riscv32-esp-elf-gcc`):
 
 ```sh
 . $IDF_PATH/export.sh
-python3 tools/build_papp.py              # all apps -> dist/
-python3 tools/build_papp.py lvgl         # one app
+python3 tools/build_pax.py              # all apps -> dist/
+python3 tools/build_pax.py lvgl         # one app
 ```
 
 Or use the same container CI uses:
 
 ```sh
-docker run --rm -v "$PWD:/work" -w /work espressif/idf:v6.1 python3 tools/build_papp.py
+docker run --rm -v "$PWD:/work" -w /work espressif/idf:v6.1 python3 tools/build_pax.py
 ```

@@ -1,4 +1,4 @@
-// IPv4 addresses for the Red Alert PAPP's socket layer (see sys/socket.h).
+// IPv4 addresses for the Red Alert PAX's socket layer (see sys/socket.h).
 #pragma once
 
 #include <stdint.h>

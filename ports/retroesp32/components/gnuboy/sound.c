@@ -351,14 +351,14 @@ void s4_init()
 }
 
 
-#ifdef PAPP_TEST_FRAMES
-unsigned papp_apu_writes, papp_apu_triggers;
+#ifdef PAX_TEST_FRAMES
+unsigned pax_apu_writes, pax_apu_triggers;
 #endif
 void IRAM_ATTR sound_write(byte r, byte b)
 {
-#ifdef PAPP_TEST_FRAMES
-	++papp_apu_writes;
-	if ((b & 128) && (r == RI_NR14 || r == RI_NR24 || r == RI_NR34 || r == RI_NR44)) ++papp_apu_triggers;
+#ifdef PAX_TEST_FRAMES
+	++pax_apu_writes;
+	if ((b & 128) && (r == RI_NR14 || r == RI_NR24 || r == RI_NR34 || r == RI_NR44)) ++pax_apu_triggers;
 #endif
 #if 0
 	static void *timer;

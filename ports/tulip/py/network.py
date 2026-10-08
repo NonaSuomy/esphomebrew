@@ -1,11 +1,11 @@
-# network for Tulip on the ESP32-P4 PAPP loader.
+# network for Tulip on the ESP32-P4 PAX loader.
 #
 # The device's firmware owns the network (Ethernet or Wi-Fi, from its
 # ESPHome configuration) and Tulip uses it as it is. WLAN(STA_IF) reports that
 # network: isconnected(), ifconfig() and status() come from the loader
 # (net_ipv4). connect() and the other setup calls change nothing; they say
 # so. tulip.ip() and tulip.wifi() work through this module unchanged.
-import _pappnet
+import _paxnet
 
 STA_IF = 0
 AP_IF = 1
@@ -24,9 +24,9 @@ _DEVICE_NETWORK = "Tulip uses this device's own network (set up in its firmware)
 
 def _ipv4():
     # (ip, netmask) while the device's network is up, else None.
-    if not _pappnet.has("ipv4"):
+    if not _paxnet.has("ipv4"):
         return None
-    return _pappnet.ipv4()
+    return _paxnet.ipv4()
 
 
 def hostname(name=None):
@@ -47,8 +47,8 @@ class WLAN:
         return self._sta
 
     def connect(self, *args, **kwargs):
-        if not _pappnet.has("ipv4"):
-            print("This PAPP loader is too old to give Tulip a network (no net_ipv4); update the loader.")
+        if not _paxnet.has("ipv4"):
+            print("This PAX loader is too old to give Tulip a network (no net_ipv4); update the loader.")
         else:
             print(_DEVICE_NETWORK)
 

@@ -1,0 +1,41 @@
+--- a/redalert/saveload.cpp
++++ b/redalert/saveload.cpp
+@@ -51,6 +51,10 @@
+ #include "vortex.h"
+ #include "carry.h"
+ 
++#ifdef PAPP_APP_SIDE
++#include "papp_port.h"
++#endif
++
+ #ifdef REMASTER_BUILD
+ extern bool DLLSave(Pipe& file);
+ extern bool DLLLoad(Straw& file);
+@@ -346,6 +350,9 @@
+ bool NowSavingGame = false; // TEMP MBL: Need to discuss better solution with Steve
+ bool Save_Game(const char* file_name, const char* descr)
+ {
++#ifdef PAPP_APP_SIDE
++    papp_save_io_begin();
++#endif
+     NowSavingGame = true; // TEMP MBL: Need to discuss better solution with Steve
+ 
+     int save_net = 0; // 1 = save network/modem game
+@@ -438,6 +445,10 @@
+     pipe.End();
+ 
++#ifdef PAPP_APP_SIDE
++    const bool save_ok = papp_save_io_succeeded();
++#endif
++
+     Decode_All_Pointers();
+ 
+     NowSavingGame = false; // TEMP MBL: Need to discuss better solution with Steve
+ 
+@@ -452,2 +463,6 @@
++#ifdef PAPP_APP_SIDE
++    return save_ok;
++#else
+     return (true);
++#endif
+ }

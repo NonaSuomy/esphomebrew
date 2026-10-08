@@ -1,4 +1,4 @@
-// ioctl for the Tiberian Dawn PAPP's sockets: only FIONBIO, and they are always
+// ioctl for the Tiberian Dawn PAX's sockets: only FIONBIO, and they are always
 // non-blocking.
 #pragma once
 

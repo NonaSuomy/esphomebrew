@@ -1,4 +1,4 @@
-"""Tests for tools/make_listing.py: listings for a folder of .papp files.
+"""Tests for tools/make_listing.py: listings for a folder of .pax files.
 
 Run: python3 -m unittest discover -s tests
 """
@@ -61,19 +61,19 @@ class ListingTests(unittest.TestCase):
 
     def test_names_and_titles(self):
         self.assertEqual(ml.split_stem("psram_doom-0.1.1"), ("psram_doom", "0.1.1"))
-        self.assertEqual(ml.split_stem("ESP32_P4_PAPP"), ("ESP32_P4_PAPP", ""))
+        self.assertEqual(ml.split_stem("ESP32_P4_PAX"), ("ESP32_P4_PAX", ""))
         self.assertEqual(ml.default_title("psram_atari800"), "Atari800")
-        self.assertEqual(ml.default_title("ESP32_P4_PAPP"), "ESP32 P4 PAPP")
+        self.assertEqual(ml.default_title("ESP32_P4_PAX"), "ESP32 P4 PAX")
         self.assertEqual(ml.store_match("doom", self.store)["name"], "psram_doom")
         self.assertIsNone(ml.store_match("azip", self.store))
 
     def test_store_app_gets_its_listing_but_this_files_size_and_hash(self):
-        papp = self.folder / "doom.papp"
-        papp.write_bytes(b"P" * 50)
-        listing, files = ml.build_listing(papp, self.store, "http://lan:8000/", False, False)
+        pax = self.folder / "doom.pax"
+        pax.write_bytes(b"P" * 50)
+        listing, files = ml.build_listing(pax, self.store, "http://lan:8000/", False, False)
         self.assertEqual((listing["name"], listing["title"], listing["version"]), ("doom", "Doom", ""))
         self.assertEqual((listing["size"], listing["sha256"]), (50, sha(b"P" * 50)))
-        self.assertEqual(listing["url"], "http://lan:8000/doom.papp")
+        self.assertEqual(listing["url"], "http://lan:8000/doom.pax")
         self.assertEqual((listing["controls"], listing["upstream"]["project"]), (["A: fire"], "PrBoom"))
         self.assertIs(listing["canvas"], True)  # keeps the store's Screen setting
         self.assertEqual(listing["canvas_recommended"], "800x480")  # and its default
@@ -83,13 +83,13 @@ class ListingTests(unittest.TestCase):
         self.assertNotIn("url", listing["icon"])
         self.assertEqual(listing["data_size"], len(WAD))
         self.assertIn(f"{len(WAD)} {sha(WAD)} roms/doom/doom1.wad {PAGES}data/psram_doom/roms/doom/doom1.wad", files)
-        self.assertTrue(files.startswith("# papp-data 1\n# doom: shareware\n"))
+        self.assertTrue(files.startswith("# pax-data 1\n# doom: shareware\n"))
 
     def test_other_apps_get_a_basic_listing_and_their_own_icon(self):
-        papp = self.folder / "azip-1.2.papp"
-        papp.write_bytes(b"Z" * 10)
+        pax = self.folder / "azip-1.2.pax"
+        pax.write_bytes(b"Z" * 10)
         (self.folder / "azip-1.2.png").write_bytes(png(64, 64))
-        listing, files = ml.build_listing(papp, self.store, "", False, False)
+        listing, files = ml.build_listing(pax, self.store, "", False, False)
         self.assertIsNone(files)
         self.assertEqual((listing["name"], listing["title"], listing["version"], listing["data_size"]),
                          ("azip", "Azip", "1.2", 0))
@@ -97,30 +97,30 @@ class ListingTests(unittest.TestCase):
         self.assertEqual(base64.b64decode(listing["icon"]["base64"]), png(64, 64))
         self.assertNotIn("url", listing)
         (self.folder / "azip-1.2.png").write_bytes(png(512, 64))  # launcher art, too big: skipped
-        self.assertNotIn("icon", ml.build_listing(papp, self.store, "", False, False)[0])
+        self.assertNotIn("icon", ml.build_listing(pax, self.store, "", False, False)[0])
         icons = self.folder / "icons"
         icons.mkdir()
         (icons / "azip.png").write_bytes(png(32, 32))
-        self.assertEqual(ml.build_listing(papp, self.store, "", False, False, icons=icons)[0]["icon"]["width"], 32)
+        self.assertEqual(ml.build_listing(pax, self.store, "", False, False, icons=icons)[0]["icon"]["width"], 32)
 
     def test_hand_edits_survive_a_rerun_unless_forced(self):
-        papp = self.folder / "azip.papp"
-        papp.write_bytes(b"Z" * 10)
+        pax = self.folder / "azip.pax"
+        pax.write_bytes(b"Z" * 10)
         (self.folder / "azip.json").write_text(json.dumps({"title": "A-Zip", "about": "Mine.", "size": 1}))
-        listing, _ = ml.build_listing(papp, self.store, "", False, False)
+        listing, _ = ml.build_listing(pax, self.store, "", False, False)
         self.assertEqual((listing["title"], listing["about"], listing["size"]), ("A-Zip", "Mine.", 10))
-        listing, _ = ml.build_listing(papp, self.store, "", False, True)
+        listing, _ = ml.build_listing(pax, self.store, "", False, True)
         self.assertEqual(listing["title"], "Azip")
         self.assertNotIn("about", listing)
 
     def test_mirrored_data_is_downloaded_once_and_listed_on_the_lan(self):
-        papp = self.folder / "doom.papp"
-        papp.write_bytes(b"P")
+        pax = self.folder / "doom.pax"
+        pax.write_bytes(b"P")
         opener = FakeOpener({PAGES + "data/psram_doom/roms/doom/doom1.wad": WAD})
-        _, files = ml.build_listing(papp, self.store, "http://lan:8000/", True, False, opener)
+        _, files = ml.build_listing(pax, self.store, "http://lan:8000/", True, False, opener)
         self.assertEqual((self.folder / "data/doom/roms/doom/doom1.wad").read_bytes(), WAD)
         self.assertIn("http://lan:8000/data/doom/roms/doom/doom1.wad", files)
-        ml.build_listing(papp, self.store, "http://lan:8000/", True, False, opener)
+        ml.build_listing(pax, self.store, "http://lan:8000/", True, False, opener)
         self.assertEqual(len(opener.calls), 1)
 
     def test_store_from_a_local_file(self):

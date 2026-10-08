@@ -1,0 +1,40 @@
+diff --git a/components/quake2/source/qcommon/files.c b/components/quake2/source/qcommon/files.c
+--- a/components/quake2/source/qcommon/files.c
++++ b/components/quake2/source/qcommon/files.c
+@@ -428,7 +428,7 @@ int FS_LoadFile (char *path, void **buffer)
+ 		*(unsigned int *)buf = FS_TAG_ARENA;
+ 		p = buf + 8;
+ 	}
+-	else if ( (p = (byte *)Hunk_Begin (len + 8)) != NULL )
++	else if ( (p = (byte *)Hunk_AllocBlock (len + 8)) != NULL )
+ 	{
+ 		*(unsigned int *)p = FS_TAG_HUNK;
+ 		p += 8;
+diff --git a/components/quake2/source/ref_soft/r_image.c b/components/quake2/source/ref_soft/r_image.c
+--- a/components/quake2/source/ref_soft/r_image.c
++++ b/components/quake2/source/ref_soft/r_image.c
+@@ -430,5 +430,11 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, imagetype_t type)
+ 	c = width*height;
+ 	image->pixels[0] = Q_Arena_Alloc (c);
++	if (!image->pixels[0])
++	{
++		memset (image, 0, sizeof(*image));
++		ri.Sys_Error (ERR_DROP, "GL_LoadPic: out of memory for %s (%d bytes)", name, c);
++		return NULL;
++	}
+ 	image->transparent = false;
+ 	for (i=0 ; i<c ; i++)
+ 	{
+@@ -470,5 +476,12 @@ image_t *R_LoadWal (char *name)
+ 	size = image->width*image->height * (256+64+16+4)/256;
+ 	image->pixels[0] = Q_Arena_Alloc (size);
++	if (!image->pixels[0])
++	{
++		ri.FS_FreeFile ((void *)mt);
++		memset (image, 0, sizeof(*image));
++		ri.Sys_Error (ERR_DROP, "R_LoadWal: out of memory for %s (%d bytes)", name, size);
++		return r_notexture_mip;
++	}
+ 	image->pixels[1] = image->pixels[0] + image->width*image->height;
+ 	image->pixels[2] = image->pixels[1] + image->width*image->height/4;
+ 	image->pixels[3] = image->pixels[2] + image->width*image->height/16;

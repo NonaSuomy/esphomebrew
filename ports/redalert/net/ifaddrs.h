@@ -1,4 +1,4 @@
-// Interface list for the Red Alert PAPP's socket layer: the device's one IPv4
+// Interface list for the Red Alert PAX's socket layer: the device's one IPv4
 // interface, with its broadcast address.
 #pragma once
 

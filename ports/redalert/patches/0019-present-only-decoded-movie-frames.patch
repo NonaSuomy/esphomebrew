@@ -1,0 +1,34 @@
+--- a/redalert/conquer.cpp
++++ b/redalert/conquer.cpp
+@@ -3186,7 +3186,7 @@
+-int VQ_Call_Back(unsigned char*, int)
++int VQ_Call_Back(unsigned char* frame_pixels, int)
+ {
+ #ifdef REMASTER_BUILD
+     return 0;
+ #else
+     int key = 0;
+     if (Keyboard->Check()) {
+@@ -3197,6 +3197,12 @@
+         Keyboard->Clear();
+     }
+     Check_VQ_Palette_Set();
++#ifdef PAPP_APP_SIDE
++    // SelectFrame invokes this with nullptr for frames it skips to catch up.
++    // Do not copy/display the previous image or wait for a render deadline:
++    // neither advances the movie, and both delay the next actual decode.
++    if (frame_pixels != nullptr) {
++#endif
+ #ifdef MOVIE640
+     if (IsVQ640) {
+         VQ640.Blit(SeenBuff);
+@@ -3208,6 +3214,9 @@
+     Interpolate_2X_Scale(&SysMemPage, &SeenBuff, NULL);
+ #endif
+     Frame_Limiter();
++#ifdef PAPP_APP_SIDE
++    }
++#endif
+ 
+     if ((BreakoutAllowed || Debug_Flag) && (key == KN_ESC || key == KN_SPACE || key == KN_RETURN)) {
+         Keyboard->Clear();

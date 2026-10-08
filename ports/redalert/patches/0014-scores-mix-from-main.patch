@@ -1,0 +1,33 @@
+diff --git a/redalert/init.cpp b/redalert/init.cpp
+index 1bb6be3..1bb6be4 100644
+--- a/redalert/init.cpp
++++ b/redalert/init.cpp
+@@ -68,6 +68,10 @@
+ #include "common/winasm.h"
+ #include "intro.h"
+ 
++#ifdef PAPP_APP_SIDE
++extern "C" void papp_ra_scores_status(int available, int entries);
++#endif
++
+ RemapControlType SidebarScheme;
+ 
+ #ifdef CHEAT_KEYS
+@@ -2362,8 +2362,15 @@ static void Init_Secondary_Mixfiles(void)
+     /*
+     **	Register the score mixfile.
+     */
+-    ScoresPresent = true;
+-    ScoreMix = new MFCD("SCORES.MIX", &FastKey);
++    // MAIN.MIX was registered above. CCFileClass searches registered MIX
++    // archives, so this also finds SCORES.MIX embedded inside MAIN.MIX; no
++    // loose SCORES.MIX file needs to be unpacked onto the card.
++    ScoresPresent = CCFileClass("SCORES.MIX").Is_Available();
++    ScoreMix = ScoresPresent ? new MFCD("SCORES.MIX", &FastKey) : nullptr;
++    ScoresPresent = ScoreMix != nullptr && ScoreMix->Get_File_Count() > 0;
++#ifdef PAPP_APP_SIDE
++    papp_ra_scores_status(ScoresPresent, ScoreMix != nullptr ? ScoreMix->Get_File_Count() : 0);
++#endif
+     ThemeClass::Scan();
+ 
+     /*

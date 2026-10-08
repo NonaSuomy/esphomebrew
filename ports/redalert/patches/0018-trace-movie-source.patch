@@ -1,0 +1,15 @@
+--- a/redalert/conquer.cpp
++++ b/redalert/conquer.cpp
+@@ -2458,6 +2458,12 @@
+             VQA_Init(vqa, MixFileHandler);
+ 
+             if (VQA_Open(vqa, fullname, &AnimControl) == 0) {
++#ifdef PAPP_APP_SIDE
++                printf("RA movie: %s source=%dx%d canvas=%dx%d audio=%s\n", fullname,
++                       vqa->Header.ImageWidth, vqa->Header.ImageHeight,
++                       AnimControl.ImageWidth, AnimControl.ImageHeight,
++                       (AnimControl.OptionFlags & VQAOPTF_AUDIO) ? "on" : "off");
++#endif
+                 Brokeout = false;
+ // Suspend_Audio_Thread();
+ #ifdef MOVIE640

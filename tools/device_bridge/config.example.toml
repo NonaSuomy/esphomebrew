@@ -4,7 +4,7 @@
 
 [hub]
 url = "https://ehgi.ai/api/mcp"
-project_id = "3IDv1Ayo2F2gAuIzMSGL"          # the project the bridge's agent seat is in (this is PAPP Conversions)
+project_id = "3IDv1Ayo2F2gAuIzMSGL"          # the project the bridge's agent seat is in (this is PAX Conversions)
 token_env = "EHGI_DEVICE_BRIDGE_TOKEN"       # env var holding the bridge agent's ac_... token
 handle = "deviceuse-bridge"                  # the bridge agent's handle in the project
 owner = "nona"                               # your own hub handle

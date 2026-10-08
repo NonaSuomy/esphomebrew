@@ -949,8 +949,8 @@ bool C64::LoadSnapshot(char *filename)
 #endif
 
 #ifdef ESP32
-#ifdef PAPP_APP_SIDE
-#include "C64_PAPP.i"
+#ifdef PAX_APP_SIDE
+#include "C64_PAX.i"
 #else
 #include "C64_ESP32.i"
 #endif

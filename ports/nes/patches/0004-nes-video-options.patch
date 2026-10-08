@@ -1,0 +1,56 @@
+diff --git a/apps/psram_nes/papp_osd.c b/apps/psram_nes/papp_osd.c
+--- a/apps/psram_nes/papp_osd.c
++++ b/apps/psram_nes/papp_osd.c
+@@ -23,6 +23,7 @@
+ static bitmap_t *screen;
+ static uint8_t *indexed;
+ static uint16_t *rgb565;
++static uint16_t *cropped_rgb565;
+ static uint16_t palette[256];
+ static void (*sound_cb)(void *, int);
+ static unsigned papp_video_frames;
+@@ -54,6 +55,26 @@
+ static void vclear(uint8_t c) { if (indexed) memset(indexed, c, W * H); }
+ static bitmap_t *vlock(void) { if (!screen) screen = bmp_createhw(indexed, W, H, W); return screen; }
+ static void vfree(int n, rect_t *r) { (void)n; (void)r; }
++static void papp_nes_display_frame(void)
++{
++    papp_nes_options_apply_palette();
++    const uint16_t *output = rgb565;
++    uint16_t output_width = W;
++    if (papp_nes_options_crop_sides()) {
++        if (!cropped_rgb565)
++            cropped_rgb565 = _papp_svc->mem_caps_alloc(
++                (size_t)(W - 16) * H * sizeof(uint16_t), PAPP_MEM_CAP_SPIRAM | PAPP_MEM_CAP_DMA);
++        if (cropped_rgb565) {
++            for (int y = 0; y < H; ++y)
++                memcpy(cropped_rgb565 + y * (W - 16), rgb565 + y * W + 8,
++                       (W - 16) * sizeof(uint16_t));
++            output = cropped_rgb565;
++            output_width = W - 16;
++        }
++    }
++    _papp_svc->display_write_frame_custom(output, output_width, H,
++                                           papp_nes_options_scale(), false);
++}
+ static void vblit(bitmap_t *b, int n, rect_t *r) {
+     (void)n; (void)r;
+     if (!b || !b->line[0] || !_papp_svc) return;
+@@ -65,7 +86,7 @@
+     if (papp_video_frames < 4)
+         _papp_svc->log_printf("NES PAPP: submitting video frame=%u\n",
+                               papp_video_frames + 1u);
+-    _papp_svc->display_write_frame_custom(rgb565, W, H, 2.0f, false);
++    papp_nes_display_frame();
+     ++papp_video_frames;
+     if ((papp_video_frames % 60u) == 0u)
+         _papp_svc->log_printf("NES PAPP: video frames=%u nonzero_pixels=%u\n",
+@@ -144,7 +165,7 @@
+ }
+ 
+ int osd_init(void) { indexed = _papp_svc->mem_alloc(W * H); rgb565 = _papp_svc->mem_caps_alloc(W * H * 2, PAPP_MEM_CAP_SPIRAM | PAPP_MEM_CAP_DMA); return indexed && rgb565 ? 0 : -1; }
+-void osd_shutdown(void) { bmp_destroy(&screen); if (indexed) _papp_svc->mem_free(indexed); if (rgb565) _papp_svc->mem_free(rgb565); indexed = NULL; rgb565 = NULL; sound_cb = NULL; }
++void osd_shutdown(void) { bmp_destroy(&screen); if (indexed) _papp_svc->mem_free(indexed); if (rgb565) _papp_svc->mem_free(rgb565); if (cropped_rgb565) _papp_svc->mem_free(cropped_rgb565); indexed = NULL; rgb565 = NULL; cropped_rgb565 = NULL; sound_cb = NULL; }
+ void osd_main_dummy(void) {}
+ 
+ /* Called by the nofrendo APU bridge in papp_audio.c. */

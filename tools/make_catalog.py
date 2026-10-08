@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """Write the store catalog (index.html + store.json) from dist/build.json.
 
-The ESPHome papp_loader reads `catalog_url` as HTML: every href ending in
-.papp becomes a button labelled with the link's file name, and relative links
-resolve against the catalog URL. Each app's .papp is copied into the site
-itself (e.g. lvgl-0.3.0.papp) and linked relatively, so devices download
+The ESPHome pax_loader reads `catalog_url` as HTML: every href ending in
+.pax becomes a button labelled with the link's file name, and relative links
+resolve against the catalog URL. Each app's .pax is copied into the site
+itself (e.g. lvgl-0.3.0.pax) and linked relatively, so devices download
 from GitHub Pages. Pages uses Let's Encrypt (ISRG Root X1), which the ESP-IDF
 certificate bundle verifies; github.com release downloads chain to Sectigo's
 newer ECC root and fail verification on-device (seen on ESP-IDF 6.1). The
 GitHub Release stays the versioned archive and is linked by its tag page, which
-is not a .papp link. The loader downloads at most 64 KB of catalog, so the page
-stays small and holds no other .papp links.
+is not a .pax link. The loader downloads at most 64 KB of catalog, so the page
+stays small and holds no other .pax links.
 
-Apps that need files on the card (a game's data) list them in papp.json under
+Apps that need files on the card (a game's data) list them in pax.json under
 "data", pinned by commit, size and sha256. Those files are downloaded, checked
 and published under data/<app>/, and each such app gets a plain-text file list
-next to its .papp (doom-0.2.1.papp -> doom-0.2.1.files). The
+next to its .pax (doom-0.2.1.pax -> doom-0.2.1.files). The
 loader reads that list before launching and fetches whatever the card is
 missing. One line per file:
 
@@ -38,7 +38,7 @@ import urllib.request
 from pathlib import Path
 
 MAX_CATALOG_BYTES = 64 * 1024
-DATA_LIST_HEADER = "# papp-data 1"
+DATA_LIST_HEADER = "# pax-data 1"
 
 
 def release_tag(app: dict) -> str:
@@ -46,7 +46,7 @@ def release_tag(app: dict) -> str:
 
 
 def asset_name(app: dict) -> str:
-    return f"{app['name']}-{app['version']}.papp"
+    return f"{app['name']}-{app['version']}.pax"
 
 
 def asset_url(repo: str, app: dict) -> str:
@@ -65,7 +65,7 @@ def pages_url(repo: str, app: dict) -> str:
 
 
 def data_list_name(app: dict) -> str:
-    """The app's data file list; the loader finds it by swapping .papp for .files."""
+    """The app's data file list; the loader finds it by swapping .pax for .files."""
     return f"{app['name']}-{app['version']}.files"
 
 
@@ -134,7 +134,7 @@ def release_page(repo: str, app: dict) -> str:
 
 
 def sidecar_name(app: dict) -> str:
-    """The app's listing as JSON; the loader finds it by swapping .papp for .json."""
+    """The app's listing as JSON; the loader finds it by swapping .pax for .json."""
     return f"{app['name']}-{app['version']}.json"
 
 
@@ -152,7 +152,7 @@ LISTING_FIELDS = ("author", "category", "license", "about", "changelog", "contro
 
 def requires_list(app: dict) -> list[dict]:
     """What the app needs on the card, for the store's tick-or-cross check: its
-    "requires" from papp.json, then each data file the store downloads for it
+    "requires" from pax.json, then each data file the store downloads for it
     (as /sd/<target>, marked "download")."""
     required = list(app.get("requires", []))
     for f in app.get("data", {}).get("files", []):
@@ -212,11 +212,11 @@ def render(repo: str, apps: list[dict]) -> str:
             + "</li>"
         )
     return (
-        "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>PAPP Store</title>"
+        "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>PAX Store</title>"
         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>\n"
-        f"<body><h1>PAPP Store</h1><p>Apps for the ESP32-P4 from "
+        f"<body><h1>PAX Store</h1><p>Apps for the ESP32-P4 from "
         f"<a href=\"https://github.com/{html.escape(repo)}\">{html.escape(repo)}</a>. "
-        "Point the ESPHome <code>papp_loader</code> <code>catalog_url</code> at this page.</p>\n"
+        "Point the ESPHome <code>pax_loader</code> <code>catalog_url</code> at this page.</p>\n"
         "<ul>\n" + "\n".join(rows) + "\n</ul>\n"
         "<p><a href=\"store.json\">store.json</a></p></body></html>\n"
     )
@@ -241,8 +241,8 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     for a, entry in zip(sorted(apps, key=lambda a: a["name"]), store["apps"]):
         shutil.copyfile(args.dist / a["file"], args.out / asset_name(a))
-        # The app's full listing next to its .papp (swap .papp for .json), so a
-        # device reading the HTML catalog, or a folder of .papp files, can show it.
+        # The app's full listing next to its .pax (swap .pax for .json), so a
+        # device reading the HTML catalog, or a folder of .pax files, can show it.
         (args.out / sidecar_name(a)).write_text(json.dumps(entry, indent=2) + "\n")
         if a.get("icon"):
             (args.out / icon_name(a)).write_bytes(base64.b64decode(a["icon"]["base64"]))

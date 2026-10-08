@@ -3,7 +3,7 @@
 
 [hub]
 url = "https://ehgi.ai/api/mcp"
-project_id = "3IDv1Ayo2F2gAuIzMSGL"          # PAPP Conversions
+project_id = "3IDv1Ayo2F2gAuIzMSGL"          # PAX Conversions
 token_env = "EHGI_BRIDGE_TOKEN"              # env var holding the bridge agent's token
 handle = "esp-bridge"                        # the bridge agent's handle in the project
 allowed_requesters = ["claude", "nona", "franklin"]   # who may send jobs
@@ -11,7 +11,7 @@ allowed_requesters = ["claude", "nona", "franklin"]   # who may send jobs
 [repo]
 # Builds from a clean checkout of this repository at the requested ref.
 url = "https://github.com/NonaSuomy/esphomebrew.git"
-path = "~/code/papp-bridge/esphomebrew"
+path = "~/code/pax-bridge/esphomebrew"
 allowed_yaml = ["esphome/*.yaml"]
 # Building a config runs code on this machine (external components and
 # PlatformIO scripts from that ref), so allow only refs pushed by people with
@@ -37,12 +37,12 @@ max_log_seconds = 300
 max_log_bytes = 1000000
 
 [device_api]
-# Launch/close PAPPs and refresh the store over the ESPHome native API. Needs
+# Launch/close PAXs and refresh the store over the ESPHome native API. Needs
 # esphome/device_control.yaml on the device and the bridge running with the
 # ESPHome venv's python (it provides aioesphomeapi).
 host = "10.13.37.60"                         # the P4's IP or hostname
 port = 6053
-screen_port = 3233                           # papp_loader diagnostic stream (screenshots, readfile); 3232 is ESPHome OTA
+screen_port = 3233                           # pax_loader diagnostic stream (screenshots, readfile); 3232 is ESPHome OTA
 encryption_key_secret = "encryption_key016"  # name of the api key in secrets.yaml
 # encryption_key_env = "ESP_API_KEY"         # or read it from an env var
 allowed_url_prefixes = [

@@ -1,4 +1,4 @@
-// ioctl for the Red Alert PAPP's sockets: only FIONBIO, and they are always
+// ioctl for the Red Alert PAX's sockets: only FIONBIO, and they are always
 // non-blocking.
 #pragma once
 

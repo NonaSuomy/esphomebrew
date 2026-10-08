@@ -1,0 +1,24 @@
+--- a/redalert/conquer.cpp
++++ b/redalert/conquer.cpp
+@@ -2196,6 +2196,21 @@
+             error = file->Open((char*)buffer, READ);
+ 
+             if (error != -1) {
++#ifdef PAPP_APP_SIDE
++                // Preload only the pre-menu intro. Mission playback runs
++                // with game/theater/interpolation allocations already live;
++                // preserve its original streaming path and memory footprint.
++                // Do not use the legacy partial-cache path for MIX subfiles.
++                const int size = file->Size();
++                bool cached = false;
++                const bool intro = strcmp((char*)buffer, "ENGLISH.VQA") == 0;
++                if (intro && size > 0 && size <= 4 * 1024 * 1024) {
++                    cached = file->Cache(size);
++                }
++                papp_svc->log_printf("RA movie read-ahead: %s size=%d cache=%d mode=%s\n",
++                                     (char*)buffer, size, cached ? size : 0,
++                                     cached ? "preloaded intro" : "original streaming");
++#endif
+                 vqa->VQAio = (void*)file;
+                 error = 0;
+             } else {

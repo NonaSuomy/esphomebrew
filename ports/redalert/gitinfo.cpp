@@ -1,9 +1,9 @@
 // Stands in for Vanilla Conquer's generated common/gitinfo.cpp (CMake fills it
-// from git). The PAPP build pins the upstream commit in apps/redalert/papp.json.
+// from git). The PAX build pins the upstream commit in apps/redalert/pax.json.
 #include "common/gitinfo.h"
 
-const char GitSHA1[] = "papp";
-const char GitShortSHA1[] = "papp";
+const char GitSHA1[] = "pax";
+const char GitShortSHA1[] = "pax";
 const char GitCommitDate[] = "";
 const char GitCommitAuthorName[] = "";
 const char GitTag[] = "";

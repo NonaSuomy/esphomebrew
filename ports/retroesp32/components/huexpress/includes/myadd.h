@@ -16,7 +16,7 @@
 extern void *my_special_alloc(unsigned char speed, unsigned char bytes, unsigned long size);
 
 #define MY_EXCLUDE
-#ifndef PAPP_APP_SIDE
+#ifndef PAX_APP_SIDE
 #define MY_GFX_AS_TASK
 #define MY_SND_AS_TASK
 #endif

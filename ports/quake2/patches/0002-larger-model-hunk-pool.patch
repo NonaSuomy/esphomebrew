@@ -1,0 +1,9 @@
+diff --git a/components/quake2/source/other/q_hunk.c b/components/quake2/source/other/q_hunk.c
+--- a/components/quake2/source/other/q_hunk.c
++++ b/components/quake2/source/other/q_hunk.c
+@@ -20,4 +20,4 @@
+ //===============================================================================
+
+-#define HUNK_POOL_SIZE (7 * 1024 * 1024)
++#define HUNK_POOL_SIZE (7 * 1024 * 1024 + 512 * 1024)
+ #define HUNK_MIN_SPLIT 128

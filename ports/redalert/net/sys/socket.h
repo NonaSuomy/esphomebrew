@@ -1,6 +1,6 @@
-// Minimal BSD sockets for the Red Alert PAPP. newlib has no network headers;
+// Minimal BSD sockets for the Red Alert PAX. newlib has no network headers;
 // these declare just what Vanilla Conquer's UDP and TCP code uses. The
-// functions are in papp_net.cpp, on top of the loader's net_* services.
+// functions are in pax_net.cpp, on top of the loader's net_* services.
 #pragma once
 
 #include <stddef.h>

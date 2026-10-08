@@ -1,9 +1,9 @@
-// <iconv.h> for the NetSurf PAPP (papp_iconv.c): UTF-8, US-ASCII,
+// <iconv.h> for the NetSurf PAX (pax_iconv.c): UTF-8, US-ASCII,
 // ISO-8859-1, Windows-1252, UTF-16 and UTF-32, with //TRANSLIT. Page
 // decoding does not use it: libparserutils has its own codecs
 // (WITHOUT_ICONV_FILTER); NetSurf needs it for form data and text export.
-#ifndef PAPP_ICONV_H
-#define PAPP_ICONV_H
+#ifndef PAX_ICONV_H
+#define PAX_ICONV_H
 
 #include <stddef.h>
 

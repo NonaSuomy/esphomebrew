@@ -1,8 +1,8 @@
-// <dirent.h> for the NetSurf PAPP. The toolchain's newlib has none, and the
-// loader cannot list directories: opendir() always fails (papp_syscalls.c),
+// <dirent.h> for the NetSurf PAX. The toolchain's newlib has none, and the
+// loader cannot list directories: opendir() always fails (pax_syscalls.c),
 // so NetSurf's file: fetcher reports a directory as unreadable.
-#ifndef PAPP_DIRENT_H
-#define PAPP_DIRENT_H
+#ifndef PAX_DIRENT_H
+#define PAX_DIRENT_H
 
 #include <sys/types.h>
 
@@ -20,7 +20,7 @@ struct dirent {
     char d_name[256];
 };
 
-typedef struct papp_dir DIR;
+typedef struct pax_dir DIR;
 
 DIR *opendir(const char *name);
 struct dirent *readdir(DIR *dir);

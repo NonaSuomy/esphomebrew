@@ -244,6 +244,6 @@ static inline int SDL_SaveBMP(SDL_Surface *s, const char *file) {
 
 /* ── Misc stubs ── */
 static inline void sdl_set_title(char *name) { (void)name; }
-static inline const char *SDL_GetError(void) { return "SDL unavailable in PAPP"; }
+static inline const char *SDL_GetError(void) { return "SDL unavailable in PAX"; }
 
 #endif /* _GNGEO_SDL_SHIM_H_ */

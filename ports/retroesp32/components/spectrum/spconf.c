@@ -33,7 +33,7 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
-#ifndef PAPP_APP_SIDE
+#ifndef PAX_APP_SIDE
 #include "freertos/FreeRTOS.h"
 #include "esp_system.h"
 #endif

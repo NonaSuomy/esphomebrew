@@ -1,12 +1,12 @@
 # CI config check for esphome/store_page.yaml, esphome/device_control.yaml
-# and the papp_loader schema.
+# and the pax_loader schema.
 # Not a real device: any board with a display, touchscreen and network will do,
 # because `esphome config` only validates. Run: esphome config esphome/tests/store_page_config.yaml
 substitutions:
-  papp_font_small: montserrat_12
+  pax_font_small: montserrat_12
 
 esphome:
-  name: papp-store-config-check
+  name: pax-store-config-check
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -48,11 +48,11 @@ touchscreen:
 
 external_components:
   - source: {type: local, path: ../components}
-    components: [papp_loader]
+    components: [pax_loader]
 
-papp_loader:
-  id: papp_runtime
-  path: /sd/roms/papp/app.papp
+pax_loader:
+  id: pax_runtime
+  path: /sd/roms/pax/app.pax
   display_id: main_display
   touchscreen_id: touch_panel
   lvgl_id: lvgl_component
@@ -70,8 +70,8 @@ lvgl:
             widgets:
               - label: {text: "STORE"}
             on_click:
-              - lvgl.page.show: papp_store_page
+              - lvgl.page.show: pax_store_page
 
 packages:
-  papp_store: !include ../store_page.yaml
-  papp_control: !include ../device_control.yaml
+  pax_store: !include ../store_page.yaml
+  pax_control: !include ../device_control.yaml

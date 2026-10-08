@@ -28,7 +28,7 @@
 #include "interf.h"
 
 #include <stdio.h>
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
 #include "runtime.h"
 #else
 #include "freertos/FreeRTOS.h"
@@ -234,9 +234,9 @@ void process_sound(void)
     audioBuf[i*2 + 1] = s16;   /* Right channel (mono dup) */
   }
 
-#ifdef PAPP_APP_SIDE
-  if (_papp_svc && _papp_svc->audio_submit)
-    _papp_svc->audio_submit((short*)audioBuf, TMNUM);
+#ifdef PAX_APP_SIDE
+  if (_pax_svc && _pax_svc->audio_submit)
+    _pax_svc->audio_submit((short*)audioBuf, TMNUM);
 #else
   odroid_audio_submit((short*)audioBuf,TMNUM);
 #endif

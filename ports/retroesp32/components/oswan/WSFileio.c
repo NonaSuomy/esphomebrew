@@ -335,7 +335,7 @@ void WsRelease(void)
         }
     }
 
-    /* PAPP launches do not set SaveName, but cartridge RAM still needs to be
+    /* PAX launches do not set SaveName, but cartridge RAM still needs to be
      * released when control returns to the launcher. */
     if (RAMMap)
     {
@@ -348,7 +348,7 @@ void WsRelease(void)
     }
     s_cart_ram = NULL;
 
-    /* XIP ROM pages point into the PAPP-owned ROM buffer and must not be
+    /* XIP ROM pages point into the PAX-owned ROM buffer and must not be
      * freed.  File-backed WsCreate() pages are individually owned here. */
     for (i = 0; i < 0x100; ++i)
     {

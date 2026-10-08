@@ -7,9 +7,9 @@
 #ifndef _DISPLAY_H
 #define _DISPLAY_H
 #ifdef ESP32
-#ifdef PAPP_APP_SIDE
+#ifdef PAX_APP_SIDE
 #include "psram_app.h"
-typedef papp_gamepad_state_t odroid_gamepad_state;
+typedef pax_gamepad_state_t odroid_gamepad_state;
 #else
 #include "odroid_input.h"
 #endif
