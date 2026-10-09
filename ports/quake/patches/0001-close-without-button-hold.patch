@@ -1,0 +1,13 @@
+--- a/apps/psram_quake/papp_main.c
++++ b/apps/psram_quake/papp_main.c
+@@ -53,6 +53,10 @@
+     int held_ms = 0;
+ 
+     for (;;) {
++        if (_papp_svc->input_l3_read && _papp_svc->input_l3_read()) {
++            papp_exit_requested = 1;
++            while (1) _papp_svc->delay_ms(100);
++        }
+         _papp_svc->input_gamepad_read(&state);
+         if (state.values[PAPP_INPUT_MENU]) {
+             held_ms += 100;

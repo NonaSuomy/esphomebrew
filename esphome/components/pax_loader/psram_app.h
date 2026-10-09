@@ -73,8 +73,11 @@ typedef struct __attribute__((packed)) {
     uint32_t reserved;     /* Padding to 32 bytes                       */
 } pax_header_t;
 
-_Static_assert(sizeof(pax_header_t) == PAX_HEADER_SIZE,
-               "pax_header_t must be 32 bytes");
+#ifdef __cplusplus
+static_assert(sizeof(pax_header_t) == PAX_HEADER_SIZE, "pax_header_t must be 32 bytes");
+#else
+_Static_assert(sizeof(pax_header_t) == PAX_HEADER_SIZE, "pax_header_t must be 32 bytes");
+#endif
 
 /* ── Gamepad State (matches odroid_gamepad_state layout) ─────────────── */
 
@@ -133,7 +136,11 @@ typedef struct {
     uint32_t reserved;  /* 0                                              */
 } pax_file_stat_t;
 
+#ifdef __cplusplus
+static_assert(sizeof(pax_file_stat_t) == 24, "pax_file_stat_t must be 24 bytes");
+#else
 _Static_assert(sizeof(pax_file_stat_t) == 24, "pax_file_stat_t must be 24 bytes");
+#endif
 
 /* Snapshot returned by the launcher's verified PAX installer.  state:
  * 0 idle, 1 transferring, 2 completed, 3 failed. */

@@ -37,6 +37,10 @@ static void watchdog(void *arg) {
     pax_gamepad_state_t pad;
     int held = 0;
     for (;;) {
+        if (_pax_svc->input_l3_read && _pax_svc->input_l3_read()) {
+            pax_exit_requested = 1;
+            for (;;) _pax_svc->delay_ms(100);
+        }
         _pax_svc->input_gamepad_read(&pad);
         if (pad.values[PAX_INPUT_MENU]) {
             if ((held += 100) >= 3000) {

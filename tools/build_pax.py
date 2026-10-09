@@ -52,7 +52,9 @@ def get_loader_sdk() -> Path:
     """
     LOADER_SDK_DIR.mkdir(parents=True, exist_ok=True)
     target = LOADER_SDK_DIR / "psram_app.h"
-    source = ROOT / "esphome" / "components" / "pax_loader" / "psram_app.h"
+    source = ROOT.parent / "pax-esphome" / "components" / "pax_loader" / "psram_app.h"
+    if not source.exists():  # Standalone GitHub/store repository.
+        source = ROOT / "esphome" / "components" / "pax_loader" / "psram_app.h"
     if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
         shutil.copy2(source, target)
     return LOADER_SDK_DIR
@@ -61,7 +63,7 @@ def get_loader_sdk() -> Path:
 
 def get_upstream_compat(manifest: dict) -> Path:
     """Map historical upstream identifiers/includes onto the renamed PAX port SDK."""
-    target = ROOT / ".cache" / "upstream_compat"
+    target = ROOT / ".cache" / "upstream_compat" / manifest.get("name", "unnamed")
     target.mkdir(parents=True, exist_ok=True)
     tokens = set()
     local_ports = set()
@@ -78,7 +80,8 @@ def get_upstream_compat(manifest: dict) -> Path:
             if not path.is_file() or path.suffix not in (".c", ".cpp", ".h", ".hpp"):
                 continue
             content = path.read_text(errors="ignore")
-            tokens.update(re.findall(r"\b(?:PAX|Pax|pax)[A-Za-z0-9_]*\b", content))
+            tokens.update(token for token in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", content)
+                          if any(mark in token for mark in ("PAX", "Pax", "pax")))
             if "pax" in path.name and path.suffix in (".h", ".hpp"):
                 old = path.name.replace("pax", "papp")
                 wrapper = target / old
@@ -247,7 +250,7 @@ def fetch_submodules(src_root: Path, subs: list[dict], sparse: dict[str, list[st
 
 def reset_checkout(root: Path) -> None:
     """Back to the pinned files; keeps fetch()'s cache stamp (and nested submodule checkouts)."""
-    run(["git", "checkout", "-q", "--", "."], cwd=root)
+    run(["git", "reset", "--hard", "-q", "HEAD"], cwd=root)
     run(["git", "clean", "-q", "-fd", "-e", ".pax-ref"], cwd=root)
 
 
@@ -432,7 +435,7 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     # extraction) are read at the wrong offsets by the PAX.
     loader_sdk = get_loader_sdk()
     includes = [f"-I{loader_sdk}"] + [f"-I{source_file(src_root, inc)}" for inc in manifest.get("includes", [])]
-    base = ARCH_FLAGS + ["-mcmodel=medany"]
+    base = ARCH_FLAGS + ["-mcmodel=medany", "-DPAX_APP_SIDE=1"]
     cflags = base + manifest.get("cflags", []) + includes
     # C++ units need the shared defines/includes (ESP32, FRODO_PC, etc.), but
     # must not inherit a C-only language standard such as -std=gnu99.
@@ -481,6 +484,9 @@ def run_prebuild(manifest: dict, src_root: Path, build_dir: Path, cache: Path, e
     gen.mkdir(parents=True)
     units_json = gen / "units.json"
     units, _ = custom_units(manifest, src_root, build_dir)
+    compat = get_upstream_compat(manifest)
+    for unit in units:
+        unit.flags += [f"-I{compat}", "-include", str(compat / "upstream_compat.h")]
     write_units(units, units_json)
     values = {"src": str(src_root), "repo": str(ROOT), "gen": str(gen), "units": str(units_json),
               "python": sys.executable, "jobs": str(jobs or os.cpu_count() or 2)}
@@ -824,7 +830,7 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
         "abi": PAX_ABI_VERSION,
         **header,
         "source": {"repo": source["repo"], "ref": source["ref"], "path": source["path"]},
-        "sdk": {"repo": source["repo"], "ref": source["ref"]},
+        "sdk": {"abi": PAX_ABI_VERSION, "header_sha256": hashlib.sha256((loader_sdk / "psram_app.h").read_bytes()).hexdigest(), "linker_repo": source["repo"], "linker_ref": source["ref"]},
     }
     if submodules:
         info["submodules"] = [{"path": s["path"], "repo": s["repo"], "ref": s["ref"]} for s in submodules]

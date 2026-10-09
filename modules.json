@@ -530,6 +530,30 @@
       ]
     },
     {
+      "name": "opentyrian",
+      "manifest": "apps/opentyrian/pax.json",
+      "upstream": {
+        "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+        "ref": "b72144c85f74017c8c4bcaaa6d82fe65d8c0a6b5",
+        "path": "components/psram_app_loader"
+      },
+      "dependencies": [],
+      "local_inputs": [
+        "ports/opentyrian/game",
+        "ports/opentyrian/port",
+        "ports/opentyrian/port/compat",
+        "ports/opentyrian/sdl"
+      ],
+      "output": "opentyrian.pax",
+      "published": true,
+      "data": [
+        {
+          "path": "/sd/roms/opentyrian/",
+          "note": "Requires Tyrian game data"
+        }
+      ]
+    },
+    {
       "name": "pce",
       "manifest": "apps/pce/pax.json",
       "upstream": {
@@ -593,7 +617,9 @@
         "path": "apps/psram_quake"
       },
       "dependencies": [],
-      "local_inputs": [],
+      "local_inputs": [
+        "ports/quake/patches/*.patch"
+      ],
       "output": "quake.pax",
       "published": true,
       "data": []
@@ -816,6 +842,22 @@
           "note": "Place a compatible ROM or disk image here"
         }
       ]
+    },
+    {
+      "name": "template",
+      "manifest": "apps/template/pax.json",
+      "upstream": {
+        "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+        "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
+        "path": "components/psram_app_loader"
+      },
+      "dependencies": [],
+      "local_inputs": [
+        "ports/template"
+      ],
+      "output": "template.pax",
+      "published": false,
+      "data": []
     },
     {
       "name": "tiberiandawn",

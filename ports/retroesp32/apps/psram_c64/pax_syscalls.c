@@ -457,3 +457,5 @@ void abort(void)
         _pax_svc->log_printf("PAX abort() called!\n");
     _exit(1);
 }
+
+#include "pax_dirent.h"

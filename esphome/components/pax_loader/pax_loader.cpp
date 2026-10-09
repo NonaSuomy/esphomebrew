@@ -1,6 +1,7 @@
 #include "pax_loader.h"
 #include "pax_internal.h"
 #include "pax_memory.h"
+#include "pax_ownership.h"
 #include "pax_stick_mouse.h"
 
 #include <algorithm>
@@ -360,45 +361,248 @@ static void game_menu_draw_text(uint16_t *frame, int stride, int width, int heig
 
 static bool overlay_rect_on_panel(const canvas::Geometry &geometry, int raw_x, int raw_y, int width, int height);
 
-// A PAX may request a large game stack.  Those stacks must live in PSRAM and
-// must be deleted through ESP-IDF's matching WithCaps API.  Keep the handles
-// private to the service layer so the PAX ABI can continue to expose one
-// task_create/task_delete pair for both ordinary and PSRAM-backed tasks.
-static constexpr size_t MAX_PAX_CAP_TASKS = 16;
-static TaskHandle_t pax_cap_task_handles[MAX_PAX_CAP_TASKS] = {};
+// Every child task executes code in the loaded image. Stop ordinary and
+// PSRAM-stack tasks before unmapping that image, including forced closes.
+struct PaxTaskStart { void (*fn)(void *); void *arg; };
+struct PaxTaskRecord { TaskHandle_t handle; bool caps; PaxTaskStart *start;
+  unsigned services; unsigned display_leases; bool stopping; };
+static constexpr size_t MAX_PAX_TASKS = 32;
+static PaxTaskRecord pax_tasks[MAX_PAX_TASKS] = {};
+static portMUX_TYPE pax_tasks_mux = portMUX_INITIALIZER_UNLOCKED;
+static bool pax_tasks_closing = false;
+static TaskHandle_t pax_entry_task = nullptr;
+static unsigned pax_entry_services = 0, pax_entry_display_leases = 0;
+static unsigned pax_service_calls = 0, pax_display_leases = 0;
 
-static bool remember_pax_cap_task(TaskHandle_t handle) {
-  if (handle == nullptr)
-    return false;
-  for (size_t i = 0; i < MAX_PAX_CAP_TASKS; i++) {
-    if (pax_cap_task_handles[i] == nullptr) {
-      pax_cap_task_handles[i] = handle;
-      return true;
+static bool remember_pax_task(TaskHandle_t handle, bool caps, PaxTaskStart *start) {
+  bool stored = false;
+  portENTER_CRITICAL(&pax_tasks_mux);
+  for (auto &record : pax_tasks) {
+    if (!pax_tasks_closing && record.handle == nullptr) {
+      record = {handle, caps, start, 0, 0, false};
+      stored = true;
+      xTaskNotifyGive(handle);
+      break;
     }
   }
-  ESP_LOGE("PAX", "PSRAM task registry is full; task cleanup may leak");
-  return false;
+  portEXIT_CRITICAL(&pax_tasks_mux);
+  return stored;
 }
 
-static bool forget_pax_cap_task(TaskHandle_t handle) {
-  if (handle == nullptr)
-    return false;
-  for (size_t i = 0; i < MAX_PAX_CAP_TASKS; i++) {
-    if (pax_cap_task_handles[i] == handle) {
-      pax_cap_task_handles[i] = nullptr;
-      return true;
+static bool take_pax_task(TaskHandle_t handle, PaxTaskRecord &out) {
+  bool found = false;
+  portENTER_CRITICAL(&pax_tasks_mux);
+  for (auto &record : pax_tasks) {
+    if (record.handle == handle) {
+      out = record;
+      record = {};
+      found = true;
+      break;
     }
   }
-  return false;
+  portEXIT_CRITICAL(&pax_tasks_mux);
+  return found;
+}
+
+static void delete_pax_task(TaskHandle_t handle) {
+  // Stop the target at an app/firmware boundary. Deleting it while a
+  // display, filesystem or audio service holds a mutex strands that mutex.
+  for (;;) {
+    bool busy = false;
+    portENTER_CRITICAL(&pax_tasks_mux);
+    for (auto &item : pax_tasks) {
+      if (item.handle == handle) {
+        item.stopping = true;
+        busy = item.services != 0 || item.display_leases != 0;
+        break;
+      }
+    }
+    portEXIT_CRITICAL(&pax_tasks_mux);
+    if (!busy) break;
+    vTaskDelay(1);
+  }
+  PaxTaskRecord record{};
+  if (!take_pax_task(handle, record))
+    return;  // Cleanup already claimed this task.
+  free(record.start);
+  if (record.caps)
+    vTaskDeleteWithCaps(handle);
+  else
+    vTaskDelete(handle);
+}
+
+static void pax_child_task(void *) {
+  // Do not enter app code until the creator has registered this handle.
+  ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+  PaxTaskStart *start = nullptr;
+  TaskHandle_t self = xTaskGetCurrentTaskHandle();
+  portENTER_CRITICAL(&pax_tasks_mux);
+  for (auto &record : pax_tasks) {
+    if (record.handle == self) {
+      start = record.start;
+      record.start = nullptr;
+      break;
+    }
+  }
+  portEXIT_CRITICAL(&pax_tasks_mux);
+  if (start != nullptr) {
+    auto fn = start->fn;
+    void *arg = start->arg;
+    free(start);
+    fn(arg);
+  }
+  delete_pax_task(self);
+  // If cleanup claimed us, wait until it deletes us; never return a task.
+  for (;;) vTaskDelay(portMAX_DELAY);
 }
 
 static void delete_registered_pax_tasks() {
-  for (size_t i = 0; i < MAX_PAX_CAP_TASKS; i++) {
-    if (pax_cap_task_handles[i] == nullptr)
-      continue;
-    vTaskDeleteWithCaps(pax_cap_task_handles[i]);
-    pax_cap_task_handles[i] = nullptr;
+  portENTER_CRITICAL(&pax_tasks_mux);
+  pax_tasks_closing = true;
+  portEXIT_CRITICAL(&pax_tasks_mux);
+  for (auto &record : pax_tasks) {
+    TaskHandle_t handle;
+    portENTER_CRITICAL(&pax_tasks_mux);
+    handle = record.handle;
+    portEXIT_CRITICAL(&pax_tasks_mux);
+    if (handle != nullptr)
+      delete_pax_task(handle);
   }
+}
+
+// Service thunks make forced termination wait until app tasks leave the
+// firmware. New calls then park without acquiring another firmware resource.
+// Nested calls and GUI callbacks can finish an already active service.
+class PaxServiceCallGuard {
+ public:
+  PaxServiceCallGuard() {
+    for (;;) {
+      const TaskHandle_t self = xTaskGetCurrentTaskHandle();
+      bool stopping = false;
+      unsigned leases = 0;
+      portENTER_CRITICAL(&pax_tasks_mux);
+      stopping = pax_tasks_closing;
+      if (self == pax_entry_task) {
+        depth_ = &pax_entry_services;
+        leases = pax_entry_display_leases;
+      } else {
+        for (auto &record : pax_tasks) {
+          if (record.handle == self) {
+            depth_ = &record.services;
+            leases = record.display_leases;
+            stopping = stopping || record.stopping;
+            break;
+          }
+        }
+      }
+      const bool park = depth_ != nullptr && stopping && *depth_ == 0 && leases == 0;
+      if (!park) {
+        if (depth_ != nullptr) ++*depth_;
+        ++pax_service_calls;
+      }
+      portEXIT_CRITICAL(&pax_tasks_mux);
+      if (!park) return;
+      vTaskDelay(1);
+    }
+  }
+  ~PaxServiceCallGuard() {
+    portENTER_CRITICAL(&pax_tasks_mux);
+    if (depth_ != nullptr) --*depth_;
+    --pax_service_calls;
+    portEXIT_CRITICAL(&pax_tasks_mux);
+  }
+ private:
+  unsigned *depth_ = nullptr;
+};
+
+template <auto Fn> struct PaxServiceGate;
+template <typename R, typename... Args, R (*Fn)(Args...)>
+struct PaxServiceGate<Fn> {
+  static R call(Args... args) {
+    PaxServiceCallGuard guard;
+    return Fn(args...);
+  }
+};
+
+static bool begin_pax_quiesce() {
+  portENTER_CRITICAL(&pax_tasks_mux);
+  pax_tasks_closing = true;
+  const bool ready = pax_service_calls == 0 && pax_display_leases == 0;
+  portEXIT_CRITICAL(&pax_tasks_mux);
+  return ready;
+}
+
+static void pax_display_lease(int delta) {
+  const TaskHandle_t self = xTaskGetCurrentTaskHandle();
+  portENTER_CRITICAL(&pax_tasks_mux);
+  unsigned *leases = self == pax_entry_task ? &pax_entry_display_leases : nullptr;
+  for (auto &record : pax_tasks)
+    if (record.handle == self) leases = &record.display_leases;
+  if (leases != nullptr && (delta > 0 || *leases != 0)) {
+    if (delta > 0) {++*leases; ++pax_display_leases;}
+    else {--*leases; --pax_display_leases;}
+  }
+  portEXIT_CRITICAL(&pax_tasks_mux);
+}
+
+// The loader owns memory and FILE handles handed out by its SDK until
+// the app returns them. This also reclaims legacy leaks on a forced close.
+static ownership::Table<> pax_allocations, pax_files;
+static portMUX_TYPE pax_ownership_mux = portMUX_INITIALIZER_UNLOCKED;
+static ownership::Record *new_ownership_record(void *pointer, size_t bytes) {
+  auto *record=static_cast<ownership::Record *>(heap_caps_malloc(sizeof(ownership::Record), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  if(record==nullptr && memory::internal_fits(sizeof(ownership::Record),
+      heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)))
+    record=static_cast<ownership::Record *>(heap_caps_malloc(sizeof(ownership::Record), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+  if(record!=nullptr) *record={pointer,bytes,nullptr};
+  return record;
+}
+static void insert_owned(ownership::Table<> &table, ownership::Record *record) {
+  portENTER_CRITICAL(&pax_ownership_mux);
+  table.insert(record);
+  portEXIT_CRITICAL(&pax_ownership_mux);
+}
+static ownership::Record *take_owned(ownership::Table<> &table, void *pointer) {
+  portENTER_CRITICAL(&pax_ownership_mux);
+  auto *record=table.take(pointer);
+  portEXIT_CRITICAL(&pax_ownership_mux);
+  return record;
+}
+static void *own_pax_allocation(void *pointer, size_t bytes) {
+  if(pointer==nullptr)return nullptr;
+  auto *record=new_ownership_record(pointer,bytes);
+  if(record==nullptr) {heap_caps_free(pointer);return nullptr;}
+  insert_owned(pax_allocations,record);
+  return pointer;
+}
+static FILE *own_pax_file(FILE *file) {
+  if(file==nullptr)return nullptr;
+  auto *record=new_ownership_record(file,0);
+  if(record==nullptr) {std::fclose(file);return nullptr;}
+  insert_owned(pax_files,record);
+  return file;
+}
+static void close_pax_files() {
+  portENTER_CRITICAL(&pax_ownership_mux);
+  auto *files=pax_files.detach();
+  portEXIT_CRITICAL(&pax_ownership_mux);
+  while(files!=nullptr) {
+    auto *next=files->next;
+    std::fclose(static_cast<FILE *>(files->pointer));
+    heap_caps_free(files);files=next;
+  }
+}
+static void release_pax_resources() {
+  portENTER_CRITICAL(&pax_ownership_mux);
+  auto *blocks=pax_allocations.detach();
+  portEXIT_CRITICAL(&pax_ownership_mux);
+  size_t count=0,bytes=0;
+  while(blocks!=nullptr) {
+    auto *next=blocks->next;bytes+=blocks->bytes;++count;
+    heap_caps_free(blocks->pointer);heap_caps_free(blocks);blocks=next;
+  }
+  if(count!=0) ESP_LOGI("PAX", "Reclaimed %u app allocation(s), %u bytes", static_cast<unsigned>(count),static_cast<unsigned>(bytes));
 }
 
 // ── Heap diagnostics ──
@@ -1962,16 +2166,11 @@ void PaxLoader::loop() {
                this->close_requested_us_ > 0 &&
                esp_timer_get_time() - this->close_requested_us_ >= PAX_CLOSE_GRACE_US) {
       // A few legacy PAXs do not consume the shared Menu/X/L3 close request.
-      // Do not leave the user on their black canvas forever. The worker is the
-      // only task executing the PAX entry point; stop it, then run the normal
-      // audio/socket/canvas restoration path on ESPHome's loop task.
+      // Stop the entry worker, then finish_app_ stops every registered child
+      // before unmapping the image and restoring audio, sockets and canvas.
+      if (!begin_pax_quiesce()) return;
       ESP_LOGW(TAG, "PAX did not return after the close request; stopping its worker and restoring the dashboard");
-      if (this->pax_task_uses_caps_)
-        vTaskDeleteWithCaps(this->pax_task_handle_);
-      else
-        vTaskDelete(this->pax_task_handle_);
-      this->pax_task_handle_ = nullptr;
-      this->pax_task_uses_caps_ = false;
+      // finish_app_ closes SDK FILEs before deleting their Newlib owners.
       this->pax_task_result_ = -2;
       this->pax_task_done_ = true;
       this->finish_app_();
@@ -2517,6 +2716,11 @@ bool PaxLoader::start_loaded_app_(psram_app_handle_t app, const std::string &sou
   if (app == nullptr)
     return false;
 
+  portENTER_CRITICAL(&pax_tasks_mux);
+  pax_tasks_closing = false;
+  pax_entry_task = nullptr;
+  pax_entry_services = pax_entry_display_leases = 0;
+  portEXIT_CRITICAL(&pax_tasks_mux);
   this->running_app_source_ = source;
   ESP_LOGI(TAG, "Starting PAX in worker task: %s", source.c_str());
   this->begin_report_(source);
@@ -2620,6 +2824,9 @@ bool PaxLoader::start_loaded_app_(psram_app_handle_t app, const std::string &sou
     this->restore_lvgl_();
     return false;
   }
+  portENTER_CRITICAL(&pax_tasks_mux);
+  pax_entry_task = this->pax_task_handle_;
+  portEXIT_CRITICAL(&pax_tasks_mux);
   ESP_LOGI(TAG, "PAX worker task started on core 0; ESPHome loop remains active");
   return true;
 }
@@ -2883,6 +3090,9 @@ int PaxLoader::read_keyboard_(pax_keyboard_event_t *event) {
 }
 
 void PaxLoader::pax_task_entry_(void *arg) {
+  portENTER_CRITICAL(&pax_tasks_mux);
+  pax_entry_task = xTaskGetCurrentTaskHandle();
+  portEXIT_CRITICAL(&pax_tasks_mux);
   auto *self = static_cast<PaxLoader *>(arg);
   self->pax_task_result_ = psram_app_run(self->app_handle_);
   self->pax_task_done_ = true;
@@ -4314,6 +4524,7 @@ bool PaxLoader::supports_rom_selector(const std::string &source) const {
 #endif
 
 void PaxLoader::finish_app_() {
+  if (!begin_pax_quiesce()) return;
   this->close_game_menu_();
   svc_game_menu_register(nullptr, nullptr, nullptr);
   const int result = this->pax_task_result_;
@@ -4337,6 +4548,9 @@ void PaxLoader::finish_app_() {
     this->speaker_->stop();
     ESP_LOGI(TAG, "PAX close: audio stopped");
   }
+  // FILE storage may belong to a task's Newlib context. Close SDK handles
+  // while those contexts still exist, before deleting their owning tasks.
+  close_pax_files();
   if (this->pax_task_handle_ != nullptr) {
     ESP_LOGI(TAG, "PAX close: deleting worker task");
     if (this->pax_task_uses_caps_)
@@ -4349,7 +4563,11 @@ void PaxLoader::finish_app_() {
   }
   // A PAX-created PSRAM task must not keep executing code from the mapped
   // image after that image is unmapped below.
+  portENTER_CRITICAL(&pax_tasks_mux);
+  pax_entry_task = nullptr;
+  portEXIT_CRITICAL(&pax_tasks_mux);
   delete_registered_pax_tasks();
+  release_pax_resources();
   if (this->app_handle_ != nullptr) {
     ESP_LOGI(TAG, "PAX close: unloading app");
     psram_app_unload(this->app_handle_);
@@ -7512,11 +7730,13 @@ uint16_t *PaxLoader::svc_png_load_rgb565_blended(const char *path,
 }
 void PaxLoader::svc_display_lock() {
   if (active_ != nullptr && active_->display_mutex_ != nullptr)
-    xSemaphoreTakeRecursive(active_->display_mutex_, portMAX_DELAY);
+    if (xSemaphoreTakeRecursive(active_->display_mutex_, portMAX_DELAY) == pdTRUE)
+      pax_display_lease(1);
 }
 void PaxLoader::svc_display_unlock() {
   if (active_ != nullptr && active_->display_mutex_ != nullptr)
-    xSemaphoreGiveRecursive(active_->display_mutex_);
+    if (xSemaphoreGiveRecursive(active_->display_mutex_) == pdTRUE)
+      pax_display_lease(-1);
 }
 void PaxLoader::svc_audio_init(int sample_rate) {
   if (active_ != nullptr)
@@ -9141,14 +9361,17 @@ void *PaxLoader::svc_file_open(const char *path, const char *mode) {
   // Writes (saves, configs) always stay where the app asked.
   if (file != nullptr || active_ == nullptr || path == nullptr || mode == nullptr || mode[0] != 'r' ||
       std::strchr(mode, '+') != nullptr || std::strncmp(path, "/sd/", 4) != 0)
-    return file;
+    return own_pax_file(file);
   const std::string found = active_->find_data_file_(path + 4);
   if (found.empty() || found == mapped)
     return nullptr;
   ESP_LOGD(TAG, "App read %s -> %s", path, found.c_str());
-  return std::fopen(found.c_str(), mode);
+  return own_pax_file(std::fopen(found.c_str(), mode));
 }
-int PaxLoader::svc_file_close(void *stream) { return stream != nullptr ? std::fclose(static_cast<FILE *>(stream)) : -1; }
+int PaxLoader::svc_file_close(void *stream) {
+  heap_caps_free(take_owned(pax_files,stream));
+  return stream!=nullptr ? std::fclose(static_cast<FILE *>(stream)) : -1;
+}
 size_t PaxLoader::svc_file_read(void *ptr, size_t size, size_t nmemb, void *stream) {
   return stream != nullptr ? std::fread(ptr, size, nmemb, static_cast<FILE *>(stream)) : 0;
 }
@@ -9216,7 +9439,7 @@ static void *app_heap_alloc(const memory::Plan &plan, size_t size, bool zero) {
     if (block != nullptr) {
       if (attempt.guarded)
         app_heap_note(true, size);
-      return block;
+      return own_pax_allocation(block,size);
     }
   }
   if (size != 0)
@@ -9237,28 +9460,30 @@ void *PaxLoader::svc_mem_calloc(size_t n, size_t size) {
 }
 // Grows or shrinks in PSRAM; a block that was in internal RAM moves there.
 void *PaxLoader::svc_mem_realloc(void *ptr, size_t size) {
-  if (ptr == nullptr)
-    return svc_mem_alloc(size);
-  if (size == 0) {
-    heap_caps_free(ptr);
-    return nullptr;
-  }
-  const memory::Plan plan = memory::plain_plan(size);
-  for (int i = 0; i < plan.count; i++) {
-    const memory::Attempt &attempt = plan.attempts[i];
-    if (attempt.guarded && !internal_heap_allows(size))
-      continue;
-    void *block = heap_caps_realloc(ptr, size, idf_heap_caps(attempt.heap));
-    if (block != nullptr) {
-      if (attempt.guarded)
-        app_heap_note(true, size);
+  if(ptr==nullptr)return svc_mem_alloc(size);
+  if(size==0) {svc_mem_free(ptr);return nullptr;}
+  auto *record=take_owned(pax_allocations,ptr);
+  if(record==nullptr)record=new_ownership_record(ptr,0);
+  if(record==nullptr)return nullptr;  // Original block remains valid.
+  const memory::Plan plan=memory::plain_plan(size);
+  for(int i=0;i<plan.count;i++) {
+    const memory::Attempt &attempt=plan.attempts[i];
+    if(attempt.guarded && !internal_heap_allows(size))continue;
+    void *block=heap_caps_realloc(ptr,size,idf_heap_caps(attempt.heap));
+    if(block!=nullptr) {
+      if(attempt.guarded)app_heap_note(true,size);
+      record->pointer=block;record->bytes=size;insert_owned(pax_allocations,record);
       return block;
     }
   }
-  app_heap_note(false, size);
-  return nullptr;  // ptr is still valid, as with realloc()
+  insert_owned(pax_allocations,record);
+  app_heap_note(false,size);
+  return nullptr;
 }
-void PaxLoader::svc_mem_free(void *ptr) { heap_caps_free(ptr); }
+void PaxLoader::svc_mem_free(void *ptr) {
+  heap_caps_free(take_owned(pax_allocations,ptr));
+  heap_caps_free(ptr);
+}
 
 int PaxLoader::svc_log_vprintf(const char *fmt, va_list args) {
   char buffer[256];
@@ -9274,6 +9499,7 @@ int PaxLoader::svc_log_vprintf(const char *fmt, va_list args) {
   return result;
 }
 int PaxLoader::svc_log_printf(const char *fmt, ...) {
+  PaxServiceCallGuard guard;
   va_list args;
   va_start(args, fmt);
   const int result = svc_log_vprintf(fmt, args);
@@ -9512,154 +9738,146 @@ void PaxLoader::svc_ui_sound(uint8_t sound, uint8_t param) {
 
 int PaxLoader::svc_task_create(void (*fn)(void *), const char *name, uint32_t stack_depth, void *arg,
                                 int priority, void *out_handle, int core) {
+  if (out_handle != nullptr)
+    *static_cast<TaskHandle_t *>(out_handle) = nullptr;
+  if (fn == nullptr || active_ == nullptr || active_->global_close_requested_)
+    return -1;
+  auto *start = static_cast<PaxTaskStart *>(malloc(sizeof(PaxTaskStart)));
+  if (start == nullptr)
+    return -1;
+  *start = {fn, arg};
   TaskHandle_t handle = nullptr;
   const BaseType_t affinity = core < 0 ? tskNO_AFFINITY : static_cast<BaseType_t>(core);
-
-  // ESP-IDF's normal task API allocates stacks from internal RAM.  Duke3D
-  // requests a 256 KiB stack, so use the supported external-memory API for
-  // large PAX stacks instead of failing with errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY.
-  if (stack_depth > 32768) {
-    const BaseType_t result = xTaskCreatePinnedToCoreWithCaps(
-        fn, name, stack_depth, arg, priority, &handle, affinity,
-        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    if (result != pdPASS || handle == nullptr) {
-      ESP_LOGE("PAX", "Failed to create %lu-byte PSRAM task '%s' (result=%ld, largest=%lu)",
-               static_cast<unsigned long>(stack_depth), name != nullptr ? name : "?",
-               static_cast<long>(result),
-               static_cast<unsigned long>(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)));
-      if (out_handle != nullptr)
-        *static_cast<TaskHandle_t *>(out_handle) = nullptr;
-      return -1;
-    }
-    if (!remember_pax_cap_task(handle)) {
-      vTaskDeleteWithCaps(handle);
-      if (out_handle != nullptr)
-        *static_cast<TaskHandle_t *>(out_handle) = nullptr;
-      return -1;
-    }
-    if (out_handle != nullptr)
-      *static_cast<TaskHandle_t *>(out_handle) = handle;
-    ESP_LOGI("PAX", "Created PSRAM task '%s' (%lu bytes) on core %d",
-             name != nullptr ? name : "?", static_cast<unsigned long>(stack_depth), core);
-    return 0;
+  const bool caps = stack_depth > 32768;
+  const BaseType_t result = caps ? xTaskCreatePinnedToCoreWithCaps(
+      pax_child_task, name, stack_depth, nullptr, priority, &handle, affinity,
+      MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) : xTaskCreatePinnedToCore(
+      pax_child_task, name, stack_depth, nullptr, priority, &handle, affinity);
+  if (result != pdPASS || handle == nullptr) {
+    free(start);
+    return -1;
   }
-
-  const BaseType_t result = xTaskCreatePinnedToCore(
-      fn, name, stack_depth, arg, priority, &handle,
-      affinity);
+  if (!remember_pax_task(handle, caps, start)) {
+    if (caps) vTaskDeleteWithCaps(handle); else vTaskDelete(handle);
+    free(start);
+    ESP_LOGE("PAX", "App task registry is full");
+    return -1;
+  }
   if (out_handle != nullptr)
     *static_cast<TaskHandle_t *>(out_handle) = handle;
-  return result == pdPASS ? 0 : -1;
+  return 0;
 }
 void PaxLoader::svc_task_delete(void *handle) {
-  TaskHandle_t task = static_cast<TaskHandle_t>(handle);
-  if (forget_pax_cap_task(task)) {
-    vTaskDeleteWithCaps(task);
+  TaskHandle_t self = xTaskGetCurrentTaskHandle();
+  TaskHandle_t target = handle != nullptr ? static_cast<TaskHandle_t>(handle) : self;
+  if (target == self) {
+    delete_pax_task(target);  // A self-delete cannot run a guard destructor.
   } else {
-    vTaskDelete(task);
+    PaxServiceCallGuard guard;
+    delete_pax_task(target);
   }
 }
 
 void PaxLoader::populate_services(app_services_t *services) {
   std::memset(services, 0, sizeof(*services));
   services->abi_version = PAX_ABI_VERSION;
-  services->display_get_framebuffer = &PaxLoader::svc_display_get_framebuffer;
-  services->display_get_emu_buffer = &PaxLoader::svc_display_get_emu_buffer;
-  services->display_flush = &PaxLoader::svc_display_flush;
-  services->display_emu_flush = &PaxLoader::svc_display_emu_flush;
-  services->display_clear = &PaxLoader::svc_display_clear;
-  services->display_set_scale = &PaxLoader::svc_display_set_scale;
-  services->display_write_frame_rgb565 = &PaxLoader::svc_display_write_frame_rgb565;
-  services->display_write_frame_custom = &PaxLoader::svc_display_write_frame_custom;
-  services->display_write_rect = &PaxLoader::svc_display_write_rect;
-  services->sprite_blit = &PaxLoader::svc_sprite_blit;
-  services->fb_copy = &PaxLoader::svc_fb_copy;
-  services->png_load_rgb565 = &PaxLoader::svc_png_load_rgb565;
-  services->png_load_rgb565_blended = &PaxLoader::svc_png_load_rgb565_blended;
-  services->display_lock = &PaxLoader::svc_display_lock;
-  services->display_unlock = &PaxLoader::svc_display_unlock;
-  services->audio_init = &PaxLoader::svc_audio_init;
-  services->audio_submit = &PaxLoader::svc_audio_submit;
-  services->input_gamepad_read = &PaxLoader::svc_input_gamepad_read;
-  services->input_l3_read = &PaxLoader::svc_input_l3_read;
-  services->file_open = &PaxLoader::svc_file_open;
-  services->file_close = &PaxLoader::svc_file_close;
-  services->file_read = &PaxLoader::svc_file_read;
-  services->file_write = &PaxLoader::svc_file_write;
-  services->file_seek = &PaxLoader::svc_file_seek;
-  services->file_tell = &PaxLoader::svc_file_tell;
-  services->mem_alloc = &PaxLoader::svc_mem_alloc;
-  services->mem_calloc = &PaxLoader::svc_mem_calloc;
-  services->mem_realloc = &PaxLoader::svc_mem_realloc;
-  services->mem_free = &PaxLoader::svc_mem_free;
-  services->mem_caps_alloc = &PaxLoader::svc_mem_caps_alloc;
+  services->display_get_framebuffer = &PaxServiceGate<&PaxLoader::svc_display_get_framebuffer>::call;
+  services->display_get_emu_buffer = &PaxServiceGate<&PaxLoader::svc_display_get_emu_buffer>::call;
+  services->display_flush = &PaxServiceGate<&PaxLoader::svc_display_flush>::call;
+  services->display_emu_flush = &PaxServiceGate<&PaxLoader::svc_display_emu_flush>::call;
+  services->display_clear = &PaxServiceGate<&PaxLoader::svc_display_clear>::call;
+  services->display_set_scale = &PaxServiceGate<&PaxLoader::svc_display_set_scale>::call;
+  services->display_write_frame_rgb565 = &PaxServiceGate<&PaxLoader::svc_display_write_frame_rgb565>::call;
+  services->display_write_frame_custom = &PaxServiceGate<&PaxLoader::svc_display_write_frame_custom>::call;
+  services->display_write_rect = &PaxServiceGate<&PaxLoader::svc_display_write_rect>::call;
+  services->sprite_blit = &PaxServiceGate<&PaxLoader::svc_sprite_blit>::call;
+  services->fb_copy = &PaxServiceGate<&PaxLoader::svc_fb_copy>::call;
+  services->png_load_rgb565 = &PaxServiceGate<&PaxLoader::svc_png_load_rgb565>::call;
+  services->png_load_rgb565_blended = &PaxServiceGate<&PaxLoader::svc_png_load_rgb565_blended>::call;
+  services->display_lock = &PaxServiceGate<&PaxLoader::svc_display_lock>::call;
+  services->display_unlock = &PaxServiceGate<&PaxLoader::svc_display_unlock>::call;
+  services->audio_init = &PaxServiceGate<&PaxLoader::svc_audio_init>::call;
+  services->audio_submit = &PaxServiceGate<&PaxLoader::svc_audio_submit>::call;
+  services->input_gamepad_read = &PaxServiceGate<&PaxLoader::svc_input_gamepad_read>::call;
+  services->input_l3_read = &PaxServiceGate<&PaxLoader::svc_input_l3_read>::call;
+  services->file_open = &PaxServiceGate<&PaxLoader::svc_file_open>::call;
+  services->file_close = &PaxServiceGate<&PaxLoader::svc_file_close>::call;
+  services->file_read = &PaxServiceGate<&PaxLoader::svc_file_read>::call;
+  services->file_write = &PaxServiceGate<&PaxLoader::svc_file_write>::call;
+  services->file_seek = &PaxServiceGate<&PaxLoader::svc_file_seek>::call;
+  services->file_tell = &PaxServiceGate<&PaxLoader::svc_file_tell>::call;
+  services->mem_alloc = &PaxServiceGate<&PaxLoader::svc_mem_alloc>::call;
+  services->mem_calloc = &PaxServiceGate<&PaxLoader::svc_mem_calloc>::call;
+  services->mem_realloc = &PaxServiceGate<&PaxLoader::svc_mem_realloc>::call;
+  services->mem_free = &PaxServiceGate<&PaxLoader::svc_mem_free>::call;
+  services->mem_caps_alloc = &PaxServiceGate<&PaxLoader::svc_mem_caps_alloc>::call;
   services->log_printf = &PaxLoader::svc_log_printf;
-  services->log_vprintf = &PaxLoader::svc_log_vprintf;
-  services->delay_ms = &PaxLoader::svc_delay_ms;
-  services->get_time_us = &PaxLoader::svc_get_time_us;
-  services->settings_rom_path_get = &PaxLoader::svc_settings_rom_path_get;
-  services->settings_rom_path_set = &PaxLoader::svc_settings_rom_path_set;
-  services->settings_volume_get = &PaxLoader::svc_settings_volume_get;
-  services->settings_volume_set = &PaxLoader::svc_settings_volume_set;
-  services->settings_brightness_get = &PaxLoader::svc_settings_brightness_get;
-  services->settings_brightness_set = &PaxLoader::svc_settings_brightness_set;
-  services->task_create = &PaxLoader::svc_task_create;
+  services->log_vprintf = &PaxServiceGate<&PaxLoader::svc_log_vprintf>::call;
+  services->delay_ms = &PaxServiceGate<&PaxLoader::svc_delay_ms>::call;
+  services->get_time_us = &PaxServiceGate<&PaxLoader::svc_get_time_us>::call;
+  services->settings_rom_path_get = &PaxServiceGate<&PaxLoader::svc_settings_rom_path_get>::call;
+  services->settings_rom_path_set = &PaxServiceGate<&PaxLoader::svc_settings_rom_path_set>::call;
+  services->settings_volume_get = &PaxServiceGate<&PaxLoader::svc_settings_volume_get>::call;
+  services->settings_volume_set = &PaxServiceGate<&PaxLoader::svc_settings_volume_set>::call;
+  services->settings_brightness_get = &PaxServiceGate<&PaxLoader::svc_settings_brightness_get>::call;
+  services->settings_brightness_set = &PaxServiceGate<&PaxLoader::svc_settings_brightness_set>::call;
+  services->task_create = &PaxServiceGate<&PaxLoader::svc_task_create>::call;
   services->task_delete = &PaxLoader::svc_task_delete;
-  services->touch_read = &PaxLoader::svc_touch_read;
-  services->input_mouse_read = &PaxLoader::svc_input_mouse_read;
-  services->input_mouse_scroll_read = &PaxLoader::svc_input_mouse_scroll_read;
-  services->input_keyboard_read = &PaxLoader::svc_input_keyboard_read;
-  services->net_udp_open = &PaxLoader::svc_net_udp_open;
-  services->net_udp_send = &PaxLoader::svc_net_udp_send;
-  services->net_udp_recv = &PaxLoader::svc_net_udp_recv;
-  services->net_udp_close = &PaxLoader::svc_net_udp_close;
-  services->net_ipv4 = &PaxLoader::svc_net_ipv4;
-  services->net_tcp_connect = &PaxLoader::svc_net_tcp_connect;
-  services->net_tcp_listen = &PaxLoader::svc_net_tcp_listen;
-  services->net_tcp_accept = &PaxLoader::svc_net_tcp_accept;
-  services->net_tcp_send = &PaxLoader::svc_net_tcp_send;
-  services->net_tcp_recv = &PaxLoader::svc_net_tcp_recv;
-  services->net_poll = &PaxLoader::svc_net_poll;
-  services->net_resolve = &PaxLoader::svc_net_resolve;
-  services->display_get_size = &PaxLoader::svc_display_get_size;
-  services->display_set_canvas = &PaxLoader::svc_display_set_canvas;
-  services->midi_read = &PaxLoader::svc_midi_read;
-  services->midi_write = &PaxLoader::svc_midi_write;
-  services->touch_read_points = &PaxLoader::svc_touch_read_points;
+  services->touch_read = &PaxServiceGate<&PaxLoader::svc_touch_read>::call;
+  services->input_mouse_read = &PaxServiceGate<&PaxLoader::svc_input_mouse_read>::call;
+  services->input_mouse_scroll_read = &PaxServiceGate<&PaxLoader::svc_input_mouse_scroll_read>::call;
+  services->input_keyboard_read = &PaxServiceGate<&PaxLoader::svc_input_keyboard_read>::call;
+  services->net_udp_open = &PaxServiceGate<&PaxLoader::svc_net_udp_open>::call;
+  services->net_udp_send = &PaxServiceGate<&PaxLoader::svc_net_udp_send>::call;
+  services->net_udp_recv = &PaxServiceGate<&PaxLoader::svc_net_udp_recv>::call;
+  services->net_udp_close = &PaxServiceGate<&PaxLoader::svc_net_udp_close>::call;
+  services->net_ipv4 = &PaxServiceGate<&PaxLoader::svc_net_ipv4>::call;
+  services->net_tcp_connect = &PaxServiceGate<&PaxLoader::svc_net_tcp_connect>::call;
+  services->net_tcp_listen = &PaxServiceGate<&PaxLoader::svc_net_tcp_listen>::call;
+  services->net_tcp_accept = &PaxServiceGate<&PaxLoader::svc_net_tcp_accept>::call;
+  services->net_tcp_send = &PaxServiceGate<&PaxLoader::svc_net_tcp_send>::call;
+  services->net_tcp_recv = &PaxServiceGate<&PaxLoader::svc_net_tcp_recv>::call;
+  services->net_poll = &PaxServiceGate<&PaxLoader::svc_net_poll>::call;
+  services->net_resolve = &PaxServiceGate<&PaxLoader::svc_net_resolve>::call;
+  services->display_get_size = &PaxServiceGate<&PaxLoader::svc_display_get_size>::call;
+  services->display_set_canvas = &PaxServiceGate<&PaxLoader::svc_display_set_canvas>::call;
+  services->midi_read = &PaxServiceGate<&PaxLoader::svc_midi_read>::call;
+  services->midi_write = &PaxServiceGate<&PaxLoader::svc_midi_write>::call;
+  services->touch_read_points = &PaxServiceGate<&PaxLoader::svc_touch_read_points>::call;
   if (s_app_tls_lock == nullptr)
     s_app_tls_lock = xSemaphoreCreateMutex();
-  services->net_tls_connect = &PaxLoader::svc_net_tls_connect;
-  services->net_tls_status = &PaxLoader::svc_net_tls_status;
-  services->net_tls_send = &PaxLoader::svc_net_tls_send;
-  services->net_tls_recv = &PaxLoader::svc_net_tls_recv;
-  services->net_tls_close = &PaxLoader::svc_net_tls_close;
-  services->app_open = &PaxLoader::svc_app_open;
-  services->app_get_arg = &PaxLoader::svc_app_get_arg;
-  services->app_set_resume_arg = &PaxLoader::svc_app_set_resume_arg;
-  services->file_list_dir = &PaxLoader::svc_file_list_dir;
-  services->file_mkdir = &PaxLoader::svc_file_mkdir;
-  services->file_remove = &PaxLoader::svc_file_remove;
-  services->file_rename = &PaxLoader::svc_file_rename;
-  services->file_stat = &PaxLoader::svc_file_stat;
-  services->file_zip_extract_first = &PaxLoader::svc_file_zip_extract_first;
-  services->file_zip_extract_first_progress = &PaxLoader::svc_file_zip_extract_first_progress;
-  services->game_menu_register = &PaxLoader::svc_game_menu_register;
-  services->game_menu_set_page = &PaxLoader::svc_game_menu_set_page;
-  services->game_menu_close = &PaxLoader::svc_game_menu_close;
-  services->ui_call_sync = &PaxLoader::svc_ui_call_sync;
-  services->store_install_start = &PaxLoader::svc_store_install_start;
-  services->store_install_status = &PaxLoader::svc_store_install_status;
-  services->device_status_get = &PaxLoader::svc_device_status_get;
-  services->settings_auto_brightness_get = &PaxLoader::svc_settings_auto_brightness_get;
-  services->settings_auto_brightness_set = &PaxLoader::svc_settings_auto_brightness_set;
-  services->archive_download_start = &PaxLoader::svc_archive_download_start;
-  services->ui_sound = &PaxLoader::svc_ui_sound;
-  services->network_config_get = &PaxLoader::svc_network_config_get;
-  services->network_config_set = &PaxLoader::svc_network_config_set;
-  services->storage_status_get = &PaxLoader::svc_storage_status_get;
-  services->storage_set_mounted = &PaxLoader::svc_storage_set_mounted;
-  services->archive_auth_set = &PaxLoader::svc_archive_auth_set;
-  services->archive_auth_get = &PaxLoader::svc_archive_auth_get;
+  services->net_tls_connect = &PaxServiceGate<&PaxLoader::svc_net_tls_connect>::call;
+  services->net_tls_status = &PaxServiceGate<&PaxLoader::svc_net_tls_status>::call;
+  services->net_tls_send = &PaxServiceGate<&PaxLoader::svc_net_tls_send>::call;
+  services->net_tls_recv = &PaxServiceGate<&PaxLoader::svc_net_tls_recv>::call;
+  services->net_tls_close = &PaxServiceGate<&PaxLoader::svc_net_tls_close>::call;
+  services->app_open = &PaxServiceGate<&PaxLoader::svc_app_open>::call;
+  services->app_get_arg = &PaxServiceGate<&PaxLoader::svc_app_get_arg>::call;
+  services->app_set_resume_arg = &PaxServiceGate<&PaxLoader::svc_app_set_resume_arg>::call;
+  services->file_list_dir = &PaxServiceGate<&PaxLoader::svc_file_list_dir>::call;
+  services->file_mkdir = &PaxServiceGate<&PaxLoader::svc_file_mkdir>::call;
+  services->file_remove = &PaxServiceGate<&PaxLoader::svc_file_remove>::call;
+  services->file_rename = &PaxServiceGate<&PaxLoader::svc_file_rename>::call;
+  services->file_stat = &PaxServiceGate<&PaxLoader::svc_file_stat>::call;
+  services->file_zip_extract_first = &PaxServiceGate<&PaxLoader::svc_file_zip_extract_first>::call;
+  services->file_zip_extract_first_progress = &PaxServiceGate<&PaxLoader::svc_file_zip_extract_first_progress>::call;
+  services->game_menu_register = &PaxServiceGate<&PaxLoader::svc_game_menu_register>::call;
+  services->game_menu_set_page = &PaxServiceGate<&PaxLoader::svc_game_menu_set_page>::call;
+  services->game_menu_close = &PaxServiceGate<&PaxLoader::svc_game_menu_close>::call;
+  services->ui_call_sync = &PaxServiceGate<&PaxLoader::svc_ui_call_sync>::call;
+  services->store_install_start = &PaxServiceGate<&PaxLoader::svc_store_install_start>::call;
+  services->store_install_status = &PaxServiceGate<&PaxLoader::svc_store_install_status>::call;
+  services->device_status_get = &PaxServiceGate<&PaxLoader::svc_device_status_get>::call;
+  services->settings_auto_brightness_get = &PaxServiceGate<&PaxLoader::svc_settings_auto_brightness_get>::call;
+  services->settings_auto_brightness_set = &PaxServiceGate<&PaxLoader::svc_settings_auto_brightness_set>::call;
+  services->archive_download_start = &PaxServiceGate<&PaxLoader::svc_archive_download_start>::call;
+  services->ui_sound = &PaxServiceGate<&PaxLoader::svc_ui_sound>::call;
+  services->network_config_get = &PaxServiceGate<&PaxLoader::svc_network_config_get>::call;
+  services->network_config_set = &PaxServiceGate<&PaxLoader::svc_network_config_set>::call;
+  services->storage_status_get = &PaxServiceGate<&PaxLoader::svc_storage_status_get>::call;
+  services->storage_set_mounted = &PaxServiceGate<&PaxLoader::svc_storage_set_mounted>::call;
+  services->archive_auth_set = &PaxServiceGate<&PaxLoader::svc_archive_auth_set>::call;
+  services->archive_auth_get = &PaxServiceGate<&PaxLoader::svc_archive_auth_get>::call;
 }
 
 esp_err_t psram_app_load(const char *path, psram_app_handle_t *out_handle) {

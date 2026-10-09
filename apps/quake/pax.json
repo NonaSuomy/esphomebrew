@@ -1,7 +1,7 @@
 {
   "name": "quake",
   "title": "Quake",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "WinQuake as a PSRAM app, with MP3 music. The store downloads the shareware id1/pak0.pak to /sd/roms/quake/.",
   "author": "id Software (WinQuake); P4 port by RetroESP32-P4",
   "category": "Game",
@@ -235,5 +235,8 @@
         "sha256": "35a9c55e5e5a284a159ad2a62e0e8def23d829561fe2f54eb402dbc0a9a946af"
       }
     ]
-  }
+  },
+  "patches": [
+    "local:ports/quake/patches/*.patch"
+  ]
 }

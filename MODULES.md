@@ -1,6 +1,6 @@
 # PAX module inventory
 
-32 manifest recipes; 46 native source folders are preserved under upstream/retroesp32/apps.
+34 manifest recipes; 46 native source folders are preserved under upstream/retroesp32/apps.
 
 | Recipe | Output | Upstream pin |
 | --- | --- | --- |
@@ -21,6 +21,7 @@
 | [netsurf](apps/netsurf/pax.json) | `netsurf.pax` | https://github.com/netsurf-browser/netsurf @ `39da3c3a40af` |
 | [ngp](apps/ngp/pax.json) | `ngp.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 | [openlara](apps/openlara/pax.json) | `openlara.pax` | https://github.com/alexkid77/openlara_esp32p4 @ `da3d43138f3a` |
+| [opentyrian](apps/opentyrian/pax.json) | `opentyrian.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `b72144c85f74` |
 | [pce](apps/pce/pax.json) | `pce.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 | [prosystem](apps/prosystem/pax.json) | `prosystem.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 | [quake](apps/quake/pax.json) | `quake.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `5c475e9df46c` |
@@ -30,6 +31,7 @@
 | [snes](apps/snes/pax.json) | `snes.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 | [spectrum](apps/spectrum/pax.json) | `spectrum.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 | [stella](apps/stella/pax.json) | `stella.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
+| [template](apps/template/pax.json) | `template.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `5c475e9df46c` |
 | [tiberiandawn](apps/tiberiandawn/pax.json) | `tiberiandawn.pax` | https://github.com/NonaSuomy/Vanilla-Conquer @ `ce83b59edd99` |
 | [tiberiansun](apps/tiberiansun/pax.json) | `tiberiansun.pax` | https://github.com/OpenTS-Developers/OpenTS.git @ `84675569c257` |
 | [touchtest](apps/touchtest/pax.json) | `touchtest.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `5c475e9df46c` |

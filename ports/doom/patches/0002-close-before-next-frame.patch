@@ -1,0 +1,18 @@
+diff --git a/apps/psram_doom/papp_i_video.c b/apps/psram_doom/papp_i_video.c
+--- a/apps/psram_doom/papp_i_video.c
++++ b/apps/psram_doom/papp_i_video.c
+@@ -61,6 +61,14 @@ void I_UpdateNoBlit(void)
+ 
+ void I_FinishUpdate(void)
+ {
++    /* Frame callbacks run on the entry task: safe to unwind its exit jump.
++     * The loader's close signal must not wait for the MENU watchdog. */
++    extern void app_return_to_launcher(void);
++    if (papp_exit_requested ||
++        (_papp_svc->input_l3_read && _papp_svc->input_l3_read())) {
++        app_return_to_launcher();
++        return;
++    }
+     if (!surface_data || !s_conv_buf)
+         return;
+ 

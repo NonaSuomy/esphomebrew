@@ -269,7 +269,9 @@ class PortRecipeTests(unittest.TestCase):
         try:
             self.assertEqual(bp.apply_patches(repo, [pattern]), ["0001-two.patch"])
             self.assertEqual((repo / "f.txt").read_text(), "two\n")
-            # A second build starts from the pinned files again instead of failing.
+            # A copied cache may contain staged patch changes as well.
+            run("add", "f.txt")
+            # A second build starts from HEAD, not the patched index.
             self.assertEqual(bp.apply_patches(repo, [pattern]), ["0001-two.patch"])
             self.assertEqual((repo / "f.txt").read_text(), "two\n")
             with self.assertRaises(ValueError):
