@@ -3,6 +3,7 @@
 #include "pax_memory.h"
 #include "pax_ownership.h"
 #include "pax_stick_mouse.h"
+#include "pax_volume_icon.h"
 
 #include <algorithm>
 #include <atomic>
@@ -4705,16 +4706,16 @@ bool PaxLoader::game_menu_capture_held_() const {
 void PaxLoader::build_game_menu_frame_() {
   if (this->game_menu_frame_ == nullptr || this->game_menu_width_ <= 0 || this->game_menu_height_ <= 0)
     return;
-  std::fill_n(this->game_menu_frame_, GAME_MENU_FRAME_PIXELS, 0x0861);
+  std::fill_n(this->game_menu_frame_, GAME_MENU_FRAME_PIXELS, overlay_theme::BACKGROUND);
   const int width = this->game_menu_width_;
   const int height = this->game_menu_height_;
   const int stride = GAME_MENU_FRAME_WIDTH;
-  constexpr uint16_t border = 0xBDF7;
-  constexpr uint16_t header = 0x2104;
-  constexpr uint16_t selected = 0x18E3;
-  constexpr uint16_t accent = 0xFFE0;
-  constexpr uint16_t text = 0xFFFF;
-  game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, 0, width, height, 0x0861);
+  constexpr uint16_t border = overlay_theme::MUTED;
+  constexpr uint16_t header = overlay_theme::PANEL;
+  constexpr uint16_t selected = overlay_theme::SELECTED;
+  constexpr uint16_t accent = overlay_theme::ACCENT;
+  constexpr uint16_t text = overlay_theme::TEXT;
+  game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, 0, width, height, overlay_theme::BACKGROUND);
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, 0, width, 2, border);
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, height - 2, width, 2, border);
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, 0, 2, height, border);
@@ -4736,7 +4737,7 @@ void PaxLoader::build_game_menu_frame_() {
     if (row == this->game_menu_selection_)
       game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 8, y, width - 16, row_height - 2, selected);
     const int text_y = y + std::max(1, (row_height - 7 * scale) / 2);
-    const uint16_t color = row == this->game_menu_selection_ ? accent : text;
+    const uint16_t color = text;
     if (row == this->game_menu_selection_)
       game_menu_draw_text(this->game_menu_frame_, stride, width, height, 17, text_y, ">", accent, scale);
     const char *label = this->game_menu_app_page_ ? this->game_menu_page_.items[row].label :
@@ -4746,13 +4747,13 @@ void PaxLoader::build_game_menu_frame_() {
     if (!this->game_menu_app_page_ && (row == 3 || row == 4)) {
       const int bar_y = y + row_height / 2 - 4;
       const int level = row == 3 ? this->master_volume_ : s_brightness;
-      game_menu_fill_rect(this->game_menu_frame_, stride, width, height, bar_x, bar_y, bar_width, 8, 0x39E7);
+      game_menu_fill_rect(this->game_menu_frame_, stride, width, height, bar_x, bar_y, bar_width, 8, overlay_theme::MUTED);
       game_menu_fill_rect(this->game_menu_frame_, stride, width, height, bar_x, bar_y,
                           bar_width * std::max(0, std::min(100, level)) / 100, 8, accent);
     }
   }
   const int footer_y = height - 20;
-  game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 8, height - 29, width - 16, 1, 0x5AEB);
+  game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 8, height - 29, width - 16, 1, overlay_theme::MUTED);
   if (this->game_menu_app_page_ && this->game_menu_page_.preview != nullptr && width >= 360) {
     const int preview_x = width - PAX_GAME_MENU_PREVIEW_WIDTH - 12;
     for (int y = 0; y < PAX_GAME_MENU_PREVIEW_HEIGHT; ++y)
@@ -4763,7 +4764,7 @@ void PaxLoader::build_game_menu_frame_() {
   const char *status = this->game_menu_busy_ ? "WORKING..." :
       this->game_menu_app_page_ && this->game_menu_page_.status[0] != '\0' ? this->game_menu_page_.status :
       "UP DOWN MOVE LEFT RIGHT ADJUST A SELECT B BACK";
-  game_menu_draw_text(this->game_menu_frame_, stride, width, height, 12, footer_y, status, 0xC618, 1);
+  game_menu_draw_text(this->game_menu_frame_, stride, width, height, 12, footer_y, status, overlay_theme::MUTED, 1);
   // draw_pixels_at() writes raw panel pixels and bypasses the display
   // component's rotation transform. The PAX panel is mounted at 180 degrees,
   // so rotate this software-rendered overlay to match the app framebuffer.
@@ -4802,11 +4803,11 @@ void PaxLoader::draw_game_menu_button_() {
   const int raw_y = this->geometry_.game_menu_raw_y(this->control_overlay_offset_);
   if (!overlay_rect_on_panel(this->geometry_, raw_x, raw_y, GAME_MENU_BUTTON_SIZE, GAME_MENU_BUTTON_SIZE))
     return;
-  std::fill_n(game_menu_button_overlay_buffer, GAME_MENU_BUTTON_SIZE * GAME_MENU_BUTTON_SIZE, 0x0010);
+  std::fill_n(game_menu_button_overlay_buffer, GAME_MENU_BUTTON_SIZE * GAME_MENU_BUTTON_SIZE, overlay_theme::PANEL);
   for (int y : {17, 27, 37}) {
     for (int x = 14; x < 44; ++x) {
-      game_menu_button_overlay_buffer[y * GAME_MENU_BUTTON_SIZE + x] = 0xFFFF;
-      game_menu_button_overlay_buffer[(y + 1) * GAME_MENU_BUTTON_SIZE + x] = 0xFFFF;
+      game_menu_button_overlay_buffer[y * GAME_MENU_BUTTON_SIZE + x] = overlay_theme::TEXT;
+      game_menu_button_overlay_buffer[(y + 1) * GAME_MENU_BUTTON_SIZE + x] = overlay_theme::TEXT;
     }
   }
   this->display_->draw_pixels_at(raw_x, raw_y, GAME_MENU_BUTTON_SIZE, GAME_MENU_BUTTON_SIZE,
@@ -5232,21 +5233,21 @@ void PaxLoader::draw_close_overlay_() {
   const int right = left + CLOSE_BUTTON_SIZE;
   const int bottom = top + CLOSE_BUTTON_SIZE;
 
-  // Opaque dark-red button keeps the X readable over bright game frames.
+  // Dark panel background with an error-colored border keeps the exit action distinct.
   for (int y = top; y < bottom; y++) {
     for (int x = left; x < right; x++)
-      close_overlay_buffer[y * CLOSE_BUTTON_SIZE + x] = 0x7800;
+      close_overlay_buffer[y * CLOSE_BUTTON_SIZE + x] = overlay_theme::PANEL;
   }
 
-  // Red border.
+  // Use the launcher error color for the exit border.
   for (int i = 0; i < CLOSE_BUTTON_SIZE; i++) {
-    close_overlay_buffer[top * CLOSE_BUTTON_SIZE + left + i] = 0xF800;
-    close_overlay_buffer[(bottom - 1) * CLOSE_BUTTON_SIZE + left + i] = 0xF800;
-    close_overlay_buffer[(top + i) * CLOSE_BUTTON_SIZE + left] = 0xF800;
-    close_overlay_buffer[(top + i) * CLOSE_BUTTON_SIZE + right - 1] = 0xF800;
+    close_overlay_buffer[top * CLOSE_BUTTON_SIZE + left + i] = overlay_theme::ERROR;
+    close_overlay_buffer[(bottom - 1) * CLOSE_BUTTON_SIZE + left + i] = overlay_theme::ERROR;
+    close_overlay_buffer[(top + i) * CLOSE_BUTTON_SIZE + left] = overlay_theme::ERROR;
+    close_overlay_buffer[(top + i) * CLOSE_BUTTON_SIZE + right - 1] = overlay_theme::ERROR;
   }
 
-  // White X.
+  // High-contrast X.
   for (int i = 0; i < 26; i++) {
     for (int thickness = -1; thickness <= 1; thickness++) {
       const int x1 = left + 16 + i;
@@ -5254,9 +5255,9 @@ void PaxLoader::draw_close_overlay_() {
       const int x2 = left + 41 - i;
       const int y2 = top + 16 + i + thickness;
       if (x1 >= left && x1 < right && y1 >= top && y1 < bottom)
-        close_overlay_buffer[y1 * CLOSE_BUTTON_SIZE + x1] = 0xFFFF;
+        close_overlay_buffer[y1 * CLOSE_BUTTON_SIZE + x1] = overlay_theme::TEXT;
       if (x2 >= left && x2 < right && y2 >= top && y2 < bottom)
-        close_overlay_buffer[y2 * CLOSE_BUTTON_SIZE + x2] = 0xFFFF;
+        close_overlay_buffer[y2 * CLOSE_BUTTON_SIZE + x2] = overlay_theme::TEXT;
     }
   }
 
@@ -5291,7 +5292,7 @@ void PaxLoader::draw_reload_overlay_() {
   if (!overlay_rect_on_panel(this->geometry_, raw_x, raw_y, RELOAD_BUTTON_SIZE, RELOAD_BUTTON_SIZE))
     return;
 
-  std::fill_n(reload_overlay_buffer, RELOAD_BUTTON_SIZE * RELOAD_BUTTON_SIZE, 0x1020);
+  std::fill_n(reload_overlay_buffer, RELOAD_BUTTON_SIZE * RELOAD_BUTTON_SIZE, overlay_theme::PANEL);
   const int center_x = RELOAD_BUTTON_SIZE / 2;
   const int center_y = RELOAD_BUTTON_SIZE / 2;
   constexpr int radius = 16;
@@ -5307,7 +5308,7 @@ void PaxLoader::draw_reload_overlay_() {
         const int px = x + thick;
         const int py = y + thick_y;
         if (px >= 0 && px < RELOAD_BUTTON_SIZE && py >= 0 && py < RELOAD_BUTTON_SIZE)
-          reload_overlay_buffer[py * RELOAD_BUTTON_SIZE + px] = 0xFFFF;
+          reload_overlay_buffer[py * RELOAD_BUTTON_SIZE + px] = overlay_theme::TEXT;
       }
     }
   }
@@ -5323,7 +5324,7 @@ void PaxLoader::draw_reload_overlay_() {
           const int px = x0 + thick;
           const int py = y0 + thick_y;
           if (px >= 0 && px < RELOAD_BUTTON_SIZE && py >= 0 && py < RELOAD_BUTTON_SIZE)
-            reload_overlay_buffer[py * RELOAD_BUTTON_SIZE + px] = 0xFFFF;
+            reload_overlay_buffer[py * RELOAD_BUTTON_SIZE + px] = overlay_theme::TEXT;
         }
       }
       if (x0 == x1 && y0 == y1) break;
@@ -5364,28 +5365,8 @@ void PaxLoader::draw_volume_overlay_() {
   if (!overlay_rect_on_panel(this->geometry_, raw_x, raw_y, VOLUME_BUTTON_SIZE, VOLUME_BUTTON_SIZE))
     return;
 
-  // Keep the hit target square, but do not draw a box outline around the
-  // speaker. The launcher uses the same speaker-only symbol.
-  std::fill_n(volume_overlay_buffer, VOLUME_BUTTON_SIZE * VOLUME_BUTTON_SIZE, 0x1020);
-
-  // Simple speaker glyph. The small waves use the same idea as LV_SYMBOL_VOLUME_MAX.
-  for (int y = 22; y < 36; y++)
-    for (int x = 13; x < 23; x++)
-      volume_overlay_buffer[y * VOLUME_BUTTON_SIZE + x] = 0xFFFF;
-  for (int row = -8; row <= 8; row++) {
-    const int reach = 10 - std::abs(row);
-    const int y = 29 + row;
-    for (int x = 22; x < 22 + reach; x++)
-      volume_overlay_buffer[y * VOLUME_BUTTON_SIZE + x] = 0xFFFF;
-  }
-  const int bars = std::max<int32_t>(0, std::min<int32_t>(5, (this->master_volume_ + 19) / 20));
-  for (int bar = 0; bar < 5; bar++) {
-    const int height = 5 + bar * 3;
-    const uint16_t color = bar < bars ? 0xFFFF : 0x7BEF;
-    for (int y = 29 - height; y <= 29 + height; y++)
-      for (int x = 37 + bar * 4; x < 40 + bar * 4; x++)
-        volume_overlay_buffer[y * VOLUME_BUTTON_SIZE + x] = color;
-  }
+  static_assert(VOLUME_BUTTON_SIZE == volume_icon::SIZE, "Volume icon must match its hit target");
+  volume_icon::render(volume_overlay_buffer, this->master_volume_);
 
   this->display_->draw_pixels_at(
       raw_x, raw_y, VOLUME_BUTTON_SIZE, VOLUME_BUTTON_SIZE,
@@ -5397,7 +5378,7 @@ void PaxLoader::draw_volume_slider_overlay_() {
   if (!this->launched_ || !this->volume_slider_visible_ || this->display_ == nullptr)
     return;
 
-  std::fill_n(volume_slider_overlay_buffer, VOLUME_SLIDER_WIDTH * VOLUME_SLIDER_HEIGHT, 0x1020);
+  std::fill_n(volume_slider_overlay_buffer, VOLUME_SLIDER_WIDTH * VOLUME_SLIDER_HEIGHT, overlay_theme::PANEL);
   const int track_left = 16;
   const int track_right = VOLUME_SLIDER_WIDTH - 16;
   const int track_top = 24;
@@ -5409,11 +5390,11 @@ void PaxLoader::draw_volume_slider_overlay_() {
   const int knob_x = track_right - (track_right - track_left) * level / 100;
   for (int y = track_top; y <= track_bottom; y++) {
     for (int x = track_left; x <= track_right; x++)
-      volume_slider_overlay_buffer[y * VOLUME_SLIDER_WIDTH + x] = x >= knob_x ? 0x07FF : 0x7BEF;
+      volume_slider_overlay_buffer[y * VOLUME_SLIDER_WIDTH + x] = x >= knob_x ? overlay_theme::ACCENT : overlay_theme::MUTED;
   }
   for (int y = 17; y <= 41; y++) {
     for (int x = std::max(track_left, knob_x - 5); x <= std::min(track_right, knob_x + 5); x++)
-      volume_slider_overlay_buffer[y * VOLUME_SLIDER_WIDTH + x] = 0xFFFF;
+      volume_slider_overlay_buffer[y * VOLUME_SLIDER_WIDTH + x] = overlay_theme::TEXT;
   }
   this->display_->draw_pixels_at(
       this->geometry_.volume_slider_raw_x(), this->geometry_.volume_slider_raw_y(),
@@ -5442,7 +5423,7 @@ void PaxLoader::draw_brightness_overlay_() {
   if (!overlay_rect_on_panel(this->geometry_, raw_x, raw_y, BRIGHTNESS_BUTTON_SIZE, BRIGHTNESS_BUTTON_SIZE))
     return;
 
-  std::fill_n(brightness_overlay_buffer, BRIGHTNESS_BUTTON_SIZE * BRIGHTNESS_BUTTON_SIZE, 0x1020);
+  std::fill_n(brightness_overlay_buffer, BRIGHTNESS_BUTTON_SIZE * BRIGHTNESS_BUTTON_SIZE, overlay_theme::PANEL);
   // Sun icon: a filled centre and eight short rays. Keep it deliberately
   // pixel-based so it remains available even when an app uses no LVGL font.
   for (int y = 23; y <= 35; y++) {
@@ -5450,7 +5431,7 @@ void PaxLoader::draw_brightness_overlay_() {
       const int dx = x - 29;
       const int dy = y - 29;
       if (dx * dx + dy * dy <= 30)
-        brightness_overlay_buffer[y * BRIGHTNESS_BUTTON_SIZE + x] = 0xFFFF;
+        brightness_overlay_buffer[y * BRIGHTNESS_BUTTON_SIZE + x] = overlay_theme::TEXT;
     }
   }
   for (int i = 0; i < 8; i++) {
@@ -5466,7 +5447,7 @@ void PaxLoader::draw_brightness_overlay_() {
     int x = x0, y = y0;
     while (true) {
       if (x >= 0 && x < BRIGHTNESS_BUTTON_SIZE && y >= 0 && y < BRIGHTNESS_BUTTON_SIZE)
-        brightness_overlay_buffer[y * BRIGHTNESS_BUTTON_SIZE + x] = 0xFFFF;
+        brightness_overlay_buffer[y * BRIGHTNESS_BUTTON_SIZE + x] = overlay_theme::TEXT;
       if (x == x1 && y == y1)
         break;
       if (x != x1)
@@ -5492,7 +5473,7 @@ void PaxLoader::draw_brightness_slider_overlay_() {
   if (this->catalog_brightness_number_ != nullptr && std::isfinite(this->catalog_brightness_number_->state))
     s_brightness = std::max<int32_t>(5, std::min<int32_t>(100, static_cast<int32_t>(this->catalog_brightness_number_->state)));
 #endif
-  std::fill_n(brightness_slider_overlay_buffer, BRIGHTNESS_SLIDER_WIDTH * BRIGHTNESS_SLIDER_HEIGHT, 0x1020);
+  std::fill_n(brightness_slider_overlay_buffer, BRIGHTNESS_SLIDER_WIDTH * BRIGHTNESS_SLIDER_HEIGHT, overlay_theme::PANEL);
   const int track_left = 16;
   const int track_right = BRIGHTNESS_SLIDER_WIDTH - 16;
   const int track_top = 24;
@@ -5501,11 +5482,11 @@ void PaxLoader::draw_brightness_slider_overlay_() {
   const int knob_x = track_right - (track_right - track_left) * level / 100;
   for (int y = track_top; y <= track_bottom; y++) {
     for (int x = track_left; x <= track_right; x++)
-      brightness_slider_overlay_buffer[y * BRIGHTNESS_SLIDER_WIDTH + x] = x >= knob_x ? 0xFFE0 : 0x7BEF;
+      brightness_slider_overlay_buffer[y * BRIGHTNESS_SLIDER_WIDTH + x] = x >= knob_x ? overlay_theme::ACCENT : overlay_theme::MUTED;
   }
   for (int y = 17; y <= 41; y++) {
     for (int x = std::max(track_left, knob_x - 5); x <= std::min(track_right, knob_x + 5); x++)
-      brightness_slider_overlay_buffer[y * BRIGHTNESS_SLIDER_WIDTH + x] = 0xFFFF;
+      brightness_slider_overlay_buffer[y * BRIGHTNESS_SLIDER_WIDTH + x] = overlay_theme::TEXT;
   }
   this->display_->draw_pixels_at(
       this->geometry_.brightness_slider_raw_x(), this->geometry_.brightness_slider_raw_y(),
