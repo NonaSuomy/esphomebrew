@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "app": "nes",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/nes/incoming",
+  "folders": [
+    "/sd/roms/nes"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/nes/*",
+      "note": ".nes or ZIP"
+    }
+  ],
+  "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\n.nes or ZIP\n\nFILES / FOLDERS\n\n/sd/roms/nes/* — .nes or ZIP",
+  "media": [],
+  "sources": []
+}

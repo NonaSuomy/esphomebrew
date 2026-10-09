@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "app": "duke3d",
+  "mode": "download",
+  "archive_dir": "/sd/roms/duke3d/incoming",
+  "folders": [
+    "/sd/roms/duke3d"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/duke3d/duke3d.grp",
+      "note": "Free shareware/support data; full owned-game data may replace it"
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/duke3d/duke3d.grp — Free shareware/support data; full owned-game data may replace it",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download shareware / support files",
+      "files": [
+        {
+          "source": "DUKE3D.grp",
+          "target": "/sd/roms/duke3d/duke3d.grp",
+          "size": 10442980,
+          "sha256": "b218feef4a7b0e48027de17746bd744dc0624b275b9dac0ea8a726f85b48887f",
+          "url": "https://raw.githubusercontent.com/NonaSuomy/RetroESP32-P4/ae04c88d166c55fa60722276ccc1cc50b7d100f2/SDcard/roms/duke3d/DUKE3D.grp"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://github.com/NonaSuomy/RetroESP32-P4",
+      "license": "DUKE3D.GRP from the Duke Nukem 3D shareware release (episode 1 only, contains DUKESW.BIN), which 3D Realms allowed to be freely distributed.",
+      "ref": "ae04c88d166c55fa60722276ccc1cc50b7d100f2"
+    }
+  ]
+}

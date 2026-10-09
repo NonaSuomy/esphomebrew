@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "app": "openlara",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/openlara/incoming",
+  "folders": [
+    "/sd/roms/openlara/DATA",
+    "/sd/roms/openlara/FMV"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/openlara/DATA/*.PHD",
+      "note": "Tomb Raider 1 PC levels: copy the game's DATA folder"
+    },
+    {
+      "path": "/sd/roms/openlara/FMV/",
+      "note": "The game's movies",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/openlara/DATA/*.PHD — Tomb Raider 1 PC levels: copy the game's DATA folder\n\n/sd/roms/openlara/FMV/ — The game's movies",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/XProger/OpenLara",
+      "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+    }
+  ]
+}

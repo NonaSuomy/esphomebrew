@@ -1,0 +1,268 @@
+{
+  "version": 2,
+  "app": "scummvm-lure",
+  "engine": "lure",
+  "mode": "download",
+  "archive_dir": "/sd/roms/scummvm/incoming/lure",
+  "folders": [
+    "/sd/roms/scummvm",
+    "/sd/roms/scummvm/lure-freeware",
+    "/sd/scummvm",
+    "/sd/scummvm/extras",
+    "/sd/scummvm/saves"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scummvm",
+      "note": "A complete game data directory supported by the lure engine"
+    },
+    {
+      "path": "/sd/roms/scummvm/scummvm.ini",
+      "note": "Optional saved game configuration",
+      "optional": true
+    },
+    {
+      "path": "/sd/scummvm/achievements.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/classicmacfonts.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/encoding.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/helpdialog.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/macgui.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummclassic.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummmodern.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummremastered.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/translations.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/gui-icons.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/lure.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    }
+  ],
+  "instructions": "Engine: lure. Copy each game into its own directory under /sd/roms/scummvm, then use Add Game in this engine.\n\nFile sets differ by game, platform and release. Follow the official game data-file page; a folder existing alone does not prove the game is complete.\n\nhttps://docs.scummvm.org/en/latest/use_scummvm/game_files.html\nhttps://wiki.scummvm.org/index.php/Datafiles\n\nFreeware download choices are optional; engines without an included freeware choice require your selected game data. No console ROM or BIOS is bundled.\n\nDownload matching engine / launcher resources first. These live under /sd/scummvm, separate from game directories. This does not supply a commercial game. PAX saves are under /sd/scummvm/saves.",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download matching engine / launcher resources",
+      "files": [
+        {
+          "source": "achievements.dat",
+          "target": "/sd/scummvm/achievements.dat",
+          "size": 249239,
+          "sha256": "6f5394edee3a2ed9165d1ac0611a5e02aabe40e7ceca9e51926d01b23f157493",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/achievements.dat"
+        },
+        {
+          "source": "classicmacfonts.dat",
+          "target": "/sd/scummvm/classicmacfonts.dat",
+          "size": 626103,
+          "sha256": "d33aa56fbbe119a1567a843df9bb759cb6589f236926b93a78dc033b2f4221d1",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/classicmacfonts.dat"
+        },
+        {
+          "source": "encoding.dat",
+          "target": "/sd/scummvm/encoding.dat",
+          "size": 179670,
+          "sha256": "175689478e2acfe66a106e2df53c5707c49271183cfc7b5e65cd05c6b65c57f8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/encoding.dat"
+        },
+        {
+          "source": "helpdialog.zip",
+          "target": "/sd/scummvm/helpdialog.zip",
+          "size": 207764,
+          "sha256": "9ff3c7964a63b18ffa0e9cfcf60d4d8b4a77d7a583b2e66173716a825c777f81",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/helpdialog.zip"
+        },
+        {
+          "source": "macgui.dat",
+          "target": "/sd/scummvm/macgui.dat",
+          "size": 65656,
+          "sha256": "5e55c29903809bf5297a28fee22e203b6dc6f56240900036b9bd8036c0a67660",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/macgui.dat"
+        },
+        {
+          "source": "scummclassic.zip",
+          "target": "/sd/scummvm/scummclassic.zip",
+          "size": 16342,
+          "sha256": "ab888c8d34b09f9dc9101496fbad3e137a0f8beb89ea9638367f9f3d80117345",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummclassic.zip"
+        },
+        {
+          "source": "scummmodern.zip",
+          "target": "/sd/scummvm/scummmodern.zip",
+          "size": 68063,
+          "sha256": "13df1daf58eacc88fdb4a33c23ae0f5792927e6d9233b37decb6233ac660b155",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummmodern.zip"
+        },
+        {
+          "source": "scummremastered.zip",
+          "target": "/sd/scummvm/scummremastered.zip",
+          "size": 96612,
+          "sha256": "335e68866cd3f9de5de3792790c8f8f949a48c22424bbc0bb5cd061ac6c645c8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummremastered.zip"
+        },
+        {
+          "source": "translations.dat",
+          "target": "/sd/scummvm/translations.dat",
+          "size": 3693914,
+          "sha256": "88e4a57aa5d58b213f6a066518eb8a1cb1046132770987cc7dd8b06ce80e0156",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/translations.dat"
+        },
+        {
+          "source": "gui-icons.dat",
+          "target": "/sd/scummvm/gui-icons.dat",
+          "size": 3315855,
+          "sha256": "e772a8bb64ad3d7a807e859ad55c6b41269e66e32dfc78cdb4e583e183b5d828",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/gui-icons.dat"
+        },
+        {
+          "source": "lure.dat",
+          "target": "/sd/scummvm/lure.dat",
+          "size": 768832,
+          "sha256": "9c17cfb5349c4bd13e56b0652f81fd2bdec849de7bd875bfedf654a08916b568",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/lure.dat"
+        }
+      ]
+    },
+    {
+      "format": "zip-files",
+      "zip_name": "lure-1.1.zip",
+      "download_label": "Download Lure of the Temptress",
+      "archive_url": "https://downloads.scummvm.org/frs/extras/Lure%20of%20the%20Temptress/lure-1.1.zip",
+      "archive_size": 5678861,
+      "archive_sha256": "f3178245a1483da1168c3a11e70b65d33c389f1f5df63d4f3a356886c1890108",
+      "files": [
+        {
+          "source": "lure/notes.txt",
+          "target": "/sd/roms/scummvm/lure-freeware/notes.txt",
+          "size": 222,
+          "sha256": "ed8d4e71dad5cdb1b1be8f7c8aaa34a08dbc5de342218ab39e5ebddbe6c7a386"
+        },
+        {
+          "source": "lure/README",
+          "target": "/sd/roms/scummvm/lure-freeware/README",
+          "size": 692,
+          "sha256": "25d3c1bb4a9e91b89d66474527054b27bc0f55b050127cb3845ab35cf8dc5ebf"
+        },
+        {
+          "source": "lure/PROTECT.PDF",
+          "target": "/sd/roms/scummvm/lure-freeware/PROTECT.PDF",
+          "size": 138359,
+          "sha256": "d07d55f794fa2723a319c5a38495be98b16961803043813932dd5a02c6cdea2b"
+        },
+        {
+          "source": "lure/disk2.ega",
+          "target": "/sd/roms/scummvm/lure-freeware/disk2.ega",
+          "size": 551680,
+          "sha256": "751b562a0386ecc8d468a20d6c31ce7bee1b3f117dd4bd818179b2d9ec34fac4"
+        },
+        {
+          "source": "lure/Disk4.vga",
+          "target": "/sd/roms/scummvm/lure-freeware/Disk4.vga",
+          "size": 618208,
+          "sha256": "a3bcf4026a5fc47e36d665e321d78ee3a6c14bc6fcd81bca6706be5a0d9fcb17"
+        },
+        {
+          "source": "lure/Disk3.vga",
+          "target": "/sd/roms/scummvm/lure-freeware/Disk3.vga",
+          "size": 699072,
+          "sha256": "81678a2d90dd07a7e959e309bde17a664562d0a7c490d636a3e37f77d61ffa85"
+        },
+        {
+          "source": "lure/Lure.exe",
+          "target": "/sd/roms/scummvm/lure-freeware/Lure.exe",
+          "size": 136956,
+          "sha256": "fdbc000347ca7ccf45f8db664d20fb821894a6902ee54cae17eed84fa9c9c87b"
+        },
+        {
+          "source": "lure/Manual.pdf",
+          "target": "/sd/roms/scummvm/lure-freeware/Manual.pdf",
+          "size": 2207929,
+          "sha256": "fc9d0d75e6425ea7caa6689241f7dd2e2e998492722a2c6334524976abce7f05"
+        },
+        {
+          "source": "lure/Disk2.vga",
+          "target": "/sd/roms/scummvm/lure-freeware/Disk2.vga",
+          "size": 659616,
+          "sha256": "c2e37bae781e89b77f565980900e2cf21c558ed1d681e6a6940de07e7e3aba85"
+        },
+        {
+          "source": "lure/disk1.ega",
+          "target": "/sd/roms/scummvm/lure-freeware/disk1.ega",
+          "size": 599904,
+          "sha256": "eb69e8b3ca34790abd2ceedf6ebb14cc640b205f3285ef114a00589b2ebe7108"
+        },
+        {
+          "source": "lure/Disk1.vga",
+          "target": "/sd/roms/scummvm/lure-freeware/Disk1.vga",
+          "size": 618944,
+          "sha256": "7475e38373dcf62b6101e0008bdb939d4b42717b610d6f7553400cd588131c45"
+        },
+        {
+          "source": "lure/disk4.ega",
+          "target": "/sd/roms/scummvm/lure-freeware/disk4.ega",
+          "size": 534912,
+          "sha256": "c4c24f101ac7e42006947836bb8b1647b0efc3dabc528765a4df813b2ad4ac55"
+        },
+        {
+          "source": "lure/LICENSE.txt",
+          "target": "/sd/roms/scummvm/lure-freeware/LICENSE.txt",
+          "size": 1285,
+          "sha256": "f546a2370e353f3cca922129aab031f1f8c3c2a8be9d8c235f4298d3062e1eed"
+        },
+        {
+          "source": "lure/disk3.ega",
+          "target": "/sd/roms/scummvm/lure-freeware/disk3.ega",
+          "size": 447264,
+          "sha256": "657193bcc383b6c52dd15a25111c3504085d7d228dcd0e9231bfc13f37dc1ab3"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://wiki.scummvm.org/index.php/Datafiles",
+      "note": "Exact files by game and release"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "Official freeware and add-ons"
+    },
+    {
+      "url": "https://github.com/scummvm/scummvm",
+      "ref": "fed42f2068dcafc6aafa1c28c77e4c88def74b66",
+      "note": "Resource files match the current ScummVM source base"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "Lure of the Temptress verified package"
+    }
+  ]
+}

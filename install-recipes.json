@@ -1,0 +1,1038 @@
+[
+  {
+    "app": "anotherworld",
+    "path": "apps/anotherworld/install-recipe.json",
+    "mode": "self-contained",
+    "download_choices": 0,
+    "requirements": 0
+  },
+  {
+    "app": "atari800",
+    "path": "apps/atari800/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "azip",
+    "path": "apps/azip/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 2
+  },
+  {
+    "app": "c64",
+    "path": "apps/c64/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 5
+  },
+  {
+    "app": "doom",
+    "path": "apps/doom/install-recipe.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 2
+  },
+  {
+    "app": "duke3d",
+    "path": "apps/duke3d/install-recipe.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 1
+  },
+  {
+    "app": "gb",
+    "path": "apps/gb/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "genesis",
+    "path": "apps/genesis/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "gw",
+    "path": "apps/gw/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "gx4000",
+    "path": "apps/gx4000/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "handy",
+    "path": "apps/handy/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "launcher_ui",
+    "path": "apps/launcher_ui/install-recipe.json",
+    "mode": "self-contained",
+    "download_choices": 0,
+    "requirements": 0
+  },
+  {
+    "app": "lvgl",
+    "path": "apps/lvgl/install-recipe.json",
+    "mode": "self-contained",
+    "download_choices": 0,
+    "requirements": 0
+  },
+  {
+    "app": "msx",
+    "path": "apps/msx/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 3
+  },
+  {
+    "app": "neogeo",
+    "path": "apps/neogeo/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 3
+  },
+  {
+    "app": "nes",
+    "path": "apps/nes/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "nesplus",
+    "path": "apps/nesplus/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "netsurf",
+    "path": "apps/netsurf/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "ngp",
+    "path": "apps/ngp/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "openlara",
+    "path": "apps/openlara/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 2
+  },
+  {
+    "app": "opentyrian",
+    "path": "apps/opentyrian/install-recipe.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 2
+  },
+  {
+    "app": "pce",
+    "path": "apps/pce/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "prosystem",
+    "path": "apps/prosystem/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "quake",
+    "path": "apps/quake/install-recipe.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 1
+  },
+  {
+    "app": "quake2",
+    "path": "apps/quake2/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 3
+  },
+  {
+    "app": "recipe",
+    "path": "apps/recipe/install-recipe.json",
+    "mode": "self-contained",
+    "download_choices": 0,
+    "requirements": 0
+  },
+  {
+    "app": "redalert",
+    "path": "apps/redalert/install-recipe.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-access",
+    "path": "apps/scummvm/install-recipes/scummvm-access.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-adl",
+    "path": "apps/scummvm/install-recipes/scummvm-adl.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-agds",
+    "path": "apps/scummvm/install-recipes/scummvm-agds.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-agi",
+    "path": "apps/scummvm/install-recipes/scummvm-agi.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-agos",
+    "path": "apps/scummvm/install-recipes/scummvm-agos.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-alg",
+    "path": "apps/scummvm/install-recipes/scummvm-alg.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-asylum",
+    "path": "apps/scummvm/install-recipes/scummvm-asylum.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-avalanche",
+    "path": "apps/scummvm/install-recipes/scummvm-avalanche.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-awe",
+    "path": "apps/scummvm/install-recipes/scummvm-awe.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-bbvs",
+    "path": "apps/scummvm/install-recipes/scummvm-bbvs.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-bladerunner",
+    "path": "apps/scummvm/install-recipes/scummvm-bladerunner.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-bolt",
+    "path": "apps/scummvm/install-recipes/scummvm-bolt.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-cge",
+    "path": "apps/scummvm/install-recipes/scummvm-cge.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-cge2",
+    "path": "apps/scummvm/install-recipes/scummvm-cge2.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-chamber",
+    "path": "apps/scummvm/install-recipes/scummvm-chamber.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-chewy",
+    "path": "apps/scummvm/install-recipes/scummvm-chewy.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-cine",
+    "path": "apps/scummvm/install-recipes/scummvm-cine.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-colony",
+    "path": "apps/scummvm/install-recipes/scummvm-colony.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-composer",
+    "path": "apps/scummvm/install-recipes/scummvm-composer.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-cruise",
+    "path": "apps/scummvm/install-recipes/scummvm-cruise.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-cryo",
+    "path": "apps/scummvm/install-recipes/scummvm-cryo.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-cryomni3d",
+    "path": "apps/scummvm/install-recipes/scummvm-cryomni3d.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-darkseed",
+    "path": "apps/scummvm/install-recipes/scummvm-darkseed.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-dgds",
+    "path": "apps/scummvm/install-recipes/scummvm-dgds.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-director",
+    "path": "apps/scummvm/install-recipes/scummvm-director.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-dm",
+    "path": "apps/scummvm/install-recipes/scummvm-dm.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-draci",
+    "path": "apps/scummvm/install-recipes/scummvm-draci.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-dragons",
+    "path": "apps/scummvm/install-recipes/scummvm-dragons.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-drascula",
+    "path": "apps/scummvm/install-recipes/scummvm-drascula.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-dreamweb",
+    "path": "apps/scummvm/install-recipes/scummvm-dreamweb.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-efh",
+    "path": "apps/scummvm/install-recipes/scummvm-efh.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-freescape",
+    "path": "apps/scummvm/install-recipes/scummvm-freescape.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-gamos",
+    "path": "apps/scummvm/install-recipes/scummvm-gamos.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-gnap",
+    "path": "apps/scummvm/install-recipes/scummvm-gnap.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-gob",
+    "path": "apps/scummvm/install-recipes/scummvm-gob.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-got",
+    "path": "apps/scummvm/install-recipes/scummvm-got.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 14
+  },
+  {
+    "app": "scummvm-griffon",
+    "path": "apps/scummvm/install-recipes/scummvm-griffon.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-grim",
+    "path": "apps/scummvm/install-recipes/scummvm-grim.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-groovie",
+    "path": "apps/scummvm/install-recipes/scummvm-groovie.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-hadesch",
+    "path": "apps/scummvm/install-recipes/scummvm-hadesch.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-hdb",
+    "path": "apps/scummvm/install-recipes/scummvm-hdb.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-hopkins",
+    "path": "apps/scummvm/install-recipes/scummvm-hopkins.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-hugo",
+    "path": "apps/scummvm/install-recipes/scummvm-hugo.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-hypno",
+    "path": "apps/scummvm/install-recipes/scummvm-hypno.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-icb",
+    "path": "apps/scummvm/install-recipes/scummvm-icb.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-illusions",
+    "path": "apps/scummvm/install-recipes/scummvm-illusions.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-immortal",
+    "path": "apps/scummvm/install-recipes/scummvm-immortal.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-kingdom",
+    "path": "apps/scummvm/install-recipes/scummvm-kingdom.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-kyra",
+    "path": "apps/scummvm/install-recipes/scummvm-kyra.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-lab",
+    "path": "apps/scummvm/install-recipes/scummvm-lab.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-lastexpress",
+    "path": "apps/scummvm/install-recipes/scummvm-lastexpress.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-lilliput",
+    "path": "apps/scummvm/install-recipes/scummvm-lilliput.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-lure",
+    "path": "apps/scummvm/install-recipes/scummvm-lure.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-m4",
+    "path": "apps/scummvm/install-recipes/scummvm-m4.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-macventure",
+    "path": "apps/scummvm/install-recipes/scummvm-macventure.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-made",
+    "path": "apps/scummvm/install-recipes/scummvm-made.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-mads",
+    "path": "apps/scummvm/install-recipes/scummvm-mads.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-mediastation",
+    "path": "apps/scummvm/install-recipes/scummvm-mediastation.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-mm",
+    "path": "apps/scummvm/install-recipes/scummvm-mm.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-mohawk",
+    "path": "apps/scummvm/install-recipes/scummvm-mohawk.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-mortevielle",
+    "path": "apps/scummvm/install-recipes/scummvm-mortevielle.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-mtropolis",
+    "path": "apps/scummvm/install-recipes/scummvm-mtropolis.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-mutationofjb",
+    "path": "apps/scummvm/install-recipes/scummvm-mutationofjb.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-myst3",
+    "path": "apps/scummvm/install-recipes/scummvm-myst3.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-nancy",
+    "path": "apps/scummvm/install-recipes/scummvm-nancy.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-neverhood",
+    "path": "apps/scummvm/install-recipes/scummvm-neverhood.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-ngi",
+    "path": "apps/scummvm/install-recipes/scummvm-ngi.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-parallaction",
+    "path": "apps/scummvm/install-recipes/scummvm-parallaction.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-pegasus",
+    "path": "apps/scummvm/install-recipes/scummvm-pegasus.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-pelrock",
+    "path": "apps/scummvm/install-recipes/scummvm-pelrock.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-pink",
+    "path": "apps/scummvm/install-recipes/scummvm-pink.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-playground3d",
+    "path": "apps/scummvm/install-recipes/scummvm-playground3d.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-plumbers",
+    "path": "apps/scummvm/install-recipes/scummvm-plumbers.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-prince",
+    "path": "apps/scummvm/install-recipes/scummvm-prince.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-private",
+    "path": "apps/scummvm/install-recipes/scummvm-private.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-queen",
+    "path": "apps/scummvm/install-recipes/scummvm-queen.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-saga",
+    "path": "apps/scummvm/install-recipes/scummvm-saga.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-saga2",
+    "path": "apps/scummvm/install-recipes/scummvm-saga2.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-sci",
+    "path": "apps/scummvm/install-recipes/scummvm-sci.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-scumm",
+    "path": "apps/scummvm/install-recipes/scummvm-scumm.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-sherlock",
+    "path": "apps/scummvm/install-recipes/scummvm-sherlock.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-sky",
+    "path": "apps/scummvm/install-recipes/scummvm-sky.json",
+    "mode": "download",
+    "download_choices": 2,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-sludge",
+    "path": "apps/scummvm/install-recipes/scummvm-sludge.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-startrek",
+    "path": "apps/scummvm/install-recipes/scummvm-startrek.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-supernova",
+    "path": "apps/scummvm/install-recipes/scummvm-supernova.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-sword1",
+    "path": "apps/scummvm/install-recipes/scummvm-sword1.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-sword2",
+    "path": "apps/scummvm/install-recipes/scummvm-sword2.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-teenagent",
+    "path": "apps/scummvm/install-recipes/scummvm-teenagent.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-testbed",
+    "path": "apps/scummvm/install-recipes/scummvm-testbed.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-tinsel",
+    "path": "apps/scummvm/install-recipes/scummvm-tinsel.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-toltecs",
+    "path": "apps/scummvm/install-recipes/scummvm-toltecs.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-tony",
+    "path": "apps/scummvm/install-recipes/scummvm-tony.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-toon",
+    "path": "apps/scummvm/install-recipes/scummvm-toon.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "scummvm-tot",
+    "path": "apps/scummvm/install-recipes/scummvm-tot.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-touche",
+    "path": "apps/scummvm/install-recipes/scummvm-touche.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-trecision",
+    "path": "apps/scummvm/install-recipes/scummvm-trecision.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-tsage",
+    "path": "apps/scummvm/install-recipes/scummvm-tsage.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-tucker",
+    "path": "apps/scummvm/install-recipes/scummvm-tucker.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-twine",
+    "path": "apps/scummvm/install-recipes/scummvm-twine.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-ultima",
+    "path": "apps/scummvm/install-recipes/scummvm-ultima.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 14
+  },
+  {
+    "app": "scummvm-vcruise",
+    "path": "apps/scummvm/install-recipes/scummvm-vcruise.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-voyeur",
+    "path": "apps/scummvm/install-recipes/scummvm-voyeur.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-wage",
+    "path": "apps/scummvm/install-recipes/scummvm-wage.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-waynesworld",
+    "path": "apps/scummvm/install-recipes/scummvm-waynesworld.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 12
+  },
+  {
+    "app": "scummvm-wintermute",
+    "path": "apps/scummvm/install-recipes/scummvm-wintermute.json",
+    "mode": "download",
+    "download_choices": 1,
+    "requirements": 13
+  },
+  {
+    "app": "sms",
+    "path": "apps/sms/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "snes",
+    "path": "apps/snes/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "spear",
+    "path": "apps/wolf4sdl/spear.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 8
+  },
+  {
+    "app": "spectrum",
+    "path": "apps/spectrum/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "stargus",
+    "path": "apps/stargus/install-recipe.json",
+    "mode": "processor",
+    "download_choices": 0,
+    "requirements": 6
+  },
+  {
+    "app": "stella",
+    "path": "apps/stella/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "template",
+    "path": "apps/template/install-recipe.json",
+    "mode": "self-contained",
+    "download_choices": 0,
+    "requirements": 0
+  },
+  {
+    "app": "tiberiandawn",
+    "path": "apps/tiberiandawn/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 27
+  },
+  {
+    "app": "tiberiansun",
+    "path": "apps/tiberiansun/install-recipe.json",
+    "mode": "development",
+    "download_choices": 0,
+    "requirements": 6
+  },
+  {
+    "app": "touchtest",
+    "path": "apps/touchtest/install-recipe.json",
+    "mode": "self-contained",
+    "download_choices": 0,
+    "requirements": 0
+  },
+  {
+    "app": "tulip",
+    "path": "apps/tulip/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "video",
+    "path": "apps/video/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "war1gus",
+    "path": "apps/stratagus/install-recipes/war1gus.json",
+    "mode": "processor",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "wargus",
+    "path": "apps/stratagus/install-recipes/wargus.json",
+    "mode": "processor",
+    "download_choices": 0,
+    "requirements": 1
+  },
+  {
+    "app": "wolf4sdl",
+    "path": "apps/wolf4sdl/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 8
+  },
+  {
+    "app": "ws",
+    "path": "apps/ws/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 1
+  }
+]

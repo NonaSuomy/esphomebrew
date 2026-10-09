@@ -165,5 +165,6 @@
       }
     ]
   },
-  "linker_script": "local:apps/_shared/psram_app.ld"
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "install_recipe": "install-recipe.json"
 }

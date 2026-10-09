@@ -23,8 +23,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/gb/",
-      "note": "Add a .gb or .gbc ROM, or a ZIP containing one"
+      "path": "/sd/roms/gb/*",
+      "note": ".gb or .gbc (ZIP supported)"
     }
   ],
   "build": "custom",
@@ -121,5 +121,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

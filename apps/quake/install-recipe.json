@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "app": "quake",
+  "mode": "download",
+  "archive_dir": "/sd/roms/quake/incoming",
+  "folders": [
+    "/sd/roms/quake/id1"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/quake/id1/pak0.pak",
+      "note": "Free shareware/support data; full owned-game data may replace it"
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/quake/id1/pak0.pak — Free shareware/support data; full owned-game data may replace it",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download shareware / support files",
+      "files": [
+        {
+          "source": "pak0.pak",
+          "target": "/sd/roms/quake/id1/pak0.pak",
+          "size": 18689235,
+          "sha256": "35a9c55e5e5a284a159ad2a62e0e8def23d829561fe2f54eb402dbc0a9a946af",
+          "url": "https://raw.githubusercontent.com/NonaSuomy/RetroESP32-P4/ae04c88d166c55fa60722276ccc1cc50b7d100f2/SDcard/roms/quake/id1/pak0.pak"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://github.com/NonaSuomy/RetroESP32-P4",
+      "license": "id1/pak0.pak is the Quake shareware v1.06 data (id Software permits redistributing the unmodified shareware release).",
+      "ref": "ae04c88d166c55fa60722276ccc1cc50b7d100f2"
+    }
+  ]
+}

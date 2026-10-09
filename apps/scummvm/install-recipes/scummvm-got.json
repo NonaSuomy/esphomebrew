@@ -1,0 +1,255 @@
+{
+  "version": 2,
+  "app": "scummvm-got",
+  "engine": "got",
+  "mode": "download",
+  "archive_dir": "/sd/roms/scummvm/incoming/got",
+  "folders": [
+    "/sd/roms/scummvm",
+    "/sd/roms/scummvm/got-freeware",
+    "/sd/scummvm",
+    "/sd/scummvm/extras",
+    "/sd/scummvm/saves"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scummvm",
+      "note": "A complete game data directory supported by the got engine"
+    },
+    {
+      "path": "/sd/roms/scummvm/scummvm.ini",
+      "note": "Optional saved game configuration",
+      "optional": true
+    },
+    {
+      "path": "/sd/scummvm/achievements.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/classicmacfonts.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/encoding.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/helpdialog.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/macgui.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummclassic.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummmodern.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummremastered.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/translations.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/gui-icons.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/got.gfx",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/got.aud",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    }
+  ],
+  "instructions": "Engine: got. Copy each game into its own directory under /sd/roms/scummvm, then use Add Game in this engine.\n\nFile sets differ by game, platform and release. Follow the official game data-file page; a folder existing alone does not prove the game is complete.\n\nhttps://docs.scummvm.org/en/latest/use_scummvm/game_files.html\nhttps://wiki.scummvm.org/index.php/Datafiles\n\nFreeware download choices are optional; engines without an included freeware choice require your selected game data. No console ROM or BIOS is bundled.\n\nDownload matching engine / launcher resources first. These live under /sd/scummvm, separate from game directories. This does not supply a commercial game. PAX saves are under /sd/scummvm/saves.",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download matching engine / launcher resources",
+      "files": [
+        {
+          "source": "achievements.dat",
+          "target": "/sd/scummvm/achievements.dat",
+          "size": 249239,
+          "sha256": "6f5394edee3a2ed9165d1ac0611a5e02aabe40e7ceca9e51926d01b23f157493",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/achievements.dat"
+        },
+        {
+          "source": "classicmacfonts.dat",
+          "target": "/sd/scummvm/classicmacfonts.dat",
+          "size": 626103,
+          "sha256": "d33aa56fbbe119a1567a843df9bb759cb6589f236926b93a78dc033b2f4221d1",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/classicmacfonts.dat"
+        },
+        {
+          "source": "encoding.dat",
+          "target": "/sd/scummvm/encoding.dat",
+          "size": 179670,
+          "sha256": "175689478e2acfe66a106e2df53c5707c49271183cfc7b5e65cd05c6b65c57f8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/encoding.dat"
+        },
+        {
+          "source": "helpdialog.zip",
+          "target": "/sd/scummvm/helpdialog.zip",
+          "size": 207764,
+          "sha256": "9ff3c7964a63b18ffa0e9cfcf60d4d8b4a77d7a583b2e66173716a825c777f81",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/helpdialog.zip"
+        },
+        {
+          "source": "macgui.dat",
+          "target": "/sd/scummvm/macgui.dat",
+          "size": 65656,
+          "sha256": "5e55c29903809bf5297a28fee22e203b6dc6f56240900036b9bd8036c0a67660",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/macgui.dat"
+        },
+        {
+          "source": "scummclassic.zip",
+          "target": "/sd/scummvm/scummclassic.zip",
+          "size": 16342,
+          "sha256": "ab888c8d34b09f9dc9101496fbad3e137a0f8beb89ea9638367f9f3d80117345",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummclassic.zip"
+        },
+        {
+          "source": "scummmodern.zip",
+          "target": "/sd/scummvm/scummmodern.zip",
+          "size": 68063,
+          "sha256": "13df1daf58eacc88fdb4a33c23ae0f5792927e6d9233b37decb6233ac660b155",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummmodern.zip"
+        },
+        {
+          "source": "scummremastered.zip",
+          "target": "/sd/scummvm/scummremastered.zip",
+          "size": 96612,
+          "sha256": "335e68866cd3f9de5de3792790c8f8f949a48c22424bbc0bb5cd061ac6c645c8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummremastered.zip"
+        },
+        {
+          "source": "translations.dat",
+          "target": "/sd/scummvm/translations.dat",
+          "size": 3693914,
+          "sha256": "88e4a57aa5d58b213f6a066518eb8a1cb1046132770987cc7dd8b06ce80e0156",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/translations.dat"
+        },
+        {
+          "source": "gui-icons.dat",
+          "target": "/sd/scummvm/gui-icons.dat",
+          "size": 3315855,
+          "sha256": "e772a8bb64ad3d7a807e859ad55c6b41269e66e32dfc78cdb4e583e183b5d828",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/gui-icons.dat"
+        },
+        {
+          "source": "got.gfx",
+          "target": "/sd/scummvm/got.gfx",
+          "size": 288199,
+          "sha256": "83f5d7681e92daaad63370505ff24d9bea468cbd898fc9628c62b299e707e768",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/got.gfx"
+        },
+        {
+          "source": "got.aud",
+          "target": "/sd/scummvm/got.aud",
+          "size": 11313,
+          "sha256": "9b253aedf06bd49159e4241b22d1047aadb1453d125dd961a8d0c458ae3c889a",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/got.aud"
+        }
+      ]
+    },
+    {
+      "format": "zip-files",
+      "zip_name": "gotfree.zip",
+      "download_label": "Download God of Thunder",
+      "archive_url": "https://downloads.scummvm.org/frs/extras/God%20of%20Thunder/gotfree.zip",
+      "archive_size": 1059686,
+      "archive_sha256": "94962e6fcbc6d547debda11224d00fdec7a0d03bacdf7d82d08ed8ea289c0c5e",
+      "files": [
+        {
+          "source": "GOTRES.DAT",
+          "target": "/sd/roms/scummvm/got-freeware/GOTRES.DAT",
+          "size": 739710,
+          "sha256": "28493f8a65aa2b3dfc9808e03c3cb1223143145ee41005f44cea75801ed908b3"
+        },
+        {
+          "source": "GOT.EXE",
+          "target": "/sd/roms/scummvm/got-freeware/GOT.EXE",
+          "size": 389305,
+          "sha256": "3b0b9ea6f78edc9e3bf387beedda0305e466aab4a5fb1371bf9a76182f23f7e5"
+        },
+        {
+          "source": "SETBLAST.EXE",
+          "target": "/sd/roms/scummvm/got-freeware/SETBLAST.EXE",
+          "size": 76872,
+          "sha256": "64e8e93824d49dbe01387b61b2d8a22134859fc4f016fa2563c0e74098c99b59"
+        },
+        {
+          "source": "_G1.EXE",
+          "target": "/sd/roms/scummvm/got-freeware/_G1.EXE",
+          "size": 58284,
+          "sha256": "9e7c42ec4edf81a942fd148b58d7d33e982e1b941954251c4ce69933ded446c1"
+        },
+        {
+          "source": "_G2.EXE",
+          "target": "/sd/roms/scummvm/got-freeware/_G2.EXE",
+          "size": 59462,
+          "sha256": "84148ec39311915014bfa627c4ce79e0b922c5fc06cf21c798cc8e08f944e308"
+        },
+        {
+          "source": "_G3.EXE",
+          "target": "/sd/roms/scummvm/got-freeware/_G3.EXE",
+          "size": 59451,
+          "sha256": "82d8c5993efbcafe61ac59512045347c45f8c74d9b665513c3bf1abf05c75ec6"
+        },
+        {
+          "source": "VERSION.GOT",
+          "target": "/sd/roms/scummvm/got-freeware/VERSION.GOT",
+          "size": 9,
+          "sha256": "f82a1cdfd7a56d89c71087035c67d4981be2f276b487fc652f6b11df2193f0a8"
+        },
+        {
+          "source": "LICENSE.TXT",
+          "target": "/sd/roms/scummvm/got-freeware/LICENSE.TXT",
+          "size": 2529,
+          "sha256": "ea215c71b5d9560c12e9f07f47e5a57c26020c8484f48e8c1d0034ec0861c321"
+        },
+        {
+          "source": "MANUAL.TXT",
+          "target": "/sd/roms/scummvm/got-freeware/MANUAL.TXT",
+          "size": 20448,
+          "sha256": "580fb5ea29e60c62c0ae0caf1016bd5248d49e35f43aa0059cdc5ffa4a508238"
+        },
+        {
+          "source": "TROUBLE.TXT",
+          "target": "/sd/roms/scummvm/got-freeware/TROUBLE.TXT",
+          "size": 2092,
+          "sha256": "c06580c3c7d7bb162603fa575d5e6b84f16df0a6df8e1e8312259738eda000bf"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://wiki.scummvm.org/index.php/Datafiles",
+      "note": "Exact files by game and release"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "Official freeware and add-ons"
+    },
+    {
+      "url": "https://github.com/scummvm/scummvm",
+      "ref": "fed42f2068dcafc6aafa1c28c77e4c88def74b66",
+      "note": "Resource files match the current ScummVM source base"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "God of Thunder verified package"
+    }
+  ]
+}

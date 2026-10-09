@@ -21,8 +21,18 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/msx/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/msx/*",
+      "note": "An MSX cartridge or disk image"
+    },
+    {
+      "path": "/sd/roms/msx/MSX2.ROM",
+      "note": "Required only when selecting MSX2 mode; MSX1 C-BIOS is embedded",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/msx/MSX2EXT.ROM",
+      "note": "Required only for MSX2 mode",
+      "optional": true
     }
   ],
   "build": "custom",
@@ -138,5 +148,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

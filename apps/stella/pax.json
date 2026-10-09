@@ -21,8 +21,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/stella/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/stella/*",
+      "note": ".a26 or compatible cartridge ROM"
     }
   ],
   "build": "custom",
@@ -170,5 +170,6 @@
     "-Wl,--wrap=exit"
   ],
   "newlib": true,
-  "changelog": "0.1.1 presents the 320x240 frame through the current loader canvas service and handles loader close before the next emulation frame."
+  "changelog": "0.1.1 presents the 320x240 frame through the current loader canvas service and handles loader close before the next emulation frame.",
+  "install_recipe": "install-recipe.json"
 }

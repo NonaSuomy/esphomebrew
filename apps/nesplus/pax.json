@@ -21,8 +21,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/nesplus/",
-      "note": "Add a .nes ROM or ZIP archive"
+      "path": "/sd/roms/nesplus/*",
+      "note": ".nes or ZIP"
     }
   ],
   "build": "custom",
@@ -118,5 +118,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

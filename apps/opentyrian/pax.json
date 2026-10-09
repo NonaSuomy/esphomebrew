@@ -100,8 +100,13 @@
   "newlib": true,
   "requires": [
     {
-      "path": "/sd/roms/opentyrian/",
-      "note": "Requires Tyrian game data"
+      "path": "/sd/tyrian/data/tyrian1.lvl",
+      "note": "Tyrian 2.1 game data; this port uses /sd/tyrian/data"
+    },
+    {
+      "path": "/sd/tyrian/data/tyrian.hdt",
+      "note": "Tyrian 2.1 item data"
     }
-  ]
+  ],
+  "install_recipe": "install-recipe.json"
 }

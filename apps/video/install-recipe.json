@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "app": "video",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/video/incoming",
+  "folders": [
+    "/sd/videos"
+  ],
+  "requires": [
+    {
+      "path": "/sd/videos",
+      "note": "Optional media folder; network URLs also work",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/videos — Optional media folder; network URLs also work",
+  "media": [],
+  "sources": []
+}

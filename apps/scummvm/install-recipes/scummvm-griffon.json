@@ -1,0 +1,2207 @@
+{
+  "version": 2,
+  "app": "scummvm-griffon",
+  "engine": "griffon",
+  "mode": "download",
+  "archive_dir": "/sd/roms/scummvm/incoming/griffon",
+  "folders": [
+    "/sd/roms/scummvm",
+    "/sd/roms/scummvm/griffon-freeware",
+    "/sd/scummvm",
+    "/sd/scummvm/extras",
+    "/sd/scummvm/saves"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scummvm",
+      "note": "A complete game data directory supported by the griffon engine"
+    },
+    {
+      "path": "/sd/roms/scummvm/scummvm.ini",
+      "note": "Optional saved game configuration",
+      "optional": true
+    },
+    {
+      "path": "/sd/scummvm/achievements.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/classicmacfonts.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/encoding.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/helpdialog.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/macgui.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummclassic.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummmodern.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummremastered.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/translations.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/gui-icons.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    }
+  ],
+  "instructions": "Engine: griffon. Copy each game into its own directory under /sd/roms/scummvm, then use Add Game in this engine.\n\nFile sets differ by game, platform and release. Follow the official game data-file page; a folder existing alone does not prove the game is complete.\n\nhttps://docs.scummvm.org/en/latest/use_scummvm/game_files.html\nhttps://wiki.scummvm.org/index.php/Datafiles\n\nFreeware download choices are optional; engines without an included freeware choice require your selected game data. No console ROM or BIOS is bundled.\n\nDownload matching engine / launcher resources first. These live under /sd/scummvm, separate from game directories. This does not supply a commercial game. PAX saves are under /sd/scummvm/saves.",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download matching engine / launcher resources",
+      "files": [
+        {
+          "source": "achievements.dat",
+          "target": "/sd/scummvm/achievements.dat",
+          "size": 249239,
+          "sha256": "6f5394edee3a2ed9165d1ac0611a5e02aabe40e7ceca9e51926d01b23f157493",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/achievements.dat"
+        },
+        {
+          "source": "classicmacfonts.dat",
+          "target": "/sd/scummvm/classicmacfonts.dat",
+          "size": 626103,
+          "sha256": "d33aa56fbbe119a1567a843df9bb759cb6589f236926b93a78dc033b2f4221d1",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/classicmacfonts.dat"
+        },
+        {
+          "source": "encoding.dat",
+          "target": "/sd/scummvm/encoding.dat",
+          "size": 179670,
+          "sha256": "175689478e2acfe66a106e2df53c5707c49271183cfc7b5e65cd05c6b65c57f8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/encoding.dat"
+        },
+        {
+          "source": "helpdialog.zip",
+          "target": "/sd/scummvm/helpdialog.zip",
+          "size": 207764,
+          "sha256": "9ff3c7964a63b18ffa0e9cfcf60d4d8b4a77d7a583b2e66173716a825c777f81",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/helpdialog.zip"
+        },
+        {
+          "source": "macgui.dat",
+          "target": "/sd/scummvm/macgui.dat",
+          "size": 65656,
+          "sha256": "5e55c29903809bf5297a28fee22e203b6dc6f56240900036b9bd8036c0a67660",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/macgui.dat"
+        },
+        {
+          "source": "scummclassic.zip",
+          "target": "/sd/scummvm/scummclassic.zip",
+          "size": 16342,
+          "sha256": "ab888c8d34b09f9dc9101496fbad3e137a0f8beb89ea9638367f9f3d80117345",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummclassic.zip"
+        },
+        {
+          "source": "scummmodern.zip",
+          "target": "/sd/scummvm/scummmodern.zip",
+          "size": 68063,
+          "sha256": "13df1daf58eacc88fdb4a33c23ae0f5792927e6d9233b37decb6233ac660b155",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummmodern.zip"
+        },
+        {
+          "source": "scummremastered.zip",
+          "target": "/sd/scummvm/scummremastered.zip",
+          "size": 96612,
+          "sha256": "335e68866cd3f9de5de3792790c8f8f949a48c22424bbc0bb5cd061ac6c645c8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummremastered.zip"
+        },
+        {
+          "source": "translations.dat",
+          "target": "/sd/scummvm/translations.dat",
+          "size": 3693914,
+          "sha256": "88e4a57aa5d58b213f6a066518eb8a1cb1046132770987cc7dd8b06ce80e0156",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/translations.dat"
+        },
+        {
+          "source": "gui-icons.dat",
+          "target": "/sd/scummvm/gui-icons.dat",
+          "size": 3315855,
+          "sha256": "e772a8bb64ad3d7a807e859ad55c6b41269e66e32dfc78cdb4e583e183b5d828",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/gui-icons.dat"
+        }
+      ]
+    },
+    {
+      "format": "zip-files",
+      "zip_name": "griffon-1.0.zip",
+      "download_label": "Download The Griffon Legend",
+      "archive_url": "https://downloads.scummvm.org/frs/extras/Griffon%20Legend/griffon-1.0.zip",
+      "archive_size": 9552316,
+      "archive_sha256": "0aad5fb10f51afb5c121cf04cc86539a6f0d89db85809f9e1767dfdc8d3191a4",
+      "files": [
+        {
+          "source": "griffon.bas",
+          "target": "/sd/roms/scummvm/griffon-freeware/griffon.bas",
+          "size": 279944,
+          "sha256": "5642cec9bb94943f156a31155ae14642ba045abedb8029380151204717e204fd"
+        },
+        {
+          "source": "data/triggers.dat",
+          "target": "/sd/roms/scummvm/griffon-freeware/data/triggers.dat",
+          "size": 450369,
+          "sha256": "a949fff85aa04f0f3e6c68e23806158822b3dfefed5cb2462b3a1e20471162df"
+        },
+        {
+          "source": "data/player3.sav",
+          "target": "/sd/roms/scummvm/griffon-freeware/data/player3.sav",
+          "size": 1,
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        },
+        {
+          "source": "data/player0.sav",
+          "target": "/sd/roms/scummvm/griffon-freeware/data/player0.sav",
+          "size": 1,
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        },
+        {
+          "source": "data/player1.sav",
+          "target": "/sd/roms/scummvm/griffon-freeware/data/player1.sav",
+          "size": 1,
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        },
+        {
+          "source": "data/player2.sav",
+          "target": "/sd/roms/scummvm/griffon-freeware/data/player2.sav",
+          "size": 1,
+          "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+        },
+        {
+          "source": "mapdb/0000.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0000.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0001.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0001.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0002.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0002.NPC",
+          "size": 1821,
+          "sha256": "50fe7d0ab72a4ae8479d784886f7893333797689417c9fedbfe71ef2718a1ee2"
+        },
+        {
+          "source": "mapdb/0004.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0004.NPC",
+          "size": 1827,
+          "sha256": "17ee94f5667e0e3e8beb253933a6703e8222cd90046ee38ccaf9ab65559a765a"
+        },
+        {
+          "source": "mapdb/0004.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0004.MAP",
+          "size": 320394,
+          "sha256": "154784f9f7a4d62231417102af7cc23600b920f492d6a58a4a9aa50da972cc65"
+        },
+        {
+          "source": "mapdb/0001.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0001.MAP",
+          "size": 320041,
+          "sha256": "0c1fe69a195817d718cf4bb203fa9772782ad5d83876ebd3ff7204a51b0c3177"
+        },
+        {
+          "source": "mapdb/0002.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0002.MAP",
+          "size": 320472,
+          "sha256": "cd448c45c02e8094fbeb927b8f4d35580b6af13dff544cc0f4ce61ee81e549b6"
+        },
+        {
+          "source": "mapdb/0003.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0003.MAP",
+          "size": 320417,
+          "sha256": "386c1e589d3c7c179f428f121596f0ae4cec653795718f8e895c4358806ef153"
+        },
+        {
+          "source": "mapdb/0003.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0003.NPC",
+          "size": 1827,
+          "sha256": "166be8da9ea9c9c4f4d160dd0c00b96e8613f565228ed2f1fd3d60a29f2bf439"
+        },
+        {
+          "source": "mapdb/0005.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0005.MAP",
+          "size": 320572,
+          "sha256": "6351706cab632630190ff2c8f053abd45591dec6ed21f30db9ba00c6a6a63276"
+        },
+        {
+          "source": "mapdb/0005.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0005.NPC",
+          "size": 1821,
+          "sha256": "9ee911f31114a71c1ff39bbbcb1875d7d8dc370848b24607bd27b1c50286f6b3"
+        },
+        {
+          "source": "mapdb/0006.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0006.MAP",
+          "size": 320393,
+          "sha256": "039db0f1086fdd701df7f14a4be706462404b25e8e95a98eabe344fc2e7b605c"
+        },
+        {
+          "source": "mapdb/0006.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0006.NPC",
+          "size": 1825,
+          "sha256": "6272248bd9ad4d56951a6631790d6f5062889bdad3183b8658da5c48a420cd0c"
+        },
+        {
+          "source": "mapdb/0007.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0007.MAP",
+          "size": 320360,
+          "sha256": "46c251299c4411dd9b5668a80d464801cf9b7dc91d3e082ce1fd6f4802994fbe"
+        },
+        {
+          "source": "mapdb/0007.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0007.NPC",
+          "size": 1821,
+          "sha256": "c3973137cccb60df872fe6d61696f25920a555652bc17fa3f27a3b6d827e9263"
+        },
+        {
+          "source": "mapdb/0009.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0009.MAP",
+          "size": 320358,
+          "sha256": "844eedc02af95628b586b9bc1685729ddd2101e3296927952d033f2cc5bf5316"
+        },
+        {
+          "source": "mapdb/0009.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0009.NPC",
+          "size": 1821,
+          "sha256": "2cae3fb911e168294c022d78b691a78845fe9fc10e43ec8741d6db31ec28c40f"
+        },
+        {
+          "source": "mapdb/0020.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0020.MAP",
+          "size": 320306,
+          "sha256": "54dcdec7ff4f29199bc41a9c133cbb61cc93f461896b0dd704619134b6d91cfc"
+        },
+        {
+          "source": "mapdb/0020.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0020.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0030.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0030.MAP",
+          "size": 320277,
+          "sha256": "2e121ed08313dc69391ca4ca83e68a1e6164f477834b16b5e7a2ac0830ce01da"
+        },
+        {
+          "source": "mapdb/0030.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0030.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0001.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0001.TRG",
+          "size": 5,
+          "sha256": "e71b465bb0f150349f095a844d0db28d674a96911e65a08271608ba28ca4261c"
+        },
+        {
+          "source": "mapdb/0002.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0002.TRG",
+          "size": 138,
+          "sha256": "6c26d2527c31eb562f204d4503a0c058ca411c276300d35d5b7d7fc5fc9f704b"
+        },
+        {
+          "source": "mapdb/0003.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0003.TRG",
+          "size": 338,
+          "sha256": "088cf11986aceffeded715e8cfe10fc25de9fd56f49c03f096afd4abe69672ac"
+        },
+        {
+          "source": "mapdb/0004.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0004.TRG",
+          "size": 285,
+          "sha256": "27015fb28c726a621d82770be3a621d6d2831e5521430aef59af79b197a32423"
+        },
+        {
+          "source": "mapdb/0005.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0005.TRG",
+          "size": 59,
+          "sha256": "92ac87ba3220a6dbcaac08e7a5df4d6ee09af22635858ce995564b5d94fbf914"
+        },
+        {
+          "source": "mapdb/0006.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0006.TRG",
+          "size": 118,
+          "sha256": "995d60994f8a4ffff4645b8a6223b36fc5fbcb549f98aa3246234af9d821e714"
+        },
+        {
+          "source": "mapdb/0007.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0007.TRG",
+          "size": 116,
+          "sha256": "0fe9bf78a1833677aadc20c1b906d773613e53515c6ff31098a11dfd418b6d20"
+        },
+        {
+          "source": "mapdb/0000.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0000.TRG",
+          "size": 119,
+          "sha256": "f389adff7de4b30091a0d3a2668950a19d5fd4911cedacda5d74f41312a51750"
+        },
+        {
+          "source": "mapdb/0009.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0009.TRG",
+          "size": 116,
+          "sha256": "63e138256946ac9767544c54bf4877b1f6c834a351104e3f73ee08a99af5b78b"
+        },
+        {
+          "source": "mapdb/0020.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0020.TRG",
+          "size": 116,
+          "sha256": "46a8d16b564c32b03f4dde666aac88ece1d20f87086e495ab668a31b30831069"
+        },
+        {
+          "source": "mapdb/0030.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0030.TRG",
+          "size": 116,
+          "sha256": "d164e894d84ebced6b4bad9c33e3e78b2ddaf3c79cfcc9ef2314ce95f7d2d42d"
+        },
+        {
+          "source": "mapdb/0038.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0038.MAP",
+          "size": 320364,
+          "sha256": "0353e1f6e5467b9718dfd2eaa54e0f8907243e90d7ebf4cd38c569273237a379"
+        },
+        {
+          "source": "mapdb/0038.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0038.TRG",
+          "size": 116,
+          "sha256": "58152b766b8ee376599bfcde8b97362e8519c26f8642e470d855be2b6a371a85"
+        },
+        {
+          "source": "mapdb/0038.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0038.NPC",
+          "size": 1823,
+          "sha256": "94d242d7e8616e1522e1b1bb22dfedc26e4c6b4b899dc114225f2fb9e9898aad"
+        },
+        {
+          "source": "mapdb/0040.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0040.MAP",
+          "size": 320364,
+          "sha256": "301aef50edcd7c245505bddf4e78401944216c05ee12c36513b3a69b18285965"
+        },
+        {
+          "source": "mapdb/0040.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0040.TRG",
+          "size": 116,
+          "sha256": "44fffe348307a396de3fb4e2440b70dd9d4446d5034e6719afce1f97271796ea"
+        },
+        {
+          "source": "mapdb/0040.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0040.NPC",
+          "size": 1823,
+          "sha256": "94d242d7e8616e1522e1b1bb22dfedc26e4c6b4b899dc114225f2fb9e9898aad"
+        },
+        {
+          "source": "mapdb/0039.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0039.MAP",
+          "size": 320423,
+          "sha256": "2c720df059434693760192cc85e71347707eab47f78abdfc37517b0653d25d1a"
+        },
+        {
+          "source": "mapdb/0039.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0039.TRG",
+          "size": 79,
+          "sha256": "dafad0bff5f8a1d395e0040f43dbbe8f753595cba07b9c012f1894ef8b9704ac"
+        },
+        {
+          "source": "mapdb/0039.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0039.NPC",
+          "size": 1823,
+          "sha256": "07f9cb4eb8d4070b32124611538dd6c844e763d3131674d78c78ace1cb270b64"
+        },
+        {
+          "source": "mapdb/0033.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0033.MAP",
+          "size": 320344,
+          "sha256": "c34197c4cfb46e24ddd631d8dfdf2866c1289a875845550b76e2e94872165666"
+        },
+        {
+          "source": "mapdb/0033.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0033.TRG",
+          "size": 155,
+          "sha256": "6f03f02b93614814d3f3c6e644f9902d6e7b8d4d3f6799dfe5d319fd9dbce30f"
+        },
+        {
+          "source": "mapdb/0033.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0033.NPC",
+          "size": 1819,
+          "sha256": "82f2343f2cbcfe37a951593c30641f24bf52313168e4ebc53c9c8e5aeccad60a"
+        },
+        {
+          "source": "mapdb/0035.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0035.MAP",
+          "size": 320338,
+          "sha256": "0eddc92f60a2c1bc5b9c1f05ec2813548a8278acc4a29ebcdf46ed83969f4a0e"
+        },
+        {
+          "source": "mapdb/0035.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0035.TRG",
+          "size": 155,
+          "sha256": "f3f2e852cbdf3e8b10e85bc52c4ee8db8c3aa672b62cb8e1c5cf7be4c8cc720f"
+        },
+        {
+          "source": "mapdb/0035.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0035.NPC",
+          "size": 1819,
+          "sha256": "82f2343f2cbcfe37a951593c30641f24bf52313168e4ebc53c9c8e5aeccad60a"
+        },
+        {
+          "source": "mapdb/0021.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0021.MAP",
+          "size": 320345,
+          "sha256": "60588562e19505481f6cff4305453d3aeccb73b1b53a70cf8b49768a3b61a2fd"
+        },
+        {
+          "source": "mapdb/0021.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0021.TRG",
+          "size": 137,
+          "sha256": "afa3957a01802d2d787b38a0fa10705d07ada34b3bf5477b389890aef55ad7aa"
+        },
+        {
+          "source": "mapdb/0021.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0021.NPC",
+          "size": 1821,
+          "sha256": "5e6bc010f49f2460d2b1e7a01b921d15d6ff8122d5c6a5b2b42e0d6217d9a0c1"
+        },
+        {
+          "source": "mapdb/0019.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0019.MAP",
+          "size": 320312,
+          "sha256": "82ff89d68fa919e16c67467cfb562d6a20e62f4545e4b4fccac9a7921804ad05"
+        },
+        {
+          "source": "mapdb/0019.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0019.TRG",
+          "size": 100,
+          "sha256": "a5ce005ef4f1d56488eaf15b7ba3eda6605d9e28f461b1ae4e5faef0c6e5d90d"
+        },
+        {
+          "source": "mapdb/0019.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0019.NPC",
+          "size": 1821,
+          "sha256": "5e6bc010f49f2460d2b1e7a01b921d15d6ff8122d5c6a5b2b42e0d6217d9a0c1"
+        },
+        {
+          "source": "mapdb/0013.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0013.MAP",
+          "size": 320248,
+          "sha256": "e82510902a68ae515348f35a5cd2edd513f1d8f23c8f8fef39b9e7fdee2940e2"
+        },
+        {
+          "source": "mapdb/0013.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0013.TRG",
+          "size": 119,
+          "sha256": "efdff8dbb636cb2e50518832abdcba165bbeb77504995304c05d2d8f1bdfbb16"
+        },
+        {
+          "source": "mapdb/0013.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0013.NPC",
+          "size": 1819,
+          "sha256": "82f2343f2cbcfe37a951593c30641f24bf52313168e4ebc53c9c8e5aeccad60a"
+        },
+        {
+          "source": "mapdb/0016.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0016.MAP",
+          "size": 320316,
+          "sha256": "aabfca71fbb046b085138cfc3b543705262701bc1fe8693b75705e7db014961d"
+        },
+        {
+          "source": "mapdb/0016.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0016.TRG",
+          "size": 119,
+          "sha256": "b08f4409ae93d89dd1b4c09c8a7b7c3fac494d40e3a8b427d0ee5d05fc22f41c"
+        },
+        {
+          "source": "mapdb/0016.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0016.NPC",
+          "size": 1821,
+          "sha256": "5e6bc010f49f2460d2b1e7a01b921d15d6ff8122d5c6a5b2b42e0d6217d9a0c1"
+        },
+        {
+          "source": "mapdb/0018.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0018.MAP",
+          "size": 320317,
+          "sha256": "9fdb1dea9a34558c509e16da6e504502b28eaf99a5928abf447aed16a1416c1a"
+        },
+        {
+          "source": "mapdb/0018.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0018.TRG",
+          "size": 117,
+          "sha256": "87d51d4325ba52c212d1832c6b6b5eb8862f993f041cec8c4225bef828901459"
+        },
+        {
+          "source": "mapdb/0018.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0018.NPC",
+          "size": 1821,
+          "sha256": "5e6bc010f49f2460d2b1e7a01b921d15d6ff8122d5c6a5b2b42e0d6217d9a0c1"
+        },
+        {
+          "source": "mapdb/0031.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0031.MAP",
+          "size": 320315,
+          "sha256": "a59c843084722afee874c54c054a35e54605b4c018e5338a81eb05305a41da22"
+        },
+        {
+          "source": "mapdb/0031.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0031.TRG",
+          "size": 98,
+          "sha256": "dd33ccd44c911819259f8e10d438bfdfd7aa4b87f5e84908640e70134c24ca3d"
+        },
+        {
+          "source": "mapdb/0031.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0031.NPC",
+          "size": 1821,
+          "sha256": "5e6bc010f49f2460d2b1e7a01b921d15d6ff8122d5c6a5b2b42e0d6217d9a0c1"
+        },
+        {
+          "source": "mapdb/0029.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0029.MAP",
+          "size": 320314,
+          "sha256": "436e9c2f4b9ccbd2e2ea4391f3dd00df63edafc01a29d2f3008815986a91a49e"
+        },
+        {
+          "source": "mapdb/0029.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0029.TRG",
+          "size": 101,
+          "sha256": "574428d6033ad2f960c21d5f9efcb5af5ed1d1bc29b12f58e43384a3b5998daa"
+        },
+        {
+          "source": "mapdb/0029.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0029.NPC",
+          "size": 1819,
+          "sha256": "82f2343f2cbcfe37a951593c30641f24bf52313168e4ebc53c9c8e5aeccad60a"
+        },
+        {
+          "source": "mapdb/0012.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0012.MAP",
+          "size": 320244,
+          "sha256": "68c9b253861ea3fc942b0dae04bc78220b4c7790e6791d66e1535f6fb7077ba6"
+        },
+        {
+          "source": "mapdb/0012.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0012.TRG",
+          "size": 81,
+          "sha256": "9f56dab2e6017dfea50e49ab053956c85fad7f07d60f1eb6df55c3f48dfb306c"
+        },
+        {
+          "source": "mapdb/0012.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0012.NPC",
+          "size": 1821,
+          "sha256": "42fdebe350a12eb87d977d327bcbbae67aba5c7e06e8d706d8fec9a806e29d54"
+        },
+        {
+          "source": "mapdb/0022.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0022.MAP",
+          "size": 320395,
+          "sha256": "81c9e6dfe653551644438d6127a028df1d7347a2e29253c19e669fafb185d732"
+        },
+        {
+          "source": "mapdb/0022.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0022.TRG",
+          "size": 41,
+          "sha256": "35f7742ed77625be26854ad5482bc98f51d6f4c5fd6f93a3a72c01dac702c293"
+        },
+        {
+          "source": "mapdb/0022.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0022.NPC",
+          "size": 1817,
+          "sha256": "c1e1eb44aac69834c7aaad2d41a241162f65c8101aca694fbb11e33219d0c380"
+        },
+        {
+          "source": "mapdb/0023.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0023.MAP",
+          "size": 320154,
+          "sha256": "da781e868a2cc878cbfa502f974d09508449f9e6a1bf3e4ef9ecff831bdadf3b"
+        },
+        {
+          "source": "mapdb/0023.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0023.TRG",
+          "size": 81,
+          "sha256": "c7e09ba38d2fea5e9b22fe88aaa8ddff13dd34402170da70d7adb1d7b4ff71ae"
+        },
+        {
+          "source": "mapdb/0023.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0023.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0025.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0025.MAP",
+          "size": 320154,
+          "sha256": "2e25c0e8135feb689223a870539ea2e0be2432bf254e7ef55e33089e81625f7d"
+        },
+        {
+          "source": "mapdb/0025.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0025.TRG",
+          "size": 81,
+          "sha256": "56459dec535364381c6ad771945b559144fbf2a3d1fb5f1bf568a0a9e425234f"
+        },
+        {
+          "source": "mapdb/0025.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0025.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0014.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0014.MAP",
+          "size": 320433,
+          "sha256": "429c601a1a72b8a9234674c7d702798f17ab2f7000d05677861df24a29c8623e"
+        },
+        {
+          "source": "mapdb/0014.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0014.TRG",
+          "size": 41,
+          "sha256": "38bc3fbf834f17e28d90b2d912f888710f4da59ea24ff52d7d1cd7a6305b03a4"
+        },
+        {
+          "source": "mapdb/0014.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0014.NPC",
+          "size": 1831,
+          "sha256": "0e2ad15f53994b1ca48fae7de04be5f088eb842e4c452f174a95dbc598c3a08f"
+        },
+        {
+          "source": "mapdb/0010.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0010.MAP",
+          "size": 320470,
+          "sha256": "81e21f31d2e5d50011761c57354bef8d8c6a9e79eb5270cee309e4c14919cf8d"
+        },
+        {
+          "source": "mapdb/0010.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0010.TRG",
+          "size": 41,
+          "sha256": "08fdb0438bb8e63d3627a86a0a293b7cb2df22a32dd49cc79aad6749d1ddf9f3"
+        },
+        {
+          "source": "mapdb/0010.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0010.NPC",
+          "size": 1825,
+          "sha256": "35c8a8fb49b3c0f338b5e53a54733501984350fcf9fbc5071696a7bd5ce4a06d"
+        },
+        {
+          "source": "mapdb/0024.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0024.MAP",
+          "size": 320554,
+          "sha256": "2a2c03bc45ecf62fb26bee6fa5c7fba1764f11411f415008b0e0d68f1dc9a950"
+        },
+        {
+          "source": "mapdb/0024.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0024.TRG",
+          "size": 44,
+          "sha256": "65863f4fa5789412b1309e379c0e6964434e88430a581a32fbd9cfec9ea29543"
+        },
+        {
+          "source": "mapdb/0024.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0024.NPC",
+          "size": 1817,
+          "sha256": "284356eb944e930e6514593517e81153115903cd778270bf2072ee2b9ada01fe"
+        },
+        {
+          "source": "mapdb/0017.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0017.MAP",
+          "size": 320542,
+          "sha256": "7598de23706b3ad272befd49be29cac313fbdeae1629f80b52a23d948ae11c0e"
+        },
+        {
+          "source": "mapdb/0017.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0017.TRG",
+          "size": 79,
+          "sha256": "61da0e086fbf544c1c84b09d2f1be9f75414e7228f5a8d35a168a55d4dc3b3b3"
+        },
+        {
+          "source": "mapdb/0017.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0017.NPC",
+          "size": 1823,
+          "sha256": "b89908359d21a3f2cb7087d0aa0b9acf853335dd852fef61bc7bf96d497d572e"
+        },
+        {
+          "source": "mapdb/0034.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0034.MAP",
+          "size": 320516,
+          "sha256": "d10bf5d18ec45a481457e0df35b1ad67282e728c9250d25b95ab427d21a6b521"
+        },
+        {
+          "source": "mapdb/0034.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0034.TRG",
+          "size": 79,
+          "sha256": "8e41ae0a33bdea9d2a923c9a5b54410189a414453979eb231bba6c8a44805e2a"
+        },
+        {
+          "source": "mapdb/0034.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0034.NPC",
+          "size": 1821,
+          "sha256": "838ea9bfa58919a38c12772f48660fc805b9ab4f1023ba1affcf412c87971765"
+        },
+        {
+          "source": "mapdb/0042.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0042.MAP",
+          "size": 320388,
+          "sha256": "0986fcad7f2034b7eb7979f458e05b847df526a9309ea34b996fb35a40a16fea"
+        },
+        {
+          "source": "mapdb/0042.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0042.TRG",
+          "size": 141,
+          "sha256": "4f32c4eead5f3f101f41bedd40448fa18da100b3a9b4fdbeb435469a0de6cc62"
+        },
+        {
+          "source": "mapdb/0042.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0042.NPC",
+          "size": 1826,
+          "sha256": "090c5d5b74aa82a506d19e3c800d5cd62923119ed2abf2fabca5d12f972de3bc"
+        },
+        {
+          "source": "mapdb/0043.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0043.MAP",
+          "size": 320382,
+          "sha256": "9d4bce9a27253f6307f39fee429c526710921e3552a9b85972bc09cefb0445b8"
+        },
+        {
+          "source": "mapdb/0043.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0043.TRG",
+          "size": 161,
+          "sha256": "2fb5f6b14474f4db9463f5d7c9176c7c266b655c57d87dfc9bdb5db9b1288b4e"
+        },
+        {
+          "source": "mapdb/0043.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0043.NPC",
+          "size": 1826,
+          "sha256": "1890f6a46bac5bff9e04a0ed9f6e342242b58d530ae7f1fdcc7b25432823f701"
+        },
+        {
+          "source": "mapdb/0044.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0044.MAP",
+          "size": 320466,
+          "sha256": "edbc19198080bc5a55895cfbcc0ce279d853587c37d2fe71efb047de5bf77124"
+        },
+        {
+          "source": "mapdb/0044.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0044.TRG",
+          "size": 267,
+          "sha256": "11128299de732d80cf2058451a8fb3685a8eaa3adce2e97b7f3b63fdefea1365"
+        },
+        {
+          "source": "mapdb/0044.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0044.NPC",
+          "size": 1823,
+          "sha256": "6be8776a450a5cc6b71b592dd09dd9b938b25c099644d3989d7c1c6f64d745dc"
+        },
+        {
+          "source": "mapdb/0045.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0045.MAP",
+          "size": 320357,
+          "sha256": "70955469de17da470865a7b62b6fb6bf576bbf74e5df5dcef12becad6109ff73"
+        },
+        {
+          "source": "mapdb/0045.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0045.TRG",
+          "size": 191,
+          "sha256": "63adc34b96241a14725dc774e51d4c92bfde828ddcd4e1678d82d54e7d7d4df2"
+        },
+        {
+          "source": "mapdb/0045.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0045.NPC",
+          "size": 1826,
+          "sha256": "8b86b30ce96119cc1fdc045d7b16cb48e4639b4626d2d8f9f09b3152ae0b9e51"
+        },
+        {
+          "source": "mapdb/0046.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0046.MAP",
+          "size": 320433,
+          "sha256": "2c45c0149e880586a8ce2f18e6ff410660bc584d0e1545a44fa6bef40d13909a"
+        },
+        {
+          "source": "mapdb/0046.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0046.TRG",
+          "size": 193,
+          "sha256": "f10a2371951be7736cea6ac8d39dc46b82b9e6ad0a134cee5c9ada5ce0981604"
+        },
+        {
+          "source": "mapdb/0046.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0046.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0047.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0047.MAP",
+          "size": 320529,
+          "sha256": "4fc944c17447a7767f1a561827be86b669e9fa21f3670b748850485db07ef2f1"
+        },
+        {
+          "source": "mapdb/0047.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0047.TRG",
+          "size": 217,
+          "sha256": "f12ccfba50d1394a0a2336e51e4b6391ae450cb1af7f22e022e6dbe60734437b"
+        },
+        {
+          "source": "mapdb/0047.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0047.NPC",
+          "size": 1823,
+          "sha256": "72ede1952d2d431c3bb485bf5c571d7579a20058d40a64752952eab5844ec1ed"
+        },
+        {
+          "source": "mapdb/0052.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0052.MAP",
+          "size": 320574,
+          "sha256": "4a0219acab6b008ed8a17762dddcdb3c62b17c7636fa378e703176fc56c2da69"
+        },
+        {
+          "source": "mapdb/0052.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0052.TRG",
+          "size": 155,
+          "sha256": "e8186ad4619964bb44c6964250b3af1dae847356dce2f60d87b94d8065e9a71e"
+        },
+        {
+          "source": "mapdb/0052.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0052.NPC",
+          "size": 1828,
+          "sha256": "16d5427d6163303338359efa6ff433115abd4b73f523ac6223810a17fe158d2d"
+        },
+        {
+          "source": "mapdb/0060.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0060.MAP",
+          "size": 320560,
+          "sha256": "dcacbc6b966aa8c3faee5600aeb0f0b6c27f3fc9cc46e51dddf75a8dfcbd5ccb"
+        },
+        {
+          "source": "mapdb/0060.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0060.TRG",
+          "size": 155,
+          "sha256": "1ed701ab96d52d0fecf5f0dd6e78257ce068fb4423aaab078f5aba69f00f891a"
+        },
+        {
+          "source": "mapdb/0060.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0060.NPC",
+          "size": 1831,
+          "sha256": "a76f265bb0bd9a4d89727e4707c919f7f8fc92c156bc6c0cc6cf9a972f469bc8"
+        },
+        {
+          "source": "mapdb/0056.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0056.MAP",
+          "size": 320402,
+          "sha256": "f1107aab30551b0c1b677e13beb498015c6bb21810b34e5f04ecf988e467c42f"
+        },
+        {
+          "source": "mapdb/0056.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0056.TRG",
+          "size": 155,
+          "sha256": "d3f7263cf2c3bb958af8d30e613e558edc13d5a7d8b11bb4cbcbb73753e13c77"
+        },
+        {
+          "source": "mapdb/0056.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0056.NPC",
+          "size": 1817,
+          "sha256": "cba9fc5ff4725f15c15369b9333b14b3cf18b11f6a94e5b796182c21b28a7914"
+        },
+        {
+          "source": "mapdb/0064.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0064.MAP",
+          "size": 320414,
+          "sha256": "fc1bfb65dad3a0f3410466a418589ddf1cf5ae4aa230b539a60092b241cbb93e"
+        },
+        {
+          "source": "mapdb/0064.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0064.TRG",
+          "size": 155,
+          "sha256": "25ba76b01f70580cb53133fb924f1cfe51456eaa1d3e21d4d1b71889534206fa"
+        },
+        {
+          "source": "mapdb/0064.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0064.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0059.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0059.MAP",
+          "size": 320421,
+          "sha256": "3bbbdb92faa94b8b0b733b8e7516ea0f7f40b4055652a132afd211d43828d8a8"
+        },
+        {
+          "source": "mapdb/0059.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0059.TRG",
+          "size": 155,
+          "sha256": "ab058f6739afcd01f748dfdd37da4a3a35965f25197d35cca7bf883c482fdc4a"
+        },
+        {
+          "source": "mapdb/0059.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0059.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0051.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0051.MAP",
+          "size": 320404,
+          "sha256": "5be22e3f05a8613eb2c0a9f31f76127c37f16a04707b2d22fe8c6c8ad74fef7e"
+        },
+        {
+          "source": "mapdb/0051.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0051.TRG",
+          "size": 155,
+          "sha256": "535fec2082d4a10252e9bf3882af0a7b6698c0dc567ef37670ea777b3962e918"
+        },
+        {
+          "source": "mapdb/0051.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0051.NPC",
+          "size": 1822,
+          "sha256": "d48e4917a51e812a5e4ab5e6169492441499a57648cc3401fa881a95335786e8"
+        },
+        {
+          "source": "mapdb/0053.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0053.MAP",
+          "size": 320398,
+          "sha256": "d957118ceaa150f1661102a2212a6b7a563107ff4341a60920d2c5608602121d"
+        },
+        {
+          "source": "mapdb/0053.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0053.TRG",
+          "size": 172,
+          "sha256": "5b857f4f5c661046cf80b0703954e67193a2e6417e4746b62b4bae7fc456837f"
+        },
+        {
+          "source": "mapdb/0053.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0053.NPC",
+          "size": 1821,
+          "sha256": "26171054622325e4186c0a165c63c12afb63c0865f1b28f4718e8dcf9c807f6a"
+        },
+        {
+          "source": "mapdb/0061.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0061.MAP",
+          "size": 320435,
+          "sha256": "4705895ac991d9de764e48fc25cce2d984ed27b9985653610d5f53c96fde18af"
+        },
+        {
+          "source": "mapdb/0061.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0061.TRG",
+          "size": 252,
+          "sha256": "970e8a94e0cfef33c43865570f70b5ad9701a401fa22e747aa37e4b7bf9ed561"
+        },
+        {
+          "source": "mapdb/0061.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0061.NPC",
+          "size": 1819,
+          "sha256": "82f2343f2cbcfe37a951593c30641f24bf52313168e4ebc53c9c8e5aeccad60a"
+        },
+        {
+          "source": "mapdb/0067.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0067.MAP",
+          "size": 320472,
+          "sha256": "6850c5845727753db9c6e92d599fb5e91be006448f73619ada448cdc0b97f26b"
+        },
+        {
+          "source": "mapdb/0067.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0067.TRG",
+          "size": 62,
+          "sha256": "98aa0dbf352dfad5c216c0754784d9e45b33a9cf24da45509c38a6e21d0659cb"
+        },
+        {
+          "source": "mapdb/0067.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0067.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0000.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0000.MAP",
+          "size": 320370,
+          "sha256": "80b84ea259627d71718497ffff050abd0c6b0ccc951fa8dd7e9b2ec311aaf42a"
+        },
+        {
+          "source": "mapdb/0057.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0057.MAP",
+          "size": 320300,
+          "sha256": "62a32257bf25d844e49ec058a7b5d8475c4eecab104367191ab924e60813c5e6"
+        },
+        {
+          "source": "mapdb/0057.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0057.TRG",
+          "size": 194,
+          "sha256": "66e0ba5200108e23e73bb62fed01d80d68e5bb8aafd929fba80d7b5cb7297351"
+        },
+        {
+          "source": "mapdb/0057.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0057.NPC",
+          "size": 1824,
+          "sha256": "72851b639c6ce471db28cc7f55b82b1ab2f04f998bf7692412098ebd8c545e6b"
+        },
+        {
+          "source": "mapdb/0066.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0066.MAP",
+          "size": 320468,
+          "sha256": "aedcc091b0cdf9b88bd7ffe783a5696f1a507406de3aebd616175ad7b155b274"
+        },
+        {
+          "source": "mapdb/0066.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0066.TRG",
+          "size": 81,
+          "sha256": "f8809ee7eab0fb6db50709d4fdea8668e9d5d9bde7f782add02b5b0c4f1adc44"
+        },
+        {
+          "source": "mapdb/0066.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0066.NPC",
+          "size": 1817,
+          "sha256": "c9723aa2a53db248e51dca95f52aa61de665a18bee124155da1529270d0fb4ee"
+        },
+        {
+          "source": "mapdb/0065.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0065.MAP",
+          "size": 320381,
+          "sha256": "c099bca65e42eaa60914467a3f69097b9f3dccf0a4bf65d62145050afa597e46"
+        },
+        {
+          "source": "mapdb/0065.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0065.TRG",
+          "size": 119,
+          "sha256": "232b98dd41652fa87b4db83e35b5f46b812ac94e6438ed7b349c7f64f738b084"
+        },
+        {
+          "source": "mapdb/0065.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0065.NPC",
+          "size": 1827,
+          "sha256": "1223c5379f1aac08cc3ea1fb0b4bff12fb83b77cbcf8b978d4a8c14a2af17dcc"
+        },
+        {
+          "source": "mapdb/0063.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0063.MAP",
+          "size": 320453,
+          "sha256": "31da1832f3de59888ccc78a78852321caf67a9fe39da65651ceea798d5fc36d9"
+        },
+        {
+          "source": "mapdb/0063.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0063.TRG",
+          "size": 82,
+          "sha256": "629a6cfca69a6eddccc0ad458044cc57bd494da94c1eb1141edfc2c6602ecd8b"
+        },
+        {
+          "source": "mapdb/0063.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0063.NPC",
+          "size": 1828,
+          "sha256": "b792541283ff2ce29d924c11a1bed0739b138833b4174224eb1c40d6d5e49520"
+        },
+        {
+          "source": "mapdb/0055.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0055.MAP",
+          "size": 320409,
+          "sha256": "354f8e39c24d3f1fa225f99deef47a54c880ba6b878536522053a81444ea7273"
+        },
+        {
+          "source": "mapdb/0055.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0055.TRG",
+          "size": 119,
+          "sha256": "f389adff7de4b30091a0d3a2668950a19d5fd4911cedacda5d74f41312a51750"
+        },
+        {
+          "source": "mapdb/0055.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0055.NPC",
+          "size": 1821,
+          "sha256": "784f27d64f1cc630531f5e11b428620ebc04758347114cc976358b46f351d2ee"
+        },
+        {
+          "source": "mapdb/0049.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0049.MAP",
+          "size": 320386,
+          "sha256": "eae1b6101530eb312764f1679ab8ac4b3834cb401676e85ba86b6f42d742bb3f"
+        },
+        {
+          "source": "mapdb/0049.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0049.TRG",
+          "size": 41,
+          "sha256": "9ae7a0945331f377d29efb5052d8266cd5621a6b3cac0fd32b434a3d2a7f08ab"
+        },
+        {
+          "source": "mapdb/0049.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0049.NPC",
+          "size": 1819,
+          "sha256": "aebf650d19123b2f54002e647de9edcee39045075be6921d88d6af89131df16b"
+        },
+        {
+          "source": "mapdb/0048.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0048.MAP",
+          "size": 320311,
+          "sha256": "6a55673a4364749dfc55f4545d919b3229c0fed1f4cc650c7711b778001feaa7"
+        },
+        {
+          "source": "mapdb/0048.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0048.TRG",
+          "size": 80,
+          "sha256": "bf4cdb18e4d3e9c7cfc86548e84f448dc02c4b5c95be4f58ca99b08fd6d176a8"
+        },
+        {
+          "source": "mapdb/0048.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0048.NPC",
+          "size": 1819,
+          "sha256": "ecda1162fca130ca0311578ebd0815f57e717c6cd7803955a50e04dffe5125c1"
+        },
+        {
+          "source": "mapdb/0050.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0050.MAP",
+          "size": 320414,
+          "sha256": "b0e43183020efbf6dccbe2e156dd135bd71bb72e55928376de922966b7f81cfe"
+        },
+        {
+          "source": "mapdb/0050.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0050.TRG",
+          "size": 61,
+          "sha256": "483488910cbe8eebf32c1f293d7f758cd1659739c84c5cc67d6f186b5b8b6118"
+        },
+        {
+          "source": "mapdb/0050.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0050.NPC",
+          "size": 1827,
+          "sha256": "fea782e3d6baf8aa38aa0c4f4582c51461929aa02ffdf81535c2f91615415152"
+        },
+        {
+          "source": "mapdb/0058.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0058.MAP",
+          "size": 320487,
+          "sha256": "94fef4b805ff06debdc973f995ba1c75762d4b90818b7643ed97a10e8f7e8ba6"
+        },
+        {
+          "source": "mapdb/0058.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0058.TRG",
+          "size": 62,
+          "sha256": "32baf574fc47a496e6e520f1d696b79e59857d369e3732ecae67ba3b26ab9d6a"
+        },
+        {
+          "source": "mapdb/0058.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0058.NPC",
+          "size": 1826,
+          "sha256": "aab6b65d84868ddf4084df8a40bfd900bd6ea8f2b787c451578fc0106ff2df08"
+        },
+        {
+          "source": "mapdb/0008.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0008.MAP",
+          "size": 320430,
+          "sha256": "5f80b796ba0ff6641cbee77ef9ce7a08064fe3f329daf02c503d4ae1d8b888ba"
+        },
+        {
+          "source": "mapdb/0008.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0008.TRG",
+          "size": 43,
+          "sha256": "c177839ba8d8ac925dd4edb13b0dc80f2f96fb7fba69586dee09be0f47f03980"
+        },
+        {
+          "source": "mapdb/0008.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0008.NPC",
+          "size": 1830,
+          "sha256": "4c88498467bf44672a7d4461ed1d007a1c6924a5c6b2dc89b82a161943332b19"
+        },
+        {
+          "source": "mapdb/0165.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0165.MAP",
+          "size": 320374,
+          "sha256": "a21d9bd53c85bbb1ce31ae0a3322f670eea8ffb398ec95db8ace685bde6c053e"
+        },
+        {
+          "source": "mapdb/0165.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0165.TRG",
+          "size": 119,
+          "sha256": "232b98dd41652fa87b4db83e35b5f46b812ac94e6438ed7b349c7f64f738b084"
+        },
+        {
+          "source": "mapdb/0165.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0165.NPC",
+          "size": 1819,
+          "sha256": "a263607f3cfd6eded4cfb1dbd7f1d7549db31167d61ade89a6deed6f535a2235"
+        },
+        {
+          "source": "mapdb/0161.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0161.MAP",
+          "size": 320435,
+          "sha256": "2ce2416e7054e93cd034d748fa65b9f392af31a5846a899374eff42a090586a2"
+        },
+        {
+          "source": "mapdb/0161.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0161.TRG",
+          "size": 252,
+          "sha256": "970e8a94e0cfef33c43865570f70b5ad9701a401fa22e747aa37e4b7bf9ed561"
+        },
+        {
+          "source": "mapdb/0161.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0161.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0157.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0157.MAP",
+          "size": 320294,
+          "sha256": "ca5773b64371471e32e08e04ae75af4c47f92b0fea8ee35777cfe893e47aa190"
+        },
+        {
+          "source": "mapdb/0157.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0157.TRG",
+          "size": 194,
+          "sha256": "66e0ba5200108e23e73bb62fed01d80d68e5bb8aafd929fba80d7b5cb7297351"
+        },
+        {
+          "source": "mapdb/0157.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0157.NPC",
+          "size": 1817,
+          "sha256": "cba9fc5ff4725f15c15369b9333b14b3cf18b11f6a94e5b796182c21b28a7914"
+        },
+        {
+          "source": "mapdb/0153.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0153.MAP",
+          "size": 320397,
+          "sha256": "3793e42a8738b9b908279f59dd3428a20291c4c2b1bfce0352470b68d1110037"
+        },
+        {
+          "source": "mapdb/0153.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0153.TRG",
+          "size": 172,
+          "sha256": "5b857f4f5c661046cf80b0703954e67193a2e6417e4746b62b4bae7fc456837f"
+        },
+        {
+          "source": "mapdb/0153.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0153.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0261.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0261.MAP",
+          "size": 320443,
+          "sha256": "d177bf78b5e56a4c0f8c89340a3beb1504e4bfa99f56054a1952d7f3c229056c"
+        },
+        {
+          "source": "mapdb/0261.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0261.TRG",
+          "size": 252,
+          "sha256": "970e8a94e0cfef33c43865570f70b5ad9701a401fa22e747aa37e4b7bf9ed561"
+        },
+        {
+          "source": "mapdb/0261.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0261.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0054.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0054.MAP",
+          "size": 320486,
+          "sha256": "127774f6ebd642936d19631f24eb37ff2edbd0891e6cc4451eed63ca8c3ec0a9"
+        },
+        {
+          "source": "mapdb/0054.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0054.TRG",
+          "size": 59,
+          "sha256": "f5bb6e11fd17e6e0bf605dc57eeffadd5e7d069c18db0938e7a18713708ab89d"
+        },
+        {
+          "source": "mapdb/0054.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0054.NPC",
+          "size": 1827,
+          "sha256": "d15320530a347fa3945ca5b2e25a9e6e47a452d0bc6f372ce24cc4aebf9d9fe2"
+        },
+        {
+          "source": "mapdb/0062.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0062.MAP",
+          "size": 320449,
+          "sha256": "b72529d2815c1c401450d932b5b67ae1afd1c39a16b976c6e84f8c012439d89d"
+        },
+        {
+          "source": "mapdb/0062.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0062.TRG",
+          "size": 60,
+          "sha256": "76ce0b62f5c76c51c89e6b14b48a02f292601f8238cead4fdbe588423e944f8f"
+        },
+        {
+          "source": "mapdb/0062.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0062.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0162.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0162.MAP",
+          "size": 320446,
+          "sha256": "6a60d78abb1c9d02953dabf397e7887a5a1c8fe3d7d53ab9fa78a51b44a7fb31"
+        },
+        {
+          "source": "mapdb/0162.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0162.TRG",
+          "size": 60,
+          "sha256": "76ce0b62f5c76c51c89e6b14b48a02f292601f8238cead4fdbe588423e944f8f"
+        },
+        {
+          "source": "mapdb/0162.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0162.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0262.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0262.MAP",
+          "size": 320448,
+          "sha256": "fa88aaa9eb49cc30b249dadec87d5467d00506dc72b804e5947e2cd7f706adf0"
+        },
+        {
+          "source": "mapdb/0262.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0262.TRG",
+          "size": 60,
+          "sha256": "76ce0b62f5c76c51c89e6b14b48a02f292601f8238cead4fdbe588423e944f8f"
+        },
+        {
+          "source": "mapdb/0262.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0262.NPC",
+          "size": 1823,
+          "sha256": "d4738323f5cda48bd65a68e19b0bf3978236fc3e73cfe033c6548d6de30de4a0"
+        },
+        {
+          "source": "mapdb/0068.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0068.MAP",
+          "size": 320379,
+          "sha256": "ef564348e6464e7c2832c5171eb50b5353b5caf36439f8f893b4e5c49ec42fb8"
+        },
+        {
+          "source": "mapdb/0068.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0068.TRG",
+          "size": 98,
+          "sha256": "3b0fe2602811bc8b06266db044293f7e30c20ae5470e92c254eafa3bac6bfe8f"
+        },
+        {
+          "source": "mapdb/0068.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0068.NPC",
+          "size": 1829,
+          "sha256": "9441d4c30d4b6842a6f89a070804680a7466bb3a681499187eff80f36152b2ed"
+        },
+        {
+          "source": "mapdb/0069.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0069.MAP",
+          "size": 320453,
+          "sha256": "b9bacad7e83c44304c2c45de4b81c8dd78f889bb6ea0a2a57c178922b0e29c37"
+        },
+        {
+          "source": "mapdb/0069.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0069.TRG",
+          "size": 117,
+          "sha256": "a953d00bdd7eed81614ad3f43d34f2f008b969876ab7423ae42ed61db18e3b34"
+        },
+        {
+          "source": "mapdb/0069.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0069.NPC",
+          "size": 1831,
+          "sha256": "d117a66427b26e47e69ebc556a37f6c699aa7cd8f1b8841ae83e0a10c41119cb"
+        },
+        {
+          "source": "mapdb/0070.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0070.MAP",
+          "size": 320536,
+          "sha256": "c685a9ba91aaae17e52596ba7aaf6ae604ef0f0b2d39f1a764c73a2a6aa83d80"
+        },
+        {
+          "source": "mapdb/0070.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0070.TRG",
+          "size": 197,
+          "sha256": "7ff90b7074d29899742ed32197248dfd90ddfab6a9de0f00473e707fbc2b9e7a"
+        },
+        {
+          "source": "mapdb/0070.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0070.NPC",
+          "size": 1831,
+          "sha256": "c3015f1c9aa6204736b5f04f2418b94850454fa422837f230557c9a257d3a155"
+        },
+        {
+          "source": "mapdb/0071.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0071.MAP",
+          "size": 320393,
+          "sha256": "863caf8f52e2c7b11165c09bb22174b2b59d1d9a0506110f6383539df388e7fc"
+        },
+        {
+          "source": "mapdb/0071.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0071.TRG",
+          "size": 42,
+          "sha256": "d8797e59a2d42e6f04ee9fa1157a226da396468882f059e4dd29e32b7cdfb46f"
+        },
+        {
+          "source": "mapdb/0071.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0071.NPC",
+          "size": 1820,
+          "sha256": "2fb3a3045e7b6dff35710ca1013ab5368032283c7ff95ac99eb9da353e4f4d4e"
+        },
+        {
+          "source": "mapdb/0072.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0072.MAP",
+          "size": 320351,
+          "sha256": "6597aca7187900fbcf6c66ca1702b13c9f9c5acaa461b2b1e87a151ac17fe33c"
+        },
+        {
+          "source": "mapdb/0072.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0072.TRG",
+          "size": 44,
+          "sha256": "f07face8a57752939ea1a3f6284482e927846bdbd707bacaf25ce5cb290651c9"
+        },
+        {
+          "source": "mapdb/0072.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0072.NPC",
+          "size": 1834,
+          "sha256": "640f380483bfce0ed7bd4a8262e222913eea22eccb2a5be328fd06569e0e69cf"
+        },
+        {
+          "source": "mapdb/0073.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0073.MAP",
+          "size": 320440,
+          "sha256": "9354b9438621e3831ac0f9a9934345ff63b423cfbffb08b66fe88698742381aa"
+        },
+        {
+          "source": "mapdb/0073.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0073.TRG",
+          "size": 80,
+          "sha256": "cbd3a4a9759b6bb817804ea68403ded0370cf781a21ed3503a5054220674a0e1"
+        },
+        {
+          "source": "mapdb/0073.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0073.NPC",
+          "size": 1836,
+          "sha256": "41b543eb90cd47428c86539df6c17e027a94037a93abeaabfc74789108aa07fd"
+        },
+        {
+          "source": "mapdb/0074.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0074.MAP",
+          "size": 320324,
+          "sha256": "001f1490be0186f0c37e43828acc31fc3224da5d35a0b24617900d8f250fb9cb"
+        },
+        {
+          "source": "mapdb/0074.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0074.TRG",
+          "size": 81,
+          "sha256": "5752004892890f8d498fc093a5c0e5dbc6c2bc432708bdb8da5dcdaf7b42b504"
+        },
+        {
+          "source": "mapdb/0074.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0074.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0075.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0075.MAP",
+          "size": 320299,
+          "sha256": "d493d8811b2391ea0df74f4139583a9e7bfe060bd043266c40308762767b9032"
+        },
+        {
+          "source": "mapdb/0075.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0075.TRG",
+          "size": 80,
+          "sha256": "46c2e466b4c609a34d37e419975342d8433ea54d3462ef3ca854a3fecc6fdc3d"
+        },
+        {
+          "source": "mapdb/0075.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0075.NPC",
+          "size": 1824,
+          "sha256": "73001eeac18ae51a868cc1dd0872665948d836583be5c0d0ef84bfc73a2c77c3"
+        },
+        {
+          "source": "mapdb/0082.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0082.MAP",
+          "size": 320557,
+          "sha256": "b02d0fb18ffc0d0f8e2aac1c694e73ddd2ba6f0559da0a01474477b8f40874d2"
+        },
+        {
+          "source": "mapdb/0082.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0082.TRG",
+          "size": 44,
+          "sha256": "30ea17ae30f7af4e0760cfa84cdec39408cab2b5019961dd76a0a2d24d023f06"
+        },
+        {
+          "source": "mapdb/0082.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0082.NPC",
+          "size": 1819,
+          "sha256": "cbb90740507a388493db1ee82120a8fd1227c0a2086495bd84a9ab814346ae3c"
+        },
+        {
+          "source": "mapdb/0078.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0078.MAP",
+          "size": 320609,
+          "sha256": "37258ab7d05515faa919b9110d801e875e32767e4ffa3454cbfc7382122a647e"
+        },
+        {
+          "source": "mapdb/0078.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0078.TRG",
+          "size": 81,
+          "sha256": "81728c0a66500d946b17705a755a54d95de67badd85ff3a5c7730382380195c8"
+        },
+        {
+          "source": "mapdb/0078.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0078.NPC",
+          "size": 1840,
+          "sha256": "0792155992fdec6dac9c222bdc26f9f7c46de606993afb4ecb831699be5e5ce6"
+        },
+        {
+          "source": "mapdb/0076.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0076.MAP",
+          "size": 320442,
+          "sha256": "94b6eea63841331230587ec50f140b32435e28f2dde62b012b5824280166092e"
+        },
+        {
+          "source": "mapdb/0076.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0076.TRG",
+          "size": 195,
+          "sha256": "ba200b7b89eb40eb52a41a9d3af6e95e24c3429cd14ac382eda69b84db5554bc"
+        },
+        {
+          "source": "mapdb/0076.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0076.NPC",
+          "size": 1825,
+          "sha256": "f970166d56d3b6a71e8e4e2453556da6a7a5924d690b4d068f6eec34db7cc7f0"
+        },
+        {
+          "source": "mapdb/0077.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0077.MAP",
+          "size": 320399,
+          "sha256": "012a6673ac2824179618aba5076fda30ddb5d21fbb6b2dd2f9940b3d148e4c5b"
+        },
+        {
+          "source": "mapdb/0077.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0077.TRG",
+          "size": 43,
+          "sha256": "bff9ce5a3b0186331cca87c87f97c1251d47a07f02ff2bd7ebff50ec4a21a430"
+        },
+        {
+          "source": "mapdb/0077.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0077.NPC",
+          "size": 1833,
+          "sha256": "26bef4de3c947e249e1ad64a9c99344f0a6ae09dc158dde61b3412943fa03430"
+        },
+        {
+          "source": "mapdb/0080.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0080.MAP",
+          "size": 320374,
+          "sha256": "226c45c03ec7dd1b057d58f3029cfde0285bec14e6b9f8aeefc1fff7face9fc0"
+        },
+        {
+          "source": "mapdb/0080.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0080.TRG",
+          "size": 79,
+          "sha256": "7e3c398eb853c1330700d769fea6965bceb6cf70be2557c2c59f3181f1f9c04f"
+        },
+        {
+          "source": "mapdb/0080.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0080.NPC",
+          "size": 1829,
+          "sha256": "252ba54cc919862c7dfe88c91fcffe6373e91ec1509312aca74c7d1927122f23"
+        },
+        {
+          "source": "mapdb/0081.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0081.MAP",
+          "size": 320473,
+          "sha256": "bead5b6910470775e6f0b72929fb6c17b25a451aa861b33efdd1056cf3283d94"
+        },
+        {
+          "source": "mapdb/0081.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0081.TRG",
+          "size": 41,
+          "sha256": "e85e9d72c3579e03a147e36034f3c4b6c4984834ad6fdeee1cc1f88de52e31c7"
+        },
+        {
+          "source": "mapdb/0081.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0081.NPC",
+          "size": 1824,
+          "sha256": "4de8b3697313cf40417d23d6473529cc9df5bc9d5b7a1f07c405f6963ccff18d"
+        },
+        {
+          "source": "mapdb/0079.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0079.MAP",
+          "size": 320427,
+          "sha256": "fe65736c0b73e7f61aef3fb6e62be750b0ddaff3bf3d5d801e6793e06d3f5d4e"
+        },
+        {
+          "source": "mapdb/0079.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0079.TRG",
+          "size": 119,
+          "sha256": "a0199ad8834caa5af1cc32f63a3660ed7962856423607ba75fbb9cedbc5d242f"
+        },
+        {
+          "source": "mapdb/0079.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0079.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0037.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0037.MAP",
+          "size": 320383,
+          "sha256": "eb64e0a4cb1593682127a2b473553780ebb952b42e584b7167172c73812f5ddb"
+        },
+        {
+          "source": "mapdb/0037.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0037.TRG",
+          "size": 43,
+          "sha256": "e51f69fdce72b2f3cf84d7d268febf8007c8c6684354a1df05a9c9f1cf824982"
+        },
+        {
+          "source": "mapdb/0037.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0037.NPC",
+          "size": 1827,
+          "sha256": "18dbf0d199834dfdcb2e4e3d30f6798902abee439eb5e831b426cebda7126b05"
+        },
+        {
+          "source": "mapdb/0041.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0041.MAP",
+          "size": 320381,
+          "sha256": "e674cf46ed69e060f6e6e3734294f6769d56f5bf878bf352fbc28f501958e4a3"
+        },
+        {
+          "source": "mapdb/0041.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0041.TRG",
+          "size": 41,
+          "sha256": "c43bc82c476476dd2116954e3332d2d617b3aaac8b92cc8d05c820739a7132dd"
+        },
+        {
+          "source": "mapdb/0041.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0041.NPC",
+          "size": 1825,
+          "sha256": "bd40c9d13c781f3bc04b92fe3a199cd67124cc682e1ca76cd525801f2fa96659"
+        },
+        {
+          "source": "mapdb/0027.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0027.MAP",
+          "size": 320409,
+          "sha256": "5eaa712b1e5af0d840ca935a845adcbdbb98dc4bc592bf3481d4b57ac15c3c24"
+        },
+        {
+          "source": "mapdb/0027.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0027.TRG",
+          "size": 44,
+          "sha256": "a37fbe6dcafeaa7548f66258b776bc2e1f88ea999d618b0d5dd975a1814bf87c"
+        },
+        {
+          "source": "mapdb/0027.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0027.NPC",
+          "size": 1819,
+          "sha256": "82f2343f2cbcfe37a951593c30641f24bf52313168e4ebc53c9c8e5aeccad60a"
+        },
+        {
+          "source": "mapdb/0032.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0032.MAP",
+          "size": 320395,
+          "sha256": "4845400fdca27e2d6f2ee735989e78c7121b951f562499ea941f04245fc9f9ea"
+        },
+        {
+          "source": "mapdb/0032.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0032.TRG",
+          "size": 43,
+          "sha256": "3ee160f1e5213a0a17579c9e7b17f2aff3caf8b03ea4cca195aeb3709c5bcc78"
+        },
+        {
+          "source": "mapdb/0032.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0032.NPC",
+          "size": 1815,
+          "sha256": "b74215ef989846e4e5f2956fb9363afbe167168fd4cbf9ec6aad4ef4a4b75487"
+        },
+        {
+          "source": "mapdb/0036.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0036.MAP",
+          "size": 320407,
+          "sha256": "6492fa50cda58c46eb2d101a9fed3529a8e075a2b67333a4a95c48ab320f1eeb"
+        },
+        {
+          "source": "mapdb/0036.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0036.TRG",
+          "size": 41,
+          "sha256": "6f808c448a2553d67ccd2b651509fb71009c9a4d5bed454af5677594b034a2a6"
+        },
+        {
+          "source": "mapdb/0036.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0036.NPC",
+          "size": 1821,
+          "sha256": "86dccacdd440b9f7e6718ce76862e4c89a34ac6be7b8e74df1eb2364fd8ffbff"
+        },
+        {
+          "source": "mapdb/0083.MAP",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0083.MAP",
+          "size": 320281,
+          "sha256": "9ab9d6100d7a5d114d884dbcdf60084b51f73fed2ab4ff902803d0541bfc61e6"
+        },
+        {
+          "source": "mapdb/0083.TRG",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0083.TRG",
+          "size": 25,
+          "sha256": "56d5c53522b2cb0b6fc31c608f9718ffd505e8c9b8c2f0b60ae09f3501277cce"
+        },
+        {
+          "source": "mapdb/0083.NPC",
+          "target": "/sd/roms/scummvm/griffon-freeware/mapdb/0083.NPC",
+          "size": 1819,
+          "sha256": "e11c57838a732584b6392c6d93d23a2e118b7dc256094dc34c32d9f2f1cabad6"
+        },
+        {
+          "source": "music/gardens.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/music/gardens.ogg",
+          "size": 1952840,
+          "sha256": "db457e81bbd0ded17c09143a59f8e852eebbdafce27cfd9b6d52fd07ec462ffe"
+        },
+        {
+          "source": "music/boss.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/music/boss.ogg",
+          "size": 210678,
+          "sha256": "95dceecaac3c4da8636f2acf86984cd2401ab0dc179bac17321c7ccc23afa71e"
+        },
+        {
+          "source": "music/gardens2.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/music/gardens2.ogg",
+          "size": 2193753,
+          "sha256": "75c2c28dd0f21a8e11dbb7e5add80061e5fbd4b92d2e67a88ac8674a51939918"
+        },
+        {
+          "source": "music/menu.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/music/menu.ogg",
+          "size": 948541,
+          "sha256": "9ba7623cc1dc0673e070d84d8dd0fb8ebba63b1e6bf1a64f961b653f25da86d5"
+        },
+        {
+          "source": "music/gardens3.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/music/gardens3.ogg",
+          "size": 852249,
+          "sha256": "fcef14663c64356ec20973ee8d1693ea80c078b43eaf28875226b81ffeb9638c"
+        },
+        {
+          "source": "music/gardens4.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/music/gardens4.ogg",
+          "size": 724929,
+          "sha256": "7027956e593cb0858d515caa845713e8ca3ac4f8b8b4eb3908af5e7bcc647b4d"
+        },
+        {
+          "source": "music/endofgame.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/music/endofgame.ogg",
+          "size": 857588,
+          "sha256": "763011ebfeca50b340c91c20fa30235f56e5d8288e881a904dcf15413726169c"
+        },
+        {
+          "source": "sfx/door.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/door.ogg",
+          "size": 15057,
+          "sha256": "3e00df9f372dddba918122a2087bbafb5ee5f37870b9215e9a648eda34ef7b6a"
+        },
+        {
+          "source": "sfx/crystal.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/crystal.ogg",
+          "size": 53452,
+          "sha256": "ed513b9e5495cf4c047926cbcbab86aafda89602b23ceb311e4db0307dcac426"
+        },
+        {
+          "source": "sfx/enemyhit.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/enemyhit.ogg",
+          "size": 19715,
+          "sha256": "f9074d79c9f3212072b980c54c2fe82e256a3c06a5f3c71bda3d2d127ada165f"
+        },
+        {
+          "source": "sfx/ice.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/ice.ogg",
+          "size": 19658,
+          "sha256": "f2db47a8064e59f7e275495197dd825fc2082219087bea2291a11d220991218b"
+        },
+        {
+          "source": "sfx/lever.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/lever.ogg",
+          "size": 22566,
+          "sha256": "21cec86644da0ab0a86e46e376f352e2d6343aaf892838f9b40ea64981ac8219"
+        },
+        {
+          "source": "sfx/lightning.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/lightning.ogg",
+          "size": 81196,
+          "sha256": "698a597b089a377c61417b66640b8124d95be4767448a3929302093716802620"
+        },
+        {
+          "source": "sfx/metalhit.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/metalhit.ogg",
+          "size": 12350,
+          "sha256": "d5ad318903e364cdbd66e0d27ec5f9ba956f32b96cb55858eb3bf0e53cb620e4"
+        },
+        {
+          "source": "sfx/powerup.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/powerup.ogg",
+          "size": 17715,
+          "sha256": "397df03e40a976b558095a23406318fcb6342c733aae77a2ca1bff77cd4533c8"
+        },
+        {
+          "source": "sfx/rocks.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/rocks.ogg",
+          "size": 29546,
+          "sha256": "7d48e491b8f7b3fa27bef285a9e0e6aa660f26c35dccda9ef98ef8c175720f98"
+        },
+        {
+          "source": "sfx/bite.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/bite.ogg",
+          "size": 22445,
+          "sha256": "8a3f2a8bfd01ba68aaf79e133c14e446fd5416ab47d4fa6c7a59bd4594d363d0"
+        },
+        {
+          "source": "sfx/swordhit.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/swordhit.ogg",
+          "size": 15597,
+          "sha256": "099fb958d831ba2cc7376c65190618411a368a65553a435304eb09542334dc84"
+        },
+        {
+          "source": "sfx/chest.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/chest.ogg",
+          "size": 14217,
+          "sha256": "a5e232fb0f8e9de512ad1027edaba8373a7da886731d18d598139a3487e0ed8a"
+        },
+        {
+          "source": "sfx/throw.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/throw.ogg",
+          "size": 28472,
+          "sha256": "a86c0874a5498bb8a5a53d72308335cafc12b0381f105b856e4073451672bf96"
+        },
+        {
+          "source": "sfx/fire.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/fire.ogg",
+          "size": 12134,
+          "sha256": "048e0843c26235336219b15a106b4ee6929c0594934ee473af5c1ff310299384"
+        },
+        {
+          "source": "sfx/beep.ogg",
+          "target": "/sd/roms/scummvm/griffon-freeware/sfx/beep.ogg",
+          "size": 9432,
+          "sha256": "41034808304f432e10c8a8ccebd781ea2003b4b1f2b165406ab1f1971caa5f99"
+        },
+        {
+          "source": "config.ini",
+          "target": "/sd/roms/scummvm/griffon-freeware/config.ini",
+          "size": 164,
+          "sha256": "d76ff0ec531f40e9b188eafb5e153084ae3d4d7f0b7018eaa705aa363646a370"
+        },
+        {
+          "source": "fmod.dll",
+          "target": "/sd/roms/scummvm/griffon-freeware/fmod.dll",
+          "size": 161280,
+          "sha256": "7c6f7495d0a981f646bc23fdb39c0e349c598f5d6f4ef0ee58311338ae760194"
+        },
+        {
+          "source": "art/window.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/window.bmp",
+          "size": 36536,
+          "sha256": "677419ede9a628ccdf974539d77cfec08933e2dba983de017e50604e66737801"
+        },
+        {
+          "source": "art/clouds.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/clouds.bmp",
+          "size": 2359352,
+          "sha256": "33321eff24cb84da4a46b767aef71da1e4936102002c943e44aedf38b0ad4e11"
+        },
+        {
+          "source": "art/anims3.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims3.bmp",
+          "size": 17336,
+          "sha256": "a1777d3f5a6385544fa851804eda468415bd69ac87f97954e81060919c82b53c"
+        },
+        {
+          "source": "art/anims4.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims4.bmp",
+          "size": 17336,
+          "sha256": "7fef6935cf24161daeb0b14ff9e6a5dfdc2d9df4e514fdd5cbc09f66cd3928d3"
+        },
+        {
+          "source": "art/anims2.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims2.bmp",
+          "size": 15320,
+          "sha256": "4e09e4ab379ab6d7138afa0a5ec194e33ee45c23552f69e8cfdc7218e9d82286"
+        },
+        {
+          "source": "art/anims5.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims5.bmp",
+          "size": 4664,
+          "sha256": "d1c29ca057a12adaa694a3b5fafe57a5a147a92b7899dcec660b05a242ed10a8"
+        },
+        {
+          "source": "art/titleb.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/titleb.bmp",
+          "size": 230456,
+          "sha256": "a96432aae1b01f3db157a6ddf18fc042aa48a4f3f2573c94eacc4a79c4e5bb6a"
+        },
+        {
+          "source": "art/font.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/font.bmp",
+          "size": 384056,
+          "sha256": "db8b9bfabd4c58015c064db46e54e068024b5e15aca290d3b4c5680faafebfac"
+        },
+        {
+          "source": "art/saveloadnew.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/saveloadnew.bmp",
+          "size": 230456,
+          "sha256": "c022564b4e5f3fe0b959e63d0b7f03195b6c03621c320b616793359355a4fb73"
+        },
+        {
+          "source": "art/anims7.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims7.bmp",
+          "size": 27704,
+          "sha256": "f8fa8f33bfcd771ad7c735d35d43c20c2554281851e11daf8cf6f9c022abf170"
+        },
+        {
+          "source": "art/anims9.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims9.bmp",
+          "size": 18632,
+          "sha256": "d24929cccd1e80d083bacb474bc2895ec84fa9d525c9ba8b97f1ef76fad0f74d"
+        },
+        {
+          "source": "art/configwindow.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/configwindow.bmp",
+          "size": 230456,
+          "sha256": "19624bb96a180b02c083892d4715a42fe62b31037ca86e699d7f9e80e26bc6b4"
+        },
+        {
+          "source": "art/map2.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/map2.bmp",
+          "size": 22232,
+          "sha256": "263aed81ec82e3e743e3ed25dafdf860b32cfbe52128dcf8f7533710b47e5db9"
+        },
+        {
+          "source": "art/map3.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/map3.bmp",
+          "size": 22232,
+          "sha256": "862a42f9b3bbd8f26580b94323647c689816c3a78385f5566ccfa38c5693e1fe"
+        },
+        {
+          "source": "art/map1.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/map1.bmp",
+          "size": 22232,
+          "sha256": "1543eb3b3e8b22211c54f6ae25d39a7cbdbca2e9afd4dca7b1160401bbb4858c"
+        },
+        {
+          "source": "art/theend.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/theend.bmp",
+          "size": 230456,
+          "sha256": "1b480f879debfcf43dbcf10bf56c94fba6c48e4ac80dab0973b667786240999d"
+        },
+        {
+          "source": "art/titlea.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/titlea.bmp",
+          "size": 230456,
+          "sha256": "1d61ce0e6d4b04a7d14aa73dfd7eccbbb512d2ef5df9bd708313ca41f5bb96fe"
+        },
+        {
+          "source": "art/map4.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/map4.bmp",
+          "size": 22232,
+          "sha256": "d5b6ce2e5483d156d5da666f9b03d58ddfca07b758d81d907e19c423ed9366f5"
+        },
+        {
+          "source": "art/tx1.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/tx1.bmp",
+          "size": 230456,
+          "sha256": "318806f6018b643e78d2e1fd411ef12cad5cda70f10c78efd66680cea79e1d69"
+        },
+        {
+          "source": "art/logos.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/logos.bmp",
+          "size": 230456,
+          "sha256": "4663760294643921346bb7cb594d8b790c870106270249afe7e9f74f1f13f7e4"
+        },
+        {
+          "source": "art/spells.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/spells.bmp",
+          "size": 230456,
+          "sha256": "918871ba1842ec14063c941fff398f74bb9bb1fabea76958897876a7fba44cfb"
+        },
+        {
+          "source": "art/tx3.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/tx3.bmp",
+          "size": 230456,
+          "sha256": "f1412b962c6715cd46f7747c69166fd5485c5727e250d2b55eaf3e7bc1b1b4d0"
+        },
+        {
+          "source": "art/anims0a.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims0a.bmp",
+          "size": 27704,
+          "sha256": "4be3eac251976a471855531f14ffa12cb0d148f97d76783f5901abbe1d8e3eb3"
+        },
+        {
+          "source": "art/anims0.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims0.bmp",
+          "size": 27704,
+          "sha256": "1e2d4680d207588e55214d0a57e9fa99bc633c72576039628b84fa8164130ad7"
+        },
+        {
+          "source": "art/anims10.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims10.bmp",
+          "size": 170552,
+          "sha256": "235447343aec687bc05aa0ac0a9ba81f2ab8408de95aadf821c43900992ad10c"
+        },
+        {
+          "source": "art/anims10a.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims10a.bmp",
+          "size": 170552,
+          "sha256": "eb94cfbce66bed65a0b70c5886a20487b5137c49dcfb60d9d9f789e644cdf245"
+        },
+        {
+          "source": "art/anims1.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims1.bmp",
+          "size": 27704,
+          "sha256": "532cb8420d3b7f6b379a6d8730071d77c842a99576ccdabfb05d754fc358372d"
+        },
+        {
+          "source": "art/anims1a.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims1a.bmp",
+          "size": 27704,
+          "sha256": "13fda24caa746b6a5f36741f5c60baf67582ce2c98efa1ef8d73959ac2519f24"
+        },
+        {
+          "source": "art/anims6.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims6.bmp",
+          "size": 27704,
+          "sha256": "f2dd573fc1adf02df708a759352ff7c31e968b2985c84ed489848df0e31b85fa"
+        },
+        {
+          "source": "art/anims8.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims8.bmp",
+          "size": 27704,
+          "sha256": "29240b1c2fd7423a344f7e51f5d10c09a3ec4028eea41ff97ebc454f36b1564b"
+        },
+        {
+          "source": "art/anims11.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims11.bmp",
+          "size": 69176,
+          "sha256": "e19ad8b4faa7de8f709650d8bafacba61aa79eaa847026e82b4dd9d5a6a7e1ae"
+        },
+        {
+          "source": "art/anims11a.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims11a.bmp",
+          "size": 69176,
+          "sha256": "cbc2ef0e9ced247db378930cc6db072308589d0ec42bf9e7ab63a95cd938b92e"
+        },
+        {
+          "source": "art/anims0x.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims0x.bmp",
+          "size": 27704,
+          "sha256": "ecfed14870aafdd1fe332e65fd56f040a792a022ec9a7a3ae799d8307a6edbc7"
+        },
+        {
+          "source": "art/anims0xa.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims0xa.bmp",
+          "size": 27704,
+          "sha256": "882f2eba20a07abbffef7ab07eaa00d0106a1777e02033c41be1edd125e6cd78"
+        },
+        {
+          "source": "art/icons.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/icons.bmp",
+          "size": 16184,
+          "sha256": "86c0391682d8306d3e86bc2be1b820e12f1b3bab9cb317756e0fc9fa31e08311"
+        },
+        {
+          "source": "art/anims12.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/anims12.bmp",
+          "size": 24056,
+          "sha256": "227e47af8c5f49beb8b41c6afa42c31cb143125c330a91240cfcbf89bf650d97"
+        },
+        {
+          "source": "art/tx2.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/tx2.bmp",
+          "size": 230456,
+          "sha256": "4e7a9b27c427191f96f458d0d3038f56cd8cef87e8f33777eeb626229b608d19"
+        },
+        {
+          "source": "art/tx.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/tx.bmp",
+          "size": 230456,
+          "sha256": "a34c7c77bf53741118f82751a632c6ec52ab6c8b1bf31ecef2bc556c7c47483c"
+        },
+        {
+          "source": "art/inventory.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/inventory.bmp",
+          "size": 101288,
+          "sha256": "e28dabfbcbf3d03002280922fe3a7cff1cefc34d4e86e663d4c31862a8ece2a9"
+        },
+        {
+          "source": "art/load.bmp",
+          "target": "/sd/roms/scummvm/griffon-freeware/art/load.bmp",
+          "size": 8504,
+          "sha256": "d6009d50361917648661d5af70904b44b78e57e3d829f2543a8d296bd89f7f32"
+        },
+        {
+          "source": "griffon.exe",
+          "target": "/sd/roms/scummvm/griffon-freeware/griffon.exe",
+          "size": 178176,
+          "sha256": "34aed623c519e367a87459b99a3fc97945a3e9903911f192d8790c2d7eab07b6"
+        },
+        {
+          "source": "jpeg.dll",
+          "target": "/sd/roms/scummvm/griffon-freeware/jpeg.dll",
+          "size": 169443,
+          "sha256": "ac3f25027c9725fb6c6a4d54b3764b08cd99928a395b1cfe8682bb447b3790be"
+        },
+        {
+          "source": "libpng13.dll",
+          "target": "/sd/roms/scummvm/griffon-freeware/libpng13.dll",
+          "size": 126976,
+          "sha256": "34f1b7455996d2d47b89e3887af6dc38f5ac6284adb07058e41640b3cadf8df9"
+        },
+        {
+          "source": "objectdb.dat",
+          "target": "/sd/roms/scummvm/griffon-freeware/objectdb.dat",
+          "size": 27754,
+          "sha256": "7b748b089919896f2b9f3093bb7026ab8ee6adbe01d764a312971f147fc5c15d"
+        },
+        {
+          "source": "readme.txt",
+          "target": "/sd/roms/scummvm/griffon-freeware/readme.txt",
+          "size": 1899,
+          "sha256": "5c9bc982cdfb7cbedde59f14b0bf6b724a0d8f78fcdea795c5de5b14f751abe7"
+        },
+        {
+          "source": "SDL.dll",
+          "target": "/sd/roms/scummvm/griffon-freeware/SDL.dll",
+          "size": 237568,
+          "sha256": "af297a03c38973b5df62fa51d0c2646d172a85d5148d7bbf9c74b555082eaf34"
+        },
+        {
+          "source": "SDL_image.dll",
+          "target": "/sd/roms/scummvm/griffon-freeware/SDL_image.dll",
+          "size": 40960,
+          "sha256": "ea389bdc4c5e4145c9a8856dae5c032caa8a9c405fcc5b468814c1c099f627dc"
+        },
+        {
+          "source": "zlib1.dll",
+          "target": "/sd/roms/scummvm/griffon-freeware/zlib1.dll",
+          "size": 55808,
+          "sha256": "8aaf9e851021d1afab9e2b93c9e796d37dd31c114a76476e6c00bd8931ee9446"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://wiki.scummvm.org/index.php/Datafiles",
+      "note": "Exact files by game and release"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "Official freeware and add-ons"
+    },
+    {
+      "url": "https://github.com/scummvm/scummvm",
+      "ref": "fed42f2068dcafc6aafa1c28c77e4c88def74b66",
+      "note": "Resource files match the current ScummVM source base"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "The Griffon Legend verified package"
+    }
+  ]
+}

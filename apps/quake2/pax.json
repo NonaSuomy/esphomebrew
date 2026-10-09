@@ -176,9 +176,19 @@
   "newlib": true,
   "requires": [
     {
-      "path": "/sd/roms/quake2/baseq2/",
-      "note": "Quake II baseq2 game data (shareware or retail)"
+      "path": "/sd/roms/quake2/baseq2/pak0.pak",
+      "note": "Quake II original or demo baseq2 data"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/players",
+      "note": "Required player models and skins from the same installation"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/video",
+      "note": "Optional original movies",
+      "optional": true
     }
   ],
-  "publish": false
+  "publish": false,
+  "install_recipe": "install-recipe.json"
 }

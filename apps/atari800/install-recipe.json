@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "app": "atari800",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/atari800/incoming",
+  "folders": [
+    "/sd/roms/atari800"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/atari800/*",
+      "note": ".atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded"
+    }
+  ],
+  "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\n.atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded\n\nFILES / FOLDERS\n\n/sd/roms/atari800/* — .atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded",
+  "media": [],
+  "sources": []
+}

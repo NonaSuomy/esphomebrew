@@ -37,5 +37,6 @@
   "lvgl": {
     "repo": "https://github.com/lvgl/lvgl",
     "ref": "85aa60d18b3d5e5588d7b247abf90198f07c8a63"
-  }
+  },
+  "install_recipe": "install-recipe.json"
 }

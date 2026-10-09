@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "app": "netsurf",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/netsurf/incoming",
+  "folders": [
+    "/sd/roms/netsurf"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/netsurf",
+      "note": "Optional settings, cookies, bookmarks and history; built-in resources suffice",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/netsurf — Optional settings, cookies, bookmarks and history; built-in resources suffice",
+  "media": [],
+  "sources": []
+}

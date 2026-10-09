@@ -52,7 +52,7 @@ class ManifestTests(unittest.TestCase):
         recipe = json.loads((APPS / "redalert/install-recipe.json").read_text())
         with tempfile.TemporaryDirectory() as td:
             folder = Path(td)
-            for bad in ("http://archive.org/download/x", "https://evil.example/game.mix"):
+            for bad in ("http://archive.org/download/x", "https://user@evil.example/game.mix"):
                 altered = json.loads(json.dumps(recipe))
                 altered["media"][0]["files"][0]["url"] = bad
                 (folder / "recipe.json").write_text(json.dumps(altered))

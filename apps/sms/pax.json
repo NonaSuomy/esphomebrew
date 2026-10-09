@@ -20,8 +20,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/sms/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/sms/*",
+      "note": ".sms or .gg (ZIP supported)"
     }
   ],
   "build": "custom",
@@ -146,5 +146,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

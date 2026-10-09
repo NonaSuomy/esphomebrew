@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "app": "launcher_ui",
+  "mode": "self-contained",
+  "archive_dir": "/sd/roms/launcher_ui/incoming",
+  "folders": [],
+  "requires": [],
+  "instructions": "No mandatory external game data is needed by this current build.\n\nFILES / FOLDERS",
+  "media": [],
+  "sources": []
+}

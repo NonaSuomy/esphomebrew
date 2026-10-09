@@ -20,8 +20,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/gw/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/gw/*",
+      "note": "compatible Game & Watch .gw ROM"
     }
   ],
   "build": "custom",
@@ -128,5 +128,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

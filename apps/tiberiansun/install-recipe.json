@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "app": "tiberiansun",
+  "mode": "development",
+  "archive_dir": "/sd/roms/tiberiansun/incoming",
+  "folders": [
+    "/sd/roms/tiberiansun"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/tiberiansun/",
+      "note": "Root folder for Tiberian Sun MIX files and game data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiansun/tibsun.mix",
+      "note": "Base Tiberian Sun data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/maps01.mix",
+      "note": "Base map data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/multi.mix",
+      "note": "Multiplayer map data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/scores.mix",
+      "note": "Base music data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/*.mix",
+      "note": "Optional expansion and movie MIX files",
+      "optional": true
+    }
+  ],
+  "instructions": "This is a development data-inspection shell; supplying these files does not turn it into a complete playable game.\n\nFILES / FOLDERS\n\n/sd/roms/tiberiansun/ — Root folder for Tiberian Sun MIX files and game data\n\n/sd/roms/tiberiansun/tibsun.mix — Base Tiberian Sun data\n\n/sd/roms/tiberiansun/maps01.mix — Base map data\n\n/sd/roms/tiberiansun/multi.mix — Multiplayer map data\n\n/sd/roms/tiberiansun/scores.mix — Base music data\n\n/sd/roms/tiberiansun/*.mix — Optional expansion and movie MIX files",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/OpenTS-Developers/OpenTS",
+      "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+    }
+  ]
+}

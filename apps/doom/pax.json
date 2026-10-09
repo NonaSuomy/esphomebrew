@@ -180,5 +180,6 @@
         "sha256": "b4dd3642932193cc42bca0ee98bf30004888ca4850d69e85023b8baacfba1d1d"
       }
     ]
-  }
+  },
+  "install_recipe": "install-recipe.json"
 }

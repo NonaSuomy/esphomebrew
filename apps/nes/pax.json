@@ -25,9 +25,8 @@
   ],
   "requires": [
     {
-      "path": "/sd/roms/nes/",
-      "note": "Place .nes or .zip ROMs here; Select game scans this folder",
-      "optional": true
+      "path": "/sd/roms/nes/*",
+      "note": ".nes or ZIP"
     }
   ],
   "upstream": {
@@ -167,5 +166,6 @@
       ]
     }
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

@@ -706,5 +706,13 @@
   "ldflags": [
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json",
+  "requires": [
+    {
+      "path": "/sd/roms/netsurf",
+      "note": "Optional settings, cookies, bookmarks and history; built-in resources suffice",
+      "optional": true
+    }
+  ]
 }

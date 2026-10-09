@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "app": "wargus",
+  "mode": "processor",
+  "archive_dir": "/sd/roms/wargus/incoming",
+  "folders": [
+    "/sd/roms/wargus"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/wargus/scripts/stratagus.lua",
+      "note": "Complete converted Warcraft II data tree"
+    }
+  ],
+  "instructions": "Use the upstream wargus extractor on your original Warcraft II installation on the computer. Copy the complete output tree to /sd/roms/wargus.\n\nRun verify_wargus_data.py and the matching PAX audio/video preparation tools from pax-recipe/tools. An archive of original game files alone is not prepared runtime data.\n\nThese variants are preserved source ports; their complete playable PAX builds are not currently verified.",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/Wargus/wargus",
+      "note": "Extraction tool and original-data instructions"
+    }
+  ]
+}

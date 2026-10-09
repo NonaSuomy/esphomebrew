@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "app": "msx",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/msx/incoming",
+  "folders": [
+    "/sd/roms/msx"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/msx/*",
+      "note": "An MSX cartridge or disk image"
+    },
+    {
+      "path": "/sd/roms/msx/MSX2.ROM",
+      "note": "Required only when selecting MSX2 mode; MSX1 C-BIOS is embedded",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/msx/MSX2EXT.ROM",
+      "note": "Required only for MSX2 mode",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/msx/* — An MSX cartridge or disk image\n\n/sd/roms/msx/MSX2.ROM — Required only when selecting MSX2 mode; MSX1 C-BIOS is embedded\n\n/sd/roms/msx/MSX2EXT.ROM — Required only for MSX2 mode",
+  "media": [],
+  "sources": []
+}

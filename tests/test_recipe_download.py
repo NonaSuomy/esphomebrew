@@ -23,10 +23,12 @@ class RecipeDownloadTests(unittest.TestCase):
         fixture = json.loads((ROOT / 'apps/redalert/install-recipe.json').read_text())
         good = json.dumps({'extract': fixture})
         bad = json.loads(good)
-        bad['extract']['media'][0]['files'][0]['url'] = 'https://other.example/file'
+        bad['extract']['media'][0]['files'][0]['url'] = 'http://other.example/file'
         header = f'\nstatic const char good_json[] = {json.dumps(good)};\nstatic const char bad_json[] = {json.dumps(json.dumps(bad))};\n'
         harness = r'''
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 static int mode, starts, removes, polls;
 static uint64_t clock_us;
 static int fake_stat(const char *path, pax_file_stat_t *out) {
@@ -55,7 +57,7 @@ static int fake_ui(pax_ui_call_fn_t fn, void *arg, uint32_t timeout) {
 }
 static int64_t fake_time(void) { clock_us += 250000; return clock_us; }
 static void fake_delay(int n) { (void)n; }
-int main(void) {
+int main(int argc, char **argv) {
     assert(parse_recipe(good_json, strlen(good_json)));
     assert(g_recipe.media_count == 2 && g_recipe.file_count == 3);
     assert(incoming_media_index("CD1.iso") == 1);
@@ -68,6 +70,9 @@ int main(void) {
     svc.file_stat = fake_stat; svc.file_mkdir = fake_mkdir; svc.file_remove = fake_remove;
     svc.ui_call_sync = fake_ui; svc.get_time_us = fake_time; svc.delay_ms = fake_delay;
     g_svc = &svc;
+    assert(parse_recipe(good_json, strlen(good_json)));
+    (void)scan_incoming_files();
+    assert(g_download_rows == 3 && g_download_media[0] == -1);
     for (mode = 0; mode < 6; mode++) {
         memset(&g_recipe, 0, sizeof(g_recipe));
         g_recipe.media[0].file_count = 1;
@@ -79,6 +84,22 @@ int main(void) {
         assert(success == (mode == 0 || mode == 1));
         assert(starts == (mode == 1 || mode == 5 ? 0 : 1));
         assert(removes == (mode == 2 ? 1 : 0));
+    }
+    recipe_sha256_t sha; char digest[65];
+    recipe_sha256_init(&sha); recipe_sha256_final(&sha,digest);
+    assert(strcmp(digest,"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")==0);
+    recipe_sha256_init(&sha); recipe_sha256_update(&sha,"abc",3); recipe_sha256_final(&sha,digest);
+    assert(strcmp(digest,"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")==0);
+    const char *long_input="abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq";
+    recipe_sha256_init(&sha); recipe_sha256_update(&sha,long_input,strlen(long_input)); recipe_sha256_final(&sha,digest);
+    assert(strcmp(digest,"248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1")==0);
+    for (int arg=1; arg<argc; arg++) {
+        FILE *input=fopen(argv[arg],"rb"); assert(input);
+        fseek(input,0,SEEK_END); long length=ftell(input); rewind(input);
+        char *json=malloc(length+1); assert(json);
+        assert(fread(json,1,length,input)==(size_t)length);json[length]=0;fclose(input);
+        if(!parse_recipe(json,length)){fprintf(stderr,"Rejected recipe: %s\n",argv[arg]);abort();}
+        free(json);
     }
     return 0;
 }
@@ -97,4 +118,11 @@ int main(void) {
                 '-I'+str(sdk), '-I'+str(ROOT / 'apps/recipe'), '-I'+str(lvgl),
                 '-DLV_CONF_INCLUDE_SIMPLE', '-Wl,--gc-sections', str(path/'test.c'),
                 '-o', str(path/'test')], check=True)
-            subprocess.run([str(path/'test')], check=True)
+            fixtures=[]
+            for entry in json.loads((ROOT/'install-recipes.json').read_text()):
+                fixture_path=path/(entry['app']+'.json')
+                fixture_path.write_text(json.dumps({'extract':json.loads((ROOT/entry['path']).read_text())}))
+                fixtures.append(str(fixture_path))
+            legacy=json.loads(good);legacy['extract']['version']=1
+            fixture_path=path/'legacy.json';fixture_path.write_text(json.dumps(legacy));fixtures.append(str(fixture_path))
+            subprocess.run([str(path/'test'),*fixtures], check=True)

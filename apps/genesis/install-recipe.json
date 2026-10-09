@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "app": "genesis",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/genesis/incoming",
+  "folders": [
+    "/sd/roms/genesis"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/genesis/*",
+      "note": ".md, .gen, .bin or .smd"
+    }
+  ],
+  "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\n.md, .gen, .bin or .smd\n\nFILES / FOLDERS\n\n/sd/roms/genesis/* — .md, .gen, .bin or .smd",
+  "media": [],
+  "sources": []
+}

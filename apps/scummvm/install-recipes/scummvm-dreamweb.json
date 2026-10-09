@@ -1,0 +1,857 @@
+{
+  "version": 2,
+  "app": "scummvm-dreamweb",
+  "engine": "dreamweb",
+  "mode": "download",
+  "archive_dir": "/sd/roms/scummvm/incoming/dreamweb",
+  "folders": [
+    "/sd/roms/scummvm",
+    "/sd/roms/scummvm/dreamweb-freeware",
+    "/sd/scummvm",
+    "/sd/scummvm/extras",
+    "/sd/scummvm/saves"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scummvm",
+      "note": "A complete game data directory supported by the dreamweb engine"
+    },
+    {
+      "path": "/sd/roms/scummvm/scummvm.ini",
+      "note": "Optional saved game configuration",
+      "optional": true
+    },
+    {
+      "path": "/sd/scummvm/achievements.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/classicmacfonts.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/encoding.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/helpdialog.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/macgui.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummclassic.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummmodern.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummremastered.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/translations.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/gui-icons.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    }
+  ],
+  "instructions": "Engine: dreamweb. Copy each game into its own directory under /sd/roms/scummvm, then use Add Game in this engine.\n\nFile sets differ by game, platform and release. Follow the official game data-file page; a folder existing alone does not prove the game is complete.\n\nhttps://docs.scummvm.org/en/latest/use_scummvm/game_files.html\nhttps://wiki.scummvm.org/index.php/Datafiles\n\nFreeware download choices are optional; engines without an included freeware choice require your selected game data. No console ROM or BIOS is bundled.\n\nDownload matching engine / launcher resources first. These live under /sd/scummvm, separate from game directories. This does not supply a commercial game. PAX saves are under /sd/scummvm/saves.",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download matching engine / launcher resources",
+      "files": [
+        {
+          "source": "achievements.dat",
+          "target": "/sd/scummvm/achievements.dat",
+          "size": 249239,
+          "sha256": "6f5394edee3a2ed9165d1ac0611a5e02aabe40e7ceca9e51926d01b23f157493",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/achievements.dat"
+        },
+        {
+          "source": "classicmacfonts.dat",
+          "target": "/sd/scummvm/classicmacfonts.dat",
+          "size": 626103,
+          "sha256": "d33aa56fbbe119a1567a843df9bb759cb6589f236926b93a78dc033b2f4221d1",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/classicmacfonts.dat"
+        },
+        {
+          "source": "encoding.dat",
+          "target": "/sd/scummvm/encoding.dat",
+          "size": 179670,
+          "sha256": "175689478e2acfe66a106e2df53c5707c49271183cfc7b5e65cd05c6b65c57f8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/encoding.dat"
+        },
+        {
+          "source": "helpdialog.zip",
+          "target": "/sd/scummvm/helpdialog.zip",
+          "size": 207764,
+          "sha256": "9ff3c7964a63b18ffa0e9cfcf60d4d8b4a77d7a583b2e66173716a825c777f81",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/helpdialog.zip"
+        },
+        {
+          "source": "macgui.dat",
+          "target": "/sd/scummvm/macgui.dat",
+          "size": 65656,
+          "sha256": "5e55c29903809bf5297a28fee22e203b6dc6f56240900036b9bd8036c0a67660",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/macgui.dat"
+        },
+        {
+          "source": "scummclassic.zip",
+          "target": "/sd/scummvm/scummclassic.zip",
+          "size": 16342,
+          "sha256": "ab888c8d34b09f9dc9101496fbad3e137a0f8beb89ea9638367f9f3d80117345",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummclassic.zip"
+        },
+        {
+          "source": "scummmodern.zip",
+          "target": "/sd/scummvm/scummmodern.zip",
+          "size": 68063,
+          "sha256": "13df1daf58eacc88fdb4a33c23ae0f5792927e6d9233b37decb6233ac660b155",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummmodern.zip"
+        },
+        {
+          "source": "scummremastered.zip",
+          "target": "/sd/scummvm/scummremastered.zip",
+          "size": 96612,
+          "sha256": "335e68866cd3f9de5de3792790c8f8f949a48c22424bbc0bb5cd061ac6c645c8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummremastered.zip"
+        },
+        {
+          "source": "translations.dat",
+          "target": "/sd/scummvm/translations.dat",
+          "size": 3693914,
+          "sha256": "88e4a57aa5d58b213f6a066518eb8a1cb1046132770987cc7dd8b06ce80e0156",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/translations.dat"
+        },
+        {
+          "source": "gui-icons.dat",
+          "target": "/sd/scummvm/gui-icons.dat",
+          "size": 3315855,
+          "sha256": "e772a8bb64ad3d7a807e859ad55c6b41269e66e32dfc78cdb4e583e183b5d828",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/gui-icons.dat"
+        }
+      ]
+    },
+    {
+      "format": "zip-files",
+      "zip_name": "dreamweb-uk-1.1.zip",
+      "download_label": "Download DreamWeb",
+      "archive_url": "https://downloads.scummvm.org/frs/extras/Dreamweb/dreamweb-uk-1.1.zip",
+      "archive_size": 10198532,
+      "archive_sha256": "0f98e5fbeedfff5f5b904220d3bd3288da5a272f9192da03f2160c5edb8cdfb3",
+      "files": [
+        {
+          "source": "DREAMWEB.C00",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.C00",
+          "size": 14378,
+          "sha256": "25e05dcaf42cd7df47dc5ed9452486293eef7b5d17bb3435387b573c11acdb36"
+        },
+        {
+          "source": "DREAMWEB.C01",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.C01",
+          "size": 4459,
+          "sha256": "cfb14e0913b357c371128981980fe13b66a50734fc63f4dfb373b9efa21f9b97"
+        },
+        {
+          "source": "DREAMWEB.C02",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.C02",
+          "size": 8648,
+          "sha256": "d645d8c3cc1278d86c02689dca7c5501bb19997851d2bde3674367fda2edb45b"
+        },
+        {
+          "source": "DREAMWEB.EXE",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.EXE",
+          "size": 64985,
+          "sha256": "55c63256dd0a4c57319ddd33575eb7798972769075da8b0b9b78022e7b004eb2"
+        },
+        {
+          "source": "DREAMWEB.G00",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G00",
+          "size": 41478,
+          "sha256": "20dbaaaa0f6709fe95f2c9f96b5a7b0bed5edbdf77addeadd6ee5172ae6da70d"
+        },
+        {
+          "source": "DREAMWEB.G01",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G01",
+          "size": 26122,
+          "sha256": "166df9daec88ae7a9bf2f5cebad7a7eb5fb9a5bdc05975264a1e18aad9366539"
+        },
+        {
+          "source": "DREAMWEB.G02",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G02",
+          "size": 28250,
+          "sha256": "4af06d6b50ec07ad94a557f1cbf8639f6b6512214357477fbaed9f3387b962c4"
+        },
+        {
+          "source": "DREAMWEB.G03",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G03",
+          "size": 48247,
+          "sha256": "d59faa1b56922202a3a4f707ec44c4bf445e6321cb2ac97bb3d63bec484da8fd"
+        },
+        {
+          "source": "DREAMWEB.G04",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G04",
+          "size": 34384,
+          "sha256": "815d6f60350479376f6bde0fe96f3ee61c74603bd079408128cdeaf9d4cc974c"
+        },
+        {
+          "source": "DREAMWEB.G05",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G05",
+          "size": 41152,
+          "sha256": "adb7b7683c03a8383b9e147e1d248eae9e925034a35301dab856190bf20f2749"
+        },
+        {
+          "source": "DREAMWEB.G06",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G06",
+          "size": 40018,
+          "sha256": "86ae071170ce429742b28c0438942769f2f4092dd4c20a8d7e5139c333de4037"
+        },
+        {
+          "source": "DREAMWEB.G07",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G07",
+          "size": 13993,
+          "sha256": "97a37134df1014da922fcc98b9da67330d7a8b057b7526fb0c98f3996e43e311"
+        },
+        {
+          "source": "DREAMWEB.G08",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G08",
+          "size": 51146,
+          "sha256": "fcb4baef47bcd18147eb7272849fa92b06977ff19f0f62ab645188ee661230db"
+        },
+        {
+          "source": "DREAMWEB.G09",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G09",
+          "size": 62341,
+          "sha256": "415bbb84fcc26bf8f4f2b5e33a18d5f7f705f3e0c624b7b822e8ba495a5c66a7"
+        },
+        {
+          "source": "DREAMWEB.G10",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G10",
+          "size": 19076,
+          "sha256": "4d4b9227265e6ef492bff14a127e55a2e0a874f12bb9dd50c47ff61a7760b336"
+        },
+        {
+          "source": "DREAMWEB.G11",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G11",
+          "size": 40383,
+          "sha256": "d193e93b51c6d87abe8474adcd170f4e5cfab125616f5ac13393ab47ff0eeed9"
+        },
+        {
+          "source": "DREAMWEB.G12",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G12",
+          "size": 29734,
+          "sha256": "27825ff0e271686681c9d48db3522bd15147d6b0edff8b9d51d9573174efac36"
+        },
+        {
+          "source": "DREAMWEB.G13",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G13",
+          "size": 34390,
+          "sha256": "3a97ebe99744fa936997e078e250b50bd865998748d3cfc9f337f975e5c72f48"
+        },
+        {
+          "source": "DREAMWEB.G14",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G14",
+          "size": 26735,
+          "sha256": "8824db4bbf719cd0ab3913b757df7e7a0f9ce5ed18ae22352bf3a92c50881fe7"
+        },
+        {
+          "source": "DREAMWEB.G15",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.G15",
+          "size": 11340,
+          "sha256": "49403ba761f35de826104a588e968dd14b686ab230c1c6327a47dbde140a0454"
+        },
+        {
+          "source": "DREAMWEB.I00",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.I00",
+          "size": 16684,
+          "sha256": "9b8791e983bb3f3e1a8c0a9ce09ff407dc09f383d17c4b479e182276769dfeb7"
+        },
+        {
+          "source": "DREAMWEB.I01",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.I01",
+          "size": 15662,
+          "sha256": "e6a0083f5d5a596fd26d76d3c464c2063c17431925de99e73b19aedbcd8db162"
+        },
+        {
+          "source": "DREAMWEB.I02",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.I02",
+          "size": 25736,
+          "sha256": "02af83ee5c9daf9da5e72af4b1e8fb6e641c17a8588c4bac84fd7fa0b2e4fc05"
+        },
+        {
+          "source": "DREAMWEB.I03",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.I03",
+          "size": 22581,
+          "sha256": "13b6e97b522a561255f1f720d0497408bb878cfd9940a8a1433e120c88e3cebf"
+        },
+        {
+          "source": "DREAMWEB.I04",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.I04",
+          "size": 20459,
+          "sha256": "038441d8cc991b009adb34b189ce2118e9911ae8b020d403b934ef5d0983c84f"
+        },
+        {
+          "source": "DREAMWEB.I05",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.I05",
+          "size": 24065,
+          "sha256": "5e56015df104d568c10f15a87a75145e7dfd2b213280b1f45d87e82574b02679"
+        },
+        {
+          "source": "DREAMWEB.I06",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.I06",
+          "size": 9230,
+          "sha256": "c1432818cef8a1e5de84e435e83814f0617bd8f083dca02fbf2a16a01430874e"
+        },
+        {
+          "source": "DREAMWEB.PAL",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.PAL",
+          "size": 4200,
+          "sha256": "ebc93377cc57820b6175176b1ff3f4ec94cc4224f2a6a6b14f9001f9e04ea74a"
+        },
+        {
+          "source": "DREAMWEB.R00",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R00",
+          "size": 152918,
+          "sha256": "c0be791d291e1b2b9786f14e3f0aa1ed40d6769c6b142560510ea0df8dffb8d3"
+        },
+        {
+          "source": "DREAMWEB.R01",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R01",
+          "size": 158040,
+          "sha256": "ece63599e8218375dadf774a09e64e6893cad81717a54adf29f7c35f3091d130"
+        },
+        {
+          "source": "DREAMWEB.R02",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R02",
+          "size": 210466,
+          "sha256": "b3e4c60b69a06c6b7cd8ec9304f6cae1fb461b4b51854eca05187ccaae899592"
+        },
+        {
+          "source": "DREAMWEB.R03",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R03",
+          "size": 78731,
+          "sha256": "0dbab3d94bb52da17810b6e3db3af38d8fa849507ccc55cdaa08b75676804ae8"
+        },
+        {
+          "source": "DREAMWEB.R04",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R04",
+          "size": 74260,
+          "sha256": "e6b085ca8fb20b5f2e5cf132c9e545f73c69a8e6fb9bdaa02a19cae338c35fc5"
+        },
+        {
+          "source": "DREAMWEB.R05",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R05",
+          "size": 92428,
+          "sha256": "d4e9e7fcd190d8326bacec5e23a4a5c3d3dd6fc9a1ee4d48392921d8714676ae"
+        },
+        {
+          "source": "DREAMWEB.R06",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R06",
+          "size": 105682,
+          "sha256": "e12f071603664bbeb1ed81187892a84fdcddd472cfb46e951ae76c157b9c3afa"
+        },
+        {
+          "source": "DREAMWEB.R07",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R07",
+          "size": 107567,
+          "sha256": "8b182b3a2c94f226fae349e12983153b396e0e6fcedafdc247cfdcc63aed6517"
+        },
+        {
+          "source": "DREAMWEB.R08",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R08",
+          "size": 144378,
+          "sha256": "3f6b21004e0070eb144f5c6e05b9468e50a34492052a2ace83b12cd9a62227ce"
+        },
+        {
+          "source": "DREAMWEB.R09",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R09",
+          "size": 150067,
+          "sha256": "d1c7b2b00bba972f801e34dbac5b5638de442762d0dfd6a2fed7a9438afe109f"
+        },
+        {
+          "source": "DREAMWEB.R10",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R10",
+          "size": 90752,
+          "sha256": "dbf9a0791f1910445ad8525fa87379625ba5817b83c1bec9e3133ccb1c44c3da"
+        },
+        {
+          "source": "DREAMWEB.R11",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R11",
+          "size": 98581,
+          "sha256": "845f2a47852ee543638f80428609da382515ae20af3e35833a0a0fec720931c1"
+        },
+        {
+          "source": "DREAMWEB.R12",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R12",
+          "size": 72879,
+          "sha256": "3d7604fcadc56fe7baa963020fa358d53dac5d103c90c056b409d6127ebbc53b"
+        },
+        {
+          "source": "DREAMWEB.R13",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R13",
+          "size": 186387,
+          "sha256": "5c87ec214f7ec2db0f91cc9b6ea207acac02e4d39aa9bebc3709f7e0e1181f9a"
+        },
+        {
+          "source": "DREAMWEB.R14",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R14",
+          "size": 183208,
+          "sha256": "f02d95cc05f7d4361de7251cbf4ba00be33bf21a02951d070641fb3af3b9af39"
+        },
+        {
+          "source": "DREAMWEB.R19",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R19",
+          "size": 91923,
+          "sha256": "f321831564b1c01ef6aecb1349cf12a245b1f4b32038e0897bcded70b6814997"
+        },
+        {
+          "source": "DREAMWEB.R20",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R20",
+          "size": 200503,
+          "sha256": "8f6380cf1f9c769bb569d0ca3d55ffd9f6700a3d5f651f1c2010d4484eebe63b"
+        },
+        {
+          "source": "DREAMWEB.R21",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R21",
+          "size": 89397,
+          "sha256": "31677529b304f31b708afee8a684a2ea892dc943b10a1c9cd91d0a20cf8b0cec"
+        },
+        {
+          "source": "DREAMWEB.R22",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R22",
+          "size": 190222,
+          "sha256": "39b0976a57c1944cbf65ceec43876360e17f6a2575c66bd7c9b4fe8a641f16e5"
+        },
+        {
+          "source": "DREAMWEB.R23",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R23",
+          "size": 173739,
+          "sha256": "97de06a3a3e6d9a9b2b9c4659def06f6ef53dfb398f06f67159578e820ba68fb"
+        },
+        {
+          "source": "DREAMWEB.R24",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R24",
+          "size": 145298,
+          "sha256": "4e01295c12586eb4e9de537b81b1345865c4a559a0df44496de9ef74967a792d"
+        },
+        {
+          "source": "DREAMWEB.R25",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R25",
+          "size": 192578,
+          "sha256": "ba9fc6dee0b3bfcf2b484e0ff6b521802871bce5c00663ac5199925b0aafa953"
+        },
+        {
+          "source": "DREAMWEB.R26",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R26",
+          "size": 121568,
+          "sha256": "3ddfea38966972e62ab240a9769a0c74fa8c0eb79e3120888249d85bacbb8efb"
+        },
+        {
+          "source": "DREAMWEB.R27",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R27",
+          "size": 181896,
+          "sha256": "532915b812b8a971d6f0e6851059e924a62f2d4621e33e8558d4485e290c5f81"
+        },
+        {
+          "source": "DREAMWEB.R28",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R28",
+          "size": 168433,
+          "sha256": "786b277b13f1f31169881d66d966fe9da297f9931b9847c79eadc420a95352de"
+        },
+        {
+          "source": "DREAMWEB.R29",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R29",
+          "size": 94805,
+          "sha256": "a84af73ba42bd3527600685f7b6e6dfe263dccf65c499391b984b18c4dc24098"
+        },
+        {
+          "source": "DREAMWEB.R45",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R45",
+          "size": 204035,
+          "sha256": "7267d6c55de4c9f51df545511b3432a5a11add9f64616d59ea0e087ef28f8805"
+        },
+        {
+          "source": "DREAMWEB.R46",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R46",
+          "size": 99516,
+          "sha256": "2a1a7114181de56385226d71ae9a381daec7888db57535ecc5368df7ff7469d1"
+        },
+        {
+          "source": "DREAMWEB.R47",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R47",
+          "size": 147698,
+          "sha256": "a5bdaf5a5ccbc30aee94c1d087b4201cd949e67a660382b2bcca734bf0584391"
+        },
+        {
+          "source": "DREAMWEB.R50",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R50",
+          "size": 183071,
+          "sha256": "250c9bcdf7bbfb22cb51f8986ffff4d9849a77c2454dbdec2b80bd212f505a10"
+        },
+        {
+          "source": "DREAMWEB.R52",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R52",
+          "size": 199266,
+          "sha256": "f6e2075f4bdf242f38294ea2de161a41566ca16842a5599da297f0d5697d44f0"
+        },
+        {
+          "source": "DREAMWEB.R53",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R53",
+          "size": 151052,
+          "sha256": "4a3a8376cf90936b473ba15843191340099e45e622c6c72b5d033f9236c90b88"
+        },
+        {
+          "source": "DREAMWEB.R54",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R54",
+          "size": 79002,
+          "sha256": "9ab98958bc33ceaec05ce16f40d2abbba8714bd554eb267ed82fcadc8e4c2439"
+        },
+        {
+          "source": "DREAMWEB.R55",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.R55",
+          "size": 187758,
+          "sha256": "ee08d918fb70fc95250732189ff45100d8066adf6e7662ee2169149c1d3d71e9"
+        },
+        {
+          "source": "DREAMWEB.S00",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.S00",
+          "size": 24301,
+          "sha256": "4611718b34ea8d13b4b4892904c5ca107a6879c23db07e8271956651c25ff8aa"
+        },
+        {
+          "source": "DREAMWEB.S02",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.S02",
+          "size": 45516,
+          "sha256": "ac04b516872a81f9e1ff3a398b59764bdd14bbdeaa3229a167400cd082f9cdeb"
+        },
+        {
+          "source": "DREAMWEB.T01",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T01",
+          "size": 2601,
+          "sha256": "12e8f3cbbad24b976834939ba83b736e896b5d8a11691e54830cf901e42277b8"
+        },
+        {
+          "source": "DREAMWEB.T02",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T02",
+          "size": 2157,
+          "sha256": "efdadd02bf7628bbf4f96b487ef02d4fb63680efb3deb63831e1fcc221a85976"
+        },
+        {
+          "source": "DREAMWEB.T10",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T10",
+          "size": 2422,
+          "sha256": "7ecce54f74cd4844c69e9da5080ef858115ab32796ced747b9dcd0fe78df5079"
+        },
+        {
+          "source": "DREAMWEB.T11",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T11",
+          "size": 3641,
+          "sha256": "2c63b7531b0bc5486a5851f123a1d6035e9e344d994282fc5f138f2d15d6bc33"
+        },
+        {
+          "source": "DREAMWEB.T12",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T12",
+          "size": 3839,
+          "sha256": "ef07f9b27afd1e163c6778b45869c60f7084e57f66d960ec3a5d86f7f9f3077b"
+        },
+        {
+          "source": "DREAMWEB.T13",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T13",
+          "size": 4216,
+          "sha256": "e925d1272d7acfb07d731738d9d046af7c7f311e0f5ca4e4fab5dac104f3a5a6"
+        },
+        {
+          "source": "DREAMWEB.T20",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T20",
+          "size": 294,
+          "sha256": "3b1459231cfd5ad2bda2c613da72bc9c6fbaa61338c7ba9aae5d8b96ac93e34d"
+        },
+        {
+          "source": "DREAMWEB.T21",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T21",
+          "size": 579,
+          "sha256": "7abd53d333e80e7469966e91e5092a1f2de4e5663e00f8d4867681cd0c73c94b"
+        },
+        {
+          "source": "DREAMWEB.T22",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T22",
+          "size": 309,
+          "sha256": "2824631898602dba8eb647a32e23818775fe5b94cdeaffab16d085f9d559c8a0"
+        },
+        {
+          "source": "DREAMWEB.T23",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T23",
+          "size": 693,
+          "sha256": "8ecabbaabc5e943741f1e8ec794ffe444980f5416c419fb199550b93df5a8501"
+        },
+        {
+          "source": "DREAMWEB.T24",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T24",
+          "size": 852,
+          "sha256": "9936cb629c7f173daffde1b7b7e76708f8c6500cd0f1dfd8c3527c608a15a436"
+        },
+        {
+          "source": "DREAMWEB.T50",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T50",
+          "size": 3524,
+          "sha256": "482efd728c8cebd07441a50cbf8b346947a7a1f5f57c90035b99dae41fabe3fa"
+        },
+        {
+          "source": "DREAMWEB.T51",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T51",
+          "size": 979,
+          "sha256": "fefd8d6ef9930d8cfc48bf5a61736520c6e9edc52692a9362560a763ae69c96c"
+        },
+        {
+          "source": "DREAMWEB.T80",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T80",
+          "size": 5823,
+          "sha256": "36a33577873ab006a8e5833b716f3546a90bfa91f7cbeb82808eb6366dcfb0db"
+        },
+        {
+          "source": "DREAMWEB.T81",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T81",
+          "size": 3181,
+          "sha256": "39acfd849c82c9e8d29d2289d3b302b5d17e807c07f47bbf9a046510fe5ec020"
+        },
+        {
+          "source": "DREAMWEB.T82",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T82",
+          "size": 2461,
+          "sha256": "266deeb0d064040678d599fdfa842bd83656342bd046d8a3d037155946b9bae3"
+        },
+        {
+          "source": "DREAMWEB.T83",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T83",
+          "size": 2659,
+          "sha256": "2febeadfce013f97f0a17cbae62c7a067ff43d338b6c9fa9647940fe3829ef90"
+        },
+        {
+          "source": "DREAMWEB.T84",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.T84",
+          "size": 1039,
+          "sha256": "19ab024e13906bc8d52940524569f903ded773d9e3331cd0a4e6c93ab3b22b5a"
+        },
+        {
+          "source": "DREAMWEB.V01",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V01",
+          "size": 342142,
+          "sha256": "8e9d5ab40f7acca47685f11c720d8ae237f5f4514e7e563e0ad2a2cb4587ead2"
+        },
+        {
+          "source": "DREAMWEB.V02",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V02",
+          "size": 1040570,
+          "sha256": "3c011f76ffb4a16c19d23b38702a4dd71d7aa0bcc6e264ab594a9b9e1e3ac48d"
+        },
+        {
+          "source": "DREAMWEB.V05",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V05",
+          "size": 1435834,
+          "sha256": "7369297c485a0d0061c0f6de5797da5dd18d2c55b66cbd5fb2251edebee2ddf7"
+        },
+        {
+          "source": "DREAMWEB.V06",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V06",
+          "size": 821362,
+          "sha256": "09de69d0ccde70eb1e6b8e4c3b03cfcbd0d7fb48955290d9c17b745ad2f7570e"
+        },
+        {
+          "source": "DREAMWEB.V08",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V08",
+          "size": 147576,
+          "sha256": "d55bcce5cd1394a02c1fe14fb384110a892c57e81ebec37971255431c2892ecc"
+        },
+        {
+          "source": "DREAMWEB.V09",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V09",
+          "size": 1214596,
+          "sha256": "f0372faab6ac5c1741d629c3ab6862dfb4d8073da10a4ccf0b09f79af904d212"
+        },
+        {
+          "source": "DREAMWEB.V10",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V10",
+          "size": 145522,
+          "sha256": "0e2118e02239ee8e55c6e744cb5d7b061da46d73a42e6be8c629e84e21db3846"
+        },
+        {
+          "source": "DREAMWEB.V11",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V11",
+          "size": 252018,
+          "sha256": "d8dfa1503fcb266d7b0940940a74ca06c3e86f1222f2d66f50c05f9ccc9a1a34"
+        },
+        {
+          "source": "DREAMWEB.V12",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V12",
+          "size": 452746,
+          "sha256": "af28cee2779f4d27bae4e9f3d687f6e57e74d4d8ffbcf74813a4f806b78eff55"
+        },
+        {
+          "source": "DREAMWEB.V14",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V14",
+          "size": 1755286,
+          "sha256": "92b613c0007aa277e7881856bfad685b2d2250b63ad2acc1de6ca15c1809c9db"
+        },
+        {
+          "source": "DREAMWEB.V19",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V19",
+          "size": 45158,
+          "sha256": "dffd26aa536e0fc398f1444a82786071c5c9c0fd11212314ae8ce139585f5375"
+        },
+        {
+          "source": "DREAMWEB.V22",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V22",
+          "size": 1614004,
+          "sha256": "2af4c0dd5ea187983b0b316c12037be17c3b9e42e4a646e1dd287a974bd7f634"
+        },
+        {
+          "source": "DREAMWEB.V23",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V23",
+          "size": 1611926,
+          "sha256": "bca3ed0b1ab97ca4aa93ec1fb172d2ffeca610e03c4bf64e0ff6cce458433c47"
+        },
+        {
+          "source": "DREAMWEB.V30",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V30",
+          "size": 1106022,
+          "sha256": "00dd837ec923505287b7dfe5e52fc7e80bdd07051d9d3a4f9e92042805da78fa"
+        },
+        {
+          "source": "DREAMWEB.V33",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V33",
+          "size": 376940,
+          "sha256": "004b24d006ddc1d2c024ad6799908d63bf560482767bcb86345a754b701f046f"
+        },
+        {
+          "source": "DREAMWEB.V34",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V34",
+          "size": 1075302,
+          "sha256": "b4ba728c0146e577468a8194bc26cc50189b38d1fdf5758c3507ee43c45fd04f"
+        },
+        {
+          "source": "DREAMWEB.V35",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V35",
+          "size": 1808540,
+          "sha256": "985103eec6a6701f7a76054874fed2feca4bd5c5ede411f03a871c4e3f3a408d"
+        },
+        {
+          "source": "DREAMWEB.V99",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.V99",
+          "size": 702632,
+          "sha256": "ce4f1a1f383af902441cd4e7e761bc4aa0ca88585cd55ee97d4fdea955236c45"
+        },
+        {
+          "source": "DREAMWEB.VOL",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/DREAMWEB.VOL",
+          "size": 1792,
+          "sha256": "0b3a53a9d28d746ac0805888679d45aa575130217d109488aef068990d4e83ff"
+        },
+        {
+          "source": "diary/coveren.png",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/diary/coveren.png",
+          "size": 314193,
+          "sha256": "d46cf428e6c83597a6b6ab1510f2c6618d129dc57cfad193e4cd96b788995eec"
+        },
+        {
+          "source": "diary/diary.html",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/diary/diary.html",
+          "size": 36375,
+          "sha256": "5f40ad9552f837c8323d32ce0952b77f018b8948059264517b592470efeeb675"
+        },
+        {
+          "source": "diary/diary.txt",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/diary/diary.txt",
+          "size": 38335,
+          "sha256": "79efb59b3770730a70bde6ba80c4f544f0759d594b7fc635ef6dfdf9d1aeb3a8"
+        },
+        {
+          "source": "diary/symbol_p22.gif",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/diary/symbol_p22.gif",
+          "size": 1917,
+          "sha256": "7c532ccb0e1edc98e57a24192be42d11bbafcfedc9a24b044a20c50c5421b0e8"
+        },
+        {
+          "source": "diary/symbol_p23.gif",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/diary/symbol_p23.gif",
+          "size": 929,
+          "sha256": "fa954c3148131a63bf6bd438571dc8998d14c7f703469e75d42562a5db0f26fc"
+        },
+        {
+          "source": "diary/symbol_p25.gif",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/diary/symbol_p25.gif",
+          "size": 1028,
+          "sha256": "cdcd18b0e6f77b9a4874400462c7911ddfa4c84d8b079d721a3872f0675d3b83"
+        },
+        {
+          "source": "diary/symbol_p27.gif",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/diary/symbol_p27.gif",
+          "size": 1168,
+          "sha256": "626db1445d5e64782bfbd2ccb4a5e8c4f7335e75484aa8b1dbcb6c1c51f0ba67"
+        },
+        {
+          "source": "license.txt",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/license.txt",
+          "size": 1291,
+          "sha256": "0d126165c257ba50a17840c7da5631597e3966e887cca14fe64d705564ff8d9f"
+        },
+        {
+          "source": "manual/coveren.png",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/manual/coveren.png",
+          "size": 307872,
+          "sha256": "c27c9a1856b0b65f964d2419af943268fadc9334578d45e5ab7e85572014c4e8"
+        },
+        {
+          "source": "manual/manual.htm",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/manual/manual.htm",
+          "size": 21630,
+          "sha256": "574f227f9f8c72e0b7c9cdf1ec9c0d33375e1f45020d53c6b981e1041a6a6ba5"
+        },
+        {
+          "source": "manual/manual.txt",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/manual/manual.txt",
+          "size": 14507,
+          "sha256": "df210c7de400cb7daede4946d232d8d8af5f77335223f6ca824832c796f8fd1d"
+        },
+        {
+          "source": "manual/screenen.gif",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/manual/screenen.gif",
+          "size": 52774,
+          "sha256": "3d9a6ae07eec01dfa49ea8ba7faee0e1ba11a1829195acf199450aee6a18f14a"
+        },
+        {
+          "source": "manual/symbol.gif",
+          "target": "/sd/roms/scummvm/dreamweb-freeware/manual/symbol.gif",
+          "size": 23244,
+          "sha256": "c9461b3f44a05f70f201b60feb62aa475323686f80eeaec57ecc365b44031041"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://wiki.scummvm.org/index.php/Datafiles",
+      "note": "Exact files by game and release"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "Official freeware and add-ons"
+    },
+    {
+      "url": "https://github.com/scummvm/scummvm",
+      "ref": "fed42f2068dcafc6aafa1c28c77e4c88def74b66",
+      "note": "Resource files match the current ScummVM source base"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "DreamWeb verified package"
+    }
+  ]
+}

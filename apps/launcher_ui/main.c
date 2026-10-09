@@ -2044,11 +2044,19 @@ static bool extract_recipe_parse_object(const char *json, int length,
   const char *extract_json = json + extract_start;
   const int extract_length = extract_end - extract_start;
   uint32_t version = 0;
-  if (!json_uint_field(extract_json, extract_length, "version", &version) || version != 1 ||
+  if (!json_uint_field(extract_json, extract_length, "version", &version) || (version != 1 && version != 2) ||
       !json_string_field(extract_json, extract_length, "archive_dir",
                          recipe->archive_dir, sizeof(recipe->archive_dir)) ||
       !extract_archive_dir_valid(recipe->archive_dir)) return false;
 
+  /* Version 2 setup and ZIP recipes are interpreted by the separate recipe app.
+   * The launcher keeps only enough state to expose its handoff action. */
+  if (version == 2) {
+    char instructions[4096];
+    if (!json_string_field(extract_json, extract_length, "instructions", instructions, sizeof(instructions))) return false;
+    recipe->valid = true;
+    return true;
+  }
   cursor = json_array_start(extract_json, extract_length, "media");
   if (cursor < 0) return false;
   cursor++;

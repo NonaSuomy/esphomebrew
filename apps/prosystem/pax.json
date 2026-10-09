@@ -20,8 +20,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/prosystem/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/prosystem/*",
+      "note": ".a78 cartridge"
     }
   ],
   "build": "custom",
@@ -127,5 +127,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

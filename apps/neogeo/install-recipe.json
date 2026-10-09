@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "app": "neogeo",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/neogeo/incoming",
+  "folders": [
+    "/sd/roms/neogeo"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/neogeo/neogeo.zip",
+      "note": "BIOS matching this GnGeo core"
+    },
+    {
+      "path": "/sd/roms/neogeo/gngeo_data.zip",
+      "note": "GnGeo ROM driver database"
+    },
+    {
+      "path": "/sd/roms/neogeo/*.zip",
+      "note": "Compatible complete game ROM set; individual random ROM files do not suffice"
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/neogeo/neogeo.zip — BIOS matching this GnGeo core\n\n/sd/roms/neogeo/gngeo_data.zip — GnGeo ROM driver database\n\n/sd/roms/neogeo/*.zip — Compatible complete game ROM set; individual random ROM files do not suffice",
+  "media": [],
+  "sources": []
+}

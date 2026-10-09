@@ -1,0 +1,153 @@
+{
+  "version": 2,
+  "app": "tiberiandawn",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/tiberiandawn/incoming",
+  "folders": [
+    "/sd/roms/tiberiandawn",
+    "/sd/roms/tiberiandawn/covertops",
+    "/sd/roms/tiberiandawn/gdi",
+    "/sd/roms/tiberiandawn/nod"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/tiberiandawn/CONQUER.MIX",
+      "note": "Required Tiberian Dawn game data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/CCLOCAL.MIX",
+      "note": "Required Tiberian Dawn interface data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/conquer.ini",
+      "note": "Optional Tiberian Dawn settings",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/DESEICNH.MIX",
+      "note": "Optional desert theater speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/LOCAL.MIX",
+      "note": "Optional low-resolution interface data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SC-000.MIX",
+      "note": "Optional Covert Ops mission data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SC-001.MIX",
+      "note": "Optional Covert Ops mission data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/TEMPICNH.MIX",
+      "note": "Optional temperate theater speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/UPDATE.MIX",
+      "note": "Optional update data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/UPDATEC.MIX",
+      "note": "Optional update data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/WINTICNH.MIX",
+      "note": "Optional winter theater speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/gdi/GENERAL.MIX",
+      "note": "Required GDI game data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/nod/GENERAL.MIX",
+      "note": "Required Nod game data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/",
+      "note": "Optional Covert Ops folder",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/GENERAL.MIX",
+      "note": "Optional Covert Ops game data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/MOVIES.MIX",
+      "note": "Optional Covert Ops movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/SCORES.MIX",
+      "note": "Optional Covert Ops score data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/gdi/MOVIES.MIX",
+      "note": "Optional GDI movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/gdi/SCORES.MIX",
+      "note": "Optional GDI score data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/nod/MOVIES.MIX",
+      "note": "Optional Nod movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/nod/SCORES.MIX",
+      "note": "Optional Nod score data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/TRANSIT.MIX",
+      "note": "Optional transition data and movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SPEECH.MIX",
+      "note": "Optional speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SOUNDS.MIX",
+      "note": "Optional sound data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/WINTER.MIX",
+      "note": "Optional winter theater data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/DESERT.MIX",
+      "note": "Optional desert theater data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/TEMPERAT.MIX",
+      "note": "Optional temperate theater data",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/tiberiandawn/CONQUER.MIX — Required Tiberian Dawn game data\n\n/sd/roms/tiberiandawn/CCLOCAL.MIX — Required Tiberian Dawn interface data\n\n/sd/roms/tiberiandawn/conquer.ini — Optional Tiberian Dawn settings\n\n/sd/roms/tiberiandawn/DESEICNH.MIX — Optional desert theater speech data\n\n/sd/roms/tiberiandawn/LOCAL.MIX — Optional low-resolution interface data\n\n/sd/roms/tiberiandawn/SC-000.MIX — Optional Covert Ops mission data\n\n/sd/roms/tiberiandawn/SC-001.MIX — Optional Covert Ops mission data\n\n/sd/roms/tiberiandawn/TEMPICNH.MIX — Optional temperate theater speech data\n\n/sd/roms/tiberiandawn/UPDATE.MIX — Optional update data\n\n/sd/roms/tiberiandawn/UPDATEC.MIX — Optional update data\n\n/sd/roms/tiberiandawn/WINTICNH.MIX — Optional winter theater speech data\n\n/sd/roms/tiberiandawn/gdi/GENERAL.MIX — Required GDI game data\n\n/sd/roms/tiberiandawn/nod/GENERAL.MIX — Required Nod game data\n\n/sd/roms/tiberiandawn/covertops/ — Optional Covert Ops folder\n\n/sd/roms/tiberiandawn/covertops/GENERAL.MIX — Optional Covert Ops game data\n\n/sd/roms/tiberiandawn/covertops/MOVIES.MIX — Optional Covert Ops movies\n\n/sd/roms/tiberiandawn/covertops/SCORES.MIX — Optional Covert Ops score data\n\n/sd/roms/tiberiandawn/gdi/MOVIES.MIX — Optional GDI movies\n\n/sd/roms/tiberiandawn/gdi/SCORES.MIX — Optional GDI score data\n\n/sd/roms/tiberiandawn/nod/MOVIES.MIX — Optional Nod movies\n\n/sd/roms/tiberiandawn/nod/SCORES.MIX — Optional Nod score data\n\n/sd/roms/tiberiandawn/TRANSIT.MIX — Optional transition data and movies\n\n/sd/roms/tiberiandawn/SPEECH.MIX — Optional speech data\n\n/sd/roms/tiberiandawn/SOUNDS.MIX — Optional sound data\n\n/sd/roms/tiberiandawn/WINTER.MIX — Optional winter theater data\n\n/sd/roms/tiberiandawn/DESERT.MIX — Optional desert theater data\n\n/sd/roms/tiberiandawn/TEMPERAT.MIX — Optional temperate theater data",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/TheAssemblyArmada/Vanilla-Conquer",
+      "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+    }
+  ]
+}

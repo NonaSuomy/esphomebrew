@@ -93,5 +93,6 @@
       "note": "Optional expansion and movie MIX files",
       "optional": true
     }
-  ]
+  ],
+  "install_recipe": "install-recipe.json"
 }

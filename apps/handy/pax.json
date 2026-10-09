@@ -21,8 +21,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/handy/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/handy/*",
+      "note": ".lnx or .lyx; HLE BIOS is embedded"
     }
   ],
   "build": "custom",
@@ -129,5 +129,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

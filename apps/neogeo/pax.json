@@ -21,8 +21,16 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/neogeo/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/neogeo/neogeo.zip",
+      "note": "BIOS matching this GnGeo core"
+    },
+    {
+      "path": "/sd/roms/neogeo/gngeo_data.zip",
+      "note": "GnGeo ROM driver database"
+    },
+    {
+      "path": "/sd/roms/neogeo/*.zip",
+      "note": "Compatible complete game ROM set; individual random ROM files do not suffice"
     }
   ],
   "build": "custom",
@@ -170,5 +178,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

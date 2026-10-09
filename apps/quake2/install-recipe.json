@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "app": "quake2",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/quake2/incoming",
+  "folders": [
+    "/sd/roms/quake2/baseq2",
+    "/sd/roms/quake2/baseq2/players",
+    "/sd/roms/quake2/baseq2/video"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/quake2/baseq2/pak0.pak",
+      "note": "Quake II original or demo baseq2 data"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/players",
+      "note": "Required player models and skins from the same installation"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/video",
+      "note": "Optional original movies",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/quake2/baseq2/pak0.pak — Quake II original or demo baseq2 data\n\n/sd/roms/quake2/baseq2/players — Required player models and skins from the same installation\n\n/sd/roms/quake2/baseq2/video — Optional original movies",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/alexkid77/ESP32_QUAKE2",
+      "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+    }
+  ]
+}

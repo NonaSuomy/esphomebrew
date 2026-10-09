@@ -1,0 +1,83 @@
+{
+  "version": 2,
+  "app": "wolf4sdl",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/wolf4sdl/incoming",
+  "folders": [
+    "/sd/roms/wolf3d/base"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/wolf3d/base/vswap.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/vswap.wl1",
+        "/sd/roms/wolf3d/base/vswap.wl3"
+      ]
+    },
+    {
+      "path": "/sd/roms/wolf3d/base/vgagraph.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/vgagraph.wl1",
+        "/sd/roms/wolf3d/base/vgagraph.wl3"
+      ]
+    },
+    {
+      "path": "/sd/roms/wolf3d/base/vgahead.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/vgahead.wl1",
+        "/sd/roms/wolf3d/base/vgahead.wl3"
+      ]
+    },
+    {
+      "path": "/sd/roms/wolf3d/base/vgadict.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/vgadict.wl1",
+        "/sd/roms/wolf3d/base/vgadict.wl3"
+      ]
+    },
+    {
+      "path": "/sd/roms/wolf3d/base/gamemaps.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/gamemaps.wl1",
+        "/sd/roms/wolf3d/base/gamemaps.wl3"
+      ]
+    },
+    {
+      "path": "/sd/roms/wolf3d/base/maphead.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/maphead.wl1",
+        "/sd/roms/wolf3d/base/maphead.wl3"
+      ]
+    },
+    {
+      "path": "/sd/roms/wolf3d/base/audiot.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/audiot.wl1",
+        "/sd/roms/wolf3d/base/audiot.wl3"
+      ]
+    },
+    {
+      "path": "/sd/roms/wolf3d/base/audiohed.wl6",
+      "note": "Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+      "alternatives": [
+        "/sd/roms/wolf3d/base/audiohed.wl1",
+        "/sd/roms/wolf3d/base/audiohed.wl3"
+      ]
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/wolf3d/base/vswap.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate\n\n/sd/roms/wolf3d/base/vgagraph.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate\n\n/sd/roms/wolf3d/base/vgahead.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate\n\n/sd/roms/wolf3d/base/vgadict.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate\n\n/sd/roms/wolf3d/base/gamemaps.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate\n\n/sd/roms/wolf3d/base/maphead.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate\n\n/sd/roms/wolf3d/base/audiot.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate\n\n/sd/roms/wolf3d/base/audiohed.wl6 \u2014 Full Wolfenstein data; use a consistent .wl1 or .wl3 set instead when appropriate",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/Wolf4SDL/Wolf4SDL",
+      "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+    }
+  ]
+}

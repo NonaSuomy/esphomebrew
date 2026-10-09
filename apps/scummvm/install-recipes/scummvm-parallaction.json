@@ -1,0 +1,449 @@
+{
+  "version": 2,
+  "app": "scummvm-parallaction",
+  "engine": "parallaction",
+  "mode": "download",
+  "archive_dir": "/sd/roms/scummvm/incoming/parallaction",
+  "folders": [
+    "/sd/roms/scummvm",
+    "/sd/roms/scummvm/parallaction-freeware",
+    "/sd/scummvm",
+    "/sd/scummvm/extras",
+    "/sd/scummvm/saves"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scummvm",
+      "note": "A complete game data directory supported by the parallaction engine"
+    },
+    {
+      "path": "/sd/roms/scummvm/scummvm.ini",
+      "note": "Optional saved game configuration",
+      "optional": true
+    },
+    {
+      "path": "/sd/scummvm/achievements.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/classicmacfonts.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/encoding.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/helpdialog.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/macgui.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummclassic.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummmodern.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/scummremastered.zip",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/translations.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    },
+    {
+      "path": "/sd/scummvm/gui-icons.dat",
+      "note": "Matching ScummVM runtime resource; source release fed42f20"
+    }
+  ],
+  "instructions": "Engine: parallaction. Copy each game into its own directory under /sd/roms/scummvm, then use Add Game in this engine.\n\nFile sets differ by game, platform and release. Follow the official game data-file page; a folder existing alone does not prove the game is complete.\n\nhttps://docs.scummvm.org/en/latest/use_scummvm/game_files.html\nhttps://wiki.scummvm.org/index.php/Datafiles\n\nFreeware download choices are optional; engines without an included freeware choice require your selected game data. No console ROM or BIOS is bundled.\n\nDownload matching engine / launcher resources first. These live under /sd/scummvm, separate from game directories. This does not supply a commercial game. PAX saves are under /sd/scummvm/saves.",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download matching engine / launcher resources",
+      "files": [
+        {
+          "source": "achievements.dat",
+          "target": "/sd/scummvm/achievements.dat",
+          "size": 249239,
+          "sha256": "6f5394edee3a2ed9165d1ac0611a5e02aabe40e7ceca9e51926d01b23f157493",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/achievements.dat"
+        },
+        {
+          "source": "classicmacfonts.dat",
+          "target": "/sd/scummvm/classicmacfonts.dat",
+          "size": 626103,
+          "sha256": "d33aa56fbbe119a1567a843df9bb759cb6589f236926b93a78dc033b2f4221d1",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/classicmacfonts.dat"
+        },
+        {
+          "source": "encoding.dat",
+          "target": "/sd/scummvm/encoding.dat",
+          "size": 179670,
+          "sha256": "175689478e2acfe66a106e2df53c5707c49271183cfc7b5e65cd05c6b65c57f8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/encoding.dat"
+        },
+        {
+          "source": "helpdialog.zip",
+          "target": "/sd/scummvm/helpdialog.zip",
+          "size": 207764,
+          "sha256": "9ff3c7964a63b18ffa0e9cfcf60d4d8b4a77d7a583b2e66173716a825c777f81",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/helpdialog.zip"
+        },
+        {
+          "source": "macgui.dat",
+          "target": "/sd/scummvm/macgui.dat",
+          "size": 65656,
+          "sha256": "5e55c29903809bf5297a28fee22e203b6dc6f56240900036b9bd8036c0a67660",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/dists/engine-data/macgui.dat"
+        },
+        {
+          "source": "scummclassic.zip",
+          "target": "/sd/scummvm/scummclassic.zip",
+          "size": 16342,
+          "sha256": "ab888c8d34b09f9dc9101496fbad3e137a0f8beb89ea9638367f9f3d80117345",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummclassic.zip"
+        },
+        {
+          "source": "scummmodern.zip",
+          "target": "/sd/scummvm/scummmodern.zip",
+          "size": 68063,
+          "sha256": "13df1daf58eacc88fdb4a33c23ae0f5792927e6d9233b37decb6233ac660b155",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummmodern.zip"
+        },
+        {
+          "source": "scummremastered.zip",
+          "target": "/sd/scummvm/scummremastered.zip",
+          "size": 96612,
+          "sha256": "335e68866cd3f9de5de3792790c8f8f949a48c22424bbc0bb5cd061ac6c645c8",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/scummremastered.zip"
+        },
+        {
+          "source": "translations.dat",
+          "target": "/sd/scummvm/translations.dat",
+          "size": 3693914,
+          "sha256": "88e4a57aa5d58b213f6a066518eb8a1cb1046132770987cc7dd8b06ce80e0156",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/translations.dat"
+        },
+        {
+          "source": "gui-icons.dat",
+          "target": "/sd/scummvm/gui-icons.dat",
+          "size": 3315855,
+          "sha256": "e772a8bb64ad3d7a807e859ad55c6b41269e66e32dfc78cdb4e583e183b5d828",
+          "url": "https://raw.githubusercontent.com/scummvm/scummvm/fed42f2068dcafc6aafa1c28c77e4c88def74b66/gui/themes/gui-icons.dat"
+        }
+      ]
+    },
+    {
+      "format": "zip-files",
+      "zip_name": "nippon-1.0.zip",
+      "download_label": "Download Nippon Safes",
+      "archive_url": "https://downloads.scummvm.org/frs/extras/Nippon%20Safes/nippon-1.0.zip",
+      "archive_size": 1977894,
+      "archive_sha256": "53e7e2c60065e4aed193169bbcdcfd1113fa68d3efe1c8240ba073c0e20d613f",
+      "files": [
+        {
+          "source": "ADV.EXE",
+          "target": "/sd/roms/scummvm/parallaction-freeware/ADV.EXE",
+          "size": 134054,
+          "sha256": "18d58796c75b80d3650746455db92b91777db7dfa87e5b47c863040b74a5dc43"
+        },
+        {
+          "source": "BOOGIE2.MID",
+          "target": "/sd/roms/scummvm/parallaction-freeware/BOOGIE2.MID",
+          "size": 7507,
+          "sha256": "413492d3465a9c7319e34c8a6d1add2077c52c1eeeec5323a1c20c3b569ed2fe"
+        },
+        {
+          "source": "CHECK.EXE",
+          "target": "/sd/roms/scummvm/parallaction-freeware/CHECK.EXE",
+          "size": 3460,
+          "sha256": "ef04b1091f5108c51213554fe1988183a6125455a72e148fe525fac93ae6787f"
+        },
+        {
+          "source": "COMICCNV.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/COMICCNV.CNV",
+          "size": 10083,
+          "sha256": "35196ccfc5294ff1ec0aac6e7549349ec22727fa7cbcde77f9e4098e4468bdc9"
+        },
+        {
+          "source": "COPIA.BAT",
+          "target": "/sd/roms/scummvm/parallaction-freeware/COPIA.BAT",
+          "size": 649,
+          "sha256": "a43cf93907ceced288c69d4bce0cbe13178e0fa109c65772cfe29d405fdb1408"
+        },
+        {
+          "source": "DINO.MID",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DINO.MID",
+          "size": 5486,
+          "sha256": "fdc2be8923f0f49e8a846a6150e0a3c8624dbcafd7c5f71cfb5a625635df833c"
+        },
+        {
+          "source": "DINO.TAB",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DINO.TAB",
+          "size": 533,
+          "sha256": "47226d7089cb0ab8803461585433c49a08c60ef7d1c2be29c6ba615446c5872f"
+        },
+        {
+          "source": "DINOHEAD.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DINOHEAD.CNV",
+          "size": 7683,
+          "sha256": "37413d4c567046e6522fd45d5dcaa266d006a344361cee30c9c81f053ec1e1f9"
+        },
+        {
+          "source": "DINOOBJ.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DINOOBJ.CNV",
+          "size": 48387,
+          "sha256": "82bccc76ba69ad36cd0eff9be1887f4884a12f5b482f4d26f77b663b41a46034"
+        },
+        {
+          "source": "DINOROBJ.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DINOROBJ.CNV",
+          "size": 48387,
+          "sha256": "82bccc76ba69ad36cd0eff9be1887f4884a12f5b482f4d26f77b663b41a46034"
+        },
+        {
+          "source": "DINOTAL.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DINOTAL.CNV",
+          "size": 62499,
+          "sha256": "59d3eafc019a81246f538b94e5f7138eb9c8320ae2d9cc9b3c7acfa0a02e33e0"
+        },
+        {
+          "source": "DISK1",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DISK1",
+          "size": 1060142,
+          "sha256": "32f49eb123023ce1b24273e50d104edf5352a60407042ac1633c55de5e009662"
+        },
+        {
+          "source": "DISK2",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DISK2",
+          "size": 907205,
+          "sha256": "f2d3d6a5d8144a58f50016e5661c01574f5b18877044c98c334a4dc549a7749b"
+        },
+        {
+          "source": "DISK3",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DISK3",
+          "size": 1030721,
+          "sha256": "6da0fe52775d6ce1fe89cf8cfdb8bbab8d14348f216b9eb237880ebc8f18d7bd"
+        },
+        {
+          "source": "DISK4",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DISK4",
+          "size": 1151403,
+          "sha256": "de6438ed6f0f8b63b2bf7c710005fa1e0f74af101b67e0e6b02110bca252d0ce"
+        },
+        {
+          "source": "DONNA.MID",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DONNA.MID",
+          "size": 6195,
+          "sha256": "9f1f904551b17d7340cb1f2bf347a9ea71a55b68078cc59522fc7f72b685ba55"
+        },
+        {
+          "source": "DONNA.TAB",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DONNA.TAB",
+          "size": 320,
+          "sha256": "6839606ff5d00243ee2746ba0bcd59049bdabab8edbce9f00d94b5bc78038c05"
+        },
+        {
+          "source": "DONNAHEA.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DONNAHEA.CNV",
+          "size": 7683,
+          "sha256": "099987f62cf327a387be59b5fc7b40c1997f6496c21fb1091ce73f52da1c1ab2"
+        },
+        {
+          "source": "DONNAOBJ.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DONNAOBJ.CNV",
+          "size": 33027,
+          "sha256": "48fddc90f1855de7273db1e6205817825d1f58b0290bd5f1ee5c8697c1f639bc"
+        },
+        {
+          "source": "DONNATAL.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DONNATAL.CNV",
+          "size": 62499,
+          "sha256": "040afdc855e1ace851773ca611124252c74693927961424a1e48c8c71d45675b"
+        },
+        {
+          "source": "DONNATRA.TAB",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DONNATRA.TAB",
+          "size": 320,
+          "sha256": "6839606ff5d00243ee2746ba0bcd59049bdabab8edbce9f00d94b5bc78038c05"
+        },
+        {
+          "source": "DONNATTA.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DONNATTA.CNV",
+          "size": 53571,
+          "sha256": "26bfbe3c9fb3bde8e6682d21a70755dcb958ea31e728853bc43f8952d498206b"
+        },
+        {
+          "source": "DOUGH.TAB",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DOUGH.TAB",
+          "size": 504,
+          "sha256": "ea99af74854144d08e735f1775806edeae132c230c4cff8118d3779ec35df210"
+        },
+        {
+          "source": "DOUGHEA.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DOUGHEA.CNV",
+          "size": 7683,
+          "sha256": "58685003fad2c7248cc88e95bc7ff7d5cfaf72af5a7684c8277e3ddf3e5dd228"
+        },
+        {
+          "source": "DOUGHHEA.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DOUGHHEA.CNV",
+          "size": 7683,
+          "sha256": "58685003fad2c7248cc88e95bc7ff7d5cfaf72af5a7684c8277e3ddf3e5dd228"
+        },
+        {
+          "source": "DOUGHOBJ.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DOUGHOBJ.CNV",
+          "size": 46083,
+          "sha256": "c9edda3b8a7d9130a9b81bbc5f2c152a387e46ff74c9e35128a5d311b0b0bf80"
+        },
+        {
+          "source": "DOUGHTAL.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DOUGHTAL.CNV",
+          "size": 44643,
+          "sha256": "65cc65296f005cb5d850cc9967cfe84cef63a437bcd343a544fa6ca4a1827278"
+        },
+        {
+          "source": "DRKI.TAB",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DRKI.TAB",
+          "size": 95,
+          "sha256": "e362f664ff2de377dc01de600d3707581c59b94d3150bcc211bab5c4d1604758"
+        },
+        {
+          "source": "DRKIHEAD.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DRKIHEAD.CNV",
+          "size": 867,
+          "sha256": "2156549092e352353c3735be6d67b3ec7604d83190b97d62446e3641f9aaf7ef"
+        },
+        {
+          "source": "DRKIOBJ.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DRKIOBJ.CNV",
+          "size": 9219,
+          "sha256": "5b192e44b00c97e64fed5ad56982bf2be51e9e777d1640e262a7459901e56e1b"
+        },
+        {
+          "source": "DRKITAL.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/DRKITAL.CNV",
+          "size": 8931,
+          "sha256": "af4903351bea34b0fa5d476db6b400c6b29d9418deb1a7cb3d8e355268caa48f"
+        },
+        {
+          "source": "EN",
+          "target": "/sd/roms/scummvm/parallaction-freeware/EN",
+          "size": 399360,
+          "sha256": "f491c62e6f032f0d69c8c0ed8f611cd3ce70ad09b9e4f51715e6e30683feb872"
+        },
+        {
+          "source": "FR",
+          "target": "/sd/roms/scummvm/parallaction-freeware/FR",
+          "size": 410624,
+          "sha256": "d086399546b2949eb6cfb39b28c8f10e4a14f3d80633ba67b5d6259f2c82bdad"
+        },
+        {
+          "source": "GE",
+          "target": "/sd/roms/scummvm/parallaction-freeware/GE",
+          "size": 410624,
+          "sha256": "55c7c733f2042908ea36a244e576d156ca998ba7041eb09255da902b43d7c1b2"
+        },
+        {
+          "source": "GLOBAL.TAB",
+          "target": "/sd/roms/scummvm/parallaction-freeware/GLOBAL.TAB",
+          "size": 280,
+          "sha256": "c858dde66c60bb74f1b08d5302a67a140e63d5a024e2f9f0f1b4d62feac58b28"
+        },
+        {
+          "source": "INTRO.MID",
+          "target": "/sd/roms/scummvm/parallaction-freeware/INTRO.MID",
+          "size": 18805,
+          "sha256": "3cbc96b197008e0164ee47db044193c077d36d363fd3eb4fa182037d1b19733e"
+        },
+        {
+          "source": "IT",
+          "target": "/sd/roms/scummvm/parallaction-freeware/IT",
+          "size": 410624,
+          "sha256": "0d1cd763db2bc6f6d9bf8bb3a06773b77fff538b6ea7544507915273d2cbcc7f"
+        },
+        {
+          "source": "MUSICA.EXE",
+          "target": "/sd/roms/scummvm/parallaction-freeware/MUSICA.EXE",
+          "size": 26137,
+          "sha256": "1be1e5c7bd765ae74993d3c65108dfcbfe4f6a05a0e4781c2aab399befad8085"
+        },
+        {
+          "source": "NUTS.MID",
+          "target": "/sd/roms/scummvm/parallaction-freeware/NUTS.MID",
+          "size": 13006,
+          "sha256": "deccc1b3e1efb40bbfce4cfc7f1ce4e8e2f6a51e61b9065ed573de1357bc1c0f"
+        },
+        {
+          "source": "POINTER.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/POINTER.CNV",
+          "size": 1027,
+          "sha256": "283ad18f91fd6a2c8945e7b9e2ec283ef21791026ebf55877ad3951536ae477e"
+        },
+        {
+          "source": "README",
+          "target": "/sd/roms/scummvm/parallaction-freeware/README",
+          "size": 1086,
+          "sha256": "07143b7650d977d569d92a4507946c34346c6b595c63f47e98a041bd768ce35b"
+        },
+        {
+          "source": "RUNME.BAT",
+          "target": "/sd/roms/scummvm/parallaction-freeware/RUNME.BAT",
+          "size": 66,
+          "sha256": "27ce614e993dc7c4301da5bb4da77d98578b7aea5d0610e2d7d32f1d203eb077"
+        },
+        {
+          "source": "SLIDECNV.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/SLIDECNV.CNV",
+          "size": 9467,
+          "sha256": "9b76f46dfbd57f25779c12963d9c702e32a9792df2ca0ab26f1cd33d56fa7783"
+        },
+        {
+          "source": "SOFT.MID",
+          "target": "/sd/roms/scummvm/parallaction-freeware/SOFT.MID",
+          "size": 15818,
+          "sha256": "78c301de3f3b539f85654e44b4fb0f1b8f9c6cdda4ff39b3af6c0a4f7b30acd1"
+        },
+        {
+          "source": "TOPAZCNV.CNV",
+          "target": "/sd/roms/scummvm/parallaction-freeware/TOPAZCNV.CNV",
+          "size": 10083,
+          "sha256": "18db6cda236fb1e426d13e0c90345604175c2cb33372d6aa40db3082c6186db1"
+        },
+        {
+          "source": "readme.txt",
+          "target": "/sd/roms/scummvm/parallaction-freeware/readme.txt",
+          "size": 1318,
+          "sha256": "9722ac87ab8e9ff406120fc5213b86c7445db2e5509637d64d8c607142a0fdb2"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://wiki.scummvm.org/index.php/Datafiles",
+      "note": "Exact files by game and release"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "Official freeware and add-ons"
+    },
+    {
+      "url": "https://github.com/scummvm/scummvm",
+      "ref": "fed42f2068dcafc6aafa1c28c77e4c88def74b66",
+      "note": "Resource files match the current ScummVM source base"
+    },
+    {
+      "url": "https://www.scummvm.org/games/",
+      "note": "Nippon Safes verified package"
+    }
+  ]
+}

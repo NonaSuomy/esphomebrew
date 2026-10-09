@@ -8,6 +8,7 @@
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "lvgl.h"
+#include "recipe_sha256.h"
 #include "../launcher_ui/iso9660_extract.h"
 
 #include <stdbool.h>
@@ -19,13 +20,14 @@
 #define SCREEN_H 300
 #define TOUCH_FRAME_W 800
 #define TOUCH_FRAME_H 480
-#define MAX_JSON_BYTES (96U * 1024U)
-#define MAX_MEDIA 4
-#define MAX_FILES 24
+#define MAX_JSON_BYTES (192U * 1024U)
+#define MAX_MEDIA 16
+#define MAX_FILES 512
 #define PATH_CAP 256
 #define ENTRY_CAP 192
 #define NAME_CAP 96
 #define STATUS_CAP 192
+#define MAX_FOLDERS 32
 #define ZIP_LIST_CAP 8192
 #define MAX_INCOMING_FILES 32
 #define MAX_IMAGE_BYTES (1024U * 1024U * 1024U)
@@ -45,6 +47,7 @@ typedef struct {
   char target[PATH_CAP];
   char url[512];
   unsigned expected_size;
+  char sha256[65];
   bool optional;
   bool present;
 } recipe_file_t;
@@ -55,6 +58,9 @@ typedef struct {
   char zip_name[NAME_CAP];
   char iso_name[NAME_CAP];
   char download_label[NAME_CAP];
+  char archive_url[512];
+  unsigned archive_size;
+  char archive_sha256[65];
   bool auto_entry;
   int first_file;
   int file_count;
@@ -66,6 +72,10 @@ typedef struct {
   recipe_file_t files[MAX_FILES];
   int media_count;
   int file_count;
+  unsigned version;
+  char instructions[4096];
+  char folders[MAX_FOLDERS][PATH_CAP];
+  int folder_count;
 } recipe_t;
 
 typedef int (*zip_extract_named_fn)(const char *, const char *, const char *,
@@ -97,13 +107,14 @@ static bool g_success;
 static char g_incoming_names[MAX_INCOMING_FILES][ENTRY_CAP];
 static int g_incoming_count;
 static int g_download_rows;
-static int g_download_media[MAX_MEDIA];
+static int g_download_media[MAX_MEDIA + 1];
 static int g_focused_incoming;
 static volatile int g_requested_incoming = -1;
 static volatile bool g_exit_requested;
 static lv_obj_t *g_incoming_list;
 static lv_obj_t *g_incoming_buttons[MAX_INCOMING_FILES];
 static lv_obj_t *g_empty_label;
+static lv_obj_t *g_instructions_overlay;
 static lv_obj_t *g_back_button;
 static bool g_processing_media;
 
@@ -218,6 +229,20 @@ static bool json_string_decode(const char *s, int len, int start,
       if (c == 'n') c = '\n';
       else if (c == 'r') c = '\r';
       else if (c == 't') c = '\t';
+      else if (c == 'u') {
+        unsigned code=0;
+        for(int n=0;n<4;n++){
+          if(++i>=len)return false;char h=s[i];
+          unsigned v=h>='0'&&h<='9'?(unsigned)(h-'0'):h>='a'&&h<='f'?(unsigned)(h-'a'+10):h>='A'&&h<='F'?(unsigned)(h-'A'+10):16;
+          if(v>15)return false;code=(code<<4)|v;
+        }
+        if(!code || (code>=0xd800 && code<=0xdfff))return false;
+        unsigned count=code<0x80?1:code<0x800?2:3;if(used+count>=cap)return false;
+        if(count==1)out[used++]=(char)code;
+        else if(count==2){out[used++]=(char)(0xc0|(code>>6));out[used++]=(char)(0x80|(code&63));}
+        else {out[used++]=(char)(0xe0|(code>>12));out[used++]=(char)(0x80|((code>>6)&63));out[used++]=(char)(0x80|(code&63));}
+        continue;
+      }
       else if (c != '"' && c != '\\' && c != '/') return false;
     }
     if (used + 1 >= cap) return false;
@@ -287,13 +312,22 @@ static bool json_get_uint(const char *s, int len, int object_start,
 
 static bool path_under_roms(const char *path)
 {
-  if (path == NULL || !(strncmp(path, "/sd/roms/", 9) == 0 ||
-                        strncmp(path, "/usb0/roms/", 11) == 0)) return false;
-  if (path[text_len(path) - 1] == '/') return false;
-  for (const char *p = path; *p; ++p)
-    if (*p == '\\' || (p[0] == '/' && p[1] == '/') ||
-        (p[0] == '.' && p[1] == '.' && (p == path || p[-1] == '/') &&
-         (p[2] == '\0' || p[2] == '/'))) return false;
+  if (path == NULL || !(strncmp(path, "/sd/", 4) == 0 || strncmp(path, "/usb0/", 6) == 0)) return false;
+  if (path[text_len(path)-1] == '/') return false;
+  for (const char *p=path; *p; ++p)
+    if (*p=='\\' || (*p=='/' && p[1]=='/') ||
+        (*p=='.' && (p==path || p[-1]=='/') &&
+         (p[1]=='/' || p[1]=='\0' || (p[1]=='.' && (p[2]=='/' || p[2]=='\0'))))) return false;
+  return true;
+}
+
+static bool download_url_valid(const char *url, unsigned version)
+{
+  if (version == 1) return strncmp(url, "https://archive.org/download/", 29) == 0;
+  if (strncmp(url, "https://", 8) != 0 || !url[8]) return false;
+  const char *slash = strchr(url + 8, '/');
+  if (!slash || slash == url + 8) return false;
+  for (const char *p=url+8; p<slash; ++p) if (*p=='@' || *p==' ' || *p=='\\') return false;
   return true;
 }
 
@@ -350,28 +384,44 @@ static bool parse_recipe(const char *json, int length)
   if (!json_object_field(json, length, 0, "extract", &extract_start, &extract_end) ||
       json[extract_start] != '{') return false;
   unsigned version = 0;
-  if (!json_get_uint(json, length, extract_start, "version", &version) || version != 1 ||
+  if (!json_get_uint(json, length, extract_start, "version", &version) || (version != 1 && version != 2) ||
       !json_get_string(json, length, extract_start, "archive_dir",
                        g_recipe.archive_dir, sizeof(g_recipe.archive_dir)) ||
       !path_under_roms(g_recipe.archive_dir)) return false;
 
+  g_recipe.version = version;
+  if (version == 2) {
+    if (!json_get_string(json, length, extract_start, "instructions", g_recipe.instructions, sizeof(g_recipe.instructions))) return false;
+    int fs, fe;
+    if (json_object_field(json, length, extract_start, "folders", &fs, &fe)) {
+      if (json[fs] != '[') return false;
+      int fc=fs+1, vs, ve;
+      while (array_next(json, fe, &fc, &vs, &ve)) {
+        if (g_recipe.folder_count >= MAX_FOLDERS || json[vs] != '"' ||
+            !json_string_decode(json, ve, vs, g_recipe.folders[g_recipe.folder_count], PATH_CAP) ||
+            !path_under_roms(g_recipe.folders[g_recipe.folder_count])) return false;
+        g_recipe.folder_count++;
+      }
+    }
+  }
   int media_start, media_end;
   if (!json_object_field(json, length, extract_start, "media", &media_start, &media_end) ||
       json[media_start] != '[') return false;
   int cursor = media_start + 1;
-  while (g_recipe.media_count < MAX_MEDIA) {
+  while (true) {
     int item_start, item_end;
     if (!array_next(json, media_end, &cursor, &item_start, &item_end)) break;
-    if (json[item_start] != '{') return false;
+    if (g_recipe.media_count >= MAX_MEDIA || json[item_start] != '{') return false;
     recipe_media_t *media = &g_recipe.media[g_recipe.media_count];
     if (!json_get_string(json, item_end, item_start, "format", media->format,
                          sizeof(media->format))) return false;
     media->auto_entry = json_get_bool(json, item_end, item_start, "auto_entry");
     const bool has_entry = json_get_string(json, item_end, item_start, "entry",
                                            media->entry, sizeof(media->entry));
-    if (media->auto_entry) {
+    const bool simple = version == 2 && (strcmp(media->format, "download") == 0 || strcmp(media->format, "zip-files") == 0);
+    if (!simple && media->auto_entry) {
       if (strcmp(media->format, "zip-iso9660") != 0 || has_entry) return false;
-    } else if (!has_entry || !relative_path_valid(media->entry)) {
+    } else if (!simple && (!has_entry || !relative_path_valid(media->entry))) {
       return false;
     }
     (void)json_get_string(json, item_end, item_start, "zip_name", media->zip_name,
@@ -383,20 +433,30 @@ static bool parse_recipe(const char *json, int length)
     if (media->zip_name[0] != '\0' &&
         (strchr(media->zip_name, '/') != NULL || strchr(media->zip_name, '\\') != NULL ||
          !ends_with_ci(media->zip_name, ".zip"))) return false;
-    if (!media->auto_entry &&
+    if (!simple && !media->auto_entry &&
         (strcmp(media->format, "zip-iso9660") != 0 || !ends_with_ci(media->entry, ".iso")) &&
         (strcmp(media->format, "zip-cue-bin") != 0 || !ends_with_ci(media->entry, ".cue")))
       return false;
 
+    if (version == 2 && strcmp(media->format, "zip-files") == 0) {
+      if (!ends_with_ci(media->zip_name, ".zip")) return false;
+      int as, ae;
+      if (json_object_field(json, item_end, item_start, "archive_url", &as, &ae) &&
+          (!json_get_string(json, item_end, item_start, "archive_url", media->archive_url, sizeof(media->archive_url)) ||
+           !download_url_valid(media->archive_url, version) ||
+           !json_get_uint(json, item_end, item_start, "archive_size", &media->archive_size) ||
+           !media->archive_size || media->archive_size > MAX_FILE_BYTES)) return false;
+      (void)json_get_string(json, item_end, item_start, "archive_sha256", media->archive_sha256, sizeof(media->archive_sha256));
+    }
     int files_start, files_end;
     if (!json_object_field(json, item_end, item_start, "files", &files_start, &files_end) ||
         json[files_start] != '[') return false;
     media->first_file = g_recipe.file_count;
     int file_cursor = files_start + 1;
-    while (g_recipe.file_count < MAX_FILES) {
+    while (true) {
       int file_start, file_end;
       if (!array_next(json, files_end, &file_cursor, &file_start, &file_end)) break;
-      if (json[file_start] != '{') return false;
+      if (g_recipe.file_count >= MAX_FILES || json[file_start] != '{') return false;
       recipe_file_t *file = &g_recipe.files[g_recipe.file_count];
       if (!json_get_string(json, file_end, file_start, "source", file->source,
                            sizeof(file->source)) ||
@@ -406,10 +466,12 @@ static bool parse_recipe(const char *json, int length)
       int url_start, url_end;
       if (json_object_field(json, file_end, file_start, "url", &url_start, &url_end)) {
         if (!json_get_string(json, file_end, file_start, "url", file->url, sizeof(file->url)) ||
-            strncmp(file->url, "https://archive.org/download/", 29) != 0 ||
+            !download_url_valid(file->url, version) ||
             !json_get_uint(json, file_end, file_start, "size", &file->expected_size) ||
             file->expected_size == 0 || file->expected_size > MAX_FILE_BYTES) return false;
       }
+      (void)json_get_uint(json, file_end, file_start, "size", &file->expected_size);
+      (void)json_get_string(json, file_end, file_start, "sha256", file->sha256, sizeof(file->sha256));
       file->optional = json_get_bool(json, file_end, file_start, "optional");
       for (int i = 0; i < g_recipe.file_count; ++i)
         if (strcmp(g_recipe.files[i].target, file->target) == 0) return false;
@@ -419,7 +481,7 @@ static bool parse_recipe(const char *json, int length)
     if (media->file_count == 0) return false;
     g_recipe.media_count++;
   }
-  return g_recipe.media_count > 0 && g_recipe.file_count > 0;
+  return (g_recipe.media_count > 0 && g_recipe.file_count > 0) || (version == 2 && g_recipe.instructions[0]);
 }
 
 /* Older Red Alert app-info JSON on existing cards only listed allied/MAIN.MIX.
@@ -455,7 +517,7 @@ static bool ensure_redalert_base_mix(const char *json_path)
 static bool file_exists(const char *path)
 {
   pax_file_stat_t info = {0};
-  return g_svc->file_stat != NULL && g_svc->file_stat(path, &info) == 0 && !info.is_dir;
+  return g_svc->file_stat != NULL && g_svc->file_stat(path, &info) == 0 && !info.is_dir && info.size > 0;
 }
 
 /* The cache may have been copied onto the card from a PC, so its filesystem
@@ -518,8 +580,12 @@ static int scan_incoming_files(void)
   g_incoming_count = 0;
   g_download_rows = 0;
   memset(g_incoming_names, 0, sizeof(g_incoming_names));
+  if (g_recipe.version == 2) {
+    g_download_media[g_download_rows++] = -1;
+    text_copy(g_incoming_names[g_incoming_count++], ENTRY_CAP, "Prepare folders / read instructions");
+  }
   for (int m = 0; m < g_recipe.media_count; ++m) {
-    bool downloadable = false;
+    bool downloadable = g_recipe.media[m].archive_url[0] != 0;
     for (int f = 0; f < g_recipe.media[m].file_count; ++f)
       if (g_recipe.files[g_recipe.media[m].first_file + f].url[0] != '\0') downloadable = true;
     if (downloadable) {
@@ -834,6 +900,35 @@ static int build_ui_on_host(void *unused)
   if (g_progress_label != NULL) lv_obj_add_flag(g_progress_label, LV_OBJ_FLAG_HIDDEN);
   if (g_incoming_count > 0) lv_obj_add_flag(g_empty_label, LV_OBJ_FLAG_HIDDEN);
   lv_timer_handler();
+  return 0;
+}
+
+static int show_instructions_on_host(void *unused)
+{
+  (void)unused;
+  if (g_instructions_overlay) lv_obj_delete(g_instructions_overlay);
+  g_instructions_overlay = lv_obj_create(lv_display_get_screen_active(g_display));
+  lv_obj_set_size(g_instructions_overlay, g_width, g_height);
+  lv_obj_set_style_bg_color(g_instructions_overlay, lv_color_hex(COL_BG), 0);
+  lv_obj_set_style_bg_opa(g_instructions_overlay, LV_OPA_COVER, 0);
+  lv_obj_set_scroll_dir(g_instructions_overlay, LV_DIR_VER);
+  lv_obj_t *label=lv_label_create(g_instructions_overlay);
+  lv_obj_set_width(label,g_width-60);
+  lv_label_set_long_mode(label,LV_LABEL_LONG_WRAP);
+  lv_obj_set_style_text_color(label,lv_color_hex(COL_TEXT),0);
+  lv_label_set_text(label,g_recipe.instructions);
+  lv_obj_t *back=lv_button_create(g_instructions_overlay);
+  lv_obj_set_pos(back,g_width-160,0);
+  lv_obj_t *text=lv_label_create(back);lv_label_set_text(text,"BACK");
+  lv_obj_add_event_cb(back,incoming_button_event,LV_EVENT_CLICKED,(void *)(intptr_t)-1);
+  lv_obj_set_y(label,55);
+  return 0;
+}
+
+static int scroll_instructions_on_host(void *direction)
+{
+  if (g_instructions_overlay != NULL)
+    lv_obj_scroll_by(g_instructions_overlay, 0, (int)(intptr_t)direction, LV_ANIM_OFF);
   return 0;
 }
 
@@ -1271,81 +1366,84 @@ static void remove_staged_cache_files(void)
 /* The firmware streams to a temporary file and commits on HTTP success.
  * Keep existing files; check the published member size before accepting a new one.
  * The UI stays responsive, but we finish an in-flight transfer before closing. */
-static bool download_media(int media_index)
+static bool verify_sha256(const char *path,const char *expected)
 {
-  if (g_svc->archive_download_start == NULL || g_svc->store_install_status == NULL ||
-      g_svc->file_stat == NULL || g_svc->file_mkdir == NULL || g_svc->file_remove == NULL) {
-    report("Update firmware to enable direct downloads. Local disc extraction is available.", 0, 0, COL_WARN);
-    return false;
+  if (!expected[0]) return true;
+  if (strlen(expected)!=64 || !g_svc->file_open || !g_svc->file_read || !g_svc->file_close) return false;
+  void *f=g_svc->file_open(path,"rb");if(!f)return false;
+  recipe_sha256_t sha;recipe_sha256_init(&sha);uint8_t buffer[4096];size_t n;
+  uint64_t last=0;
+  while((n=g_svc->file_read(buffer,1,sizeof(buffer),f))!=0){recipe_sha256_update(&sha,buffer,n);
+    uint64_t now=g_svc->get_time_us();if(now-last>250000){(void)g_svc->ui_call_sync(pump_ui_on_host,NULL,1000);last=now;}}
+  (void)g_svc->file_close(f);char actual[65];recipe_sha256_final(&sha,actual);return strcmp(actual,expected)==0;
+}
+
+static bool download_one(recipe_file_t *mapping,uint32_t done,uint32_t total)
+{
+  pax_file_stat_t existing={0};
+  if(g_svc->file_stat(mapping->target,&existing)==0){
+    if(existing.is_dir || existing.size==0){report("An empty file or directory occupies the target. Remove it before retrying.",done,total,COL_WARN);return false;}
+    report("Keeping an existing file.",done,total,COL_TEXT);return true;
   }
-  recipe_media_t *media = &g_recipe.media[media_index];
-  uint32_t total = 0, done = 0;
-  for (int f = 0; f < media->file_count; ++f)
-    if (g_recipe.files[media->first_file + f].url[0]) total++;
-  for (int f = 0; f < media->file_count && !g_exit_requested; ++f) {
-    recipe_file_t *mapping = &g_recipe.files[media->first_file + f];
-    if (!mapping->url[0]) continue;
-    pax_file_stat_t existing = {0};
-    if (g_svc->file_stat(mapping->target, &existing) == 0) {
-      if (existing.is_dir || existing.size == 0) {
-        report("An empty file or directory occupies the target. Remove it before retrying.", done, total, COL_WARN);
-        return false;
-      }
-      done++;
-      report("Keeping an existing game file.", done, total, COL_TEXT);
-      continue;
-    }
-    char parent[PATH_CAP];
-    text_copy(parent, sizeof(parent), mapping->target);
-    char *slash = strrchr(parent, '/');
-    if (slash == NULL) return false;
-    *slash = '\0';
-    (void)g_svc->file_mkdir(parent);
-    if (g_svc->archive_download_start(mapping->url, mapping->target) != 0) {
-      report("Could not start download. Retry or choose a local disc image.", done, total, COL_WARN);
-      return false;
-    }
-    bool complete = false;
-    uint64_t last_update = 0;
-    for (;;) {
-      pax_install_progress_t progress = {0};
-      if (g_svc->store_install_status(&progress) != 0) {
-        /* Do not unload while the firmware transfer may still be running. */
-        g_svc->delay_ms(100);
-        continue;
-      }
-      if (progress.state == 2 || progress.state == 3) {
-        complete = progress.state == 2;
-        if (!complete) report(progress.status[0] ? progress.status : "Download failed. Retry or use a local disc.", done, total, COL_WARN);
-        break;
-      }
-      const uint64_t now = g_svc->get_time_us();
-      if (now - last_update >= 250000) {
-        char status[STATUS_CAP] = "Downloading ";
-        text_append(status, sizeof(status), mapping->source);
-        g_byte_progress_active = true;
-        g_byte_done = progress.done;
-        g_byte_total = mapping->expected_size;
-        report(status, done, total, COL_TEXT);
-        last_update = now;
-      }
-      (void)g_svc->ui_call_sync(pump_ui_on_host, NULL, 1000);
-      g_svc->delay_ms(50);
-    }
-    g_byte_progress_active = false;
-    if (!complete) return false;
-    pax_file_stat_t received = {0};
-    if (g_svc->file_stat(mapping->target, &received) != 0 || received.is_dir ||
-        received.size != mapping->expected_size) {
-      (void)g_svc->file_remove(mapping->target);
-      report("Download size did not match. Retry or choose a local disc image.", done, total, COL_ERROR);
-      return false;
-    }
+  if(!make_parent_dirs(mapping->target) || g_svc->archive_download_start(mapping->url,mapping->target)!=0){report("Could not start download. Retry or use local files.",done,total,COL_WARN);return false;}
+  bool complete=false;uint64_t last=0;
+  for(;;){pax_install_progress_t progress={0};
+    if(g_svc->store_install_status(&progress)!=0){g_svc->delay_ms(100);continue;}
+    if(progress.state==2 || progress.state==3){complete=progress.state==2;if(!complete)report(progress.status[0]?progress.status:"Download failed; local files remain available.",done,total,COL_WARN);break;}
+    uint64_t now=g_svc->get_time_us();if(now-last>=250000){char status[STATUS_CAP]="Downloading ";text_append(status,sizeof(status),mapping->source);g_byte_progress_active=true;g_byte_done=progress.done;g_byte_total=mapping->expected_size;report(status,done,total,COL_TEXT);last=now;}
+    (void)g_svc->ui_call_sync(pump_ui_on_host,NULL,1000);g_svc->delay_ms(50);
+  }
+  g_byte_progress_active=false;if(!complete)return false;
+  pax_file_stat_t received={0};
+  if(g_svc->file_stat(mapping->target,&received)!=0 || received.is_dir || received.size!=mapping->expected_size || !verify_sha256(mapping->target,mapping->sha256)){
+    (void)g_svc->file_remove(mapping->target);report("Download size or checksum did not match. Retry or use local files.",done,total,COL_ERROR);return false;}
+  return true;
+}
+
+static bool extract_zip_media(recipe_media_t *media,const char *archive)
+{
+  if(!g_svc->file_zip_extract_named){report("This firmware cannot extract named ZIP files.",0,0,COL_WARN);return false;}
+  if(!verify_sha256(archive,media->archive_sha256)){report("ZIP checksum does not match; replace the cached archive and retry.",0,0,COL_ERROR);return false;}
+  unsigned done=0;
+  for(int i=0;i<media->file_count && !g_exit_requested;i++){
+    recipe_file_t *f=&g_recipe.files[media->first_file+i];
+    if(file_exists(f->target)){done++;continue;}
+    if(!make_parent_dirs(f->target))return false;
+    report("Installing ZIP contents...",done,media->file_count,COL_TEXT);uint32_t written=0;
+    if(g_svc->file_zip_extract_named(archive,f->source,f->target,MAX_FILE_BYTES,&written)!=0){report("ZIP entry could not be extracted; existing files were kept.",done,media->file_count,COL_ERROR);return false;}
+    if((f->expected_size && written!=f->expected_size) || !verify_sha256(f->target,f->sha256)){
+      (void)g_svc->file_remove(f->target);report("Extracted file failed size or checksum verification.",done,media->file_count,COL_ERROR);return false;}
     done++;
   }
-  report(g_exit_requested ? "Stopped between files; completed downloads were kept." :
-         "Game files downloaded. Local disc extraction remains available.", done, total, COL_OK);
-  return done == total;
+  report("ZIP files installed. Existing files were kept.",done,media->file_count,COL_OK);return done==(unsigned)media->file_count;
+}
+
+static bool download_media(int media_index)
+{
+  if(!g_svc->archive_download_start || !g_svc->store_install_status || !g_svc->file_stat || !g_svc->file_remove){report("Update firmware for downloads; local-file setup remains available.",0,0,COL_WARN);return false;}
+  recipe_media_t *media=&g_recipe.media[media_index];
+  if(media->archive_url[0]){
+    recipe_file_t archive={0};text_copy(archive.source,sizeof(archive.source),media->zip_name);
+    text_copy(archive.url,sizeof(archive.url),media->archive_url);text_copy(archive.sha256,sizeof(archive.sha256),media->archive_sha256);
+    archive.expected_size=media->archive_size;
+    if(!join_path(archive.target,sizeof(archive.target),g_recipe.archive_dir,media->zip_name) || !download_one(&archive,0,1))return false;
+    return extract_zip_media(media,archive.target);
+  }
+  unsigned total=0,done=0;for(int i=0;i<media->file_count;i++)if(g_recipe.files[media->first_file+i].url[0])total++;
+  for(int i=0;i<media->file_count && !g_exit_requested;i++){
+    recipe_file_t *f=&g_recipe.files[media->first_file+i];if(!f->url[0])continue;
+    if(!download_one(f,done,total))return false;done++;
+  }
+  report("Files downloaded; existing files were kept.",done,total,COL_OK);return done==total;
+}
+
+static bool prepare_folders(void)
+{
+  if(!g_svc->file_mkdir)return false;
+  for(int i=0;i<g_recipe.folder_count;i++){
+    char marker[PATH_CAP];if(!join_path(marker,sizeof(marker),g_recipe.folders[i],".pax-folder-marker") || !make_parent_dirs(marker))return false;
+  }
+  (void)g_svc->ui_call_sync(show_instructions_on_host,NULL,1500);return true;
 }
 
 static bool run_recipe_for_incoming(int incoming_index)
@@ -1357,7 +1455,7 @@ static bool run_recipe_for_incoming(int incoming_index)
     return false;
   }
   if (incoming_index < 0 || incoming_index >= g_incoming_count) return false;
-  if (incoming_index < g_download_rows) return download_media(g_download_media[incoming_index]);
+  if (incoming_index < g_download_rows) return g_download_media[incoming_index]<0 ? prepare_folders() : download_media(g_download_media[incoming_index]);
   const char *archive_name = g_incoming_names[incoming_index];
   const int media_index = incoming_media_index(archive_name);
   if (media_index < 0 || media_index >= g_recipe.media_count) {
@@ -1373,6 +1471,7 @@ static bool run_recipe_for_incoming(int incoming_index)
     return false;
   }
 
+  if (strcmp(media->format,"zip-files")==0) return extract_zip_media(media,archive);
   g_total = (uint32_t)media->file_count;
   g_done = 0;
   char heading[STATUS_CAP] = "Checking ";
@@ -1591,7 +1690,10 @@ int app_entry(const app_services_t *svc)
     if (down && !previous[PAX_INPUT_DOWN] && svc->log_printf != NULL)
       svc->log_printf("recipe: gamepad DOWN edge (focused=%d items=%d)\n",
                       g_focused_incoming, g_incoming_count);
-    if (up && !previous[PAX_INPUT_UP] && g_incoming_count > 0) {
+    if (g_instructions_overlay != NULL &&
+        ((up && !previous[PAX_INPUT_UP]) || (down && !previous[PAX_INPUT_DOWN]))) {
+      (void)svc->ui_call_sync(scroll_instructions_on_host, (void *)(intptr_t)(up ? 100 : -100), 1000);
+    } else if (up && !previous[PAX_INPUT_UP] && g_incoming_count > 0) {
       const int old = g_focused_incoming;
       const int next = g_focused_incoming > 0 ? g_focused_incoming - 1 : g_incoming_count - 1;
       const int result = svc->ui_call_sync(focus_incoming_on_host, (void *)(intptr_t)next, 1000);
@@ -1606,7 +1708,7 @@ int app_entry(const app_services_t *svc)
         svc->log_printf("recipe: gamepad DOWN focus=%d->%d ui_result=%d\n",
                         old, next, result);
     }
-    if (a && !previous[PAX_INPUT_A] && g_incoming_count > 0) {
+    if (g_instructions_overlay == NULL && a && !previous[PAX_INPUT_A] && g_incoming_count > 0) {
       if (svc->log_printf != NULL)
         svc->log_printf("recipe: gamepad A select focus=%d\n", g_focused_incoming);
       g_requested_incoming = g_focused_incoming;

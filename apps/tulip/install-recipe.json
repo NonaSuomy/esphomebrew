@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "app": "tulip",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/tulip/incoming",
+  "folders": [
+    "/sd/roms/tulip"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/tulip/",
+      "note": "For tulip.lfs, Tulip's files (made on first start)",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nThe app creates tulip.lfs on first start; do not download or overwrite a filesystem image.\n\nFILES / FOLDERS\n\n/sd/roms/tulip/ — For tulip.lfs, Tulip's files (made on first start)",
+  "media": [],
+  "sources": []
+}

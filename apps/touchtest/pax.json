@@ -25,5 +25,6 @@
   "patches": [
     "local:apps/_shared/retroesp32-patches/*.patch",
     "local:apps/touchtest/patches/*.patch"
-  ]
+  ],
+  "install_recipe": "install-recipe.json"
 }

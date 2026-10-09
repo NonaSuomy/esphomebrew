@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "app": "azip",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/azip/incoming",
+  "folders": [
+    "/sd/roms/azip",
+    "/sd/roms/pax"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/pax/GAME.DAT",
+      "note": "A Z-machine story file; alternatively /sd/roms/pax/GAME.DAT",
+      "alternatives": [
+        "/sd/roms/azip/*.z*"
+      ]
+    },
+    {
+      "path": "/sd/roms/pax/azip.rom",
+      "note": "Optional text file containing the chosen story path",
+      "optional": true
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nChoose a Z-code story with Select game, or put its full path in /sd/roms/pax/azip.rom. A USB keyboard is needed.\n\nFILES / FOLDERS\n\n/sd/roms/pax/GAME.DAT (or a chosen /sd/roms/azip/*.z* story) \u2014 A Z-machine story file; alternatively /sd/roms/pax/GAME.DAT\n\n/sd/roms/pax/azip.rom \u2014 Optional text file containing the chosen story path",
+  "media": [],
+  "sources": []
+}

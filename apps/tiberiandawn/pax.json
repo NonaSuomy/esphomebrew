@@ -278,5 +278,6 @@
       "note": "Optional temperate theater data",
       "optional": true
     }
-  ]
+  ],
+  "install_recipe": "install-recipe.json"
 }

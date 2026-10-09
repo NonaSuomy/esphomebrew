@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "app": "recipe",
+  "mode": "self-contained",
+  "archive_dir": "/sd/roms/recipe/incoming",
+  "folders": [],
+  "requires": [],
+  "instructions": "No mandatory external game data is needed by this current build.\n\nFILES / FOLDERS",
+  "media": [],
+  "sources": []
+}

@@ -442,5 +442,13 @@
     "-Wl,-u,__floatdisf",
     "-Wl,-u,__floatdidf"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json",
+  "requires": [
+    {
+      "path": "/sd/videos",
+      "note": "Optional media folder; network URLs also work",
+      "optional": true
+    }
+  ]
 }

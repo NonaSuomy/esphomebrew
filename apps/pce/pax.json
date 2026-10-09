@@ -20,8 +20,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/pce/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/pce/*",
+      "note": ".pce cartridge; this adapter is not a PC Engine CD BIOS installer"
     }
   ],
   "build": "custom",
@@ -151,5 +151,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

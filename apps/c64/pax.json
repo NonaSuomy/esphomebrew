@@ -25,12 +25,25 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/c64/",
-      "note": "Add a .d64 or .t64 disk image"
+      "path": "/sd/roms/c64/bios/basic.rom",
+      "note": "8 KiB BASIC ROM"
     },
     {
-      "path": "/sd/roms/c64/bios/",
-      "note": "C64 BASIC, KERNAL, character and 1541 ROMs"
+      "path": "/sd/roms/c64/bios/kernal.rom",
+      "note": "8 KiB KERNAL ROM"
+    },
+    {
+      "path": "/sd/roms/c64/bios/char.rom",
+      "note": "4 KiB character ROM"
+    },
+    {
+      "path": "/sd/roms/c64/bios/1541.rom",
+      "note": "16 KiB drive ROM"
+    },
+    {
+      "path": "/sd/roms/c64/*.d64",
+      "note": "Optional disk; BASIC can run without a disk",
+      "optional": true
     }
   ],
   "build": "custom",
@@ -135,5 +148,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }

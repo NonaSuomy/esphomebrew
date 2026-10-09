@@ -21,8 +21,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/atari800/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/atari800/*",
+      "note": ".atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded"
     }
   ],
   "build": "custom",
@@ -162,5 +162,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json"
 }
