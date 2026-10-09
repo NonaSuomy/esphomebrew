@@ -7207,6 +7207,10 @@ static bool poll_controller(void)
       g_first_visible = g_selected - VISIBLE_ROWS + 1;
     const int max_first = g_view_count > VISIBLE_ROWS ? g_view_count - VISIBLE_ROWS : 0;
     if (g_first_visible > max_first) g_first_visible = max_first;
+  } else if (up && !g_pad_last[PAX_INPUT_UP]) {
+    /* Empty lists still need a route to sources, settings and search. */
+    g_toolbar_focus = g_favorites_mode ? 4 : g_source;
+    changed = true;
   } else if (l && !g_pad_last[PAX_INPUT_L]) {
     select_source((g_source + SOURCE_COUNT - 1) % SOURCE_COUNT);
   } else if (r && !g_pad_last[PAX_INPUT_R]) {
