@@ -3,7 +3,7 @@
   "title": "NES (nofrendo)",
   "version": "0.6.0",
   "description": "Nintendo Entertainment System emulator as a PSRAM app. Add .nes ROMs under /sd/roms/nes/ or /usb0/roms/nes/.",
-  "author": "nofrendo; P4 PAPP port by NonaSuomy",
+  "author": "nofrendo; P4 PAX port by NonaSuomy",
   "category": "Emulator",
   "license": "LGPL-2.0",
   "icon": "icon_nes_platform.png",

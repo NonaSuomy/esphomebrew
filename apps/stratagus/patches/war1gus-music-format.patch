@@ -1,0 +1,75 @@
+diff --git a/scripts/menus/options.lua b/scripts/menus/options.lua
+index 89a07f3..5ac143e 100644
+--- a/scripts/menus/options.lua
++++ b/scripts/menus/options.lua
+@@ -64,6 +64,48 @@ function AddSoundOptions(menu, offx, offy, centerx, bottom)
+      "Music",
+      3.2)
+  
++  local status = menu:addLabel("Playback", 14, 101, Fonts["game"], false)
++  local formats = {"ogg", "midi"}
++  local fontSelection
++  local format = menu:addDropDown({"OGG recording", "MIDI / FluidSynth"}, 14, 112,
++    function(dd)
++      local ok, message = war1gus.SetMusicFormat(formats[dd:getSelected() + 1])
++      if not ok then
++        dd:setSelected(preferences.MusicFormat == "midi" and 1 or 0)
++        status:setCaption("Unavailable (see log)")
++        print("Warcraft: music format: " .. message)
++      else
++        status:setCaption("Playback")
++      end
++      if fontSelection then fontSelection:setEnabled(preferences.MusicFormat == "midi") end
++    end)
++  format:setWidth(124)
++  format:setSelected(preferences.MusicFormat == "midi" and 1 or 0)
++
++  menu:addLabel("Soundfont", 14, 130, Fonts["game"], false)
++  local fonts = war1gus.GetSoundFonts()
++  local selectedFont = 0
++  for i, name in ipairs(fonts) do
++    if name == preferences.MidiSoundFont then selectedFont = i - 1 end
++  end
++  fontSelection = menu:addDropDown(#fonts > 0 and fonts or {"No .sf2 banks"}, 14, 141,
++    function(dd)
++      local name = fonts[dd:getSelected() + 1]
++      local ok, message = war1gus.SetSoundFont(name)
++      if ok then
++        selectedFont = dd:getSelected()
++        status:setCaption("Playback")
++      else
++        dd:setSelected(selectedFont)
++        status:setCaption("Unavailable (see log)")
++        print("Warcraft: soundfont: " .. message)
++      end
++    end)
++  fontSelection:setWidth(124)
++  fontSelection:setSelected(selectedFont)
++  fontSelection:setEnabled(preferences.MusicFormat == "midi" and #fonts > 0)
++  menu:addLabel("Large banks may fail", 14, 158, Fonts["game"], false)
++
+   b = menu:addFullButton("~!OK", "o", centerx, menu:getHeight() - 8 - 13,
+     function()
+       preferences.EffectsVolume = GetEffectsVolume()
+@@ -76,7 +118,7 @@ function AddSoundOptions(menu, offx, offy, centerx, bottom)
+ end
+ 
+ function RunGameSoundOptionsMenu()
+-  local menu = WarGameMenu(panel(1))
++  local menu = WarGameMenu(panel(1), 152, 196)
+ 
+   AddSoundOptions(menu, 14, 0, 12, 136)
+ 
+diff --git a/scripts/stratagus.lua b/scripts/stratagus.lua
+index fbb29dd..6f7694a 100644
+--- a/scripts/stratagus.lua
++++ b/scripts/stratagus.lua
+@@ -486,6 +486,7 @@ end
+ --- Uses Stratagus Library path!
+ Load("scripts/wc1.lua")
+ Load("scripts/wc1-config.lua")
++Load("scripts/music-format.lua")
+ Load("scripts/helpers.lua")
+ 
+ Load("scripts/icons.lua")
+ 

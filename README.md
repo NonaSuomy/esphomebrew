@@ -12,3 +12,5 @@ want to support continued development, you can support the project on
 
 No pressure, though—trying ESPHomeBrew and sharing feedback is already
 incredibly valuable!
+
+PAX app sources are organized under `apps/<appname>/`. Older alternate emulator sources live in each app’s `variants/legacy/` folder. Recipes select their explicit pinned upstream inputs and local adapters in `ports/`; see `MODULES.md`, `modules.json` and `app-source-migration.json` for the source inventory. Local build checks do not establish that GitHub Actions have passed in a newly created repository.

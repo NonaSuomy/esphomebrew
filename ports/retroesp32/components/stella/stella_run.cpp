@@ -914,6 +914,12 @@ extern "C" void stella_run(const char *rom_path)
 
     while (!st_exitRequested)
     {
+#ifdef PAX_APP_SIDE
+        if (_pax_svc && _pax_svc->input_l3_read && _pax_svc->input_l3_read()) {
+            st_exitRequested = true;
+            break;
+        }
+#endif
         int64_t startTime = esp_timer_get_time();
 
         odroid_gamepad_state gamepad;

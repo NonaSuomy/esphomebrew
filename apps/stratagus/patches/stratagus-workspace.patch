@@ -1,0 +1,4429 @@
+diff --git a/src/action/action_move.cpp b/src/action/action_move.cpp
+index b10a74c9a..077c25309 100644
+--- a/src/action/action_move.cpp
++++ b/src/action/action_move.cpp
+@@ -52,6 +52,9 @@
+ #include "unit_find.h"
+ #include "unittype.h"
+ #include "video.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
+ 
+ /*----------------------------------------------------------------------------
+ --  Functions
+@@ -180,7 +183,13 @@ int DoActionMove(CUnit &unit)
+ 		}
+ 
+ 		UnmarkUnitFieldFlags(unit);
++#ifdef STRATAGUS_PAX
++		if (GameCycle <= 16) pax_stratagus_debug("DoActionMove: path begin");
++#endif
+ 		std::tie(d, posd) = NextPathElement(unit);
++#ifdef STRATAGUS_PAX
++		if (GameCycle <= 16) pax_stratagus_debug("DoActionMove: path done");
++#endif
+ 		MarkUnitFieldFlags(unit);
+ 		switch (d) {
+ 			case PF_UNREACHABLE: // Can't reach, stop
+@@ -250,6 +259,9 @@ int DoActionMove(CUnit &unit)
+ 		if (unit.Anim.CurrAnim != &unit.Type->Animations->Move)
+ 			unit.Frame = unit.Type->StillFrame;
+ 		UnitHeadingFromDeltaXY(unit, posd);
++#ifdef STRATAGUS_PAX
++		if (GameCycle <= 16) pax_stratagus_debug("DoActionMove: heading done");
++#endif
+ 	} else {
+ 		const auto direction =
+ 			unit.pathFinderData->output.Path[unit.pathFinderData->output.Length - 1];
+@@ -260,6 +272,9 @@ int DoActionMove(CUnit &unit)
+ 
+ 	unit.pathFinderData->output.Cycles++;// reset have to be manually controlled by caller.
+ 	int move = UnitShowAnimationScaled(unit, &unit.Type->Animations->Move, Map.Field(unit.Offset)->getMoveCost());
++#ifdef STRATAGUS_PAX
++	if (GameCycle <= 16) pax_stratagus_debug("DoActionMove: animation done");
++#endif
+ 
+ 	bool reached_next_tile = false;
+ 	if (posd.x) {
+diff --git a/src/action/actions.cpp b/src/action/actions.cpp
+index f44cf547b..13ec5295a 100644
+--- a/src/action/actions.cpp
++++ b/src/action/actions.cpp
+@@ -71,6 +71,9 @@
+ #include "unit_manager.h"
+ #include "unittype.h"
+ #include "version.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
+ 
+ #ifdef USE_STACKTRACE
+ # include <stacktrace/call_stack.hpp>
+@@ -731,7 +734,15 @@ static void UnitActionsEachCycle(const std::vector<CUnit *> &units)
+ 		}
+ 
+ 		try {
++#ifdef STRATAGUS_PAX
++			if (GameCycle <= 16 && unit.CurrentAction() == UnitAction::Move)
++				pax_stratagus_debug("UnitActions: move begin");
++#endif
+ 			HandleUnitAction(unit);
++#ifdef STRATAGUS_PAX
++			if (GameCycle <= 16 && unit.CurrentAction() == UnitAction::Move)
++				pax_stratagus_debug("UnitActions: move done");
++#endif
+ 		} catch (AnimationDie_Exception &) {
+ 			AnimationDie_OnCatch(unit);
+ 		}
+@@ -774,7 +785,15 @@ void UnitActions()
+ {
+ 	const bool isASecondCycle = !(GameCycle % CYCLES_PER_SECOND);
+ 	// Unit list may be modified during loop... so make a copy
++#ifdef STRATAGUS_PAX
++	// Preserve the snapshot semantics, but retain capacity instead of
++	// allocating/freeing PSRAM on every one of the 30 simulation ticks.
++	static std::vector<CUnit *> units;
++	const auto &activeUnits=UnitManager->GetUnits();
++	units.assign(activeUnits.begin(),activeUnits.end());
++#else
+ 	std::vector<CUnit *> units(UnitManager->GetUnits());
++#endif
+ 	BeginSyncDebugCycle(GameCycle, units.size());
+ 
+ 	// Check for things that only happen every second
+diff --git a/src/action/command.cpp b/src/action/command.cpp
+index 83e6258b9..326cac653 100644
+--- a/src/action/command.cpp
++++ b/src/action/command.cpp
+@@ -661,6 +661,13 @@ void CommandTrainUnit(CUnit &unit, CUnitType &type, EFlushMode)
+ 	if (IsUnitValidForNetwork(unit) == false) {
+ 		return ;
+ 	}
++	#ifdef STRATAGUS_PAX
++	// StarCraft's production panel has five queue slots. Do not silently
++	// accept more orders than the restored native panel can show/cancel.
++	unsigned queued=0;
++	for (const auto &pending:unit.Orders) if (pending->Action==UnitAction::Train) ++queued;
++	if (queued>=5) { unit.Player->Notify(ColorYellow,unit.tilePos,"Training queue is full (5)"); return; }
++	#endif
+ 	// Check if enough resources remains? (NETWORK!)
+ 	// FIXME: wrong if append to message queue!!!
+ 	if (unit.Player->CheckLimits(type) != ECheckLimit::Ok
+diff --git a/src/ai/ai_force.cpp b/src/ai/ai_force.cpp
+index 887593868..b49c2c68d 100644
+--- a/src/ai/ai_force.cpp
++++ b/src/ai/ai_force.cpp
+@@ -577,9 +577,13 @@ bool AiForceManager::Assign(CUnit &unit, int force)
+ 	return false;
+ }
+ 
+-void AiForceManager::CheckUnits(std::array<int, UnitTypeMax> &counter)
++void AiForceManager::CheckUnits(AiUnitTypeCounter &counter)
+ {
++#if defined(STRATAGUS_PAX)
++	AiUnitTypeCounter attacking(UnitTypeMax, 0);
++#else
+ 	int attacking[UnitTypeMax]{};
++#endif
+ 	const int *unit_types_count = AiPlayer->Player->UnitTypesAiActiveCount;
+ 
+ 	// Look through the forces what is missing.
+diff --git a/src/ai/ai_local.h b/src/ai/ai_local.h
+index ee22ac0bb..24dfec27f 100644
+--- a/src/ai/ai_local.h
++++ b/src/ai/ai_local.h
+@@ -54,6 +54,14 @@ class CUnitType;
+ class CUpgrade;
+ class CPlayer;
+ 
++#if defined(STRATAGUS_PAX)
++// UnitTypeMax counters exceed the PAX worker's entire 8 KiB stack.
++// Keep the desktop fixed array, but store embedded counters in PSRAM.
++using AiUnitTypeCounter = std::vector<int>;
++#else
++using AiUnitTypeCounter = std::array<int, UnitTypeMax>;
++#endif
++
+ /**
+ **  Ai Type structure.
+ */
+@@ -236,7 +244,7 @@ public:
+ 	bool Assign(CUnit &unit, int force = -1);
+ 	void Update();
+ 	unsigned int FindFreeForce(AiForceRole role = AiForceRole::Default, int begin = 0);
+-	void CheckUnits(std::array<int, UnitTypeMax> &counter);
++	void CheckUnits(AiUnitTypeCounter &counter);
+ 
+ private:
+ 	std::vector<AiForce> forces;
+@@ -414,7 +422,7 @@ extern void AiResetUnitTypeEquiv();
+ extern std::vector<int> AiFindUnitTypeEquiv(const CUnitType &type);
+ /// Finds all available equivalents units to a given one, in the preferred order
+ extern std::vector<int> AiFindAvailableUnitTypeEquiv(const CUnitType &type);
+-extern std::array<int, UnitTypeMax> AiGetBuildRequestsCount(const PlayerAi &pai);
++extern AiUnitTypeCounter AiGetBuildRequestsCount(const PlayerAi &pai);
+ 
+ extern void AiNewDepotRequest(CUnit &worker);
+ extern std::pair<CUnit *, CUnit *> AiGetSuitableDepot(const CUnit &worker, const CUnit &oldDepot);
+diff --git a/src/ai/ai_resource.cpp b/src/ai/ai_resource.cpp
+index 2c54fc8a3..f2c3e1695 100644
+--- a/src/ai/ai_resource.cpp
++++ b/src/ai/ai_resource.cpp
+@@ -297,6 +297,9 @@ static bool AiBuildBuilding(const CUnitType &type, CUnitType &building, const Ve
+ 
+ static bool AiRequestedTypeAllowed(const CPlayer &player, const CUnitType &type)
+ {
++	if (type.Slot >= AiHelpers.Build().size()) {
++		return false;
++	}
+ 	for (const CUnitType *builder : AiHelpers.Build()[type.Slot]) {
+ 		if (player.UnitTypesAiActiveCount[builder->Slot] > 0
+ 			&& CheckDependByType(player, type)) {
+@@ -317,9 +320,13 @@ static bool cnode_cmp(const cnode &lhs, const cnode &rhs)
+ 	return lhs.unit_cost < rhs.unit_cost;
+ }
+ 
+-std::array<int, UnitTypeMax> AiGetBuildRequestsCount(const PlayerAi &pai)
++AiUnitTypeCounter AiGetBuildRequestsCount(const PlayerAi &pai)
+ {
+-	std::array<int, UnitTypeMax> res{};
++#if defined(STRATAGUS_PAX)
++	AiUnitTypeCounter res(UnitTypeMax, 0);
++#else
++	AiUnitTypeCounter res{};
++#endif
+ 
+ 	for (const AiBuildQueue &queue : pai.UnitTypeBuilt) {
+ 		res[queue.Type->Slot] += queue.Want;
+@@ -341,6 +348,9 @@ void AiNewDepotRequest(CUnit &worker)
+ 	Assert(worker.CurrentAction() == UnitAction::Resource);
+ 	COrder_Resource &order = *static_cast<COrder_Resource *>(worker.CurrentOrder());
+ 	const int resource = order.GetCurrentResource();
++	if (resource <= 0 || static_cast<size_t>(resource - 1) >= AiHelpers.Depots().size()) {
++		return;
++	}
+ 
+ 	const Vec2i pos = order.GetHarvestLocation();
+ 	const int range = 15;
+@@ -480,6 +490,11 @@ std::pair<CUnit *, CUnit *> AiGetSuitableDepot(const CUnit &worker, const CUnit
+ */
+ static bool AiRequestSupply()
+ {
++	// A reduced data set may define no supply-building helper. In that
++	// case there is nothing to request; do not index an empty helper table.
++	if (AiHelpers.UnitLimit().empty()) {
++		return false;
++	}
+ 	// Don't request supply if we're sleeping.  When the script starts it may
+ 	// request a better unit than the one we pick here.  If we only have enough
+ 	// resources for one unit we don't want to build the wrong one.
+diff --git a/src/animation/animation_sound.cpp b/src/animation/animation_sound.cpp
+index 750c4f380..6cd8b70ea 100644
+--- a/src/animation/animation_sound.cpp
++++ b/src/animation/animation_sound.cpp
+@@ -40,13 +40,23 @@
+ #include "map.h"
+ #include "sound.h"
+ #include "unit.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#include "ui.h"
++#include "viewport.h"
++#endif
+ 
+ void CAnimation_Sound::Action(CUnit &unit, int & /*move*/, int /*scale*/) const /* override */
+ {
+ 	Assert(unit.Anim.CurrAnim);
+ 	Assert((*unit.Anim.CurrAnim)[unit.Anim.Anim].get() == this);
+ 	if (unit.IsVisible(*ThisPlayer) || ReplayRevealMap) {
++#ifdef STRATAGUS_PAX
++		const auto pos=unit.GetMapPixelPosCenter();
++		pax_stratagus_audio_effect_at(this->sound.Name.c_str(),pos.x,pos.y);
++#else
+ 		PlayUnitSound(unit, this->sound.Sound.get());
++#endif
+ 	}
+ }
+ 
+diff --git a/src/game/game.cpp b/src/game/game.cpp
+index ff4c86a47..98ce13bfd 100644
+--- a/src/game/game.cpp
++++ b/src/game/game.cpp
+@@ -63,6 +63,10 @@
+ #include "sound.h"
+ #include "sound_server.h"
+ #include "spells.h"
++
++#ifdef STRATAGUS_PAX
++extern "C" void pax_stratagus_debug(const char *message);
++#endif
+ #include "tileset.h"
+ #include "translate.h"
+ #include "trigger.h"
+@@ -120,11 +124,24 @@ void CreateGame(const fs::path &filename, CMap *map);
+ 
+ void StartMap(const std::string &filename, bool clean)
+ {
++	#ifdef STRATAGUS_PAX
++	extern volatile int pax_exit_requested;
++	// Closing a nested briefing unwinds its menu, but the campaign Lua then
++	// continues into RunMap. Do not begin another load during app shutdown.
++	if (pax_exit_requested) { GameResult=GameExit; return; }
++	pax_stratagus_debug("StartMap: entered");
++	#endif
+ 	gcn::Widget *oldTop = Gui->getTop();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StartMap: got old GUI top");
++	#endif
+ 	auto container = std::make_unique<gcn::Container>();
+ 	container->setDimension(gcn::Rectangle(0, 0, Video.Width, Video.Height));
+ 	container->setOpaque(false);
+ 	Gui->setTop(container.get());
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StartMap: GUI container set");
++	#endif
+ 
+ 	NetConnectRunning = 0;
+ 	InterfaceState = IfaceState::Normal;
+@@ -134,15 +151,30 @@ void StartMap(const std::string &filename, bool clean)
+ 	if (clean) {
+ 		CleanPlayers();
+ 	}
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StartMap: players cleaned");
++	#endif
+ 	const auto [nc, rc] = GetDefaultTextColors();
+ 
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StartMap: before CreateGame");
++	#endif
+ 	CreateGame(filename, &Map);
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StartMap: after CreateGame");
++	#endif
+ 
+ 	UI.StatusLine.Set(NameLine);
+ 	SetMessage("%s", _("Do it! Do it now!"));
+ 
+ 	//  Play the game.
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StartMap: before GameMainLoop");
++	#endif
+ 	GameMainLoop(clean);
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StartMap: after GameMainLoop");
++	#endif
+ 
+ 	//  Clear screen
+ 	Video.ClearScreen();
+@@ -153,6 +185,10 @@ void StartMap(const std::string &filename, bool clean)
+ 	SetDefaultTextColors(nc, rc);
+ 
+ 	Gui->setTop(oldTop);
++#if defined(STRATAGUS_PAX) && !defined(PAX_STRATAGUS_WARCRAFT)
++	extern void pax_stratagus_results_show(SDL_Surface *);
++	pax_stratagus_results_show(TheScreen);
++#endif
+ }
+ 
+ /*----------------------------------------------------------------------------
+@@ -189,12 +225,26 @@ static void LoadStratagusMap(const fs::path &smpdir, const fs::path &mapname)
+ 				auto extra_candidate = candidate;
+ 				extra_candidate.replace_extension(candidate.extension().string() + extension.data());
+ 				return fs::exists(extra_candidate);
+-			})) {
++		})) {
+ 			mapfull = candidate;
+ 			break;
+ 		}
+ 	}
+ 
++#ifdef STRATAGUS_PAX
++	// The PAX file service only accepts absolute paths.  The normal desktop
++	// loader can keep this path relative because the host filesystem supplies
++	// the working-directory lookup, but that lookup does not exist in the
++	// sandboxed app loader.  Resolve the selected map through the same logical
++	// asset resolver used by Lua Load() before opening it.
++	if (!mapfull.is_absolute()) {
++		mapfull = fs::path(LibraryFileName(mapfull.string()));
++	}
++	char pax_map_path[192];
++	snprintf(pax_map_path, sizeof(pax_map_path), "LoadStratagusMap: %s", mapfull.string().c_str());
++	pax_stratagus_debug(pax_map_path);
++#endif
++
+ 	if (LcmPreventRecurse) {
+ 		ErrorPrint("recursive use of load map!\n");
+ 		ExitFatal(-1);
+@@ -205,6 +255,9 @@ static void LoadStratagusMap(const fs::path &smpdir, const fs::path &mapname)
+ 		ErrorPrint("Can't load lua file: '%s'\n", mapfull.u8string().c_str());
+ 		ExitFatal(-1);
+ 	}
++	#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("Lua LoadStratagusMap complete");
++	#endif
+ 	LcmPreventRecurse = false;
+ 
+ #if 0
+@@ -554,6 +607,14 @@ static void LoadMap(const fs::path &filename, CMap &map)
+ 			LoadStratagusMapInfo(filename);
+ 		}
+ 		Assert(!map.Info.Filename.empty());
++#if defined(STRATAGUS_PAX) && !defined(PAX_STRATAGUS_WARCRAFT)
++		// Parse the large generated tileset while the map's 7 MB of field
++		// pages are still unallocated. The scenario reuses this immutable set.
++		const bool tutorial = filename.string().find("/tutorial/") != std::string::npos;
++		CclCommand(tutorial ? "LoadTileModels('luagen/tilesets/platform.lua')"
++		                    : "LoadTileModels('luagen/tilesets/badlands.lua')");
++		LuaGarbageCollect();
++#endif
+ 		map.Create();
+ 		LoadStratagusMap(filename.parent_path(), map.Info.Filename);
+ 		return;
+@@ -793,6 +854,15 @@ static bool has_any_extension(fs::path filename, std::initializer_list<fs::path>
+ */
+ void CreateGame(const fs::path &filename, CMap *map)
+ {
++	fs::path load_filename = filename;
++#ifdef STRATAGUS_PAX
++	// StartMap historically receives a logical relative path.  Normalize it at
++	// the game boundary so every map-related open uses the PAX service's
++	// absolute /sd path, including the initial .smp metadata load.
++	if (!load_filename.empty() && !load_filename.is_absolute()) {
++		load_filename = fs::path(LibraryFileName(load_filename.string()));
++	}
++#endif
+ 	if (SaveGameLoading) {
+ 		SaveGameLoading = false;
+ 		// Load game, already created game with Init/LoadModules
+@@ -810,8 +880,8 @@ void CreateGame(const fs::path &filename, CMap *map)
+ 		InitSyncRand();
+ 	}
+ 
+-	if (Map.Info.Filename.empty() && has_any_extension(filename, {".smp", ".SMP"})) {
+-		const std::string path = LibraryFileName(filename.string());
++	if (Map.Info.Filename.empty() && has_any_extension(load_filename, {".smp", ".SMP"})) {
++		const std::string path = load_filename.string();
+ 		LuaLoadFile(path);
+ 	}
+ 
+@@ -871,19 +941,37 @@ void CreateGame(const fs::path &filename, CMap *map)
+ 			ExitFatal(-1);
+ 		}
+ 	}
+-	if (!filename.empty()) {
+-		if (CurrentMapPath != filename) {
+-			strcpy_s(CurrentMapPath, sizeof(CurrentMapPath), filename.string().c_str());
++	if (!load_filename.empty()) {
++		if (CurrentMapPath != load_filename) {
++			strcpy_s(CurrentMapPath, sizeof(CurrentMapPath), load_filename.string().c_str());
+ 		}
+ 
+ 		//
+ 		// Load the map.
+ 		//
+ 		InitUnitTypes(1);
+-		LoadMap(filename, *map);
++		#ifdef STRATAGUS_PAX
++		// The native HUD bootstrap leaves disposable Lua argument tables.
++		// Reclaim them before the large terrain chunk, not only after LoadMap.
++		LuaGarbageCollect();
++		#endif
++		LoadMap(load_filename, *map);
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("CreateGame after LoadMap");
++		#endif
+ 		ApplyUpgrades();
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("CreateGame after ApplyUpgrades");
++		#endif
+ 	}
+ 	CclCommand("if (MapLoaded ~= nil) then MapLoaded() end");
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after MapLoaded command");
++	// The tileset/scenario loaders build large temporary Lua tables.  Collect
++	// them before reserving the screen, sprite and HUD buffers in PSRAM.
++	LuaGarbageCollect();
++	pax_stratagus_debug("CreateGame after map Lua collection");
++	#endif
+ 
+ 	GameCycle = 0;
+ 	FastForwardCycle = 0;
+@@ -891,6 +979,9 @@ void CreateGame(const fs::path &filename, CMap *map)
+ 	InitSyncRand();
+ 
+ 	NetworkOnStartGame();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after NetworkOnStartGame");
++	#endif
+ 
+ #if 0
+ 	GamePaused = true;
+@@ -899,6 +990,9 @@ void CreateGame(const fs::path &filename, CMap *map)
+ 	if (FlagRevealMap != MapRevealModes::cHidden) {
+ 		Map.Reveal(FlagRevealMap);
+ 	}
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after Map.Reveal");
++	#endif
+ 
+ 	//
+ 	// Setup game types
+@@ -957,6 +1051,9 @@ void CreateGame(const fs::path &filename, CMap *map)
+ 	//
+ 	SetPlayersPalette();
+ 	LoadIcons();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after LoadIcons");
++	#endif
+ 
+ 	LoadCursors(PlayerRaces.Name[ThisPlayer->Race]);
+ 	UnitUnderCursor = nullptr;
+@@ -968,20 +1065,52 @@ void CreateGame(const fs::path &filename, CMap *map)
+ 	InitConstructions();
+ 	LoadConstructions();
+ 	LoadUnitTypes();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after LoadUnitTypes");
++	#endif
+ 	LoadDecorations();
+ 
+ 	InitUserInterface();
+ 	UI.Load();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after UI.Load");
++	// Enhanced fog keeps several 1028x1028 buffers for this map.  Use the
++	// upstream tiled renderer on the fixed-memory PAX target instead.
++	FogOfWar->SetType(FogOfWarTypes::cTiledLegacy);
++	#endif
+ 
+ 	Map.Init();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after Map.Init");
++	#endif
+ 	UI.Minimap.Create();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after Minimap.Create");
++	#endif
+ 	PreprocessMap();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame after PreprocessMap");
++	#endif
+ 
+ 	//
+ 	// Sound part
+ 	//
+ 	LoadUnitSounds();
+ 	MapUnitSounds();
++#ifdef STRATAGUS_PAX
++	#ifndef PAX_STRATAGUS_WARCRAFT
++	GameSounds.Click.Sound=SoundForName("button");
++	for(unsigned r=0;r<PlayerRaces.Count;++r) {
++		GameSounds.PlacementError[r].Sound=SoundForName("buzz");
++		GameSounds.PlacementSuccess[r].Sound=SoundForName("building-placed");
++		const char *race=PlayerRaces.Name[r].c_str();
++		GameSounds.NotEnoughRes[r][1].Sound=SoundForName(std::string("pax-")+race+"-minerals");
++		GameSounds.NotEnoughRes[r][2].Sound=SoundForName(std::string("pax-")+race+"-gas");
++		GameSounds.NotEnoughFood[r].Sound=SoundForName(std::string("pax-")+race+"-supply");
++		GameSounds.ResearchComplete[r].Sound=SoundForName(std::string("pax-")+race+"-research");
++	}
++	#endif
++#endif
+ 	if (SoundEnabled()) {
+ 		InitSoundClient();
+ 	}
+@@ -1045,6 +1174,9 @@ void CreateGame(const fs::path &filename, CMap *map)
+ 
+ 	CommandLog(nullptr, nullptr, EFlushMode::On, -1, -1, nullptr, nullptr, -1);
+ 	Video.ClearScreen();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("CreateGame complete");
++	#endif
+ }
+ 
+ /**
+@@ -1118,9 +1250,11 @@ static int CclSetGameName(lua_State *l)
+ 		GameName = lua_tostring(l, 1);
+ 	}
+ 
++#ifndef STRATAGUS_PAX
+ 	if (!GameName.empty()) {
+ 		fs::create_directories(Parameters::Instance.GetUserDirectory() / GameName);
+ 	}
++#endif
+ 	return 0;
+ }
+ 
+@@ -1538,6 +1672,11 @@ static int CclSavedGameInfo(lua_State *l)
+ 
+ void LuaRegisterModules()
+ {
++#ifdef STRATAGUS_PAX
++#define PAX_REG(label, fn) fn()
++#else
++#define PAX_REG(label, fn) fn()
++#endif
+ 	lua_register(Lua, "SetGameName", CclSetGameName);
+ 	lua_register(Lua, "SetFullGameName", CclSetFullGameName);
+ 
+@@ -1571,30 +1710,106 @@ void LuaRegisterModules()
+ 
+ 	lua_register(Lua, "SavedGameInfo", CclSavedGameInfo);
+ 
+-	AiCclRegister();
++#ifdef STRATAGUS_PAX
++	/*
++	 * The PAX first-map bootstrap only needs the Lua API used by the
++	 * generated Stargus data.  Register these modules explicitly and avoid
++	 * constructing the desktop/editor/network module graph on the small
++	 * freestanding Lua runtime.
++	 */
++	pax_stratagus_debug("LuaRegisterModules: Animation");
+ 	AnimationCclRegister();
++	pax_stratagus_debug("LuaRegisterModules: Ai");
++	AiCclRegister();
++	pax_stratagus_debug("LuaRegisterModules: Script");
++	ScriptRegister();
++	pax_stratagus_debug("LuaRegisterModules: Player");
++	PlayerCclRegister();
++	pax_stratagus_debug("LuaRegisterModules: Map");
++	MapCclRegister();
++	pax_stratagus_debug("LuaRegisterModules: UnitType");
++	UnitTypeCclRegister();
++	pax_stratagus_debug("LuaRegisterModules: Unit");
++	UnitCclRegister();
++	// DefineAllow supplies the original per-unit production permissions.
++	UpgradesCclRegister();
+ 	ConstructionCclRegister();
+-	DecorationCclRegister();
+ 	DependenciesCclRegister();
+-	EditorCclRegister();
++	// Native saves serialize group/selection/replay state as Lua calls.
+ 	GroupCclRegister();
+-	MapCclRegister();
+-	MissileCclRegister();
+-	NetworkCclRegister();
+-	PathfinderCclRegister();
+-	PlayerCclRegister();
+-	ReplayCclRegister();
+-	ScriptRegister();
+ 	SelectionCclRegister();
+-	SoundCclRegister();
+-	SpellCclRegister();
++	ReplayCclRegister();
++	pax_stratagus_debug("LuaRegisterModules: Trigger");
+ 	TriggerCclRegister();
+-	UnitCclRegister();
+-	UnitTypeCclRegister();
+-	UpgradesCclRegister();
++	pax_stratagus_debug("LuaRegisterModules: UserInterface");
+ 	UserInterfaceCclRegister();
++	MissileCclRegister();
++#ifdef PAX_STRATAGUS_WARCRAFT
++	// Stock Warcraft definitions use spells, decorations and video preferences.
++	SpellCclRegister();
++	DecorationCclRegister();
++	PathfinderCclRegister();
++	SoundCclRegister();
+ 	VideoCclRegister();
+-	OnlineServiceCclRegister();
++	// The single-player adapter still exposes network-state queries used by
++	// stock Warcraft campaign setup and command/menu scripts.
++	NetworkCclRegister();
++#endif
++	pax_stratagus_debug("LuaRegisterModules: minimal set complete");
++	return;
++#else
++	PAX_REG("Ai", AiCclRegister);
++	PAX_REG("Animation", AnimationCclRegister);
++	PAX_REG("Construction", ConstructionCclRegister);
++	PAX_REG("Decoration", DecorationCclRegister);
++	PAX_REG("Dependencies", DependenciesCclRegister);
++	PAX_REG("Editor", EditorCclRegister);
++	PAX_REG("Group", GroupCclRegister);
++	PAX_REG("Map", MapCclRegister);
++	PAX_REG("Missile", MissileCclRegister);
++	PAX_REG("Network", NetworkCclRegister);
++	PAX_REG("Pathfinder", PathfinderCclRegister);
++	PAX_REG("Player", PlayerCclRegister);
++	PAX_REG("Replay", ReplayCclRegister);
++	PAX_REG("Script", ScriptRegister);
++	PAX_REG("Selection", SelectionCclRegister);
++	#ifdef STRATAGUS_PAX
++	/* Sound is disabled for the silent PAX bootstrap. */
++	#else
++	PAX_REG("Sound", SoundCclRegister);
++	#endif
++	PAX_REG("Spell", SpellCclRegister);
++	PAX_REG("Trigger", TriggerCclRegister);
++	PAX_REG("Unit", UnitCclRegister);
++	PAX_REG("UnitType", UnitTypeCclRegister);
++#ifdef STRATAGUS_PAX
++	// Stargus' first-map bootstrap only needs the unit-type API above.  The
++	// legacy upgrade/editor tail overruns the PAX Lua/allocator boundary on
++	// ESP32-P4 before it can contribute anything to map loading.
++	return;
++#else
++	PAX_REG("Upgrades", UpgradesCclRegister);
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LuaRegisterModules: UserInterface skipped");
++	#else
++	PAX_REG("UserInterface", UserInterfaceCclRegister);
++	#endif
++	#ifdef STRATAGUS_PAX
++	// SetVideoSyncSpeed is optional on the fixed-refresh PAX canvas; avoid
++	// the legacy Lua registration path that overruns the relocated Lua stack.
++	pax_stratagus_debug("LuaRegisterModules: Video skipped");
++	return;
++	#else
++	PAX_REG("Video", VideoCclRegister);
++	#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LuaRegisterModules: OnlineService skipped");
++	#else
++	PAX_REG("OnlineService", OnlineServiceCclRegister);
++	#endif
++#undef PAX_REG
++#endif
+ }
+ 
+ 
+diff --git a/src/game/loadgame.cpp b/src/game/loadgame.cpp
+index 3fb3ed6fb..58486b298 100644
+--- a/src/game/loadgame.cpp
++++ b/src/game/loadgame.cpp
+@@ -58,6 +58,9 @@
+ #include "unittype.h"
+ #include "upgrade.h"
+ #include "video.h"
++#ifdef STRATAGUS_PAX
++extern "C" void pax_stratagus_debug(const char *);
++#endif
+ 
+ /*----------------------------------------------------------------------------
+ --  Variables
+@@ -192,6 +195,9 @@ static void PlaceUnits()
+ */
+ void LoadGame(const fs::path &filename)
+ {
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Warcraft: save restore begin");
++#endif
+ 	// log will be enabled if found in the save game
+ 	CommandLogDisabled = true;
+ 	SaveGameLoading = true;
+@@ -202,21 +208,39 @@ void LoadGame(const fs::path &filename)
+ 	LuaGarbageCollect();
+ 	InitUnitTypes(1);
+ 	LuaLoadFile(filename);
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Warcraft: save script restored");
++#endif
+ 	LuaGarbageCollect();
+ 
+ 	PlaceUnits();
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Warcraft: saved units placed");
++	// Match fresh-map initialization: the enhanced desktop fog buffers do
++	// not fit the PAX memory budget. Select legacy fog before Map.Init.
++	FogOfWar->SetType(FogOfWarTypes::cTiledLegacy);
++#endif
+ 
+ 	const unsigned long game_cycle = GameCycle;
+ 	const unsigned syncrand = SyncRandSeed;
+ 	const unsigned synchash = SyncHash;
+ 
+ 	InitModules();
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Warcraft: saved modules initialized");
++#endif
+ 	LoadModules();
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Warcraft: saved graphics loaded");
++#endif
+ 
+ 	GameCycle = game_cycle;
+ 	SyncRandSeed = syncrand;
+ 	SyncHash = synchash;
+ 	SelectionChanged();
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Warcraft: save restore complete");
++#endif
+ }
+ 
+ //@}
+diff --git a/src/game/replay.cpp b/src/game/replay.cpp
+index 1875c74d4..3dbc14293 100644
+--- a/src/game/replay.cpp
++++ b/src/game/replay.cpp
+@@ -600,6 +600,13 @@ bool IsReplayGame()
+ */
+ void SaveReplayList(CFile &file)
+ {
++#ifdef STRATAGUS_PAX
++	// PAX disables disk command logging; consequently no replay is created.
++	// Game settings and current simulation state are serialized separately.
++	if (!CurrentReplay) {
++		return;
++	}
++#endif
+ 	SaveFullLog(file);
+ }
+ 
+diff --git a/src/game/savegame.cpp b/src/game/savegame.cpp
+index fab74fe5e..0c9af051b 100644
+--- a/src/game/savegame.cpp
++++ b/src/game/savegame.cpp
+@@ -85,6 +85,16 @@ fs::path ExpandPath(const std::string &path)
+ */
+ static fs::path GetSaveDir()
+ {
++#ifdef STRATAGUS_PAX
++#ifdef PAX_STRATAGUS_WARCRAFT
++	// Native Warcraft save lists resolve ~save relative to user/<game>.
++	// The wrapper creates this directory through the launcher file API.
++	return Parameters::Instance.GetUserDirectory() / GameName / "save";
++#else
++	// Fixed PAX slots live in the existing SD game root, not a desktop HOME.
++	return fs::path(StratagusLibPath);
++#endif
++#else
+ 	fs::path dir(Parameters::Instance.GetUserDirectory());
+ 	if (!GameName.empty()) {
+ 		dir /= GameName;
+@@ -92,6 +102,7 @@ static fs::path GetSaveDir()
+ 	dir /= "save";
+ 	fs::create_directories(dir);
+ 	return dir;
++#endif
+ }
+ 
+ /**
+@@ -153,27 +164,42 @@ int SaveGame(const std::string &filename)
+ 	file.printf("GameCycle = %lu\n", GameCycle);
+ 
+ 	file.printf("SetGodMode(%s)\n", GodMode ? "true" : "false");
+-
+-	SaveUnitTypes(file);
+-	SaveUpgrades(file);
+-	SavePlayers(file);
+-	Map.Save(file);
+-	UnitManager->Save(file);
+-	SaveUserInterface(file);
+-	SaveAi(file);
+-	SaveSelections(file);
+-	SaveGroups(file);
+-	SaveMissiles(file);
+-	SaveReplayList(file);
+-	SaveGameSettings(file);
++#ifdef STRATAGUS_PAX
++	file.printf("-- PAX CHUNK\n");
++#define SAVE_CHUNK(function) do { function; file.printf("-- PAX CHUNK\n"); } while (0)
++#else
++#define SAVE_CHUNK(function) function
++#endif
++
++	SAVE_CHUNK(SaveUnitTypes(file));
++	SAVE_CHUNK(SaveUpgrades(file));
++	SAVE_CHUNK(SavePlayers(file));
++	SAVE_CHUNK(Map.Save(file));
++	SAVE_CHUNK(UnitManager->Save(file));
++	SAVE_CHUNK(SaveUserInterface(file));
++	SAVE_CHUNK(SaveAi(file));
++	SAVE_CHUNK(SaveSelections(file));
++	SAVE_CHUNK(SaveGroups(file));
++	SAVE_CHUNK(SaveMissiles(file));
++	SAVE_CHUNK(SaveReplayList(file));
++	SAVE_CHUNK(SaveGameSettings(file));
++#undef SAVE_CHUNK
+ 	// FIXME: find all state information which must be saved.
+ 	const std::string s = SaveGlobal(Lua);
+ 	if (!s.empty()) {
+ 		file.printf("-- Lua state\n\n%s\n", s.c_str());
+ 	}
++#ifdef STRATAGUS_PAX
++	file.printf("-- PAX CHUNK\n");
++#endif
+ 	SaveTriggers(file); //Triggers are saved in SaveGlobal, so load it after Global
++#ifdef STRATAGUS_PAX
++	file.printf("-- PAX native save complete v2\n");
++	return file.close()==0 ? 0 : -1;
++#else
+ 	file.close();
+ 	return 0;
++#endif
+ }
+ 
+ /**
+diff --git a/src/include/map.h b/src/include/map.h
+index eb382e959..4a977ebe8 100644
+--- a/src/include/map.h
++++ b/src/include/map.h
+@@ -30,6 +30,9 @@
+ 
+ #ifndef __MAP_H__
+ #define __MAP_H__
++#ifdef STRATAGUS_PAX
++#include "pax_paged_fields.h"
++#endif
+ 
+ //@{
+ 
+@@ -252,7 +255,11 @@ private:
+ 	void RegenerateForestTile(const Vec2i &pos);
+ 
+ public:
++#ifdef STRATAGUS_PAX
++	PaxPagedFields<CMapField> Fields; /// paged fields on a fragmented PSRAM heap
++#else
+ 	std::vector<CMapField> Fields; /// fields on map
++#endif
+ 	bool NoFogOfWar = false;     /// fog of war disabled
+ 
+ 	CTileset Tileset; /// tileset data
+diff --git a/src/include/pathfinder.h b/src/include/pathfinder.h
+index f9bc5f819..b813544ac 100644
+--- a/src/include/pathfinder.h
++++ b/src/include/pathfinder.h
+@@ -29,6 +29,9 @@
+ 
+ #ifndef __PATH_FINDER_H__
+ #define __PATH_FINDER_H__
++#ifdef STRATAGUS_PAX
++#include "pax_paged_fields.h"
++#endif
+ 
+ //@{
+ 
+@@ -171,7 +174,11 @@ private:
+ 	};
+ 
+ private:
++#ifdef STRATAGUS_PAX
++	PaxPagedFields<dataType> m_values;
++#else
+ 	std::vector<dataType> m_values;
++#endif
+ 	std::queue<PosNode> m_queue;
+ 	unsigned int m_extented_width = 0;
+ 	unsigned int m_height = 0;
+diff --git a/src/include/script.h b/src/include/script.h
+index d4c1e00e9..7ce084d2e 100644
+--- a/src/include/script.h
++++ b/src/include/script.h
+@@ -515,6 +515,9 @@ extern bool LuaToBoolean(lua_State *l, int index, int subIndex);
+ extern void LuaGarbageCollect();  /// Perform garbage collection
+ extern void InitLua();                /// Initialise Lua
+ extern void LoadCcl(const fs::path &filename, const std::string &luaArgStr = "");  /// Load ccl config file
++#ifdef STRATAGUS_PAX
++extern void LoadCclPax();
++#endif
+ extern void SavePreferences();        /// Save user preferences
+ extern int CclCommand(const std::string &command, bool exitOnError = true);
+ 
+diff --git a/src/include/settings.h b/src/include/settings.h
+index d50e4cfb4..4ce43b7a0 100644
+--- a/src/include/settings.h
++++ b/src/include/settings.h
+@@ -60,8 +60,15 @@
+ ----------------------------------------------------------------------------*/
+ 
+ constexpr unsigned char PlayerMax = 16;        /// How many players are supported
++#ifdef STRATAGUS_PAX
++// Keep the persistent player's fixed tables within the P4's PSRAM budget.
++// These are type/upgrade limits, not limits on the number of live units.
++constexpr unsigned short UnitTypeMax = 512;
++constexpr unsigned short UpgradeMax = 512;
++#else
+ constexpr unsigned short UnitTypeMax = 2048;                /// How many unit types supported
+ constexpr unsigned short UpgradeMax = 2048;                /// How many upgrades supported
++#endif
+ constexpr unsigned char MAX_RACES = 8;
+ constexpr unsigned char PlayerNumNeutral = PlayerMax - 1;  /// this is the neutral player slot
+ 
+diff --git a/src/include/sound.h b/src/include/sound.h
+index 082d2d633..05bd664a7 100644
+--- a/src/include/sound.h
++++ b/src/include/sound.h
+@@ -130,6 +130,9 @@ public:
+ 	**  255 means infinite range of the sound.
+ 	*/
+ 	unsigned char Range = 0;       /// Range is a multiplier for DistanceSilent
++#ifdef STRATAGUS_PAX
++	int PaxId = 0; // Immutable catalog ID; no eager SDL sample allocation.
++#endif
+ 	std::variant<std::vector<sdl2::ChunkPtr>, std::pair<CSound *, CSound *>> Sound{};
+ };
+ 
+diff --git a/src/include/stratagus.h b/src/include/stratagus.h
+index fab84b914..9d94d0d63 100644
+--- a/src/include/stratagus.h
++++ b/src/include/stratagus.h
+@@ -194,7 +194,11 @@ extern const char NameLine[];
+ --  stratagus.cpp
+ ----------------------------------------------------------------------------*/
+ 
++#ifdef STRATAGUS_PAX
++extern const char *StratagusLibPath;        /// Location of stratagus data
++#else
+ extern std::string StratagusLibPath;        /// Location of stratagus data
++#endif
+ extern std::string MenuRace;
+ 
+ extern unsigned long GameCycle;             /// Game simulation cycle counter
+diff --git a/src/include/tile.h b/src/include/tile.h
+index aea69bc87..dd71394a8 100644
+--- a/src/include/tile.h
++++ b/src/include/tile.h
+@@ -192,6 +192,12 @@ public:
+ 					  int subtile = -1);
+ 
+ 	tile_index getTileIndex() const { return tilesetTile; }
++#ifdef STRATAGUS_PAX
++	void restoreTerrainMetadata(tile_index index, uint8_t elevation) {
++		tilesetTile = index;
++		ElevationLevel = elevation;
++	}
++#endif
+ 
+ 	graphic_index getGraphicTile() const { return tile; }
+ 
+@@ -269,4 +275,3 @@ extern PixelSize PixelTileSize; /// Size of a tile in pixels
+ //@}
+ 
+ #endif // !__MAP_TILE_H__
+-
+diff --git a/src/include/unittype.h b/src/include/unittype.h
+index 1389df5e5..fc0e9a779 100644
+--- a/src/include/unittype.h
++++ b/src/include/unittype.h
+@@ -133,7 +133,7 @@ public:
+ public:
+ 	int Max = 0;        /// Maximum for the variable. (Assume min is 0.)
+ 	int Value = 0;      /// Current (or initial) value of the variable (or initial value).
+-	char Increase = 0;  /// Number to increase(decrease) Value by second.
++	signed char Increase = 0;  /// Signed: spell timers decay by -1, including on unsigned-char targets.
+ 	unsigned char IncreaseFrequency = 0; /// Every how many seconds we should apply the increase
+ 	bool Enable = false; /// True if the unit doesn't have this variable. (f.e shield)
+ };
+diff --git a/src/map/fow.cpp b/src/map/fow.cpp
+index 3a6171e89..33fb65ad1 100644
+--- a/src/map/fow.cpp
++++ b/src/map/fow.cpp
+@@ -46,6 +46,10 @@
+ 
+ #include <algorithm>
+ 
++#ifdef STRATAGUS_PAX
++extern "C" SDL_Surface *pax_stratagus_fog_mask(SDL_Surface *, int, int);
++#endif
++
+ /*----------------------------------------------------------------------------
+ --  Defines
+ ----------------------------------------------------------------------------*/
+@@ -134,7 +138,32 @@ void CFogOfWar::InitTiled()
+ 	if (TiledAlphaFog || TileOfFogOnly) {
+ 		this->Clean();
+ 	}
+-    CFogOfWar::TiledFogSrc->Load();
++	#ifdef STRATAGUS_PAX
++	if (!TiledFogSrc) {
++		// The minimal bootstrap does not load the desktop contrib fog PNG.
++		// Build the same 16 visibility masks from the engine's upscale table.
++		const int w = PixelTileSize.x, h = PixelTileSize.y;
++		SDL_Surface *atlas = SDL_CreateRGBSurface(0, w * 16, h, 32,
++			RMASK, GMASK, BMASK, AMASK);
++		if (!atlas) { ErrorPrint("Cannot allocate tiled PAX fog\n"); ExitFatal(-1); }
++		for (int frame = 0; frame < 16; ++frame) {
++			for (int y = 0; y < h; ++y) {
++				uint32_t *row = (uint32_t *)((uint8_t *)atlas->pixels + y * atlas->pitch);
++				for (int x = 0; x < w; ++x) {
++					const uint8_t mask = (UpscaleTable_4x4[frame][y * 4 / h] >> ((x * 4 / w) * 8)) & 255;
++					row[frame * w + x] = uint32_t(mask) << ASHIFT;
++				}
++			}
++		}
++		TiledFogSrc = CGraphic::New("");
++		TiledFogSrc->setSurface(atlas);
++		TiledFogSrc->Width = w;
++		TiledFogSrc->Height = h;
++		TiledFogSrc->NumFrames = 16;
++		TiledFogSrc->GenFramesMap();
++	}
++	#endif
++	CFogOfWar::TiledFogSrc->Load();
+ 
+     if (Settings.Type == FogOfWarTypes::cTiledLegacy) {
+         TileOfFogOnly = SDL_CreateRGBSurface(SDL_SWSURFACE, PixelTileSize.x, PixelTileSize.y,
+@@ -142,8 +171,13 @@ void CFogOfWar::InitTiled()
+         SDL_FillRect(TileOfFogOnly, nullptr, Settings.FogColorSDL | uint32_t(Settings.ExploredOpacity) << ASHIFT);
+     }
+ 
++#ifdef STRATAGUS_PAX
++    SDL_Surface * const newFogSurface = pax_stratagus_fog_mask(TiledFogSrc->getSurface(), PixelTileSize.x, PixelTileSize.y);
++    if (!newFogSurface) { ErrorPrint("Cannot allocate PAX fog mask\n"); ExitFatal(-1); }
++#else
+     SDL_Surface * const newFogSurface = SDL_ConvertSurfaceFormat(CFogOfWar::TiledFogSrc->getSurface(),
+                                                                  SDL_MasksToPixelFormatEnum(32, RMASK, GMASK, BMASK, AMASK), 0);
++#endif
+     TiledAlphaFog = CGraphic::New("");
+     TiledAlphaFog->setSurface(newFogSurface);
+     TiledAlphaFog->Width = PixelTileSize.x;
+diff --git a/src/map/fow_utils.cpp b/src/map/fow_utils.cpp
+index a8bb54aa1..611a63e30 100644
+--- a/src/map/fow_utils.cpp
++++ b/src/map/fow_utils.cpp
+@@ -221,13 +221,24 @@ void CBlurrer::PrecalcParameters(const float radius, const int numOfIterations)
+         return;
+     }
+ 
++#ifdef STRATAGUS_PAX
++    // The ESP32-P4 implements single precision, not the D extension used by
++    // the toolchain's double-precision libm. These parameters are floats.
++    const float D = sqrtf((12.0f * radius * radius / numOfIterations) + 1.0f);
++    uint8_t dL = floorf(D);
++#else
+     const float D = sqrt((12.0 * radius * radius  / numOfIterations) + 1);
+     uint8_t dL = floor(D);
++#endif
+     if (dL % 2 == 0) { dL--; }
+     const uint8_t dU = dL + 2;
+ 
+     const float M = (12.0 * radius * radius - numOfIterations * dL * dL - 4 * numOfIterations * dL - 3 * numOfIterations) / (-4 * dL - 4);
++#ifdef STRATAGUS_PAX
++    const uint8_t m = roundf(M);
++#else
+     const uint8_t m = round(M);
++#endif
+ 
+     HalfBoxes.clear();
+     HalfBoxes.resize(numOfIterations);
+diff --git a/src/map/map.cpp b/src/map/map.cpp
+index 2a966875c..39bab56fa 100644
+--- a/src/map/map.cpp
++++ b/src/map/map.cpp
+@@ -81,7 +81,11 @@ void CMap::MarkSeenTile(CMapField &mf)
+ 
+ #ifdef MINIMAP_UPDATE
+ 	//rb - GRRRRRRRRRRRR
++	#ifdef STRATAGUS_PAX
++	const unsigned int index = Map.Fields.index_of(mf);
++	#else
+ 	const unsigned int index = &mf - Map.Fields.data();
++	#endif
+ 	const int y = index / Info.MapWidth;
+ 	const int x = index - (y * Info.MapWidth);
+ 	const Vec2i pos = {x, y}
+@@ -90,7 +94,11 @@ void CMap::MarkSeenTile(CMapField &mf)
+ 	if (this->Tileset.TileTypeTable.empty() == false) {
+ #ifndef MINIMAP_UPDATE
+ 		//rb - GRRRRRRRRRRRR
++		#ifdef STRATAGUS_PAX
++		const unsigned int index = Map.Fields.index_of(mf);
++		#else
+ 		const unsigned int index = &mf - Map.Fields.data();
++		#endif
+ 		const int y = index / Info.MapWidth;
+ 		const int x = index - (y * Info.MapWidth);
+ 		const Vec2i pos(x, y);
+@@ -349,9 +357,21 @@ void CMap::Clean(const bool isHardClean /* = false*/)
+ 
+ 	this->Info.Clear();
+ 	this->NoFogOfWar = false;
+-	this->Tileset.clear();
+-	this->TileModelsFileName.clear();
+-	this->TileGraphic = nullptr;
++#ifdef STRATAGUS_PAX
++	extern bool pax_stratagus_reload_pending();
++	// Reloading the same mission can reuse immutable terrain definitions and
++	// artwork. Parsing its 742 KB tileset again on a fragmented heap fails.
++	if (!pax_stratagus_reload_pending()) {
++		// Campaign menus need the map's several-megabyte allocation back.
++		// Keep capacity only for a native save reload, which reuses this map.
++		this->Fields.shrink_to_fit();
++#endif
++		this->Tileset.clear();
++		this->TileModelsFileName.clear();
++		this->TileGraphic = nullptr;
++#ifdef STRATAGUS_PAX
++	}
++#endif
+ 
+ 	FlagRevealMap = MapRevealModes::cHidden;
+ 	ReplayRevealMap = false;
+@@ -385,6 +405,18 @@ void CMap::Save(CFile &file) const
+ 	file.printf("  \"size\", {%d, %d},\n", this->Info.MapWidth, this->Info.MapHeight);
+ 	file.printf("  \"%s\",\n", this->NoFogOfWar ? "no-fog-of-war" : "fog-of-war");
+ 	file.printf("  \"filename\", \"%s\",\n", this->Info.Filename.c_str());
++#ifdef STRATAGUS_PAX
++	file.printf("})\n-- PAX CHUNK\n");
++	for (int i = 0; i < this->Info.MapWidth * this->Info.MapHeight; ++i) {
++		file.printf("PaxMapField(%d,", i);
++		this->Fields[i].Save(file);
++		const uint64_t flags = this->Fields[i].getFlags();
++		file.printf(",%u,%u,%u,%u)\n", unsigned(this->Fields[i].getTileIndex()), unsigned(this->Fields[i].getElevation()),
++			unsigned(flags), unsigned(flags >> 32));
++		if ((i & 63) == 63) file.printf("-- PAX CHUNK\n");
++	}
++	file.printf("-- PAX CHUNK\n");
++#else
+ 	file.printf("  \"map-fields\", {\n");
+ 	for (int h = 0; h < this->Info.MapHeight; ++h) {
+ 		file.printf("  -- %d\n", h);
+@@ -400,6 +432,7 @@ void CMap::Save(CFile &file) const
+ 		}
+ 	}
+ 	file.printf("}})\n");
++#endif
+ }
+ 
+ /*----------------------------------------------------------------------------
+@@ -745,14 +778,20 @@ void CMap::Clamp(Vec2i &pos) const
+ */
+ bool LoadStratagusMapInfo(const fs::path &mapname)
+ {
++	fs::path resolved_mapname = mapname;
++#ifdef STRATAGUS_PAX
++	if (!resolved_mapname.is_absolute()) {
++		resolved_mapname = fs::path(LibraryFileName(resolved_mapname.string()));
++	}
++#endif
+ 	// Set the default map setup by replacing .smp with .sms
+-	size_t loc = mapname.string().find(".smp");
++	size_t loc = resolved_mapname.string().find(".smp");
+ 	if (loc != std::string::npos) {
+-		Map.Info.Filename = mapname.string();
++		Map.Info.Filename = resolved_mapname.string();
+ 		Map.Info.Filename.replace(loc, 4, ".sms");
+ 	}
+ 
+-	return LuaLoadFile(mapname) == 0;
++	return LuaLoadFile(resolved_mapname) == 0;
+ }
+ 
+ //@}
+diff --git a/src/map/map_draw.cpp b/src/map/map_draw.cpp
+index 5b0eccbea..b4808fde0 100644
+--- a/src/map/map_draw.cpp
++++ b/src/map/map_draw.cpp
+@@ -30,6 +30,9 @@
+ //@{
+ 
+ #include "stratagus.h"
++#ifdef STRATAGUS_PAX
++#include "pax_render_profile.h"
++#endif
+ 
+ #include "viewport.h"
+ 
+@@ -265,6 +268,9 @@ void CViewport::DrawMapGridInViewport() const
+ template<bool graphicalTileIsLogicalTile>
+ void CViewport::DrawMapBackgroundInViewport(const fieldHighlightChecker highlightChecker /* = nullptr */) const
+ {
++#ifdef STRATAGUS_PAX
++	PaxRenderScope profile(PAX_TERRAIN);
++#endif
+ 	int ex = this->BottomRightPos.x;
+ 	int ey = this->BottomRightPos.y;
+ 	int sy = this->MapPos.y;
+@@ -436,6 +442,9 @@ void CViewport::Draw(const fieldHighlightChecker highlightChecker /* = nullptr *
+ 	Missile *clickMissile = nullptr;
+ 	CurrentViewport = this;
+ 	{
++#ifdef STRATAGUS_PAX
++		PaxRenderScope profile(PAX_SPRITES);
++#endif
+ 		// Now we need to sort units, missiles, particles by draw level and draw them
+ 		const std::vector<CUnit *> unittable = FindAndSortUnits(*this);
+ 		const std::vector<Missile *> missiletable = FindAndSortMissiles(*this);
+@@ -521,7 +530,12 @@ void CViewport::Draw(const fieldHighlightChecker highlightChecker /* = nullptr *
+ 	}
+ 
+ 	/// Draw Fog of War
++	{
++#ifdef STRATAGUS_PAX
++	PaxRenderScope profile(PAX_FOG);
++#endif
+ 	this->DrawMapFogOfWar();
++	}
+ 
+ 	// If there was a click missile, draw it again here above the fog
+ 	if (clickMissile != nullptr) {
+diff --git a/src/map/map_fog.cpp b/src/map/map_fog.cpp
+index e8edb2e51..3722b0006 100644
+--- a/src/map/map_fog.cpp
++++ b/src/map/map_fog.cpp
+@@ -385,6 +385,15 @@ void CViewport::DrawMapFogOfWar()
+ 	if (ReplayRevealMap) {
+ 		return;
+ 	}
++	#ifdef STRATAGUS_PAX
++	// Legacy tiled fog draws directly to TheScreen. Its viewport-sized
++	// RGBA surface is never used, and on P4 retrying that >1 MiB allocation
++	// every frame churns the fragmented heap for no rendering benefit.
++	if (FogOfWar->GetType() == FogOfWarTypes::cTiledLegacy) {
++		FogOfWar->Draw(*this);
++		return;
++	}
++	#endif
+ 
+ 	if (!this->FogSurface || ( ((this->BottomRightPos.x - this->TopLeftPos.x)
+ 									/ PixelTileSize.x + 2)
+diff --git a/src/map/minimap.cpp b/src/map/minimap.cpp
+index be50b5c68..95b7a07ce 100644
+--- a/src/map/minimap.cpp
++++ b/src/map/minimap.cpp
+@@ -192,8 +192,8 @@ void CMinimap::UpdateTerrain()
+ 	for (int my = YOffset; my < H - YOffset; ++my) {
+ 		for (int mx = XOffset; mx < W - XOffset; ++mx) {
+ 			const int tile = Map.Fields[Minimap2MapX[mx] + Minimap2MapY[my]].getGraphicTile();
+-			const int xofs = PixelTileSize.x * (tile % tilepitch);
+-			const int yofs = PixelTileSize.y * (tile / tilepitch);
++			const int xofs = Map.TileGraphic->frame_map[tile].x;
++			const int yofs = Map.TileGraphic->frame_map[tile].y;
+ 
+ 			if (bpp == 1) {
+ 				((Uint8 *)MinimapTerrainSurface->pixels)[mx + my * MinimapTerrainSurface->pitch] =
+@@ -282,8 +282,8 @@ void CMinimap::UpdateXY(const Vec2i &pos)
+ 				tile = Map.Fields[x + y].getGraphicTile();
+ 			}
+ 
+-			const int xofs = PixelTileSize.x * (tile % tilepitch);
+-			const int yofs = PixelTileSize.y * (tile / tilepitch);
++			const int xofs = Map.TileGraphic->frame_map[tile].x;
++			const int yofs = Map.TileGraphic->frame_map[tile].y;
+ 
+ 			const int index = mx * bpp + my * MinimapTerrainSurface->pitch;
+ 			Uint8 *s = GetTileGraphicPixel(xofs, yofs, mx, my, scalex, scaley, bpp);
+@@ -350,6 +350,10 @@ static void DrawUnitOn(const CUnit &unit, int red_phase)
+ 	SDL_Color c;
+ 	bpp = MinimapSurface->format->BytesPerPixel;
+ 	SDL_GetRGB(color, TheScreen->format, &c.r, &c.g, &c.b);
++#ifdef STRATAGUS_PAX
++	// Native screen colors are RGB565; this offscreen minimap stays BGRA.
++	color=SDL_MapRGB(MinimapSurface->format,c.r,c.g,c.b);
++#endif
+ 	while (w-- >= 0) {
+ 		int h = h0;
+ 		while (h-- >= 0) {
+@@ -368,6 +372,10 @@ static void DrawUnitOn(const CUnit &unit, int red_phase)
+ */
+ void CMinimap::Update()
+ {
++#ifdef STRATAGUS_PAX
++	// Show dark terrain under unexplored fog without revealing enemy units.
++	SetFogOpacityLevels(85,170,192);
++#endif
+ 	static int red_phase;
+ 
+ 	int red_phase_changed = red_phase != (int)((FrameCounter / CYCLES_PER_SECOND) & 1);
+diff --git a/src/map/script_map.cpp b/src/map/script_map.cpp
+index fe8435da1..27ecbf9e6 100644
+--- a/src/map/script_map.cpp
++++ b/src/map/script_map.cpp
+@@ -49,6 +49,11 @@
+ #include "version.h"
+ #include "video.h"
+ 
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#include "game.h"
++#endif
++
+ /*----------------------------------------------------------------------------
+ --  Variables
+ ----------------------------------------------------------------------------*/
+@@ -62,6 +67,29 @@
+ **
+ **  @param l  Lua state.
+ */
++#ifdef STRATAGUS_PAX
++static int CclPaxMapField(lua_State *l)
++{
++	if (lua_gettop(l) != 2 && lua_gettop(l) != 4 && lua_gettop(l) != 6) LuaError(l, "Invalid saved map field arguments");
++	const int index = LuaToNumber(l, 1);
++	if (index < 0 || size_t(index) >= Map.Fields.size()) LuaError(l, "Invalid saved map field");
++	// Replace rather than OR flags into tiles from the original scenario.
++	Map.Fields[index].Flags = 0;
++	Map.Fields[index].playerInfo = {};
++	lua_pushvalue(l, 2);
++	Map.Fields[index].parse(l);
++	lua_pop(l, 1);
++	if (lua_gettop(l) >= 4) {
++		Map.Fields[index].restoreTerrainMetadata(LuaToNumber(l, 3), LuaToNumber(l, 4));
++	}
++	if (lua_gettop(l) == 6) {
++		const uint64_t low = uint32_t(luaL_checknumber(l, 5));
++		const uint64_t high = uint32_t(luaL_checknumber(l, 6));
++		Map.Fields[index].Flags = low | (high << 32);
++	}
++	return 0;
++}
++#endif
+ static int CclStratagusMap(lua_State *l)
+ {
+ 	int args = lua_gettop(l);
+@@ -808,10 +836,35 @@ static int CclSetTileSize(lua_State *l)
+ */
+ void SetTile(const unsigned int tileIndex, const Vec2i &pos, const int value, const int elevation)
+ {
++	#ifdef STRATAGUS_PAX
++	static unsigned pax_set_tile_count;
++	const unsigned pax_current_set_tile = ++pax_set_tile_count;
++	const bool pax_trace_last_set_tile = pax_current_set_tile == 4096;
++	if ((pax_current_set_tile & 2047u) == 0 && TheScreen != nullptr) {
++		/* The converted campaign .sms contains many thousands of SetTile calls.
++		 * Keep the PAX watchdog fed while Lua is still building the map; the
++		 * first real game frame is submitted after CreateGame completes. */
++		char pax_set_tile_status[96];
++		snprintf(pax_set_tile_status, sizeof(pax_set_tile_status),
++			"SetTile heartbeat begin count=%u", pax_current_set_tile);
++		pax_stratagus_debug(pax_set_tile_status);
++		// The software screen is RGB565, not the old desktop ARGB canvas.
++		pax_stratagus_video_present565(TheScreen->pixels, TheScreen->w, TheScreen->h);
++		pax_stratagus_debug("SetTile heartbeat complete");
++	}
++	if (pax_trace_last_set_tile) {
++		pax_stratagus_debug("SetTile #4096 after heartbeat");
++	}
++	#endif
+ 	if (!Map.Info.IsPointOnMap(pos)) {
+ 		ErrorPrint("Invalid map coordinates: (%d, %d)\n", pos.x, pos.y);
+ 		return;
+ 	}
++	#ifdef STRATAGUS_PAX
++	if (pax_trace_last_set_tile) {
++		pax_stratagus_debug("SetTile #4096 after validation");
++	}
++	#endif
+ 	if (Map.Tileset.getTileCount() <= tileIndex) {
+ 		ErrorPrint("Invalid tile number: %u\n", tileIndex);
+ 		return;
+@@ -826,6 +879,11 @@ void SetTile(const unsigned int tileIndex, const Vec2i &pos, const int value, co
+ 	}
+ 
+ 	if (!Map.Fields.empty()) {
++		#ifdef STRATAGUS_PAX
++		if (pax_trace_last_set_tile) {
++			pax_stratagus_debug("SetTile #4096 before field write");
++		}
++		#endif
+ 		int multiplier = Map.Tileset.getLogicalToGraphicalTileSizeMultiplier();
+ 		if (multiplier > 1) {
+ 			// fill subtile fields
+@@ -840,6 +898,11 @@ void SetTile(const unsigned int tileIndex, const Vec2i &pos, const int value, co
+ 			CMapField &mf = *Map.Field(pos);
+ 			mf.setTileIndex(Map.Tileset, tileIndex, value, uint8_t(elevation));
+ 		}
++		#ifdef STRATAGUS_PAX
++		if (pax_trace_last_set_tile) {
++			pax_stratagus_debug("SetTile #4096 after field write");
++		}
++		#endif
+ 	}
+ }
+ 
+@@ -896,6 +959,10 @@ static int CclLoadTileModels(lua_State *l)
+ 	if (lua_gettop(l) != 1) {
+ 		LuaError(l, "incorrect argument");
+ 	}
++#ifdef STRATAGUS_PAX
++	if (Map.TileGraphic &&
++		Map.TileModelsFileName.string() == LuaToString(l, 1)) return 0;
++#endif
+ 	Map.TileModelsFileName = LuaToString(l, 1);
+ 	const fs::path filename = LibraryFileName(Map.TileModelsFileName.string());
+ 	if (LuaLoadFile(filename) == -1) {
+@@ -918,6 +985,9 @@ static int CclDefineTileset(lua_State *l)
+ 	ShowLoadProgress(_("Tileset '%s'"), Map.Tileset.ImageFile.c_str());
+ 	Map.TileGraphic = CGraphic::New(Map.Tileset.ImageFile, Map.Tileset.getPixelTileSize().x, Map.Tileset.getPixelTileSize().y);
+ 	Map.TileGraphic->Load();
++	#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("Lua CclDefineTileset complete");
++	#endif
+ 	return 0;
+ }
+ 
+@@ -1172,6 +1242,9 @@ static int CclDefineMapSetup(lua_State *l)
+ void MapCclRegister()
+ {
+ 	lua_register(Lua, "StratagusMap", CclStratagusMap);
++#ifdef STRATAGUS_PAX
++	lua_register(Lua, "PaxMapField", CclPaxMapField);
++#endif
+ 	lua_register(Lua, "RevealMap", CclRevealMap);
+ 	lua_register(Lua, "CenterMap", CclCenterMap);
+ 	lua_register(Lua, "SetStartView", CclSetStartView);
+diff --git a/src/map/script_tileset.cpp b/src/map/script_tileset.cpp
+index 3e05878a0..812310a43 100644
+--- a/src/map/script_tileset.cpp
++++ b/src/map/script_tileset.cpp
+@@ -46,6 +46,17 @@
+ #include <cstring>
+ #include <set>
+ 
++#ifdef STRATAGUS_PAX
++static int PaxPowerOfTwoShift(const int value)
++{
++	int shift = 0;
++	for (int current = value; current > 1; current >>= 1) {
++		++shift;
++	}
++	return shift;
++}
++#endif
++
+ /*----------------------------------------------------------------------------
+ --  Functions
+ ----------------------------------------------------------------------------*/
+@@ -340,6 +351,20 @@ void CTileset::parseSlots(lua_State *l, int t)
+ 
+ 	//  Parse the list: (still everything could be changed!)
+ 	const int args = lua_rawlen(l, t);
++#ifdef STRATAGUS_PAX
++	// Avoid repeatedly doubling a large vector while the complete Lua
++	// terrain table is live. Standard slots consume 16/256 tiles; unusual
++	// oversized solid lists can still grow through the original parser.
++	size_t planned = 0;
++	for (int j = 0; j + 1 < args; j += 2) {
++		const std::string_view value = LuaToString(l, t, j + 1);
++		planned += value == "solid" ? 16 : value == "mixed" ? 256 : 0;
++	}
++	if (planned >= (1u << (sizeof(tile_index) * 8)))
++		LuaError(l, "Number of tiles limit has been reached.");
++	lua_gc(l, LUA_GCCOLLECT, 0);
++	tiles.reserve(planned);
++#endif
+ 	for (int j = 0; j < args; ++j) {
+ 		const std::string_view value = LuaToString(l, t, j + 1);
+ 		++j;
+@@ -388,15 +413,27 @@ void CTileset::parse(lua_State *l)
+ 	}
+ 
+ 	// precalculate some other representations for performance in hot loops later
++	#ifdef STRATAGUS_PAX
++	const int sizeShiftX = PaxPowerOfTwoShift(this->pixelTileSize.x);
++	this->graphicalTileSizeShiftX = sizeShiftX;
++	if ((1 << sizeShiftX) != this->pixelTileSize.x) {
++	#else
+ 	double sizeShiftX = std::log2(this->pixelTileSize.x);
+ 	this->graphicalTileSizeShiftX = std::lround(sizeShiftX);
+ 	if (sizeShiftX != this->graphicalTileSizeShiftX) {
++	#endif
+ 		LuaError(l, "graphical tile size x %d must be a power of 2", this->pixelTileSize.x);
+ 	}
+ 
++	#ifdef STRATAGUS_PAX
++	const int sizeShiftY = PaxPowerOfTwoShift(this->pixelTileSize.y);
++	this->graphicalTileSizeShiftY = sizeShiftY;
++	if ((1 << sizeShiftY) != this->pixelTileSize.y) {
++	#else
+ 	double sizeShiftY = std::log2(this->pixelTileSize.y);
+ 	this->graphicalTileSizeShiftY = std::lround(sizeShiftY);
+ 	if (sizeShiftX != this->graphicalTileSizeShiftY) {
++	#endif
+ 		LuaError(l, "graphical tile size y %d must be a power of 2", this->pixelTileSize.y);
+ 	}
+ 
+@@ -421,19 +458,37 @@ void CTileset::parse(lua_State *l)
+ 	}
+ 	this->logicalTileToGraphicalTileMultiplier = multiplier;
+ 
++	#ifdef STRATAGUS_PAX
++	const int logicalSizePowerX = PaxPowerOfTwoShift(PixelTileSize.x);
++	if ((1 << logicalSizePowerX) != PixelTileSize.x) {
++	#else
+ 	double logicalSizePowerX = std::log2(PixelTileSize.x);
+ 	if (logicalSizePowerX != std::lround(logicalSizePowerX)) {
++	#endif
+ 		LuaError(l, "logical tile size x %d must be a power of 2", PixelTileSize.x);
+ 	}
++	#ifdef STRATAGUS_PAX
++	const int logicalSizePowerY = PaxPowerOfTwoShift(PixelTileSize.y);
++	if ((1 << logicalSizePowerY) != PixelTileSize.y) {
++	#else
+ 	double logicalSizePowerY = std::log2(PixelTileSize.y);
+ 	if (logicalSizePowerY != std::lround(logicalSizePowerY)) {
++	#endif
+ 		LuaError(l, "logical tile size y %d must be a power of 2", PixelTileSize.y);
+ 	}
++	#ifdef STRATAGUS_PAX
++	long logicalToGraphicalShift = sizeShiftX - logicalSizePowerX;
++	#else
+ 	long logicalToGraphicalShift = std::lround(sizeShiftX - logicalSizePowerX);
++	#endif
+ 	if (logicalToGraphicalShift < 0) {
+ 		LuaError(l, "logical tile size must be smaller than graphical tile size");
+ 	}
++	#ifdef STRATAGUS_PAX
++	if (sizeShiftY - logicalSizePowerY != logicalToGraphicalShift) {
++	#else
+ 	if (std::lround(sizeShiftY - logicalSizePowerY) != logicalToGraphicalShift) {
++	#endif
+ 		LuaError(l, "logical tile size x and y must be the same shiftable by the same amount to get to the graphical tile size");
+ 	}
+ 	this->logicalTileToGraphicalTileShift = logicalToGraphicalShift;
+diff --git a/src/pathfinder/pathfinder.cpp b/src/pathfinder/pathfinder.cpp
+index a4a3020e4..460cb3003 100644
+--- a/src/pathfinder/pathfinder.cpp
++++ b/src/pathfinder/pathfinder.cpp
+@@ -74,6 +74,14 @@ void TerrainTraversal::Init()
+ 	const unsigned int width = m_extented_width - 2;
+ 	const unsigned int width_ext = m_extented_width;
+ 
++#ifdef STRATAGUS_PAX
++	// Search scratch is paged too: mining allocates this after map/UI load,
++	// when a contiguous 133 KB buffer may no longer fit. Never memset across
++	// a page boundary; preserve the native invalid border and zero interior.
++	for (unsigned y=0;y<height+2;++y)
++		for (unsigned x=0;x<width_ext;++x)
++			m_values[y*width_ext+x]=(y==0 || y==height+1 || x==0 || x==width_ext-1)?-1:0;
++#else
+ 	memset(&m_values[0], '\xFF', width_ext * sizeof(dataType));
+ 	for (unsigned i = 1; i < 1 + height; ++i) {
+ 		m_values[i * width_ext] = -1;
+@@ -81,6 +89,7 @@ void TerrainTraversal::Init()
+ 		m_values[i * width_ext + width + 1] = -1;
+ 	}
+ 	memset(&m_values[(height + 1) * width_ext], '\xFF', width_ext * sizeof(dataType));
++#endif
+ }
+ 
+ void TerrainTraversal::PushPos(const Vec2i &pos)
+diff --git a/src/sound/sound.cpp b/src/sound/sound.cpp
+index a0387e006..80e2140ad 100644
+--- a/src/sound/sound.cpp
++++ b/src/sound/sound.cpp
+@@ -42,6 +42,9 @@
+ #include "map.h"
+ #include "missile.h"
+ #include "sound_server.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
+ #include "ui.h"
+ #include "unit.h"
+ #include "video.h"
+@@ -244,6 +247,18 @@ static char CalculateStereo(const CUnit &unit)
+ */
+ void PlayUnitSound(const CUnit &unit, EUnitVoice voice, bool sampleUnique)
+ {
++#ifdef STRATAGUS_PAX
++	if (auto sound=ChooseUnitVoiceSound(unit,voice); sound && sound->PaxId) {
++		const auto pos=unit.GetMapPixelPosCenter();
++		pax_stratagus_audio_play_id(sound->PaxId,pos.x,pos.y,255,voice==EUnitVoice::Selected?4|(int(UnitNumber(unit))<<8):voice==EUnitVoice::Dying?1:0);
++	} else if (voice == EUnitVoice::Selected || voice == EUnitVoice::Acknowledging)
++		pax_stratagus_audio_voice(unit.Type->Ident.c_str(), voice == EUnitVoice::Acknowledging);
++	else {
++		const auto pos=unit.GetMapPixelPosCenter();
++		pax_stratagus_audio_unit_event(unit.Type->Ident.c_str(),int(voice),unit.Player==ThisPlayer,pos.x,pos.y);
++	}
++	return;
++#endif
+ 	auto sound = ChooseUnitVoiceSound(unit, voice);
+ 	if (!sound) {
+ 		return;
+@@ -288,6 +303,9 @@ void PlayUnitSound(const CUnit &unit, EUnitVoice voice, bool sampleUnique)
+ */
+ void PlayUnitSound(const CUnit &unit, CSound *sound)
+ {
++#ifdef STRATAGUS_PAX
++	if(sound && sound->PaxId) {const auto pos=unit.GetMapPixelPosCenter();pax_stratagus_audio_play_id(sound->PaxId,pos.x,pos.y,255,1);}return;
++#endif
+ 	if (!sound) {
+ 		return;
+ 	}
+@@ -313,6 +331,9 @@ void PlayUnitSound(const CUnit &unit, CSound *sound)
+ */
+ void PlayMissileSound(const Missile &missile, CSound *sound)
+ {
++#ifdef STRATAGUS_PAX
++	if(sound && sound->PaxId) pax_stratagus_audio_play_id(sound->PaxId,missile.position.x,missile.position.y,255,1);return;
++#endif
+ 	if (!sound) {
+ 		return;
+ 	}
+@@ -344,6 +365,9 @@ void PlayMissileSound(const Missile &missile, CSound *sound)
+ */
+ void PlayGameSound(CSound *sound, unsigned char volume, bool always)
+ {
++#ifdef STRATAGUS_PAX
++	if(sound && sound->PaxId) pax_stratagus_audio_play_id(sound->PaxId,0,0,std::min(MaxVolume,volume),2);return;
++#endif
+ 	if (!sound) {
+ 		return;
+ 	}
+@@ -390,6 +414,18 @@ static void PlaySoundFileCallback(int channel)
+ */
+ int PlayFile(const std::string &name, LuaActionListener *listener)
+ {
++#ifdef STRATAGUS_PAX
++	// Callback-driven campaign narration needs a separate streaming lifetime;
++	// do not falsely report it completed when merely enqueueing a short FX.
++	if(listener) return -1;
++	std::string key=name;
++	const std::string root=std::string(PAX_STRATAGUS_DATA_ROOT)+"/";
++	if(key.compare(0,root.size(),root)==0) key.erase(0,root.size());
++	if(key.compare(0,7,"sounds/")!=0) key="sounds/"+key;
++	const int id=pax_stratagus_audio_sound_id(key.c_str());
++	if(!id) return -1;
++	pax_stratagus_audio_play_id(id,0,0,255,2);return 1;
++#endif
+ 	int channel = -1;
+ 	auto sample = LoadSample(name);
+ 
+diff --git a/src/sound/sound_id.cpp b/src/sound/sound_id.cpp
+index 54e4409c9..de437e880 100644
+--- a/src/sound/sound_id.cpp
++++ b/src/sound/sound_id.cpp
+@@ -41,6 +41,9 @@
+ #include "sound.h"
+ #include "sound_server.h"
+ #include "util.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
+ 
+ /*----------------------------------------------------------------------------
+ --  Variables
+@@ -89,6 +92,13 @@ std::shared_ptr<CSound> SoundForName(const std::string_view &name)
+ 	if (std::shared_ptr<CSound> sound = FindSound(name)) {
+ 		return sound;
+ 	}
++#ifdef STRATAGUS_PAX
++	const std::string owned{name};
++	if (const int id=pax_stratagus_audio_sound_id(owned.c_str())) {
++		auto sound=CSound::make(); sound->PaxId=id; sound->Range=MAX_SOUND_RANGE;
++		MapSound(owned,sound); return sound;
++	}
++#endif
+ 	DebugPrint("Can't find sound '%s' in sound table\n", name.data());
+ 	return nullptr;
+ }
+@@ -107,6 +117,9 @@ std::shared_ptr<CSound> SoundForName(const std::string_view &name)
+ */
+ std::shared_ptr<CSound> MakeSound(const std::string &name, const std::vector<std::string> &files)
+ {
++#ifdef STRATAGUS_PAX
++	return SoundForName(name);
++#endif
+ 	if (auto sound = FindSound(name)) {
+ 		DebugPrint("re-register sound '%s'\n", name.c_str());
+ 		return sound;
+@@ -134,6 +147,9 @@ std::shared_ptr<CSound> MakeSound(const std::string &name, const std::vector<std
+ */
+ std::shared_ptr<CSound> MakeSoundGroup(const std::string &name, CSound *first, CSound *second)
+ {
++#ifdef STRATAGUS_PAX
++	return SoundForName(name);
++#endif
+ 	if (auto sound = FindSound(name)) {
+ 		DebugPrint("re-register sound '%s'\n", name.c_str());
+ 		return sound;
+diff --git a/src/sound/sound_server.cpp b/src/sound/sound_server.cpp
+index 850529a1b..da860edf3 100644
+--- a/src/sound/sound_server.cpp
++++ b/src/sound/sound_server.cpp
+@@ -418,8 +418,16 @@ static sdl2::ChunkPtr LoadSample(const char *name)
+ {
+ #ifdef DYNAMIC_LOAD
+ 	sdl2::ChunkPtr r{(Mix_Chunk *) SDL_calloc(sizeof(Mix_Chunk), 1)};
++	if (!r) return nullptr;
+ 	r->allocated = NotYetLoadedMagic;
++#ifdef STRATAGUS_PAX
++	const size_t bytes = strlen(name) + 1;
++	r->abuf = (Uint8 *)SDL_malloc(bytes);
++	if (!r->abuf) return nullptr;
++	memcpy(r->abuf, name, bytes);
++#else
+ 	r->abuf = (Uint8 *)(strdup(name));
++#endif
+ 	return r;
+ #else
+ 	return ForceLoadSample(name);
+@@ -585,8 +593,17 @@ void SetMusicFinishedCallback(void (*callback)())
+ **
+ **  @return      0 if music is playing, -1 if not.
+ */
++#ifdef PAX_STRATAGUS_WARCRAFT
++extern "C" int pax_stratagus_audio_music_file(const char *);
++extern "C" int pax_stratagus_audio_music_playing();
++extern "C" void pax_stratagus_audio_music_volume(int);
++#endif
+ int PlayMusic(const std::string &file)
+ {
++#ifdef PAX_STRATAGUS_WARCRAFT
++	if (!IsMusicEnabled()) return -1;
++	return pax_stratagus_audio_music_file(file.c_str());
++#endif
+ 	if (!SoundEnabled() || !IsMusicEnabled()) {
+ 		return -1;
+ 	}
+@@ -612,6 +629,10 @@ int PlayMusic(const std::string &file)
+ */
+ void StopMusic()
+ {
++#ifdef PAX_STRATAGUS_WARCRAFT
++	pax_stratagus_audio_music_file(nullptr);
++	return;
++#endif
+ 	CallbackMusicDisable();
+ 	if (!External_Stop()) {
+ 		Mix_HaltMusic();
+@@ -630,6 +651,9 @@ void SetMusicVolume(int volume)
+ 	// so we adjust the music
+ 	int oldVolume = MusicVolume;
+ 	MusicVolume = volume;
++#ifdef PAX_STRATAGUS_WARCRAFT
++	pax_stratagus_audio_music_volume(volume);
++#endif
+ 	Mix_VolumeMusic(MusicVolume);
+ 	External_Volume(MusicVolume, oldVolume);
+ }
+@@ -668,7 +692,11 @@ bool IsMusicEnabled()
+ */
+ bool IsMusicPlaying()
+ {
++#ifdef PAX_STRATAGUS_WARCRAFT
++	return pax_stratagus_audio_music_playing();
++#else
+ 	return Mix_PlayingMusic() || External_IsPlaying();
++#endif
+ }
+ 
+ /*----------------------------------------------------------------------------
+diff --git a/src/sound/unitsound.cpp b/src/sound/unitsound.cpp
+index e77287d7e..042fe33bd 100644
+--- a/src/sound/unitsound.cpp
++++ b/src/sound/unitsound.cpp
+@@ -125,9 +125,11 @@ static void MapAnimSounds(CUnitType &type)
+ */
+ void MapUnitSounds()
+ {
++#ifndef STRATAGUS_PAX
+ 	if (SoundEnabled() == false) {
+ 		return;
+ 	}
++#endif
+ 	// Parse all units sounds.
+ 	for (CUnitType *typePtr : getUnitTypes()) {
+ 		CUnitType &type = *typePtr;
+diff --git a/src/stratagus/iolib.cpp b/src/stratagus/iolib.cpp
+index 972c59b0b..954ffd75b 100644
+--- a/src/stratagus/iolib.cpp
++++ b/src/stratagus/iolib.cpp
+@@ -564,6 +564,48 @@ static fs::path LibraryFileNameImpl(const std::string_view file)
+ 	if (candidate.is_absolute()) {
+ 		return candidate;
+ 	}
++
++#ifdef STRATAGUS_PAX
++	// PAX data is exposed through the service filesystem at one fixed
++	// mount point.  Preserve Stratagus' logical subdirectories: the game
++	// scripts refer to image assets as "ui/..." while the extracted Stargus
++	// data stores them below "graphics/ui/...".
++	const fs::path root(StratagusLibPath);
++	if (file.rfind("graphics/", 0) == 0 ||
++		file.rfind("sounds/", 0) == 0 ||
++		file.rfind("scripts/", 0) == 0 ||
++		file.rfind("luagen/", 0) == 0 ||
++		file.rfind("campaigns/", 0) == 0 ||
++		file.rfind("maps/", 0) == 0 ||
++		file.rfind("contrib/", 0) == 0 ||
++		file.rfind("music/", 0) == 0 ||
++		file.rfind("shaders/", 0) == 0 ||
++		file.rfind("videos/", 0) == 0) {
++		return root / file;
++	}
++#ifdef PAX_STRATAGUS_WARCRAFT
++	// Wargus's CMake install copies these repository assets into graphics.
++	// Also support an extracted tree with the stock contrib directory intact.
++	// Prefer installed/custom graphics when present; never replace user files.
++	const std::string_view logical = file;
++	const bool contributed = logical == "ui/black_title.png" ||
++		logical == "ui/food.png" || logical == "ui/health.png" ||
++		logical == "ui/health2.png" || logical == "ui/mana.png" ||
++		logical == "ui/mana2.png" || logical == "ui/ore,stone,coal.png" ||
++		logical == "ui/score.png" || logical == "ui/workers.png" ||
++		logical == "ui/cursors/cross.png" || logical == "missiles/red_cross.png";
++	if (contributed) {
++		std::error_code ec;
++		candidate = root / "graphics" / file;
++		if (fs::exists(candidate, ec)) return candidate;
++		candidate = root / "contrib" / fs::path(file).filename();
++		ec.clear();
++		if (fs::exists(candidate, ec)) return candidate;
++	}
++#endif
++	return root / "graphics" / file;
++#endif
++
+ 	if (FindFileWithExtension(candidate)) {
+ 		return candidate;
+ 	}
+@@ -634,7 +676,14 @@ static fs::path LibraryFileNameImpl(const std::string_view file)
+ 
+ extern std::string LibraryFileName(const std::string &file)
+ {
++	#ifdef STRATAGUS_PAX
++	// libstdc++'s unordered_map rehash policy uses double-precision floating
++	// point instructions that are not implemented by the ESP32-P4 core.
++	// The ordered map keeps the small filename cache portable on the PAX ABI.
++	static std::map<std::string, std::string> FileNameMap;
++	#else
+ 	static std::unordered_map<std::string, std::string> FileNameMap;
++	#endif
+ 	auto result = FileNameMap.find(file);
+ 	if (result == std::end(FileNameMap)) {
+ 		fs::path path = LibraryFileNameImpl(file);
+@@ -664,6 +713,10 @@ bool CanAccessFile(const char *filename)
+ */
+ std::vector<FileList> ReadDataDirectory(const fs::path& directory)
+ {
++#ifdef STRATAGUS_PAX
++	extern std::vector<FileList> PaxReadDataDirectory(const fs::path &);
++	return PaxReadDataDirectory(directory);
++#else
+ 	if (!fs::exists(directory) || !fs::is_directory(directory)) {
+ 		return {};
+ 	}
+@@ -683,6 +736,7 @@ std::vector<FileList> ReadDataDirectory(const fs::path& directory)
+ 	}
+ 	ranges::sort(files);
+ 	return files;
++#endif
+ }
+ 
+ class RawFileWriter : public FileWriter
+diff --git a/src/stratagus/luacallback.cpp b/src/stratagus/luacallback.cpp
+index 2cf76ea9e..a279c0c5c 100644
+--- a/src/stratagus/luacallback.cpp
++++ b/src/stratagus/luacallback.cpp
+@@ -60,8 +60,15 @@ LuaCallbackImpl::LuaCallbackImpl(lua_State *l, lua_Object f) : luastate(l)
+ */
+ void LuaCallbackImpl::pushPreamble()
+ {
++#ifdef STRATAGUS_PAX
++	// LuaCall inserts its own traceback handler beneath the function. The
++	// old callback preamble used a zero-based previous top and an extra
++	// _TRACEBACK value, which corrupts calls made from an empty game stack.
++	base = lua_gettop(luastate) + 1;
++#else
+ 	base = lua_gettop(luastate);
+ 	lua_getglobal(luastate, "_TRACEBACK");
++#endif
+ 	lua_rawgeti(luastate, LUA_REGISTRYINDEX, luaref);
+ 	arguments = 0;
+ }
+diff --git a/src/stratagus/mainloop.cpp b/src/stratagus/mainloop.cpp
+index 1bcd3803b..c94e7e717 100644
+--- a/src/stratagus/mainloop.cpp
++++ b/src/stratagus/mainloop.cpp
+@@ -35,6 +35,12 @@
+ 
+ #include "online_service.h"
+ #include "stratagus.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#include "pax_render_profile.h"
++#include "pax_game_clock.h"
++#include "pax_menu.h"
++#endif
+ 
+ #include "actions.h"
+ #include "editor.h"
+@@ -184,9 +190,17 @@ void DrawMapArea(const fieldHighlightChecker highlightChecker = nullptr)
+ */
+ void UpdateDisplay()
+ {
++#ifdef STRATAGUS_PAX
++	PaxRenderScope profile(PAX_DRAW);
++#endif
+ 	if (GameRunning || Editor.Running == EditorEditing) {
+ 		// to prevent empty spaces in the UI
++		{
++#ifdef STRATAGUS_PAX
++		PaxRenderScope clear(PAX_CLEAR);
++#endif
+ 		Video.FillRectangleClip(ColorBlack, 0, 0, Video.Width, Video.Height);
++		}
+ 		DrawMapArea();
+ 		// TODO: for e.g. environmental effects, we want to push to the renderer here with appropriate shaders set,
+ 		// then do the rest.
+@@ -251,6 +265,9 @@ static void InitGameCallbacks()
+ 
+ static void GameLogicLoop()
+ {
++#ifdef STRATAGUS_PAX
++	PaxRenderScope profile(PAX_LOGIC);
++#endif
+ 	// Can't find a better place.
+ 	// FIXME: We need find better place!
+ 	SaveGameLoading = false;
+@@ -263,8 +280,18 @@ static void GameLogicLoop()
+ 		++GameCycle;
+ 		MultiPlayerReplayEachCycle();
+ 		NetworkCommands(); // Get network commands
++		{
++#ifdef STRATAGUS_PAX
++		PaxRenderScope profile(PAX_TRIGGER_LOGIC);
++#endif
+ 		TriggersEachCycle();// handle triggers
++		}
++		{
++#ifdef STRATAGUS_PAX
++		PaxRenderScope profile(PAX_UNIT_LOGIC);
++#endif
+ 		UnitActions();      // handle units
++		}
+ 		MissileActions();   // handle missiles
+ 		PlayersEachCycle(); // handle players
+ 		UpdateTimer();      // update game timer
+@@ -371,10 +398,38 @@ static void DisplayLoop()
+ 
+ static void SingleGameLoop()
+ {
++#ifdef STRATAGUS_PAX
++	PaxGameClock clock;
++	clock.reset(SDL_GetPerformanceCounter());
++	while (GameRunning) {
++		// Process the newest pointer/clicks before drawing, not after showing
++		// another frame at the old position. The sampler remains independent.
++		const unsigned generation=pax_stratagus_modal_generation();
++		WaitEventsOneFrame();
++		if (generation!=pax_stratagus_modal_generation()) clock.reset(SDL_GetPerformanceCounter());
++		if (!GameRunning) break;
++		const bool paused=GamePaused || !NetworkInSync;
++		const unsigned rate=CyclesPerSecond>0 ? CyclesPerSecond : CYCLES_PER_SECOND;
++		const unsigned ticks=clock.take(SDL_GetPerformanceCounter(),rate,paused);
++		for (unsigned i=0;i<ticks && GameRunning;++i) GameLogicLoop();
++		if (paused) GameLogicLoop();
++		// Native logic also polls input. A menu opened there must not leave
++		// the wall-clock accumulator containing time spent in the modal.
++		if (generation!=pax_stratagus_modal_generation()) clock.reset(SDL_GetPerformanceCounter());
++		if (!GameRunning) break;
++		DisplayLoop();
++		pax_stratagus_profile_frame(GameCycle);
++		const unsigned wait=clock.wait_us(SDL_GetPerformanceCounter(),rate)/1000;
++		// delay_ms yields to ESPHome; do not add a full tick when rendering
++		// already exceeded the budget. Audio runs independently on core 1.
++		SDL_Delay(wait>0 ? wait : 1);
++	}
++#else
+ 	while (GameRunning) {
+ 		DisplayLoop();
+ 		GameLogicLoop();
+ 	}
++#endif
+ }
+ 
+ /**
+@@ -421,7 +476,18 @@ void GameMainLoop(bool clean)
+ 	}
+ 
+ 	if (GameResult == GameExit) {
++#ifdef STRATAGUS_PAX
++		// Desktop Exit() terminates the process; PAX Exit() returns.
++		// StartMap still owns the map and GUI and must run CleanGame before
++		// final Exit frees them. Unwind menus cooperatively, then let
++		// stratagusMain perform the one final engine shutdown.
++		extern volatile int pax_exit_requested;
++		pax_exit_requested = 1;
++		SetCallbacks(old_callbacks);
++		pax_stratagus_debug("GameMainLoop: deferring final exit until map/menu cleanup");
++#else
+ 		Exit(0);
++#endif
+ 		return;
+ 	}
+ 
+@@ -439,6 +505,10 @@ void GameMainLoop(bool clean)
+ 		           GameCycle);
+ 	}
+ 
++#ifdef STRATAGUS_PAX
++	extern void pax_stratagus_results_capture();
++	pax_stratagus_results_capture();
++#endif
+ 	GameCycle = 0;
+ 	CParticleManager::exit();
+ 	FlagRevealMap = MapRevealModes::cHidden;
+diff --git a/src/stratagus/parameters.cpp b/src/stratagus/parameters.cpp
+index 907c1162c..3eeca5bb5 100644
+--- a/src/stratagus/parameters.cpp
++++ b/src/stratagus/parameters.cpp
+@@ -48,7 +48,9 @@ void Parameters::SetDefaultValues()
+ 	applicationName = "stratagus";
+ 	luaStartFilename = "scripts/stratagus.lua";
+ 	luaEditorStartFilename = "scripts/editor.lua";
++	#ifndef STRATAGUS_PAX
+ 	SetDefaultUserDirectory();
++	#endif
+ }
+ 
+ void Parameters::SetDefaultUserDirectory(bool noPortable)
+diff --git a/src/stratagus/player.cpp b/src/stratagus/player.cpp
+index 0445ef7ef..fa98a7c9a 100644
+--- a/src/stratagus/player.cpp
++++ b/src/stratagus/player.cpp
+@@ -1257,11 +1257,17 @@ void PlayersEachSecond(int playerIdx)
+ */
+ void GraphicPlayerPixels(int colorIndex, const CGraphic &sprite)
+ {
++	if (!sprite.getSurface() || !sprite.getSurface()->format ||
++		colorIndex < 0 || static_cast<size_t>(colorIndex) >= PlayerColorsSDL.size()) return;
+ 	Assert(PlayerColorIndexCount);
+ 
+ 	Assert(SDL_MUSTLOCK(sprite.getSurface()) == 0);
+ 	// TODO: This vector allocation is costly in profiles
++#ifdef STRATAGUS_PAX
++	const std::vector<SDL_Color> &sdlColors=PlayerColorsSDL[colorIndex];
++#else
+ 	std::vector<SDL_Color> sdlColors = PlayerColorsSDL[colorIndex];
++#endif
+ 	const auto palette = sprite.getSurface()->format->palette;
+ 	if (palette && palette->ncolors <= PlayerColorIndexStart) {
+ 		static std::set<fs::path> warnedGraphics;
+diff --git a/src/stratagus/script.cpp b/src/stratagus/script.cpp
+index 8a13cdeba..45a3d8d89 100644
+--- a/src/stratagus/script.cpp
++++ b/src/stratagus/script.cpp
+@@ -34,6 +34,10 @@
+ ----------------------------------------------------------------------------*/
+ 
+ #include "script.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#include "pax_menu.h"
++#endif
+ 
+ #include "animation/animation_setplayervar.h"
+ #include "font.h"
+@@ -125,6 +129,11 @@ static int report(int status, bool exitOnError)
+ 		if (msg == nullptr) {
+ 			msg = "(error with no message)";
+ 		}
++		#ifdef STRATAGUS_PAX
++		char pax_error[256];
++		snprintf(pax_error, sizeof(pax_error), "Lua error: %s", msg);
++		pax_stratagus_debug(pax_error);
++		#endif
+ 		ErrorPrint("%s\n", msg);
+ 		if (exitOnError) {
+ 			::exit(1);
+@@ -199,6 +208,11 @@ int LuaCall(lua_State *L, int narg, int nresults, int base, bool exitOnError)
+ 	const int status = lua_pcall(L, narg, nresults, base);
+ 	signal(SIGINT, SIG_DFL);
+ 	lua_remove(L, base);  // remove traceback function
++	#ifdef STRATAGUS_PAX
++	if (status) {
++		pax_stratagus_debug("Lua pcall returned error");
++	}
++	#endif
+ 
+ 	return report(status, exitOnError);
+ }
+@@ -206,8 +220,346 @@ int LuaCall(lua_State *L, int narg, int nresults, int base, bool exitOnError)
+ /**
+ **  Get the (uncompressed) content of the file into a string
+ */
++#ifdef STRATAGUS_PAX
++#ifdef STRATAGUS_PAX_LUA_PROBE
++static constexpr const char PaxBootstrapScript[] = R"pax(
++SetGameName("sc")
++SetFullGameName("Stargus")
++preferences = {RapidStratagusIDE = false}
++SetTileSize(8, 8)
++DefineDefaultIncomes(0, 100, 100, 100, 100, 100, 100)
++DefineDefaultActions("stop", "harvest", "harvest", "unused", "unused", "unused", "unused")
++DefineDefaultResourceNames("time", "minerals", "gas", "unused", "unused", "unused", "unused")
++DefineDefaultResourceAmounts("minerals", 100000, "gas", 50000)
++DefineDefaultResourceMaxAmounts(-1, -1, -1, -1, -1, -1, -1)
++DefinePlayerColorIndex(8, 8)
++local pax_player_color = {{44, 180, 148}, {32, 144, 112}, {32, 144, 112}, {32, 144, 112}, {16, 84, 60}, {16, 84, 60}, {16, 84, 60}, {0, 40, 0}}
++local pax_player_colors = {}
++for i = 1,15 do
++  table.insert(pax_player_colors, "pax" .. i)
++  table.insert(pax_player_colors, pax_player_color)
++end
++DefinePlayerColors(pax_player_colors)
++DefineAnimations("animations-dummy-still", {Still = {"frame 0", "wait 125"}})
++function MakeSound(...) end
++function MakeSoundGroup(...) end
++Load("scripts/fonts.lua")
++Load("scripts/sc.lua")
++Load("scripts/icons.lua")
++Load("scripts/widgets.lua")
++Load("scripts/gameui.lua")
++Load("luagen/images/image_347_neutral_min01.lua")
++Load("luagen/images/image_344_neutral_geyser.lua")
++)pax";
++#else
++static constexpr const char PaxBootstrapScript[] = R"pax(
++ComputerReactionRangeFactor = 1.5
++PersonReactionRangeFactor = 0.8
++SetSelectionStyle("ellipse", 0.589)
++function AiPassive() end
++DefineAi("ai-passive", "*", "ai-passive", AiPassive)
++function SinglePlayerTriggers()
++  AddTrigger(function() return GetPlayerData(GetThisPlayer(), "TotalNumUnits") == 0 end,
++             function() return ActionDefeat() end)
++  AddTrigger(function() return GetNumOpponents(GetThisPlayer()) == 0 end,
++             function() return ActionVictory() end)
++end
++SetGameName("sc")
++SetFullGameName("Stargus")
++preferences = {RapidStratagusIDE = false}
++SetTileSize(8, 8)
++-- Keep the original game's player caps; zero-initialized limits disable all
++-- production even when the reduced first-mission unit definitions exist.
++SetAllPlayersUnitLimit(400)
++SetAllPlayersBuildingLimit(400)
++SetAllPlayersTotalUnitLimit(1000)
++DefineDefaultIncomes(0, 100, 100, 100, 100, 100, 100)
++DefineDefaultActions("stop", "harvest", "harvest", "unused", "unused", "unused", "unused")
++DefineDefaultResourceNames("time", "minerals", "gas", "unused", "unused", "unused", "unused")
++DefineDefaultResourceAmounts("minerals", 100000, "gas", 50000)
++DefineDefaultResourceMaxAmounts(-1, -1, -1, -1, -1, -1)
++DefinePlayerColorIndex(8, 8)
++local pax_player_color = {{44, 180, 148}, {32, 144, 112}, {32, 144, 112}, {32, 144, 112}, {16, 84, 60}, {16, 84, 60}, {16, 84, 60}, {0, 40, 0}}
++local pax_player_colors = {}
++for i = 1,15 do
++  table.insert(pax_player_colors, "pax" .. i)
++  table.insert(pax_player_colors, pax_player_color)
++end
++DefinePlayerColors(pax_player_colors)
++DefineAnimations("animations-dummy-still", {Still = {"frame 0", "wait 125"}})
++function MakeSound(...) end
++function MakeSoundGroup(...) end
++Load("scripts/fonts.lua")
++Load("scripts/sc.lua")
++Load("scripts/icons.lua")
++-- ui.lua loads widgets/gameui itself. Do not initialize those twice: the
++-- temporary Lua tables and eagerly loaded graphics matter on the P4 heap.
++Load("scripts/ui.lua")
++UI.MessageFont = Fonts["game"]
++UI.MessageScrollSpeed = 5
++UI.Minimap.WithTerrain = true
++function RunGameMenu() PaxGameMenu() end
++for _,name in ipairs({"point", "glass", "cross", "scroll", "green-hair", "yellow-hair", "red-hair",
++                      "arrow-e", "arrow-ne", "arrow-n", "arrow-nw", "arrow-w", "arrow-sw", "arrow-s", "arrow-se"}) do
++  DefineCursor({Name="cursor-" .. name, Race="any", File="ui/cursors/pax.png",
++                HotSpot={15,15}, Size={32,32}})
++end
++Load("luagen/images/image_347_neutral_min01.lua")
++Load("luagen/images/image_349_neutral_min02.lua")
++Load("luagen/images/image_351_neutral_min03.lua")
++Load("luagen/images/image_344_neutral_geyser.lua")
++Load("luagen/images/image_54_zerg_zergling.lua")
++Load("luagen/images/image_256_terran_vulture.lua")
++Load("luagen/images/image_239_terran_marine.lua")
++Load("luagen/images/image_247_terran_scv.lua")
++Load("luagen/images/image_278_terran_depot.lua")
++Load("luagen/images/image_275_terran_control.lua")
++Load("luagen/images/image_266_terran_tbarrack.lua")
++Load("luagen/images/image_325_terran_tbldlrg.lua")
++Load("luagen/images/image_327_terran_tbldmed.lua")
++Load("luagen/portrait/portrait-tadvisor.lua")
++Load("luagen/portrait/portrait-zzergl.lua")
++Load("luagen/portrait/portrait-ujim.lua")
++Load("luagen/portrait/portrait-tmarine.lua")
++Load("luagen/portrait/portrait-tscv.lua")
++-- Keep the first-mission unit definitions in the PAX image.  The generated
++-- desktop Lua uses math.ceil/floor on fractional factors; that path emits
++-- unsupported double-precision division on the ESP32-P4 freestanding target.
++-- These are the same generated definitions with those constant expressions
++-- folded ahead of time.
++DefineUnitType("unit-resource-vespene-geyser", {Name="Vespene Geyser",Image=image_344_neutral_geyser,
++  Animations="animations-dummy-still",Icon="icon-terran-command-center",NumDirections=1,
++  HitPoints=34465,TileSize={15,7},BoxSize={127,63},SightRange=36,
++  ComputerReactionRange=54,PersonReactionRange=28,Type="land",Building=true,LandUnit=true,
++  VisibleUnderFog=true,GivesResource="gas",CanHarvest=true})
++DefineUnitType("unit-resource-mineral-field", {Name = "Mineral Field"
++, Image = image_347_neutral_min01
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center"
++, Animations = "animations-dummy-still"
++, Portrait = portrait_tadvisor
++, HitPoints = 34465
++, TileSize = {7, 3}
++, BoxSize = {63, 31}
++, SightRange = 36
++, ComputerReactionRange = 54
++, PersonReactionRange = 28
++, NumDirections = image_347_neutral_min01_NumDirections
++, AirUnit = false, Type = "land", Building = true, organic = false
++, LandUnit = true, Costs = {"time", 0, "minerals", 1, "gas", 1}
++, PersonalSpace = {1, 1}
++, Sounds = {"selected", "unit-resource-mineral-field-sound-what"}})
++DefineUnitType("unit-resource-mineral-field-type-2", {Name = "Mineral Field"
++, Image = image_349_neutral_min02
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center"
++, Animations = "animations-dummy-still"
++, Portrait = portrait_tadvisor
++, HitPoints = 34465, TileSize = {7, 3}, BoxSize = {63, 31}
++, SightRange = 36, ComputerReactionRange = 54, PersonReactionRange = 28
++, NumDirections = image_349_neutral_min02_NumDirections
++, AirUnit = false, Type = "land", Building = true, organic = false
++, LandUnit = true, Costs = {"time", 0, "minerals", 1, "gas", 1}
++, PersonalSpace = {1, 1}
++, Sounds = {"selected", "unit-resource-mineral-field-type-2-sound-what"}})
++DefineUnitType("unit-resource-mineral-field-type-3", {Name = "Mineral Field"
++, Image = image_351_neutral_min03
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center"
++, Animations = "animations-dummy-still"
++, Portrait = portrait_tadvisor
++, HitPoints = 34465, TileSize = {7, 3}, BoxSize = {63, 31}
++, SightRange = 36, ComputerReactionRange = 54, PersonReactionRange = 28
++, NumDirections = image_351_neutral_min03_NumDirections
++, AirUnit = false, Type = "land", Building = true, organic = false
++, LandUnit = true, Costs = {"time", 0, "minerals", 1, "gas", 1}
++, PersonalSpace = {1, 1}
++, Sounds = {"selected", "unit-resource-mineral-field-type-3-sound-what"}})
++DefineUnitType("unit-zerg-zergling", {Name = "Zerg Zergling"
++, Image = image_54_zerg_zergling
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center", Animations = "animations-dummy-still"
++, Portrait = portrait_zzergl, HitPoints = 35, TileSize = {2, 2}, BoxSize = {15, 15}
++, SightRange = 20, ComputerReactionRange = 30, PersonReactionRange = 16
++, NumDirections = 1
++, AirUnit = false, Type = "land", Building = false, organic = true, LandUnit = true
++, Costs = {"time", 105, "minerals", 50, "gas", 0}, PersonalSpace = {1, 1}
++, Sounds = {"ready", "unit-zerg-zergling-sound-ready", "acknowledge", "unit-zerg-zergling-sound-yes", "selected", "unit-zerg-zergling-sound-selected"}})
++DefineUnitType("unit-hero-jim-raynor-vulture", {Name = "Jim Raynor"
++, Image = image_256_terran_vulture
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center", Animations = "animations-dummy-still"
++, Portrait = portrait_ujim, HitPoints = 300, TileSize = {4, 4}, BoxSize = {31, 31}
++, SightRange = 32, ComputerReactionRange = 48, PersonReactionRange = 25
++, NumDirections = image_256_terran_vulture_NumDirections
++, AirUnit = false, Type = "land", Building = false, organic = false, LandUnit = true
++, Costs = {"time", 225, "minerals", 150, "gas", 0}, PersonalSpace = {1, 1}
++, Sounds = {"acknowledge", "unit-hero-jim-raynor-vulture-sound-yes", "selected", "unit-hero-jim-raynor-vulture-sound-selected"}})
++DefineUnitType("unit-terran-marine", {Name = "Terran Marine"
++, Image = image_239_terran_marine
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center", Animations = "animations-dummy-still"
++, Portrait = portrait_tmarine, HitPoints = 40, TileSize = {2, 2}, BoxSize = {16, 19}
++, SightRange = 28, ComputerReactionRange = 42, PersonReactionRange = 22
++, NumDirections = 1
++, AirUnit = false, Type = "land", Building = false, organic = true, LandUnit = true
++, Costs = {"time", 90, "minerals", 50, "gas", 0}, PersonalSpace = {1, 1}
++, Sounds = {"ready", "unit-terran-marine-sound-ready", "acknowledge", "unit-terran-marine-sound-yes", "selected", "unit-terran-marine-sound-selected"}})
++DefineUnitType("unit-terran-scv", {Name = "Terran SCV"
++, Image = image_247_terran_scv
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center", Animations = "animations-dummy-still"
++, Portrait = portrait_tscv, HitPoints = 60, TileSize = {3, 3}, BoxSize = {22, 22}
++, SightRange = 28, ComputerReactionRange = 42, PersonReactionRange = 22
++, NumDirections = image_247_terran_scv_NumDirections
++, AirUnit = false, Type = "land", Building = false, organic = true, LandUnit = true
++, Costs = {"time", 75, "minerals", 50, "gas", 0}, PersonalSpace = {1, 1}
++, Sounds = {"ready", "unit-terran-scv-sound-ready", "acknowledge", "unit-terran-scv-sound-yes", "selected", "unit-terran-scv-sound-selected"}})
++DefineUnitType("unit-terran-supply-depot", {Name = "Terran Supply Depot"
++, Image = image_278_terran_depot
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center", Animations = "animations-dummy-still"
++, Portrait = portrait_tadvisor, HitPoints = 500, TileSize = {9, 6}, BoxSize = {76, 48}
++, SightRange = 32, ComputerReactionRange = 48, PersonReactionRange = 25
++, NumDirections = image_278_terran_depot_NumDirections
++, AirUnit = false, Type = "land", Building = true, organic = false, LandUnit = true
++, Costs = {"time", 150, "minerals", 100, "gas", 0}, PersonalSpace = {1, 1}
++, Sounds = {"selected", "unit-terran-supply-depot-sound-what"}})
++DefineUnitType("unit-terran-command-center", {Name = "Terran Command Center"
++, Image = image_275_terran_control
++, Shadow = {"offset", {-7, -7}, "scale", 1}
++, Icon = "icon-terran-command-center", Animations = "animations-dummy-still"
++, Portrait = portrait_tadvisor, HitPoints = 1500, TileSize = {14, 10}, BoxSize = {116, 82}
++, SightRange = 40, ComputerReactionRange = 60, PersonReactionRange = 32
++, NumDirections = image_275_terran_control_NumDirections
++, AirUnit = false, Type = "land", Building = true, organic = false, LandUnit = true
++, Costs = {"time", 450, "minerals", 400, "gas", 0}, PersonalSpace = {1, 1}
++, Sounds = {"selected", "unit-terran-command-center-sound-what"}})
++DefineUnitType("unit-terran-barracks", {Name="Terran Barracks", Image=image_266_terran_tbarrack,
++  Icon="icon-terran-barracks", Animations="animations-dummy-still", Portrait=portrait_tadvisor,
++  HitPoints=1000, TileSize={13,9}, BoxSize={104,72}, SightRange=32,
++  ComputerReactionRange=48, PersonReactionRange=25, NumDirections=1,
++  AirUnit=false, Type="land", Building=true, organic=false, LandUnit=true,
++  Costs={"time",300,"minerals",150,"gas",0}, PersonalSpace={1,1}})
++-- Native Terran construction needs a non-null construction definition even
++-- before the building's first action tick. Use the original staged artwork.
++for _,spec in ipairs({
++  {"unit-terran-command-center", image_325_terran_tbldlrg_var},
++  {"unit-terran-supply-depot", image_327_terran_tbldmed_var},
++  {"unit-terran-barracks", image_325_terran_tbldlrg_var}}) do
++  local construction="construction-pax-" .. spec[1]
++  DefineConstruction(construction, {Files=spec[2], Constructions={
++    {Percent=0,File="construction",Frame=0}, {Percent=20,File="construction",Frame=1},
++    {Percent=40,File="construction",Frame=2}, {Percent=60,File="main",Frame=1}}})
++  DefineUnitType(spec[1], {Construction=construction, BuilderOutside=true,
++    Flip=false, DrawLevel=50, Armor=20, VisibleUnderFog=true,
++    RepairHp=4, RepairCosts={"minerals",1,"gas",0}, Missile="missile-none"})
++end
++-- The compact sheets use five stored headings plus native mirroring.
++local marine_move = {}
++for _,frame in ipairs({5,10,15,20,25,30,35,0,40}) do
++  for _,op in ipairs({"unbreakable begin", "frame " .. frame, "move 4", "wait 1", "unbreakable end", "wait 1"}) do
++    table.insert(marine_move, op)
++  end
++end
++DefineAnimations("animations-pax-marine", {
++  Still={"frame 0", "wait 30"}, Move=marine_move,
++  Attack={"unbreakable begin", "frame 45", "sound terran-marine-attack", "attack", "wait 2", "frame 50", "wait 2", "unbreakable end", "wait 1"},
++  Death={"unbreakable begin", "frame 0", "wait 8", "unbreakable end", "wait 1"}})
++DefineAnimations("animations-pax-zergling", {
++  Still={"frame 0", "wait 30"},
++  Move={"unbreakable begin", "frame 5", "move 4", "wait 1", "frame 10", "move 4", "unbreakable end", "wait 1",
++        "unbreakable begin", "frame 15", "move 4", "wait 1", "frame 20", "move 4", "unbreakable end", "wait 1"},
++  Attack={"unbreakable begin", "frame 25", "sound zerg-zergling-attack", "attack", "wait 2", "frame 30", "wait 2", "unbreakable end", "wait 1"},
++  Death={"unbreakable begin", "frame 0", "wait 8", "unbreakable end", "wait 1"}})
++DefineAnimations("animations-pax-vehicle", {
++  Still={"frame 0", "wait 30"},
++  Move={"unbreakable begin", "frame 0", "move 4", "wait 1", "move 4", "unbreakable end", "wait 1"},
++  Attack={"unbreakable begin", "sound terran-vulture-attack", "attack", "wait 3", "unbreakable end", "wait 1"},
++  Death={"unbreakable begin", "frame 0", "wait 8", "unbreakable end", "wait 1"}})
++DefineMissileType("missile-none", {Size={32,32}, DrawLevel=50, Class="missile-class-none", Sleep=1, Speed=16, Range=1})
++for _,id in ipairs({"unit-terran-marine", "unit-zerg-zergling", "unit-terran-scv", "unit-hero-jim-raynor-vulture"}) do
++  DefineUnitType(id, {Animations="animations-pax-vehicle", DrawLevel=40,
++    RightMouseAction="attack", SelectableByRectangle=true, CanAttack=true,
++    CanTargetLand=true, Missile="missile-none", BasicDamage=6, PiercingDamage=2,
++    MaxAttackRange=16, Priority=60, Demand=1})
++end
++DefineUnitType("unit-terran-marine", {Animations="animations-pax-marine", NumDirections=8, Icon="icon-terran-marine", Armor=2})
++DefineUnitType("unit-zerg-zergling", {Animations="animations-pax-zergling", NumDirections=8, Icon="icon-zerg-zergling", MaxAttackRange=1, Armor=2, PiercingDamage=3})
++DefineUnitType("unit-terran-scv", {NumDirections=8, Icon="icon-terran-scv"})
++DefineUnitType("unit-hero-jim-raynor-vulture", {NumDirections=8, Icon="icon-terran-jim-raynor-vulture"})
++DefineUnitType("unit-terran-command-center", {Supply=10, CanStore={"minerals","gas"}})
++DefineAnimations("animations-pax-command-center", {
++  Still={"frame 0","wait 30"}, Train={"frame 0","wait 30"}})
++DefineUnitType("unit-terran-command-center", {Animations="animations-pax-command-center"})
++DefineUnitType("unit-terran-supply-depot", {Supply=8, Icon="icon-terran-supply-depot"})
++DefineAnimations("animations-pax-barracks", {
++  Still={"frame 0","wait 30"}, Train={"frame 7","wait 4","frame 8","wait 4"}})
++DefineUnitType("unit-terran-barracks", {Animations="animations-pax-barracks"})
++DefineUnitType("unit-terran-scv", {RightMouseAction="harvest", CanGatherResources={
++  {"resource-id","minerals","harvest-from-outside","resource-capacity",8,
++   "wait-at-resource",150,"wait-at-depot",50}}})
++DefineAnimations("animations-pax-scv", {
++  Still={"frame 0","wait 30"},
++  Move={"unbreakable begin","frame 0","move 4","wait 1","move 4","unbreakable end","wait 1"},
++  Harvest_minerals={"unbreakable begin","sound terran-scv-attack","frame 10","wait 3","frame 5","wait 3","unbreakable end","wait 4"},
++  Attack={"unbreakable begin","frame 10","sound terran-scv-attack","attack","wait 1","frame 5","unbreakable end","wait 1"},
++  Build={"sound terran-scv-attack","frame 10","wait 4","frame 5","wait 4"},
++  Repair={"unbreakable begin","sound terran-scv-attack","frame 10","wait 1","frame 5","unbreakable end","wait 1"}})
++DefineUnitType("unit-terran-scv", {Animations="animations-pax-scv", RepairRange=1, MaxAttackRange=1,BasicDamage=3,PiercingDamage=2,Coward=true})
++for _,id in ipairs({"unit-resource-mineral-field","unit-resource-mineral-field-type-2","unit-resource-mineral-field-type-3"}) do
++  DefineUnitType(id,{GivesResource="minerals", CanHarvest=true, VisibleUnderFog=true,
++    NeutralMinimapColor={0,228,252}})
++end
++DefineButton({Pos=1,Level=0,Icon="icon-terran-scv",Action="train-unit",Value="unit-terran-scv",
++  Key="s",Hint="Build SCV",ForUnit={"unit-terran-command-center"}})
++DefineButton({Pos=1,Level=0,Icon="icon-terran-marine",Action="train-unit",Value="unit-terran-marine",
++  Key="m",Hint="Train Marine",ForUnit={"unit-terran-barracks"}})
++DefineButton({Pos=6,Level=0,Icon="icon-rally-point",Action="move",
++  Key="r",Hint="Set Rally Point",ForUnit={"unit-terran-command-center","unit-terran-barracks"}})
++DefineButton({Pos=9,Level=0,Icon="icon-cancel",Action="cancel-train-unit",Value=-1,
++  Key="c",Hint="Cancel Training",ForUnit={"unit-terran-command-center","unit-terran-barracks"}})
++DefineButton({Pos=9,Level=0,Icon="icon-cancel",Action="cancel-build",
++  Key="\27",Hint="Cancel Construction",ForUnit={"cancel-build"}})
++SetTrainingQueue(true)
++DefineDependency("unit-terran-supply-depot", {"unit-terran-command-center"})
++DefineDependency("unit-terran-barracks", {"unit-terran-command-center"})
++DefineDependency("unit-terran-marine", {"unit-terran-barracks"})
++-- Normally supplied by terran/units.lua, which this compact bootstrap skips.
++for _,id in ipairs({"unit-terran-scv", "unit-terran-marine", "unit-terran-command-center",
++                     "unit-terran-supply-depot", "unit-terran-barracks"}) do
++  DefineAllow(id, "AAAAAAAAAAAAAAAA")
++end
++local pax_units = {"unit-terran-marine", "unit-hero-jim-raynor-vulture", "unit-zerg-zergling"}
++for _,button in ipairs({{1,"move","m"}, {2,"stop","s"}, {3,"attack","a"}, {5,"patrol","p"}, {6,"stand-ground","h"}}) do
++  DefineButton({Pos=button[1], Level=0, Icon="icon-" .. (button[2] == "stand-ground" and "hold-position" or button[2]), Action=button[2], Key=button[3],
++                Hint=button[2], ForUnit=pax_units})
++end
++for _,button in ipairs({{1,"move","m"}, {2,"stop","s"}, {3,"attack","a"},
++                       {4,"repair","r"}, {5,"harvest","g"}, {6,"return-goods","c"}}) do
++  local icon=(button[2]=="harvest" or button[2]=="return-goods") and "gather" or button[2]
++  DefineButton({Pos=button[1],Level=0,Icon="icon-"..icon,Action=button[2],Key=button[3],
++    Hint=button[2],ForUnit={"unit-terran-scv"}})
++end
++DefineButton({Pos=7,Level=0,Icon="icon-build",Action="button",Value=1,
++  Key="b",Hint="Build Structure",ForUnit={"unit-terran-scv"}})
++for _,spec in ipairs({{1,"command-center","c"},{2,"supply-depot","s"},{4,"barracks","b"}}) do
++  DefineButton({Pos=spec[1],Level=1,Icon="icon-terran-"..spec[2],Action="build",
++    Value="unit-terran-"..spec[2],Key=spec[3],Hint="Build "..spec[2],ForUnit={"unit-terran-scv"}})
++end
++DefineButton({Pos=9,Level=1,Icon="icon-cancel",Action="button",Value=0,
++  Key="\27",Hint="Cancel",ForUnit={"unit-terran-scv"}})
++DefineButton({Pos=9, Level=9, Icon="icon-cancel", Action="cancel", Key="\27", Hint="Cancel", ForUnit={"*"}})
++)pax";
++#endif
++#endif
+ static std::optional<std::string> GetFileContent(const fs::path& file)
+ {
++#ifdef STRATAGUS_PAX
++	if (file.u8string().find("pax_bootstrap.lua") != std::string::npos) {
++		return std::string(PaxBootstrapScript);
++	}
++#endif
+ 	CFile fp;
+ 
+ 	if (fp.open(file.string().c_str(), CL_OPEN_READ) == -1) {
+@@ -241,32 +593,183 @@ static std::optional<std::string> GetFileContent(const fs::path& file)
+ **
+ **  @return      0 for success, -1 if the file was not found, else exit.
+ */
++#ifdef STRATAGUS_PAX
++static int LoadPaxSaveChunks(const fs::path &path, bool exitOnError)
++{
++	CFile file;
++	if (file.open(path.string().c_str(), CL_OPEN_READ) == -1) return -1;
++	// Serialized Lua globals can exceed 64 KB; grow only when needed.
++	size_t capacity = 65536;
++	constexpr size_t maxCapacity = 1024 * 1024;
++	std::unique_ptr<char[]> chunk(new char[capacity]);
++	if (!chunk) { lua_pushliteral(Lua, "No memory for save chunk"); report(LUA_ERRMEM, exitOnError); return LUA_ERRMEM; }
++	lua_getglobal(Lua, "__file__");
++	const int base = lua_gettop(Lua);
++	lua_pushstring(Lua, path.string().c_str()); lua_setglobal(Lua, "__file__");
++	size_t used = 0, lineStart = 0;
++	int status = 0, count = 0;
++	char block[4096];
++	auto execute = [&]() {
++		int result = luaL_loadbuffer(Lua, chunk.get(), used, path.string().c_str());
++		if (result) report(result, exitOnError);
++		else result = LuaCall(0, 1, exitOnError);
++		lua_settop(Lua, base);
++		lua_gc(Lua, LUA_GCCOLLECT, 0);
++		used = lineStart = 0;
++		return result;
++	};
++	while (!status && (count = file.read(block, sizeof(block))) > 0) {
++		for (int i = 0; i < count && !status; ++i) {
++			if (used == capacity) {
++				if (capacity == maxCapacity) {
++					lua_pushliteral(Lua, "Saved-game chunk exceeds 1 MB");
++					status = LUA_ERRSYNTAX; report(status, exitOnError); break;
++				}
++				const size_t newCapacity = capacity * 2;
++				std::unique_ptr<char[]> larger(new char[newCapacity]);
++				if (!larger) {
++					lua_pushliteral(Lua, "No memory to grow save chunk");
++					status = LUA_ERRMEM; report(status, exitOnError); break;
++				}
++				memcpy(larger.get(), chunk.get(), used);
++				chunk.swap(larger);
++				capacity = newCapacity;
++			}
++			chunk[used++] = block[i];
++			if (block[i] == '\n') {
++				constexpr char marker[] = "-- PAX CHUNK\n";
++				if (used - lineStart == sizeof(marker) - 1 &&
++					!memcmp(chunk.get() + lineStart, marker, sizeof(marker) - 1)) {
++					used = lineStart;
++					status = execute();
++				} else lineStart = used;
++			}
++		}
++	}
++	if (!status && used) status = execute();
++	if (file.close() != 0 || count < 0) {
++		lua_pushliteral(Lua, "Error reading native save");
++		status = LUA_ERRFILE; report(status, exitOnError);
++	}
++	lua_settop(Lua, base); lua_setglobal(Lua, "__file__");
++	return status;
++}
++#endif
+ int LuaLoadFile(const fs::path &file, const std::string &strArg, bool exitOnError)
+ {
+ 	DebugPrint("Loading '%s'\n", file.u8string().c_str());
+-
+-	const auto content = GetFileContent(file);
+-	if (!content) {
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug((std::string("LuaLoadFile begin: ") + file.string()).c_str());
++	// The PAX bootstrap is compiled into the executable.  Do not copy it into
++	// a temporary std::string: on the ESP32 allocator that copy can fault before
++	// Lua even gets a chance to compile the chunk.
++	const bool pax_bootstrap = file.filename() == "pax_bootstrap.lua";
++	// Native saves can exceed the largest contiguous block after map cleanup.
++	// Feed gzip input directly to Lua rather than growing a vector and making
++	// two additional whole-file string copies.
++	const bool pax_saved_game = file.filename().string().find(".sav") != std::string::npos;
++	if (pax_saved_game) return LoadPaxSaveChunks(file, exitOnError);
++	#else
++	const bool pax_bootstrap = false;
++	#endif
++
++	const auto content = pax_bootstrap
++#ifdef STRATAGUS_PAX
++		|| pax_saved_game
++#endif
++		? std::optional<std::string>{} : GetFileContent(file);
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug(pax_bootstrap || content ? "LuaLoadFile content complete" : "LuaLoadFile content missing");
++	const bool pax_trace_mineral_file = file.string().find("unit-resource-mineral-field.lua") != std::string::npos;
++	if (pax_trace_mineral_file) {
++		pax_stratagus_debug("LoadCcl mineral file content boundary");
++	}
++	#endif
++	if (!pax_bootstrap
++#ifdef STRATAGUS_PAX
++		&& !pax_saved_game
++#endif
++		&& !content) {
+ 		return -1;
+ 	}
+-	if (file.string().rfind("stratagus.lua") != std::string::npos) {
++	if (!pax_bootstrap && file.string().rfind("stratagus.lua") != std::string::npos) {
+ 		FileChecksums ^= fletcher32(*content);
+ 		DebugPrint("FileChecksums after loading %s: %x\n", file.u8string().c_str(), FileChecksums);
+ 	}
+ 	// save the current __file__
+ 	lua_getglobal(Lua, "__file__");
+ 
++	#ifdef STRATAGUS_PAX
++	int status;
++	if (pax_bootstrap) {
++		pax_stratagus_debug("LuaLoadFile using embedded bootstrap");
++		status = luaL_loadbuffer(Lua, PaxBootstrapScript,
++			sizeof(PaxBootstrapScript) - 1, "pax_bootstrap.lua");
++	} else {
++		std::string pax_content = *content;
++#ifdef PAX_STRATAGUS_WARCRAFT
++		// This build excludes the multiplayer transport and online service.
++		// Do not enter the stock lobby and leave the player in an unusable UI.
++		if (file.filename() == "network.lua" && file.parent_path().filename() == "menus") {
++			pax_content += R"lua(
++function RunMultiPlayerGameMenu()
++  local menu = WarGameMenu(nil, 320, 112)
++  menu:addLabel("Multiplayer is unavailable", 160, 12)
++  menu:addLabel("This ESP PAX is single-player only.", 160, 35)
++  menu:addLabel("Return to the menu to play.", 160, 54)
++  local ok = menu:addHalfButton("~!OK", "o", 0, 84, function() menu:stop() end)
++  ok:setX((menu:getWidth() - ok:getWidth()) / 2)
++  menu:run()
++end
++)lua";
++			pax_stratagus_debug("Warcraft: unsupported multiplayer entry guarded");
++		}
++#endif
++		if (file.string().rfind("stratagus.lua") != std::string::npos) {
++			const auto debug_start = pax_content.find("pcall(function() require(\"scripts/mobdebug\")");
++			if (debug_start != std::string::npos) {
++				const auto debug_end = pax_content.find('\n', debug_start);
++				pax_content.replace(debug_start,
++					debug_end == std::string::npos ? std::string::npos : debug_end - debug_start,
++					"-- mobdebug disabled in PAX");
++				pax_stratagus_debug("LuaLoadFile: mobdebug disabled");
++			}
++		}
++		status = luaL_loadbuffer(Lua, pax_content.c_str(), pax_content.size(), file.string().c_str());
++	}
++	#else
+ 	const int status = luaL_loadbuffer(Lua, content->c_str(), content->size(), file.string().c_str());
++	#endif
+ 
+ 	if (!status) {
++		#ifdef STRATAGUS_PAX
++		if (pax_trace_mineral_file) {
++			pax_stratagus_debug("LoadCcl mineral file loaded boundary");
++		}
++		#endif
+ 		lua_pushstring(Lua, fs::absolute(fs::path(file)).generic_u8string().c_str());
+ 		lua_setglobal(Lua, "__file__");
+ 		if (!strArg.empty()) {
++			#ifdef STRATAGUS_PAX
++			pax_stratagus_debug("LuaLoadFile call begin");
++			#endif
+ 			lua_pushstring(Lua, strArg.c_str());
+ 			LuaCall(1, 1, exitOnError);
+ 		} else {
++			#ifdef STRATAGUS_PAX
++			pax_stratagus_debug("LuaLoadFile call begin");
++			if (pax_trace_mineral_file) {
++				pax_stratagus_debug("LoadCcl mineral file call boundary");
++			}
++			#endif
+ 			LuaCall(0, 1, exitOnError);
+ 		}
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("LuaLoadFile call complete");
++		if (pax_trace_mineral_file) {
++			pax_stratagus_debug("LoadCcl mineral file call complete");
++		}
++		#endif
+ 	} else {
+ 		report(status, exitOnError);
+ 	}
+@@ -275,6 +778,55 @@ int LuaLoadFile(const fs::path &file, const std::string &strArg, bool exitOnErro
+ 	return status;
+ }
+ 
++#ifdef STRATAGUS_PAX
++/* Load the compiled-in Stargus bootstrap without constructing an fs::path.
++ * The ESP32 PAX allocator faults while copying the synthetic /sd path, even
++ * though the Lua chunk itself is valid. */
++static int LuaLoadPaxBootstrap(const std::string &strArg, bool exitOnError)
++{
++	pax_stratagus_debug("LoadCclPax bootstrap begin");
++	// This is a one-shot bootstrap; unlike normal CCL files it does not need
++	// to preserve the caller's __file__ stack value.
++	pax_stratagus_debug("LoadCclPax before loadbuffer");
++	const int status = luaL_loadbuffer(Lua, PaxBootstrapScript,
++		sizeof(PaxBootstrapScript) - 1, "pax_bootstrap.lua");
++	pax_stratagus_debug("LoadCclPax after loadbuffer");
++	if (!status) {
++		lua_pushliteral(Lua, "/sd/roms/stargus/scripts/pax_bootstrap.lua");
++		lua_setglobal(Lua, "__file__");
++		pax_stratagus_debug("LoadCclPax call begin");
++		if (!strArg.empty()) {
++			lua_pushstring(Lua, strArg.c_str());
++			LuaCall(1, 1, exitOnError);
++		} else {
++			LuaCall(0, 1, exitOnError);
++		}
++		pax_stratagus_debug("LoadCclPax call complete");
++	} else {
++		report(status, exitOnError);
++	}
++	return status;
++}
++
++void LoadCclPax()
++{
++	CclInConfigFile = true;
++#ifdef STRATAGUS_PAX_LUA_NOOP
++	pax_stratagus_debug("LoadCclPax no-op probe");
++	CclInConfigFile = false;
++	return;
++#else
++	pax_stratagus_debug("LoadCclPax loading embedded bootstrap");
++	LuaLoadPaxBootstrap("", true);
++	CclInConfigFile = false;
++#ifndef STRATAGUS_PAX_LUA_NO_GC
++	LuaGarbageCollect();
++#endif
++	pax_stratagus_debug("LoadCclPax complete");
++#endif
++}
++#endif
++
+ /**
+ **  Save preferences
+ **
+@@ -301,10 +853,16 @@ static int CclLoad(lua_State *l)
+ 		LuaError(l, "incorrect argument");
+ 	}
+ 	const fs::path filename = LibraryFileName(std::string{LuaToString(l, 1)});
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug((std::string("LoadCcl file: ") + filename.string()).c_str());
++	#endif
+ 	bool exitOnError = arg == 2 ? LuaToBoolean(l, 2) : true;
+ 	if (LuaLoadFile(filename, "", exitOnError) == -1) {
+ 		ErrorPrint("Load failed: '%s'\n", filename.u8string().c_str());
+ 	}
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LoadCcl file complete");
++	#endif
+ 	return 0;
+ }
+ 
+@@ -448,9 +1006,18 @@ bool LuaToBoolean(lua_State *l, int index, int subIndex)
+ void LuaGarbageCollect()
+ {
+ #if LUA_VERSION_NUM >= 501
++	#ifdef STRATAGUS_PAX
++	char pax_gc_message[100];
++	snprintf(pax_gc_message, sizeof(pax_gc_message), "Map Lua collect before: %d KiB", lua_gc(Lua, LUA_GCCOUNT, 0));
++	pax_stratagus_debug(pax_gc_message);
++	#endif
+ 	DebugPrint("Garbage collect (before): %d\n", lua_gc(Lua, LUA_GCCOUNT, 0));
+ 	lua_gc(Lua, LUA_GCCOLLECT, 0);
+ 	DebugPrint("Garbage collect (after): %d\n", lua_gc(Lua, LUA_GCCOUNT, 0));
++	#ifdef STRATAGUS_PAX
++	snprintf(pax_gc_message, sizeof(pax_gc_message), "Map Lua collect after: %d KiB", lua_gc(Lua, LUA_GCCOUNT, 0));
++	pax_stratagus_debug(pax_gc_message);
++	#endif
+ #else
+ 	DebugPrint("Garbage collect (before): %d/%d\n", lua_getgccount(Lua), lua_getgcthreshold(Lua));
+ 	lua_setgcthreshold(Lua, 0);
+@@ -1838,7 +2405,11 @@ static void AliasRegister()
+ */
+ static int CclStratagusLibraryPath(lua_State *l)
+ {
++#ifdef STRATAGUS_PAX
++	lua_pushstring(l, StratagusLibPath);
++#else
+ 	lua_pushstring(l, StratagusLibPath.c_str());
++#endif
+ 	return 1;
+ }
+ 
+@@ -1994,10 +2565,21 @@ static int CclRestartStratagus(lua_State *l)
+ */
+ int CclCommand(const std::string &command, bool exitOnError)
+ {
++	#ifdef STRATAGUS_PAX
++	const bool pax_map_loaded_command = command.find("MapLoaded") != std::string::npos;
++	if (pax_map_loaded_command) {
++		pax_stratagus_debug("MapLoaded command begin");
++	}
++	#endif
+ 	const int status = luaL_loadbuffer(Lua, command.c_str(), command.size(), command.c_str());
+ 
+ 	if (!status) {
+ 		LuaCall(0, 1, exitOnError);
++		#ifdef STRATAGUS_PAX
++		if (pax_map_loaded_command) {
++			pax_stratagus_debug("MapLoaded command complete");
++		}
++		#endif
+ 	} else {
+ 		report(status, exitOnError);
+ 	}
+@@ -2015,7 +2597,22 @@ extern int tolua_stratagus_open(lua_State *tolua_S);
+ */
+ void InitLua()
+ {
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("InitLua: begin");
++	#endif
+ 	// For security we don't load all libs
++#ifdef STRATAGUS_PAX
++// The game scripts rely on Lua's standard base/table/string/math helpers.
++// Keep host-facing libraries disabled, but do not start with an empty Lua
++// environment: that causes valid Stargus scripts to fail later in CCL code.
++static const luaL_Reg lualibs[] = {
++	{"", luaopen_base},
++	{LUA_TABLIBNAME, luaopen_table},
++	{LUA_STRLIBNAME, luaopen_string},
++	{LUA_MATHLIBNAME, luaopen_math},
++	{nullptr, nullptr}
++};
++#else
+ 	static const luaL_Reg lualibs[] = {
+ 		{"", luaopen_base},
+ 		{LUA_TABLIBNAME, luaopen_table},
+@@ -2023,16 +2620,39 @@ void InitLua()
+ 		{LUA_IOLIBNAME, luaopen_io},
+ 		{LUA_LOADLIBNAME, luaopen_package},
+ #endif
+-		{LUA_OSLIBNAME, luaopen_os},
+-		{LUA_STRLIBNAME, luaopen_string},
+-		{LUA_MATHLIBNAME, luaopen_math},
+-		{LUA_DBLIBNAME, luaopen_debug},
++#ifndef STRATAGUS_PAX
++	{LUA_OSLIBNAME, luaopen_os},
++#endif
++#ifndef STRATAGUS_PAX
++	{LUA_STRLIBNAME, luaopen_string},
++#endif
++#ifndef STRATAGUS_PAX
++	{LUA_MATHLIBNAME, luaopen_math},
++#endif
++#ifndef STRATAGUS_PAX
++	{LUA_DBLIBNAME, luaopen_debug},
++#endif
+ 		{nullptr, nullptr}
+ 	};
++#endif
+ 
+ 	Lua = luaL_newstate();
++	#ifdef STRATAGUS_PAX
++	// The PAX build has no debugger/remote Lua hooks.  Keeping the hook
++	// machinery disabled also avoids entering Lua's hook stack-growth path
++	// while the app is running from its relocated image.
++	if (Lua) {
++		lua_sethook(Lua, nullptr, 0, 0);
++	}
++	#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug(Lua ? "InitLua: state created" : "InitLua: state creation failed");
++	#endif
+ 
+ 	for (const luaL_Reg *lib = lualibs; lib->func; ++lib) {
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug(lib->name[0] ? lib->name : "InitLua: base library");
++		#endif
+ #if LUA_VERSION_NUM == 503 || LUA_VERSION_NUM == 502
+ 		luaL_requiref(Lua, lib->name, lib->func, 1);
+ 		lua_pop(Lua, 1);
+@@ -2056,7 +2676,13 @@ void InitLua()
+ 	}
+ 	report(status, false);
+ #endif
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("InitLua: registering tolua classes");
++	tolua_stratagus_open(Lua);
++	pax_stratagus_debug("InitLua: tolua classes registered");
++#else
+ 	tolua_stratagus_open(Lua);
++#endif
+ 	lua_settop(Lua, 0);  // discard any results
+ }
+ 
+@@ -2530,6 +3156,18 @@ void LoadCcl(const fs::path &filename, const std::string &luaArgStr)
+ {
+ 	//  Load and evaluate configuration file
+ 	CclInConfigFile = true;
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LoadCcl loading game scripts");
++#ifdef PAX_STRATAGUS_WARCRAFT
++	LuaLoadFile(LibraryFileName(filename.string()),luaArgStr);
++#else
++	LuaLoadPaxBootstrap(luaArgStr, true);
++#endif
++	pax_stratagus_debug("LoadCcl after LuaLoadPaxBootstrap");
++	CclInConfigFile = false;
++	LuaGarbageCollect();
++	pax_stratagus_debug("LoadCcl game scripts complete");
++	#else
+ 	const fs::path name = LibraryFileName(filename.string());
+ 	if (!fs::exists(name)) {
+ 		ErrorPrint("Maybe you need to specify another gamepath with '-d /path/to/datadir'?\n");
+@@ -2540,6 +3178,7 @@ void LoadCcl(const fs::path &filename, const std::string &luaArgStr)
+ 	LuaLoadFile(name, luaArgStr);
+ 	CclInConfigFile = false;
+ 	LuaGarbageCollect();
++	#endif
+ }
+ 
+ #ifdef WIN32
+@@ -2666,6 +3305,12 @@ static int CclListFilesystem(lua_State *l)
+ void ScriptRegister()
+ {
+ 	AliasRegister();
++	#ifdef STRATAGUS_PAX
++	lua_register(Lua, "PaxGameMenu", [](lua_State *) -> int {
++		pax_stratagus_open_game_menu();
++		return 0;
++	});
++	#endif
+ 
+ 	lua_register(Lua, "LibraryPath", CclStratagusLibraryPath);
+ 	lua_register(Lua, "ListDirectory", CclListDirectory);
+diff --git a/src/stratagus/stratagus.cpp b/src/stratagus/stratagus.cpp
+index 9fe29133b..3e6cce462 100644
+--- a/src/stratagus/stratagus.cpp
++++ b/src/stratagus/stratagus.cpp
+@@ -182,6 +182,9 @@ extern void beos_init(int argc, char **argv);
+ #endif
+ 
+ #include "stratagus.h"
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
+ 
+ #include "ai.h"
+ #include "editor.h"
+@@ -206,6 +209,9 @@ extern void beos_init(int argc, char **argv);
+ #include "version.h"
+ #include "video.h"
+ #include "widgets.h"
++	#ifdef STRATAGUS_PAX
++#include <SDL_image.h>
++	#endif
+ #include "util.h"
+ 
+ #include "missile.h" //for FreeBurningBuildingFrames
+@@ -216,6 +222,10 @@ extern void beos_init(int argc, char **argv);
+ #include <optional>
+ #include <utility>
+ 
++#ifdef STRATAGUS_PAX
++extern void StartMap(const std::string &filename, bool clean);
++#endif
++
+ #ifdef USE_STACKTRACE
+ #include <stdexcept>
+ #include <stacktrace/call_stack.hpp>
+@@ -227,6 +237,15 @@ extern void beos_init(int argc, char **argv);
+ #include <cstdlib>
+ #include <cstdio>
+ 
++#ifdef STRATAGUS_PAX
++#include <cstdint>
++#include <cstring>
++
++#include "pax_menu.h"
++extern "C" void pax_stratagus_audio_start();
++extern "C" void pax_stratagus_pointer_start();
++#endif
++
+ #ifdef USE_WIN32
+ # include <dbghelp.h>
+ # include <windows.h>
+@@ -242,7 +261,11 @@ extern void beos_init(int argc, char **argv);
+ --  Variables
+ ----------------------------------------------------------------------------*/
+ 
++#ifdef STRATAGUS_PAX
++const char *StratagusLibPath = PAX_STRATAGUS_DATA_ROOT; /// Selected game's SD directory
++#else
+ std::string StratagusLibPath;        /// Path for data directory
++#endif
+ 
+ /// Name, Version, Copyright
+ const char NameLine[] = NAME " v" VERSION ", " COPYRIGHT;
+@@ -277,22 +300,70 @@ void PreMenuSetup()
+ 	//
+ 	//  Initial menus require some gfx.
+ 	//
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: entered");
++	#endif
+ 	SetDefaultTextColors(FontYellow, FontWhite);
+ 
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: before LoadFonts");
++	#endif
++	#ifdef STRATAGUS_PAX
++	/* The PAX software renderer defers font-sheet decoding; the first
++	 * mission frame can be rendered without the desktop font atlas. */
++	pax_stratagus_debug("PreMenuSetup: skipping font atlas on PAX");
++	#else
+ 	LoadFonts();
+-
++	#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: after LoadFonts");
++	#endif
++
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: before InitVideoCursors");
++	#endif
+ 	InitVideoCursors();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: after InitVideoCursors");
++	#endif
+ 
+ 	if (MenuRace.empty()) {
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("PreMenuSetup: before LoadCursors default");
++		#endif
+ 		LoadCursors(PlayerRaces.Name[0]);
+ 	} else {
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("PreMenuSetup: before LoadCursors menu race");
++		#endif
+ 		LoadCursors(MenuRace);
+ 	}
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: after LoadCursors");
++	#endif
+ 
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: before InitSettings");
++	#endif
+ 	InitSettings();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: after InitSettings");
++	#endif
+ 
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: before InitUserInterface");
++	#endif
+ 	InitUserInterface();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: after InitUserInterface");
++	#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: before UI.Load");
++	#endif
+ 	UI.Load();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("PreMenuSetup: after UI.Load");
++	#endif
+ }
+ 
+ /**
+@@ -394,6 +465,9 @@ void PrintLicense()
+ */
+ void Exit(int err)
+ {
++#ifdef STRATAGUS_PAX
++	pax_stratagus_audio_stop();
++#endif
+ 	if (GameRunning) {
+ 		StopGame(GameExit);
+ 		return;
+@@ -423,6 +497,9 @@ void Exit(int err)
+ 	delete UnitManager;
+ 
+ 	fprintf(stdout, "%s", _("Thanks for playing Stratagus.\n"));
++#ifdef STRATAGUS_PAX
++	return;
++#endif
+ 	exit(err);
+ }
+ 
+@@ -573,11 +650,15 @@ void ParseCommandLine(int argc, char **argv, Parameters &parameters)
+ 				}
+ 				continue;
+ 			case 'd': {
++#ifndef STRATAGUS_PAX
+ 				StratagusLibPath = optarg;
+ 				size_t index;
+ 				while ((index = StratagusLibPath.find('\\')) != std::string::npos) {
+ 					StratagusLibPath[index] = '/';
+ 				}
++#else
++				(void)optarg;
++#endif
+ 				continue;
+ 			}
+ 			case 'D':
+@@ -699,9 +780,20 @@ static LONG WINAPI CreateDumpFile(EXCEPTION_POINTERS *ExceptionInfo)
+ */
+ int stratagusMain(int argc, char **argv)
+ try {
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("stratagusMain entered");
++	#endif
++	#ifndef STRATAGUS_PAX
+ 	for (int i = 0; i < argc; i++) {
+ 		OriginalArgv.push_back(std::string(argv[i]));
+ 	}
++	#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("OriginalArgv complete");
++	#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("before StratagusLibPath");
++	#endif
+ #ifdef USE_BEOS
+ 	//  Parse arguments for BeOS
+ 	beos_init(argc, argv);
+@@ -714,7 +806,12 @@ try {
+ #endif
+ 	//  Setup some defaults.
+ #ifndef MAC_BUNDLE
++	#ifndef STRATAGUS_PAX
+ 	StratagusLibPath = ".";
++	#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("StratagusLibPath complete");
++	#endif
+ #else
+ 	freopen("/tmp/stdout.txt", "w", stdout);
+ 	freopen("/tmp/stderr.txt", "w", stderr);
+@@ -727,47 +824,208 @@ try {
+ 	Assert(pathPtr);
+ 	StratagusLibPath = pathPtr;
+ #endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("before Parameters instance");
++	#endif
+ 		Parameters &parameters = Parameters::Instance;
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("before SetDefaultValues");
++	#endif
++#if !defined(STRATAGUS_PAX)
+ 		parameters.SetDefaultValues();
+-		parameters.SetLocalPlayerNameFromEnv();
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("SetDefaultValues complete");
++	#endif
++#ifndef STRATAGUS_PAX
++	parameters.SetLocalPlayerNameFromEnv();
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("SetLocalPlayerNameFromEnv complete");
++	#endif
+ 
+ #ifdef REDIRECT_OUTPUT
+ 		RedirectOutput();
+ #endif
+ 
++#ifndef STRATAGUS_PAX
+ 	if (argc > 0) {
+ 		parameters.applicationName = argv[0];
+ 	}
++#endif
+ 
+ 	// FIXME: Parse options before or after scripts?
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("before ParseCommandLine");
++	#endif
++#ifndef STRATAGUS_PAX
+ 	ParseCommandLine(argc, argv, parameters);
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("ParseCommandLine complete");
++	#endif
+ 	// Init the random number generator.
+ 	InitSyncRand();
+ 
++#ifndef STRATAGUS_PAX
+ 	fs::create_directories(parameters.GetUserDirectory());
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("user directory complete");
++	#endif
+ 
+ 	// Init Lua and register lua functions!
+ 	InitLua();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("InitLua complete");
++	#endif
++	#ifdef STRATAGUS_PAX
++#if defined(STRATAGUS_PAX_DIRECT_MISSION)
++	/* The ESPHome logger eventually trips a null source pointer after the
++	 * startup probe has emitted its early diagnostics.  Keep this isolation
++	 * run silent while testing the Lua/module path itself. */
++	pax_stratagus_debug_mute();
++#endif
++	pax_stratagus_debug("LuaRegisterModules begin");
++	LuaRegisterModules();
++	pax_stratagus_debug("LuaRegisterModules complete");
++	#else
+ 	LuaRegisterModules();
++	#endif
+ 
+-	// Initialise AI module
++	// Initialise AI module.  The title/menu frame does not need AI state, and
++	// its desktop allocator-heavy bootstrap is deferred for the PAX path.
++#if !defined(STRATAGUS_PAX) || defined(PAX_STRATAGUS_WARCRAFT)
+ 	InitAiModule();
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("InitAiModule deferred");
++	#endif
+ 
+ 	// Setup sound card, must be done before loading sounds, so that
+ 	// SDL_mixer can auto-convert to the target format
++#ifndef STRATAGUS_PAX
+ 	if (InitSound()) {
+ 		InitMusic();
+ 	}
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("sound initialization complete");
++	#endif
++
++#if defined(STRATAGUS_PAX) && defined(STRATAGUS_PAX_DIRECT_MISSION)
++	/* Isolate the embedded Lua bootstrap from the global unit-manager
++	 * construction.  The latter is the first allocator boundary that fails on
++	 * the current PAX image, while the bootstrap itself can be tested safely
++	 * without a map or video surface. */
++	pax_stratagus_debug("direct probe: before LoadCclPax");
++	LoadCclPax();
++	pax_stratagus_debug("direct probe: after LoadCclPax");
++	return 0;
++#endif
+ 
+-	// init globals
+-	UnitManager = new CUnitManager();
+-	FogOfWar = std::make_unique<CFogOfWar>();
+-	InitOnlineService();
+-
++    // init globals
++#ifdef STRATAGUS_PAX
++    pax_stratagus_debug("before CUnitManager");
++#endif
++    UnitManager = new CUnitManager();
++#ifdef STRATAGUS_PAX
++    pax_stratagus_debug("CUnitManager complete");
++    pax_stratagus_debug("before FogOfWar");
++#endif
++    FogOfWar = std::make_unique<CFogOfWar>();
++#ifdef STRATAGUS_PAX
++    pax_stratagus_debug("FogOfWar complete");
++#endif
++#ifndef STRATAGUS_PAX
++    InitOnlineService();
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("InitOnlineService complete");
++	#endif
++
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LoadCcl begin");
++	#endif
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LoadCcl deferred until mission start");
++#ifdef PAX_STRATAGUS_WARCRAFT
++	// Warcraft retains its own CCL/UI/campaign definitions and native menus.
++	// Do not bootstrap Terran units against a Warcraft SD data root.
++	parameters.SetUserDirectory(PAX_STRATAGUS_DATA_ROOT "/user");
++	Video.Width=640; Video.Height=480;
++	// The PAX loader needs an early frame while the full Warcraft script
++	// tree loads. Native HUD definitions can also resolve display colors.
++	// This black loading frame is not evidence of a working native menu.
++	InitVideo();
++	Video.ResizeScreen(640,480);
++	Video.ClearScreen();
++	RealizeVideoMemory();
++	CclInConfigFile = true;
++	parameters.luaStartFilename = "scripts/stratagus.lua";
++	for (int i=1; i+1<argc; ++i) {
++		if (!strcmp(argv[i], "-c")) parameters.luaStartFilename = argv[++i];
++	}
++	LuaLoadFile(LibraryFileName(parameters.luaStartFilename));
++	CclInConfigFile = false;
++	LuaGarbageCollect();
++#endif
++#else
+ 	LoadCcl(parameters.luaStartFilename, parameters.luaScriptArguments);
+-
++#endif
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LoadCcl complete");
++	#endif
++
++	#ifdef STRATAGUS_PAX_LUA_ONLY
++	/* Diagnostic boundary: exercise the embedded CCL bootstrap without any
++	 * video initialization, SD-backed menu asset, or display callback. */
++	LoadCclPax();
++	return 0;
++	#endif
+ 	// Setup video display
++#ifndef PAX_STRATAGUS_WARCRAFT
+ 	InitVideo();
++#endif
++#if defined(STRATAGUS_PAX) && !defined(PAX_STRATAGUS_WARCRAFT)
++	// The original menu uses real RGB565 surfaces, like the working game.
++	// No 32-bit placeholder text/background writes may touch this canvas.
++	Video.ResizeScreen(800, 480);
++#if defined(STRATAGUS_PAX_DIRECT_MISSION)
++	int startMission = 1;
++#else
++	int startMission = pax_stratagus_menu_run(TheScreen);
++#endif
++	if (startMission && !pax_exit_requested) {
++		pax_stratagus_debug("mission 1 selected: loading game scripts");
++		LoadCclPax();
++		PreMenuSetup();
++		initGuichan();
++		std::string mission;
++		// Restart, menu return and loading run only after native map cleanup,
++		// outside the active UI/Lua callback. Keep definitions/artwork intact.
++		while (startMission && !pax_exit_requested) {
++			extern const char *pax_stratagus_take_load_path();
++			extern void pax_stratagus_save_reload_completed();
++			if (startMission==2) {
++				const char *save=pax_stratagus_take_load_path();
++				if (!save) break;
++				CleanPlayers(); LoadGame(save); mission=CurrentMapPath;
++				pax_stratagus_save_reload_completed(); StartMap(save,false);
++			} else {
++				if (startMission!=4) mission=startMission==3?"campaigns/terran/tutorial/scenario.smp":"campaigns/terran/01/scenario.smp";
++				StartMap(mission,true);
++			}
++			if (pax_exit_requested || GameResult==GameExit) break;
++			extern bool pax_stratagus_reload_pending();
++			if (pax_stratagus_reload_pending()) startMission=2;
++			else if (GameResult==GameRestart) startMission=4;
++			else startMission=pax_stratagus_menu_run(TheScreen,false);
++		}
++	}
++	Exit(0);
++	return 0;
++#endif
+ 
+ 	PrintHeader();
+ 	PrintLicense();
+@@ -777,6 +1035,10 @@ try {
+ #endif
+ 
+ 	//  Show title screens.
++#ifdef PAX_STRATAGUS_WARCRAFT
++	pax_stratagus_audio_start();
++	pax_stratagus_pointer_start();
++#endif
+ 	SetDefaultTextColors(FontYellow, FontWhite);
+ 	LoadFonts();
+ 	SetClipping(0, 0, Video.Width - 1, Video.Height - 1);
+@@ -784,6 +1046,12 @@ try {
+ 	if (!IsRestart) {
+ 		ShowTitleScreens();
+ 	}
++#ifdef PAX_STRATAGUS_WARCRAFT
++	// A remote close can end a streamed intro. Do not load menu assets
++	// afterward: the launcher allows only a short cooperative-close window.
++	// Return through engine_worker so audio/tasks stop before image unload.
++	if (pax_exit_requested) { Exit(0); return 0; }
++#endif
+ 
+ 	// Init player data
+ 	ThisPlayer = nullptr;
+@@ -794,11 +1062,17 @@ try {
+ 	UnitManager->Init(); // Units memory management
+ 	PreMenuSetup();     // Load everything needed for menus
+ 
++#ifdef PAX_STRATAGUS_WARCRAFT
++	pax_stratagus_debug("Warcraft: native menu loop begin");
++#endif
+ 	MenuLoop();
+ 
+ 	Exit(0);
+ 	return 0;
+ } catch (const std::exception &e) {
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug((std::string("native exception: ") + e.what()).c_str());
++#endif
+ 	ErrorPrint("Stratagus crashed!\n"
+ 		        "Please send this call stack to our bug tracker: "
+ 		        "https://github.com/Wargus/stratagus/issues\n"
+@@ -808,6 +1082,9 @@ try {
+ 	exit(1);
+ }
+ catch (const gcn::Exception &ex) {
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug((std::string("native Guichan exception: ") + ex.getMessage()).c_str());
++#endif
+ 	ErrorPrint("Stratagus crashed in Guichan!\n"
+ 	           "Please send this call stack to our bug tracker: "
+ 	           "https://github.com/Wargus/stratagus/issues\n"
+@@ -821,6 +1098,9 @@ catch (const gcn::Exception &ex) {
+ 	exit(1);
+ }
+ catch (...) {
++#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("native exception: unknown type");
++#endif
+ 	ErrorPrint("Stratagus crashed!\n"
+ 	           "Please send this call stack to our bug tracker: "
+ 	           "https://github.com/Wargus/stratagus/issues\n"
+diff --git a/src/stratagus/title.cpp b/src/stratagus/title.cpp
+index d3818a3d5..16c0e4e77 100644
+--- a/src/stratagus/title.cpp
++++ b/src/stratagus/title.cpp
+@@ -110,8 +110,18 @@ void TitleScreen::ShowTitleImage()
+ 	ApplyStretchMode(*g, this->StretchMode, Video.Width, Video.Height);
+ 
+ 	int timeout = this->Timeout ? this->Timeout * CYCLES_PER_SECOND : -1;
++#ifdef STRATAGUS_PAX
++	const Uint32 paxTitleStarted=SDL_GetTicks();
++#endif
+ 
+ 	while (timeout-- && WaitNoEvent) {
++#ifdef STRATAGUS_PAX
++		extern volatile int pax_exit_requested;
++		if (pax_exit_requested) break;
++		// Native title timeouts are in seconds, not a requirement to draw
++		// 30 frames per second on a slower embedded software renderer.
++		if (this->Timeout && Uint32(SDL_GetTicks()-paxTitleStarted)>=Uint32(this->Timeout)*1000u) break;
++#endif
+ 		g->DrawClip((Video.Width - g->Width) / 2, (Video.Height - g->Height) / 2);
+ 		this->ShowLabels();
+ 
+@@ -135,6 +145,10 @@ void ShowTitleScreens()
+ 	SetVideoSync();
+ 
+ 	for (const auto& titleScreen : TitleScreens) {
++#ifdef STRATAGUS_PAX
++		extern volatile int pax_exit_requested;
++		if (pax_exit_requested) break;
++#endif
+ 		if ((Editor.Running && !titleScreen->Editor) || (!Editor.Running && titleScreen->Editor)) {
+ 			continue;
+ 		}
+diff --git a/src/stratagus/util.cpp b/src/stratagus/util.cpp
+index b4c4a141d..15f62d9ee 100644
+--- a/src/stratagus/util.cpp
++++ b/src/stratagus/util.cpp
+@@ -315,7 +315,12 @@ int to_number(std::string_view s, int base)
+ 	const std::string buf(s); // handle non nul-terminated string
+ 	char *end = nullptr;
+ 
+-	int res = std::strtol(buf.data(), &end, base);
++	int res =
++#ifdef STRATAGUS_PAX
++		(int)pax_strtol(buf.data(), &end, base);
++#else
++		std::strtol(buf.data(), &end, base);
++#endif
+ 	if (end != buf.data() + buf.size()) {
+ 		ErrorPrint("That isn't a number '%s'.\n", buf.c_str());
+ 		Exit(1);
+diff --git a/src/tolua/stratagus.pkg b/src/tolua/stratagus.pkg
+index 556ecf5cf..0c13c93e6 100644
+--- a/src/tolua/stratagus.pkg
++++ b/src/tolua/stratagus.pkg
+@@ -99,5 +99,7 @@ void Exit(int err);
+ 
+ $extern std::string CliMapName;
+ extern std::string CliMapName;
++#ifndef STRATAGUS_PAX
+ extern std::string StratagusLibPath;
++#endif
+ extern bool IsDebugEnabled;
+diff --git a/src/ui/icons.cpp b/src/ui/icons.cpp
+index c39811be2..4feca34a7 100644
+--- a/src/ui/icons.cpp
++++ b/src/ui/icons.cpp
+@@ -53,6 +53,11 @@
+ 
+ using IconMap = std::map<std::string, std::unique_ptr<CIcon>, std::less<>>;
+ static IconMap Icons;   /// Map of ident to icon.
++#ifdef PAX_STRATAGUS_WARCRAFT
++// Many native Warcraft icons are frames of one atlas. Their disabled images
++// have identical pixels/palette, so one grayscale atlas suffices for all.
++static std::map<const CPlayerColorGraphic *, std::weak_ptr<CPlayerColorGraphic>> GrayIconAtlases;
++#endif
+ 
+ 
+ /*----------------------------------------------------------------------------
+@@ -105,7 +110,13 @@ void CIcon::Load()
+ 	Assert(G);
+ 	G->Load();
+ 	if (Preference.GrayscaleIcons) {
++#ifdef PAX_STRATAGUS_WARCRAFT
++		auto &cached=GrayIconAtlases[G.get()];
++		GScale=cached.lock();
++		if (!GScale) { GScale=G->Clone(true); cached=GScale; }
++#else
+ 		GScale = G->Clone(true);
++#endif
+ 	}
+ 	if (Frame >= G->NumFrames) {
+ 		DebugPrint("Invalid icon frame: %s - %d\n", Ident.c_str(), Frame);
+@@ -113,21 +124,27 @@ void CIcon::Load()
+ 	}
+ 	for (auto g : this->SingleSelectionG) {
+ 		g->Load();
++		#ifndef STRATAGUS_PAX
+ 		if (Frame >= G->NumFrames) {
+ 			DebugPrint("Invalid icon frame for single selection graphic: %s - %d\n", Ident.c_str(), Frame);
+ 		}
++		#endif
+ 	}
+ 	for (auto g : this->GroupSelectionG) {
+ 		g->Load();
++		#ifndef STRATAGUS_PAX
+ 		if (Frame >= G->NumFrames) {
+ 			DebugPrint("Invalid icon frame for group selection graphic: %s - %d\n", Ident.c_str(), Frame);
+ 		}
++		#endif
+ 	}
+ 	for (auto g : this->ContainedG) {
+ 		g->Load();
++		#ifndef STRATAGUS_PAX
+ 		if (Frame >= G->NumFrames) {
+ 			DebugPrint("Invalid icon frame for transport selection graphic: %s - %d\n", Ident.c_str(), Frame);
+ 		}
++		#endif
+ 	}
+ }
+ 
+@@ -184,12 +201,16 @@ void CIcon::DrawCooldownSpellIcon(const PixelPos &pos, const int percent) const
+ 
+ static void ApplyPaletteSwaps(const std::vector<PaletteSwap> &swaps, const CUnit &unit, CGraphic *graphic, bool def = false)
+ {
++	SDL_Surface *surface = graphic ? graphic->getSurface() : nullptr;
++	if (!surface || !surface->format || !surface->format->palette) {
++		return;
++	}
+ 	for (PaletteSwap swap : swaps) {
+ 		unsigned int varIdx = swap.GetUnitVariableIndex();
+ 		if (unit.Variable[varIdx].Enable) {
+ 			int value = def ? unit.Variable[varIdx].Max : unit.Variable[varIdx].Value;
+ 			const SDL_Color *colors = swap.GetColorsForPercentAndAlternative(value, unit.Variable[varIdx].Max, UnitNumber(unit));
+-			SDL_SetPaletteColors(graphic->getSurface()->format->palette,
++			SDL_SetPaletteColors(surface->format->palette,
+ 			                     colors,
+ 			                     swap.GetColorIndexStart(),
+ 			                     swap.GetColorCount());
+@@ -210,6 +231,23 @@ static void DrawByHealthIcon(const CIcon *icon,
+ 				? GameSettings.Presets[unit.RescuedFrom->Index].PlayerColor
+ 				: GameSettings.Presets[unit.Player->Index].PlayerColor;
+ 	int sz = graphics.size();
++	int frame = icon->Frame;
++#ifdef STRATAGUS_PAX
++	// The private compact wireframe sheets preserve palette indices, but
++	// only include the first-mission units/buildings. Keep command icon frame
++	// numbers unchanged and remap solely when drawing a health wireframe.
++	static constexpr int originalFrames[] = {0, 7, 19, 37, 106, 109, 111};
++	frame = -1;
++	for (unsigned i = 0; i < sizeof(originalFrames) / sizeof(originalFrames[0]); ++i) {
++		if (icon->Frame == originalFrames[i]) {
++			frame = i;
++			break;
++		}
++	}
++	if (frame < 0) {
++		sz = 0;
++	}
++#endif
+ 	if (!sz) {
+ 		ApplyPaletteSwaps(swaps, unit, icon->G.get());
+ 		icon->DrawUnitIcon(style, flags, pos, text, playerColor);
+@@ -223,9 +261,13 @@ static void DrawByHealthIcon(const CIcon *icon,
+ 		}
+ 		ButtonStyle s(style);
+ 		auto g = graphics[graphicIdx];
++		if (!g || !g->getSurface() || frame >= g->NumFrames) {
++			icon->DrawUnitIcon(style, flags, pos, text, playerColor);
++			return;
++		}
+ 		ApplyPaletteSwaps(swaps, unit, g.get());
+ 		s.Default.Sprite = s.Hover.Sprite = s.Clicked.Sprite = g;
+-		s.Default.Frame = s.Hover.Frame = s.Clicked.Frame = icon->Frame;
++		s.Default.Frame = s.Hover.Frame = s.Clicked.Frame = frame;
+ 		DrawUIButton(&s, flags, pos.x, pos.y, text, playerColor);
+ 	}
+ }
+@@ -404,6 +446,9 @@ void LoadIcons()
+ void CleanIcons()
+ {
+ 	Icons.clear();
++#ifdef PAX_STRATAGUS_WARCRAFT
++	GrayIconAtlases.clear();
++#endif
+ }
+ 
+ //@}
+diff --git a/src/ui/mainscr.cpp b/src/ui/mainscr.cpp
+index 16ba28641..22ea20411 100644
+--- a/src/ui/mainscr.cpp
++++ b/src/ui/mainscr.cpp
+@@ -35,6 +35,9 @@
+ ----------------------------------------------------------------------------*/
+ 
+ #include "stratagus.h"
++#ifdef STRATAGUS_PAX
++#include "pax_menu.h"
++#endif
+ 
+ #include "action/action_built.h"
+ #include "action/action_research.h"
+@@ -439,6 +442,10 @@ static bool DrawTypePortrait(const CUnitType &type)
+ static void DrawUnitInfo_portrait(const CUnit &unit)
+ {
+ 	const CUnitType &type = *unit.Type;
++#ifdef STRATAGUS_PAX
++	if (UI.SingleSelectedButton && pax_stratagus_portrait_draw(TheScreen,type.Ident.c_str(),
++		UI.SingleSelectedButton->X,UI.SingleSelectedButton->Y)) return;
++#endif
+ #ifdef USE_MNG
+ 	if (DrawTypePortrait(type)) {
+ 		return;
+@@ -1093,6 +1100,13 @@ static void DrawInfoPanelBackground(unsigned frame)
+ static void InfoPanel_draw_no_selection()
+ {
+ 	DrawInfoPanelBackground(0);
++#ifdef STRATAGUS_PAX
++	if (UI.SingleSelectedButton && !UI.DefaultUnitPortrait.empty())
++		pax_stratagus_portrait_draw(TheScreen,UI.DefaultUnitPortrait.c_str(),
++			UI.SingleSelectedButton->X,UI.SingleSelectedButton->Y);
++	// The debug cycle/player scoreboard is not part of the StarCraft HUD.
++	return;
++#endif
+ 	if (UnitUnderCursor && UnitUnderCursor->IsVisible(*ThisPlayer)
+ 		&& !UnitUnderCursor->Type->BoolFlag[ISNOTSELECTABLE_INDEX].value) {
+ 		// FIXME: not correct for enemies units
+@@ -1174,6 +1188,9 @@ static void InfoPanel_draw_multiple_selection()
+ {
+ 	//  If there are more units selected draw their pictures and a health bar
+ 	DrawInfoPanelBackground(0);
++#ifdef STRATAGUS_PAX
++	DrawUnitInfo_portrait(*Selected[0]);
++#endif
+ 
+ #ifdef USE_MNG
+ 	if (!Selected[0]->Type->Portrait.Mngs.empty()) {
+diff --git a/src/ui/mouse.cpp b/src/ui/mouse.cpp
+index f4338a07f..05f7cf770 100644
+--- a/src/ui/mouse.cpp
++++ b/src/ui/mouse.cpp
+@@ -2004,7 +2004,15 @@ void UIHandleButtonUp(unsigned button)
+ 		}
+ 	}
+ 
++	#ifdef STRATAGUS_PAX
++	// The callback encodes double/drag/hold flags in the high bytes. Shifting
++	// by that encoded value is undefined and discards every second rapid HUD
++	// click. Keep the flags for map selection below, but decode the base button
++	// for Menu/production actions so a double click still delivers two orders.
++	if ((button & 0xff) == SDL_BUTTON_LEFT) {
++	#else
+ 	if ((1 << button) == LeftButton) {
++	#endif
+ 		//
+ 		//  Menu (F10) button
+ 		//
+diff --git a/src/ui/widgets.cpp b/src/ui/widgets.cpp
+index 4646eaa5c..2b0d11a7b 100644
+--- a/src/ui/widgets.cpp
++++ b/src/ui/widgets.cpp
+@@ -39,6 +39,10 @@
+ #include "cursor.h"
+ #include "ui.h"
+ #include "widgets.h"
++
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
+ #include "network.h"
+ #include "netconnect.h"
+ #include "editor.h"
+@@ -176,16 +180,31 @@ static void MenuHandleKeyRepeat(unsigned key, unsigned keychar)
+ */
+ void initGuichan()
+ {
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Guichan: init begin");
++	#endif
+ 	auto *graphics = new gcn::SDLGraphics();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Guichan: graphics created");
++	#endif
+ 
+ 	// Set the target for the graphics object to be the screen.
+ 	// In other words, we will draw to the screen.
+ 	// Note, any surface will do, it doesn't have to be the screen.
+ 	graphics->setTarget(TheScreen);
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Guichan: graphics target set");
++	#endif
+ 
+ 	Input = std::make_unique<gcn::SDLInput>();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Guichan: input created");
++	#endif
+ 
+ 	Gui = std::make_unique<gcn::Gui>();
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("Guichan: gui created");
++	#endif
+ 	Gui->setGraphics(graphics);
+ 	Gui->setInput(Input.get());
+ 	Gui->setTop(nullptr);
+@@ -2631,9 +2650,18 @@ int MenuScreen::run(bool loop)
+ 	if (loop) {
+ 		const EventCallback *old_callbacks = GetCallbacks();
+ 		SetCallbacks(&GuichanCallbacks);
++		unsigned paxMenuFrames=0;
+ 		while (runLoop) {
++#ifdef STRATAGUS_PAX
++			extern volatile int pax_exit_requested;
++			if (pax_exit_requested) { this->loopResult=0; this->runLoop=false; break; }
++#endif
+ 			UpdateDisplay();
+ 			RealizeVideoMemory();
++#ifdef PAX_STRATAGUS_WARCRAFT
++			if (++paxMenuFrames==1 || paxMenuFrames%120==0)
++				pax_stratagus_debug("Warcraft: native Guichan menu frame presented");
++#endif
+ 			WaitEventsOneFrame();
+ 		}
+ 		SetCallbacks(old_callbacks);
+diff --git a/src/unit/script_unit.cpp b/src/unit/script_unit.cpp
+index 84b68c980..f0832f42a 100644
+--- a/src/unit/script_unit.cpp
++++ b/src/unit/script_unit.cpp
+@@ -56,6 +56,10 @@
+ 
+ #include <set>
+ 
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
++
+ /*----------------------------------------------------------------------------
+ --  Variables
+ ----------------------------------------------------------------------------*/
+@@ -797,6 +801,17 @@ static int CclRemoveUnit(lua_State *l)
+ static int CclCreateUnit(lua_State *l)
+ {
+ 	LuaCheckArgs(l, 3);
++	#ifdef STRATAGUS_PAX
++	static unsigned pax_create_unit_count;
++	const unsigned pax_unit_count = ++pax_create_unit_count;
++	const bool pax_trace_create_unit = pax_unit_count <= 64;
++	if (pax_trace_create_unit) {
++		char pax_create_unit_status[96];
++		snprintf(pax_create_unit_status, sizeof(pax_create_unit_status),
++			"CreateUnit #%u begin", pax_unit_count);
++		pax_stratagus_debug(pax_create_unit_status);
++	}
++	#endif
+ 
+ 	lua_pushvalue(l, 1);
+ 	CUnitType *unittype = CclGetUnitType(l);
+@@ -835,6 +850,14 @@ static int CclCreateUnit(lua_State *l)
+ 			DropOutOnSide(*unit, heading, nullptr);
+ 		}
+ 		UpdateForNewUnit(*unit, 0);
++		#ifdef STRATAGUS_PAX
++		if (pax_trace_create_unit) {
++			char pax_create_unit_status[96];
++			snprintf(pax_create_unit_status, sizeof(pax_create_unit_status),
++				"CreateUnit #%u complete", pax_unit_count);
++			pax_stratagus_debug(pax_create_unit_status);
++		}
++		#endif
+ 
+ 		if (unit->Type->OnReady) {
+ 			unit->Type->OnReady(UnitNumber(*unit));
+@@ -1677,6 +1700,15 @@ static int CclTurnTowardsLocation(lua_State *l)
+ */
+ void UnitCclRegister()
+ {
++#if defined(STRATAGUS_PAX) && !defined(PAX_STRATAGUS_WARCRAFT)
++	// Register map creation and native saved-state deserialization without
++	// pulling in unrelated desktop/editor command bindings.
++	lua_register(Lua, "CreateUnit", CclCreateUnit);
++	lua_register(Lua, "SetResourcesHeld", CclSetResourcesHeld);
++	lua_register(Lua, "SetTrainingQueue", CclSetTrainingQueue);
++	lua_register(Lua, "SlotUsage", CclSlotUsage);
++	lua_register(Lua, "Unit", CclUnit);
++#else
+ 	lua_register(Lua, "SetTrainingQueue", CclSetTrainingQueue);
+ 	lua_register(Lua, "SetBuildingCapture", CclSetBuildingCapture);
+ 	lua_register(Lua, "SetRevealAttacker", CclSetRevealAttacker);
+@@ -1710,6 +1742,7 @@ void UnitCclRegister()
+ 	lua_register(Lua, "EnableSimplifiedAutoTargeting", CclEnableSimplifiedAutoTargeting);
+ 
+ 	lua_register(Lua, "TurnTowardsLocation", CclTurnTowardsLocation);
++#endif
+ }
+ 
+ //@}
+diff --git a/src/unit/script_unittype.cpp b/src/unit/script_unittype.cpp
+index b37a42f21..c60a73ea9 100644
+--- a/src/unit/script_unittype.cpp
++++ b/src/unit/script_unittype.cpp
+@@ -54,6 +54,10 @@
+ #include "unit_manager.h"
+ #include "video.h"
+ 
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
++
+ /*----------------------------------------------------------------------------
+ --  Variables
+ ----------------------------------------------------------------------------*/
+@@ -475,10 +479,21 @@ static int CclDefineUnitType(lua_State *l)
+ 
+ 	// Slot identifier
+ 	const std::string_view str = LuaToString(l, 1);
++	#ifdef STRATAGUS_PAX
++	const bool pax_trace_mineral_type = str.find("unit-resource-mineral-field") != std::string_view::npos;
++	if (pax_trace_mineral_type) {
++		pax_stratagus_debug("LoadCcl mineral DefineUnitType begin");
++	}
++	#endif
+ 
+ 	constexpr int redefineSprite = 2;
+ 
+ 	auto [type, redefined] = NewUnitTypeSlot(str);
++	#ifdef STRATAGUS_PAX
++	if (pax_trace_mineral_type) {
++		pax_stratagus_debug("LoadCcl mineral DefineUnitType slot ready");
++	}
++	#endif
+ 	if (redefined) {
+ 		LuaDebugPrint(l, "Redefining unit-type '%s'\n", str.data());
+ 	} else {
+@@ -1169,6 +1184,11 @@ static int CclDefineUnitType(lua_State *l)
+ 			}
+ 		}
+ 	}
++	#ifdef STRATAGUS_PAX
++	if (pax_trace_mineral_type) {
++		pax_stratagus_debug("LoadCcl mineral DefineUnitType fields complete");
++	}
++	#endif
+ 
+ 	// If number of directions is not specified,
+ 	// specify it but not for forward-declaration
+@@ -1184,6 +1204,11 @@ static int CclDefineUnitType(lua_State *l)
+ 		LuaError(l, "Unit-type '%s': right-attack is set, but can-attack is not\n", type->Name.c_str());
+ 	}
+ 	UpdateDefaultBoolFlags(*type);
++	#ifdef STRATAGUS_PAX
++	if (pax_trace_mineral_type) {
++		pax_stratagus_debug("LoadCcl mineral DefineUnitType complete");
++	}
++	#endif
+ 	if (!CclInConfigFile) {
+ 		if (redefine & redefineSprite) {
+ 			LoadUnitTypeSprite(*type);
+@@ -2470,11 +2495,16 @@ void UnitTypeCclRegister()
+ 
+ 	lua_register(Lua, "UnitType", CclUnitType);
+ 	lua_register(Lua, "UnitTypeArray", CclUnitTypeArray);
++
++#if defined(STRATAGUS_PAX) && !defined(PAX_STRATAGUS_WARCRAFT)
++	return;
++#else
+ 	// unit type structure access
+ 	lua_register(Lua, "GetUnitTypeIdent", CclGetUnitTypeIdent);
+ 	lua_register(Lua, "GetUnitTypeName", CclGetUnitTypeName);
+ 	lua_register(Lua, "SetUnitTypeName", CclSetUnitTypeName);
+ 	lua_register(Lua, "GetUnitTypeData", CclGetUnitTypeData);
++#endif
+ }
+ 
+ //@}
+diff --git a/src/unit/unit.cpp b/src/unit/unit.cpp
+index 7cfd1e3de..8b2456da2 100644
+--- a/src/unit/unit.cpp
++++ b/src/unit/unit.cpp
+@@ -67,6 +67,9 @@
+ #include "video.h"
+ 
+ #include <cmath>
++#ifdef STRATAGUS_PAX
++#include "pax_heading.h"
++#endif
+ 
+ /*----------------------------------------------------------------------------
+ -- Documentation
+@@ -1939,6 +1942,9 @@ void RescueUnits()
+ */
+ static int myatan(int val)
+ {
++#ifdef STRATAGUS_PAX
++	return pax_atan_heading(val);
++#else
+ 	static int init;
+ 	static unsigned char atan_table[2608];
+ 
+@@ -1953,6 +1959,7 @@ static int myatan(int val)
+ 	}
+ 
+ 	return atan_table[val];
++#endif
+ }
+ 
+ /**
+@@ -2315,6 +2322,10 @@ PixelPos CUnit::GetMapPixelPosCenter() const
+ */
+ void LetUnitDie(CUnit &unit, bool suicide)
+ {
++#ifdef PAX_STRATAGUS_WARCRAFT
++	extern void pax_warcraft_health_trace(const CUnit &, const CUnit *, int, const void *);
++	pax_warcraft_health_trace(unit, nullptr, -1, __builtin_return_address(0));
++#endif
+ 	unit.Variable[HP_INDEX].Value = std::min<int>(0, unit.Variable[HP_INDEX].Value);
+ 	unit.Moving = 0;
+ 	unit.TTL = 0;
+@@ -2962,6 +2973,10 @@ static void HitUnit_AttackBack(CUnit &attacker, CUnit &target)
+ */
+ void HitUnit(CUnit *attacker, CUnit &target, int damage, const Missile *missile)
+ {
++#ifdef PAX_STRATAGUS_WARCRAFT
++	extern void pax_warcraft_health_trace(const CUnit &, const CUnit *, int, const void *);
++	pax_warcraft_health_trace(target, attacker, damage, __builtin_return_address(0));
++#endif
+ 	if (!damage) {
+ 		// Can now happen by splash damage
+ 		// Multiple places send x/y as damage, which may be zero
+diff --git a/src/unit/unit_manager.cpp b/src/unit/unit_manager.cpp
+index 2d756e700..80e22e737 100644
+--- a/src/unit/unit_manager.cpp
++++ b/src/unit/unit_manager.cpp
+@@ -174,6 +174,9 @@ void CUnitManager::Save(CFile &file) const
+ 
+ 	for (const CUnit * unit : units) {
+ 		SaveUnit(*unit, file);
++		#ifdef STRATAGUS_PAX
++		file.printf("-- PAX CHUNK\n");
++		#endif
+ 	}
+ }
+ 
+diff --git a/src/unit/unittype.cpp b/src/unit/unittype.cpp
+index ac0d1f3dc..5ec4e86cc 100644
+--- a/src/unit/unittype.cpp
++++ b/src/unit/unittype.cpp
+@@ -54,9 +54,14 @@
+ #include "util.h"
+ #include "video.h"
+ 
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
++
+ #include <cctype>
+ #include <cmath>
+ #include <map>
++#include <stdexcept>
+ #include <string>
+ 
+ /*----------------------------------------------------------------------------
+@@ -748,6 +753,9 @@ void SaveUnitTypes(CFile &file)
+ 		}
+ 		if (somethingSaved) {
+ 			file.printf("\n");
++			#ifdef STRATAGUS_PAX
++			file.printf("-- PAX CHUNK\n");
++			#endif
+ 		}
+ 	}
+ }
+@@ -781,6 +789,9 @@ std::pair<CUnitType *, bool> NewUnitTypeSlot(std::string_view ident)
+ 	if (auto ret = UnitTypeMap.find(ident); ret != UnitTypeMap.end()) {
+ 		return {(*ret).second.get(), true};
+ 	}
++	if (UnitTypes.size() >= UnitTypeMax) {
++		throw std::runtime_error("Unit type capacity exceeded");
++	}
+ 
+ 	size_t new_bool_size = UnitTypeVar.GetNumberBoolFlag();
+ 	std::unique_ptr<CUnitType> type = std::make_unique<CUnitType>();
+@@ -811,6 +822,12 @@ std::pair<CUnitType *, bool> NewUnitTypeSlot(std::string_view ident)
+ */
+ void DrawUnitType(const CUnitType &type, CPlayerColorGraphic *sprite, int colorIndex, int frame, const PixelPos &screenPos)
+ {
++	if (!sprite || !sprite->getSurface()) {
++		static unsigned warnings;
++		if (warnings++ < 4) ErrorPrint("Missing unit sprite: %s (%s); skipping unsafe draw\n",
++			type.Ident.c_str(), type.File.c_str());
++		return;
++	}
+ 	PixelPos pos = screenPos;
+ 	// FIXME: move this calculation to high level.
+ 	pos.x -= (type.Width - type.TileWidth * PixelTileSize.x) / 2;
+@@ -887,6 +904,9 @@ void InitUnitTypes(int reset_player_stats)
+ */
+ void LoadUnitTypeSprite(CUnitType &type)
+ {
++#ifndef STRATAGUS_PAX
++	// Software shadows duplicate and expand the full sprite sheet. The PAX
++	// keeps its limited PSRAM for terrain, unit sprites, and the HUD.
+ 	if (!type.ShadowFile.empty()) {
+ 		type.ShadowSprite = CGraphic::ForceNew(type.ShadowFile, type.ShadowWidth, type.ShadowHeight);
+ 		type.ShadowSprite->Load();
+@@ -901,6 +921,7 @@ void LoadUnitTypeSprite(CUnitType &type)
+ 			type.ShadowSprite->MakeShadow(type.ShadowOffset);
+ 		}
+ 	}
++#endif
+ 
+ 	if (type.BoolFlag[HARVESTER_INDEX].value) {
+ 		for (int i = 0; i < MaxCosts; ++i) {
+@@ -961,9 +982,18 @@ void LoadUnitTypeSprite(CUnitType &type)
+ */
+ void LoadUnitTypes()
+ {
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LoadUnitTypes begin");
++	#endif
+ 	for (CUnitType *type : UnitTypes) {
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("LoadUnitTypes type begin");
++		#endif
+ 		// Lookup icons.
+ 		type->Icon.Load();
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("LoadUnitTypes icon complete");
++		#endif
+ 		// Lookup missiles.
+ 		type->Missile.MapMissile();
+ 		type->Explosion.MapMissile();
+@@ -979,12 +1009,21 @@ void LoadUnitTypes()
+ #ifndef DYNAMIC_LOAD
+ 		// Load Sprite
+ 		if (!type->Sprite) {
++			#ifdef STRATAGUS_PAX
++			pax_stratagus_debug("LoadUnitTypes sprite begin");
++			#endif
+ 			ShowLoadProgress(_("Unit \"%s\""), type->Name.c_str());
+ 			LoadUnitTypeSprite(*type);
++			#ifdef STRATAGUS_PAX
++			pax_stratagus_debug("LoadUnitTypes sprite complete");
++			#endif
+ 		}
+ #endif
+ 		// FIXME: should i copy the animations of same graphics?
+ 	}
++	#ifdef STRATAGUS_PAX
++	pax_stratagus_debug("LoadUnitTypes complete");
++	#endif
+ }
+ 
+ void CUnitTypeVar::Init()
+diff --git a/src/unit/upgrade.cpp b/src/unit/upgrade.cpp
+index 8fd0a512d..b75d44321 100644
+--- a/src/unit/upgrade.cpp
++++ b/src/unit/upgrade.cpp
+@@ -37,6 +37,7 @@
+ #include <string>
+ #include <vector>
+ #include <map>
++#include <stdexcept>
+ 
+ #include "stratagus.h"
+ 
+@@ -118,6 +119,9 @@ CUpgrade::CUpgrade(std::string ident) :
+ 	if (upgrade) {
+ 		return upgrade;
+ 	} else {
++		if (AllUpgrades.size() >= UpgradeMax) {
++			throw std::runtime_error("Upgrade capacity exceeded");
++		}
+ 		auto ptr = std::make_unique<CUpgrade>(ident);
+ 		upgrade = ptr.get();
+ 		upgrade->ID = AllUpgrades.size();
+@@ -215,6 +219,9 @@ void SaveUpgrades(CFile &file)
+ static int CclDefineModifier(lua_State *l)
+ {
+ 	const int args = lua_gettop(l);
++	if (NumUpgradeModifiers >= UPGRADE_MODIFIERS_MAX) {
++		LuaError(l, "Upgrade modifier capacity exceeded");
++	}
+ 
+ 	auto um = std::make_unique<CUpgradeModifier>();
+ 
+diff --git a/src/video/font.cpp b/src/video/font.cpp
+index 87bd68804..cdc6c1fdb 100644
+--- a/src/video/font.cpp
++++ b/src/video/font.cpp
+@@ -44,6 +44,10 @@
+ #include <map>
+ #include <vector>
+ 
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#endif
++
+ /*----------------------------------------------------------------------------
+ --  Variables
+ ----------------------------------------------------------------------------*/
+@@ -885,7 +889,24 @@ void CFont::DynamicLoad() const
+ void LoadFonts()
+ {
+ 	for (auto &[key, font] : Fonts) {
++		#ifdef STRATAGUS_PAX
++		// The PAX menus use their own original bitmap font. Keep unused
++		// desktop title fonts lazy, as normal CreateGame already does; the
++		// 50-pixel font alone needs a 538 KB PNG allocation during reload.
++#ifndef PAX_STRATAGUS_WARCRAFT
++		if (key != "small" && key != "game") continue;
++#endif
++		char pax_font_status[96];
++		snprintf(pax_font_status, sizeof(pax_font_status),
++			"LoadFonts: before %s", key.c_str());
++		pax_stratagus_debug(pax_font_status);
++		#endif
+ 		font->Load();
++		#ifdef STRATAGUS_PAX
++		snprintf(pax_font_status, sizeof(pax_font_status),
++			"LoadFonts: after %s", key.c_str());
++		pax_stratagus_debug(pax_font_status);
++		#endif
+ 	}
+ 
+ 	// TODO: remove this
+diff --git a/src/video/graphic.cpp b/src/video/graphic.cpp
+index b69851420..fd74c630a 100644
+--- a/src/video/graphic.cpp
++++ b/src/video/graphic.cpp
+@@ -47,6 +47,13 @@
+ #include <string>
+ #include <tuple>
+ 
++#ifdef STRATAGUS_PAX
++#include "pax_debug.h"
++#include "pax_resize16.h"
++extern "C" unsigned pax_stratagus_terrain_frame_count(SDL_Surface *);
++extern "C" bool pax_stratagus_terrain_frame_pos(SDL_Surface *,unsigned,int *,int *);
++#endif
++
+ /*----------------------------------------------------------------------------
+ --  Variables
+ ----------------------------------------------------------------------------*/
+@@ -132,7 +139,11 @@ void CGraphic::DrawSubCustomMod(int gx, int gy, int w, int h, int x, int y,
+ 								SDL_Surface *surface /*= TheScreen*/) const
+ {
+ 	Assert(surface);
++#ifdef STRATAGUS_PAX
++	Assert(surface->format->BitsPerPixel == 32 || surface->format->BitsPerPixel == 16);
++#else
+ 	Assert(surface->format->BitsPerPixel == 32);
++#endif
+ 
+ 
+ 	size_t srcOffset = mSurface->w * gy + gx;
+@@ -143,11 +154,40 @@ void CGraphic::DrawSubCustomMod(int gx, int gy, int w, int h, int x, int y,
+ 
+ 	for (uint16_t posY = 0; posY < h; posY++) {
+ 		for (uint16_t posX = 0; posX < w; posX++) {
+-			const uint32_t srcColor = src[srcOffset + posX];
+-			const uint32_t dstColor = dst[dstOffset + posX];
++			uint32_t srcColor;
++#ifdef STRATAGUS_PAX
++			// Compact icon sheets retain their palette. Never reinterpret P8 or
++			// RGB565 storage as uint32_t: disabled/hovered buttons then read past
++			// their rows and display unrelated memory as pixels.
++			if (mSurface->format->BytesPerPixel == 1 && mSurface->format->palette) {
++				const unsigned index = ((const uint8_t *)mSurface->pixels)[srcOffset + posX];
++				const SDL_Color c = mSurface->format->palette->colors[index];
++				srcColor = (uint32_t)c.a << 24 | (uint32_t)c.r << 16 | (uint32_t)c.g << 8 | c.b;
++			} else if (mSurface->format->BytesPerPixel == 2) {
++				uint8_t r, g, b;
++				SDL_GetRGB(((const uint16_t *)mSurface->pixels)[srcOffset + posX], mSurface->format, &r, &g, &b);
++				srcColor = 0xff000000u | (uint32_t)r << 16 | (uint32_t)g << 8 | b;
++			} else
++#endif
++				srcColor = src[srcOffset + posX];
++			uint32_t dstColor;
++#ifdef STRATAGUS_PAX
++			if (surface->format->BytesPerPixel==2) {
++				uint8_t r,g,b;
++				SDL_GetRGB(((const uint16_t *)surface->pixels)[dstOffset+posX],surface->format,&r,&g,&b);
++				dstColor=0xff000000u | (uint32_t)r<<16 | (uint32_t)g<<8 | b;
++			} else
++#endif
++				dstColor=dst[dstOffset + posX];
+ 			const uint32_t resColor =  modifier(srcColor, dstColor, param);
+ 
+-			dst[dstOffset + posX] = resColor;
++#ifdef STRATAGUS_PAX
++			if (surface->format->BytesPerPixel==2)
++				((uint16_t *)surface->pixels)[dstOffset+posX]=
++					((resColor>>8)&0xf800)|((resColor>>5)&0x07e0)|((resColor>>3)&0x001f);
++			else
++#endif
++				dst[dstOffset + posX] = resColor;
+ 		}
+ 		dstOffset += surface->w;
+ 		srcOffset += mSurface->w;
+@@ -617,6 +657,12 @@ std::shared_ptr<CPlayerColorGraphic> CPlayerColorGraphic::ForceNew(const std::st
+ 
+ void CGraphic::GenFramesMap()
+ {
++#ifdef STRATAGUS_PAX
++	if (Width==32 && Height==32) {
++		const unsigned frames=pax_stratagus_terrain_frame_count(mSurface);
++		if (frames) NumFrames=frames;
++	}
++#endif
+ 	Assert(NumFrames != 0);
+ 	Assert(mSurface != nullptr);
+ 	Assert(Width != 0);
+@@ -625,6 +671,12 @@ void CGraphic::GenFramesMap()
+ 	frame_map.resize(NumFrames);
+ 
+ 	for (int frame = 0; frame < NumFrames; ++frame) {
++#ifdef STRATAGUS_PAX
++		int x,y;
++		if (Width==32 && Height==32 && pax_stratagus_terrain_frame_pos(mSurface,frame,&x,&y)) {
++			frame_map[frame].x=x; frame_map[frame].y=y; continue;
++		}
++#endif
+ 		frame_map[frame].x = (frame % (mSurface->w / Width)) * Width;
+ 		frame_map[frame].y = (frame / (mSurface->w / Width)) * Height;
+ 	}
+@@ -678,21 +730,50 @@ void CGraphic::Load(bool grayscale)
+ 	if (mSurface) {
+ 		return;
+ 	}
++	#ifdef STRATAGUS_PAX
++	char pax_graphic_status[128];
++	snprintf(pax_graphic_status, sizeof(pax_graphic_status),
++		"GraphicLoad: begin %s", File.string().c_str());
++	pax_stratagus_debug(pax_graphic_status);
++	#endif
+ 
+-	auto fp = std::make_unique<CFile>();
+ 	const fs::path name = LibraryFileName(File.string());
++	#ifdef STRATAGUS_PAX
++	snprintf(pax_graphic_status, sizeof(pax_graphic_status),
++		"GraphicLoad: path %s", name.string().c_str());
++	pax_stratagus_debug(pax_graphic_status);
++	#endif
+ 	if (name.empty()) {
+ 		perror("Cannot find file");
+ 		ErrorPrint("Can't load the graphic '%s'\n", File.u8string().c_str());
+ 		ExitFatal(-1);
+ 	}
++	#ifdef STRATAGUS_PAX
++	/* The PAX SDL bridge has no desktop SDL_RWops/image decoder. Its firmware
++	 * service already decodes PNG assets into RGB565, so load through IMG_Load
++	 * directly and let the bridge adopt that buffer without an extra copy. */
++	mSurface = IMG_Load(name.string().c_str());
++	#else
++	auto fp = std::make_unique<CFile>();
+ 	if (fp->open(name.string().c_str(), CL_OPEN_READ) == -1) {
+ 		perror("Can't open file");
+ 		ErrorPrint("Can't load the graphic '%s'\n", File.u8string().c_str());
+ 		ExitFatal(-1);
+ 	}
+ 	mSurface = IMG_Load_RW(CFile::to_SDL_RWops(std::move(fp)), 1);
++	#endif
++	#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("GraphicLoad: IMG_Load_RW complete");
++		snprintf(pax_graphic_status, sizeof(pax_graphic_status),
++			"GraphicLoad: surface pointer %p", static_cast<void *>(mSurface));
++		pax_stratagus_debug(pax_graphic_status);
++	#endif
+ 	if (mSurface == nullptr) {
++		#ifdef STRATAGUS_PAX
++			snprintf(pax_graphic_status, sizeof(pax_graphic_status),
++				"GraphicLoad: IMG error %s", IMG_GetError());
++			pax_stratagus_debug(pax_graphic_status);
++		#endif
+ 		ErrorPrint("Couldn't load file '%s': %s", name.u8string().c_str(), IMG_GetError());
+ 		ErrorPrint("Can't load the graphic '%s'\n", File.u8string().c_str());
+ 		ExitFatal(-1);
+@@ -700,10 +781,27 @@ void CGraphic::Load(bool grayscale)
+ 
+ 	OriginWidth = mSurface->w;
+ 	OriginHeight = mSurface->h;
+-
++	#ifdef STRATAGUS_PAX
++		snprintf(pax_graphic_status, sizeof(pax_graphic_status),
++			"GraphicLoad: dimensions %d x %d", OriginWidth, OriginHeight);
++		pax_stratagus_debug(pax_graphic_status);
++	#endif
++
++	#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("GraphicLoad: before palette check");
++	#endif
+ 	if (mSurface->format->BytesPerPixel == 1) {
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("GraphicLoad: before palette registration");
++		#endif
+ 		VideoPaletteListAdd(mSurface);
++		#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("GraphicLoad: after palette registration");
++		#endif
+ 	}
++	#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("GraphicLoad: palette registration complete");
++	#endif
+ 
+ 	if (!Width) {
+ 		Width = GetGraphicWidth();
+@@ -726,12 +824,20 @@ void CGraphic::Load(bool grayscale)
+ 	}
+ 
+ 	NumFrames = GetGraphicWidth() / Width * GetGraphicHeight() / Height;
++	#ifdef STRATAGUS_PAX
++		snprintf(pax_graphic_status, sizeof(pax_graphic_status),
++			"GraphicLoad: frame count %d", NumFrames);
++		pax_stratagus_debug(pax_graphic_status);
++	#endif
+ 
+ 	if (grayscale) {
+ 		ApplyGrayScale(mSurface, Width, Height);
+ 	}
+ 
+ 	GenFramesMap();
++	#ifdef STRATAGUS_PAX
++		pax_stratagus_debug("GraphicLoad: frame map complete");
++	#endif
+ }
+ 
+ /**
+@@ -795,10 +901,18 @@ void CGraphic::Flip()
+ 				}
+ 			}
+ 			break;
++		case 2:
++			for (int i = 0; i < s->h; ++i) {
++				for (int j = 0; j < s->w; ++j) {
++					memcpy(&((char *)s->pixels)[j * 2 + i * s->pitch],
++						   &((char *)mSurface->pixels)[(s->w - j - 1) * 2 + i * mSurface->pitch], 2);
++				}
++			}
++			break;
+ 		case 3:
+ 			for (int i = 0; i < s->h; ++i) {
+ 				for (int j = 0; j < s->w; ++j) {
+-					memcpy(&((char *)s->pixels)[j + i * s->pitch],
++					memcpy(&((char *)s->pixels)[j * 3 + i * s->pitch],
+ 						   &((char *)mSurface->pixels)[(s->w - j - 1) * 3 + i * mSurface->pitch], 3);
+ 				}
+ 			}
+@@ -806,7 +920,7 @@ void CGraphic::Flip()
+ 		case 4: {
+ 			for (int i = 0; i < s->h; ++i) {
+ 				for (int j = 0; j < s->w; ++j) {
+-					memcpy(&((char *)s->pixels)[j + i * s->pitch],
++					memcpy(&((char *)s->pixels)[j * 4 + i * s->pitch],
+ 						   &((char *)mSurface->pixels)[(s->w - j - 1) * 4 + i * mSurface->pitch], 4);
+ 				}
+ 			}
+@@ -881,7 +995,24 @@ void CGraphic::Resize(int w, int h)
+ 			VideoPaletteListAdd(mSurface);
+ 		}
+ 		SDL_SetPaletteColors(mSurface->format->palette, pal, 0, 256);
+-	} else {
++	}
++#ifdef STRATAGUS_PAX
++	else if (bpp == 2) {
++		// The desktop interpolation below assumes RGB/RGBA byte channels.
++		// Applying it to RGB565 writes a third byte beyond the final pixel.
++		SDL_LockSurface(mSurface);
++		auto *data = new unsigned char[size_t(w) * h * 2];
++		pax_resize16(data, w, h, static_cast<const unsigned char *>(mSurface->pixels),
++		              originWidth, originHeight, mSurface->pitch);
++		const auto format = *mSurface->format;
++		SDL_UnlockSurface(mSurface);
++		VideoPaletteListRemove(mSurface);
++		SDL_FreeSurface(mSurface);
++		mSurface = SDL_CreateRGBSurfaceFrom(data, w, h, 16, w * 2,
++		                                    format.Rmask, format.Gmask, format.Bmask, format.Amask);
++	}
++#endif
++	else {
+ 		SDL_LockSurface(mSurface);
+ 
+ 		unsigned char *pixels = (unsigned char *)mSurface->pixels;
+diff --git a/src/video/linedraw.cpp b/src/video/linedraw.cpp
+index 64e28dfea..0b9c695ff 100644
+--- a/src/video/linedraw.cpp
++++ b/src/video/linedraw.cpp
+@@ -745,6 +745,11 @@ void DrawTransCircleClip(Uint32 color, int x, int y,
+ */
+ void DrawEllipseClip(Uint32 color, int xc, int yc, int rx, int ry)
+ {
++	// A degenerate ellipse makes either midpoint loop unbounded (0 <= 0).
++	if (rx <= 0 || ry <= 0) {
++		VideoDoDrawPixelClip(color, xc, yc);
++		return;
++	}
+ 	int rx2 = rx*rx, ry2 = ry*ry , frx2 = 4*rx2, fry2 = 4*ry2;
+ 
+ 	int x, y, sigma;
+diff --git a/src/video/video.cpp b/src/video/video.cpp
+index ca44880ba..e9fc7d6f0 100644
+--- a/src/video/video.cpp
++++ b/src/video/video.cpp
+@@ -81,6 +81,10 @@
+ ----------------------------------------------------------------------------*/
+ 
+ #include "stratagus.h"
++#ifdef STRATAGUS_PAX
++#include <SDL.h>
++extern "C" SDL_Surface *pax_stratagus_screen_create(int, int);
++#endif
+ 
+ #include "video.h"
+ #include "intern_video.h"
+@@ -280,11 +284,15 @@ bool CVideo::ResizeScreen(int w, int h)
+ 	if (TheScreen) {
+ 		SDL_FreeSurface(TheScreen);
+ 	}
++#ifdef STRATAGUS_PAX
++	TheScreen = pax_stratagus_screen_create(w,h);
++#else
+ 	TheScreen = SDL_CreateRGBSurface(0, w, h, 32,
+ 									 RMASK,
+ 									 GMASK,
+ 									 BMASK,
+ 									 0); // AMASK);
++#endif
+ 	Assert(SDL_MUSTLOCK(TheScreen) == 0);
+ 
+ 	if (Gui) {
+diff --git a/third-party b/third-party
+index 9dc4952b5..4cf90d77c 160000
+--- a/third-party
++++ b/third-party
+@@ -1 +1 @@
+-Subproject commit 9dc4952b595b3cb0f5a0c3ee430aba648ddd2803
++Subproject commit 4cf90d77cb6661aa72ff72b321ecaa80574dd6b7

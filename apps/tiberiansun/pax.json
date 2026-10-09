@@ -1,13 +1,13 @@
 {
   "name": "tiberiansun",
   "title": "Tiberian Sun (OpenTS P4 Port)",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Staged ESP32-P4 port of OpenTS Tiberian Sun. It decrypts original MIX indexes, mounts the SD-card data layer, parses campaign and mission metadata, validates IsoMapPack5 terrain framing in PSRAM, and keeps a visible runtime shell alive on the device.",
-  "author": "Westwood / Electronic Arts; OpenTS contributors; PAPP port",
+  "author": "Westwood / Electronic Arts; OpenTS contributors; PAX port",
   "category": "Game",
   "license": "GPL-3.0-or-later with OpenTS additional terms",
   "about": "This development package follows OpenTS archive precedence, reads encrypted MIX directories directly from the SD card, resolves MAPSEL01 campaign stages, parses mission metadata and object counts, validates IsoMapPack5 Base64/LZO framing in PSRAM, and presents the live port status until the loader close control is used.",
-  "changelog": "0.0.4-dev: campaign stage and IsoMapPack5 terrain framing validation; 0.0.3-dev: persistent P4 runtime shell with framebuffer status and orderly close; 0.0.2-dev: encrypted MIX decryption, OpenTS-style archive mounting, and PSRAM INI loading",
+  "changelog": "0.0.5-dev: run MIX probing and runtime shell on a tracked 64 KiB PSRAM stack; 0.0.4-dev: campaign stage and IsoMapPack5 terrain framing validation; 0.0.3-dev: persistent P4 runtime shell with framebuffer status and orderly close; 0.0.2-dev: encrypted MIX decryption, OpenTS-style archive mounting, and PSRAM INI loading",
   "upstream": {
     "project": "OpenTS",
     "version": "84675569c257",

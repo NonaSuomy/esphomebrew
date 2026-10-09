@@ -1,0 +1,21 @@
+diff --git a/src/stratagus/mainloop.cpp b/src/stratagus/mainloop.cpp
+--- a/src/stratagus/mainloop.cpp
++++ b/src/stratagus/mainloop.cpp
+@@ -477,6 +477,17 @@ void GameMainLoop(bool clean)
+ 
+ 	if (GameResult == GameExit) {
++#ifdef STRATAGUS_PAPP
++		// Desktop Exit() terminates the process; PAPP Exit() returns.
++		// StartMap still owns the map and GUI and must run CleanGame before
++		// final Exit frees them. Unwind menus cooperatively, then let
++		// stratagusMain perform the one final engine shutdown.
++		extern volatile int papp_exit_requested;
++		papp_exit_requested = 1;
++		SetCallbacks(old_callbacks);
++		papp_stratagus_debug("GameMainLoop: deferring final exit until map/menu cleanup");
++#else
+ 		Exit(0);
++#endif
+ 		return;
+ 	}
+ 

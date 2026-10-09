@@ -1,6 +1,6 @@
 # PAX module inventory
 
-34 manifest recipes; 46 native source folders are preserved under upstream/retroesp32/apps.
+34 manifest recipes; 46 native source folders are organized under apps/; older variants are separated within their app folders.
 
 | Recipe | Output | Upstream pin |
 | --- | --- | --- |

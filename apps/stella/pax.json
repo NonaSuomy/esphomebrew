@@ -1,7 +1,7 @@
 {
   "name": "stella",
   "title": "Atari 2600",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Atari 2600 emulator. Put a cartridge ROM in /sd/roms/stella/.",
   "author": "RetroESP32-P4 port",
   "category": "Emulator",
@@ -169,5 +169,6 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "changelog": "0.1.1 presents the 320x240 frame through the current loader canvas service and handles loader close before the next emulation frame."
 }

@@ -9,6 +9,13 @@
 #include <sys/stat.h>
 
 extern const app_services_t *_pax_svc;
+extern void app_return_to_launcher(void);
+static void stella_check_close(void) {
+    /* A loader close first taps the native Menu control. Check in menu
+     * delays/audio as well as the frame loop so that menu cannot trap quit. */
+    if (_pax_svc && _pax_svc->input_l3_read && _pax_svc->input_l3_read())
+        app_return_to_launcher();
+}
 
 volatile int odroid_paddle_adc_raw = -1;
 bool odroid_input_xy_menu_disable = false;
@@ -17,6 +24,7 @@ bool odroid_input_touch_buttons_disable = false;
 void pax_delay_ms(int ms)
 {
     if (ms > 0 && _pax_svc && _pax_svc->delay_ms) _pax_svc->delay_ms(ms);
+    stella_check_close();
 }
 
 int64_t pax_esp_timer_get_time(void)
@@ -47,6 +55,7 @@ void odroid_audio_volume_change(void)
 }
 void odroid_audio_submit(short *buffer, int frames)
 {
+    stella_check_close();
     if (_pax_svc && _pax_svc->audio_submit)
         _pax_svc->audio_submit(buffer, frames);
 }
@@ -56,8 +65,10 @@ int odroid_audio_sample_rate_get(void) { return 31400; }
 void ili9341_init(void) {}
 void ili9341_write_frame_rgb565(const uint16_t *buffer)
 {
-    if (_pax_svc && _pax_svc->display_write_frame_rgb565)
-        _pax_svc->display_write_frame_rgb565(buffer);
+    /* The legacy buffer is 320x240, not the current full canvas.
+     * The custom writer scales it and presents the completed frame. */
+    if (_pax_svc && _pax_svc->display_write_frame_custom)
+        _pax_svc->display_write_frame_custom(buffer, 320, 240, 2.0f, false);
 }
 void ili9341_write_frame_rgb565_ex(const uint16_t *buffer, bool byte_swap_input)
 {

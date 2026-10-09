@@ -537,7 +537,7 @@ static void run_runtime_session(const app_services_t *svc)
     }
 }
 
-extern "C" __attribute__((section(".text.entry"), used)) int app_entry(const app_services_t *svc)
+static int ts_run(const app_services_t *svc)
 {
     pax_svc = svc;
     svc->log_printf("TS: tiberiansun.pax started\n");
@@ -564,4 +564,30 @@ extern "C" __attribute__((section(".text.entry"), used)) int app_entry(const app
     svc->log_printf("TS: MIX/data/config layer finished\n");
     run_runtime_session(svc);
     return 0;
+}
+
+// MIX probing uses large local index structures. Keep them off the loader's
+// small internal entry stack and let the loader own this PSRAM task.
+static volatile bool ts_done;
+static int ts_result;
+static void ts_task(void *) {
+    ts_result = ts_run(pax_svc);
+    ts_done = true;
+    for (;;) pax_svc->delay_ms(1000);
+}
+extern "C" __attribute__((section(".text.entry"), used))
+int app_entry(const app_services_t *svc) {
+    if (!svc || svc->abi_version != PAX_ABI_VERSION) return -1;
+    pax_svc = svc;
+    ts_done = false;
+    ts_result = -1;
+    void *task = nullptr;
+    if (!svc->task_create || svc->task_create(ts_task, "tiberiansun", 65536,
+            nullptr, 5, &task, 0) != 0) {
+        svc->log_printf("TS: data task creation failed\n");
+        return -1;
+    }
+    while (!ts_done) svc->delay_ms(20);
+    svc->task_delete(task);
+    return ts_result;
 }

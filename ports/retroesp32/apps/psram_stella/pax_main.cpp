@@ -58,7 +58,7 @@ int app_entry(const app_services_t *svc)
         pax_close_streams();
         pax_cleanup_fds();
         pax_cleanup_heap();
-        return -1;
+        return 0;
     }
 
     stella_run(rom_path);

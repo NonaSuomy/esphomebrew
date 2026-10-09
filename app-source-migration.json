@@ -1,0 +1,2048 @@
+{
+  "native_source_commit": "5e8c8077b50adbf74fffaf17028b7d4f65a3797f",
+  "backup": "pax-github/backups/module-compatibility-20261008/retroesp32-app-sources-before-move.tar.gz",
+  "mapping": [
+    {
+      "old": "upstream/retroesp32/apps/atari800",
+      "new": "apps/atari800/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "6b7efc8fe485a7dd954145e36d5ed62348a9a0ce2ea75ddfc8efe8653d50b4c5"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "ebf3772ca9bb6bc56bdf3e9d06ebb804e5137f58c8e4588e332cbfadc9329fa7"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "94481aaf6ad9e3cbcdc7b551777889788e1ebe67e665ca4085f6fa0341efb3ae"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "080ebddff92c4b34510b3768df53e28dc410f063461097cb517ea712de1522e9"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "77aaf71eb3d8dc4b9f666746a8e624f5a3f64bcc6bc65aeb6890e797334a2b95"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/disc_installer",
+      "new": "apps/recipe",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "lv_conf.h",
+          "sha256": "a33e61dc8e1a803feb121fa928a8bd061318b6c6776db053f5f65c47be8ab401"
+        },
+        {
+          "path": "main.c",
+          "sha256": "31ee8687e2ceffca1367b7f550b90d4bcacded4244e3f0edcb48a1859e9771b2"
+        },
+        {
+          "path": "pax_libc.c",
+          "sha256": "db3a1aa2835ecc34d25449f6549f8ebade696a4665852db99724a966f51df534"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/gb",
+      "new": "apps/gb/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "3e79ed4b874f6329fc1f48b05c063e930eb3548c3b51693c9395b80409d054e2"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "8b8388321263bd9ae12a0685427c8bec9b4f2e320292d98923077533d59be4f3"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "047b20bc456148964b53ee59c0ce61e46e42376ee1e9a04e11de22cb4e28baa7"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "cba9c91703593ee18098a21516447c6a172af8698a654f9cfcf28c4e2be95cbc"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "72e21615563a537851079e1940ec1115b043e6d310964af432aceef58332f613"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/genesis",
+      "new": "apps/genesis/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "5a818499ce5cb3bded9dd1f09fd1ef154240da0e3774ed6e9526e26f7d5cab9d"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "0432c66562f2acc5054c3aef21e774bcb0ef890b58ed4a624e10eedeeaf9fd61"
+        },
+        {
+          "path": "main/genesis_run.c",
+          "sha256": "57e07bddddf748e3c88ca661fdecbabb44d7f5b2e5d98dc33c330bb923ff304a"
+        },
+        {
+          "path": "main/genesis_run.h",
+          "sha256": "a908d478dba06b1f935a4725f420e3601bc803302ac5c8430be07c33307d2aa6"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "30cc5ad041845de88d369aca7ff8ea29573a15e9cb728eb670b9326992ea5d95"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "fc63e6dd7c8031f8227103ff9ca398e72a1ea5ea04543ef4be555005e9d0c539"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "647d855f3c26684b08b043a619149ae30e77a04a6d009313c21c39b49802c8f0"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/handy",
+      "new": "apps/handy/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "f4027dca62270bc5220efbbbcea6244eab1c2b599117bac8bb003e27616f146e"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "2462a67e51297ab8486f4fadd4203a9b15eaa574a2ec39a17842a1f119b0ece3"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "251254476c66e7dab1abe36ded314331a7f48e48ec98321913a3990c0fa74a44"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "1e78e5ff7b2db301fb26acbfcfe9d84938a0089035c3c0c08ccbeda8dd0c742c"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "d081d72eae4e562ecac056910bb82839365c21363a1fc2c430f4583b70bd9219"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/launcher_ui",
+      "new": "apps/launcher_ui",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "EXTRACTION_RECIPES.md",
+          "sha256": "377b25469b219cbd5d7b2287f65a7a84e3415cbff7398c4fdbbe7ca889326f7a"
+        },
+        {
+          "path": "fontawesome_icons.c",
+          "sha256": "1a147d22ef4ac82e969a9170135630fec6a94bcbbc3a1c06f8c87986c90d33d7"
+        },
+        {
+          "path": "iso9660_extract.c",
+          "sha256": "23dabe37091591fdce42fe3f01c597534c99ccb9f545c5b0e69abbe3cf56378a"
+        },
+        {
+          "path": "iso9660_extract.h",
+          "sha256": "18982e0e2a422ab787041017ae8d7de929a11a57d38fcc9a02b7b37fb741a440"
+        },
+        {
+          "path": "lv_conf.h",
+          "sha256": "e5fcd7ea8efa7396eb080ab3a961ba079e9e279a1f021c95577c7c334a26a62d"
+        },
+        {
+          "path": "main.c",
+          "sha256": "53befe21b195dc67c1e8e4d5345fa5c93eeedb687d6e5f82eb52ef9e66d4ad2d"
+        },
+        {
+          "path": "pax_libc.c",
+          "sha256": "1a1ce5d676aa63df790bfdc8447257af96a6b7dc5f4efd31204de035cca22b64"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/neogeo",
+      "new": "apps/neogeo/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "527c02232dcaea2fda451093b28736a073363312fc9a6f83559fabed9a702599"
+        },
+        {
+          "path": "autostart_test.txt",
+          "sha256": "31f1f693b064289ad9a71d686542bb998f126fd043b5417f03267573c715d268"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "8af60db872f380527b51eb3818095dbfd764f690e55ec21dd8ad8e0feb91d895"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "3047a7b1a34c712f40edbea00777f80b591e4450556bc9e3309e3c91c4bbc7d3"
+        },
+        {
+          "path": "main/neogeo_run.c",
+          "sha256": "129b1ea2e9b0b126c098f6ffd396c4b707a05ed1143928f5debad646f3f95902"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "76cc17f7aa19c74ce34e5f523be671875ad9434eac242693926a34e52a421acd"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "c0fb56b21e594a137593a8348a57fe10984b63e90adcb254c4db44ca7f1c45fe"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/nes",
+      "new": "apps/nes/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "252099798cacd05ff7c87d5f74a647a2a5b9eeac93b872a8340410091b2cc75f"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "1af217554608ea1eb3f0b00179dd4f93e2082c7654af835bc79f9b42f2252c40"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "b16fa54e09c9ffdfe7ee527ffc2218f4134948e1de3a7d098a51a98138b3d51a"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "43cee44b6a35c034cae9333551c452d986df9e653548b9ef54e7c94d8b079654"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "efc8815ef094c187c5eb37fdff299d00f01e8807c267108c1941de0e7e780ac1"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/pax_emulator_common",
+      "new": "apps/pax_emulator_common",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "audio_queue.h",
+          "sha256": "0a276271c566e4051b2bed53ed2203bf83977170391a047416d68a631ad02cc6"
+        },
+        {
+          "path": "compat/diskio.h",
+          "sha256": "cbd32410062c6b8c090c5dfd010152de11b445b5b5cbaf85d78c6eb38c5298c2"
+        },
+        {
+          "path": "compat/esp_attr.h",
+          "sha256": "b637ef3c4ec676512327e57c4c25f175e42db0d46bcb445d99e903583e2beed6"
+        },
+        {
+          "path": "compat/esp_heap_caps.h",
+          "sha256": "9a85d19a211b6bd3f84392a517a759c2cccfb28330ac067cc2edebaee32e3407"
+        },
+        {
+          "path": "compat/esp_log.h",
+          "sha256": "62a58d4525604ac36142b6ebbcf8f6aa880508f20d68ac963d5ee2c2498a238a"
+        },
+        {
+          "path": "compat/esp_system.h",
+          "sha256": "83efcc49a3572867107ee17dbca3bf8e53de3576099e481ea2b419d6ea0b56f1"
+        },
+        {
+          "path": "compat/esp_timer.h",
+          "sha256": "ce091ac496b874e12c8d9145669340554652b8bfa5dd501ac8555406c9986e39"
+        },
+        {
+          "path": "compat/ff.h",
+          "sha256": "a66b59b160a3ea4960e6b2185d95c565ad4f766e6984096e671de227f807ea11"
+        },
+        {
+          "path": "compat/freertos/FreeRTOS.h",
+          "sha256": "d7f7efccd4cc8ef2e02d61f1080f4077cf7d4088a7d371455e2eff72448309cd"
+        },
+        {
+          "path": "compat/freertos/queue.h",
+          "sha256": "19703cda49043742e916f11d80e116368989629ebe8b342e3e8fa3f0df4fc10b"
+        },
+        {
+          "path": "compat/freertos/semphr.h",
+          "sha256": "d8402afb4065079a9596d6f72cef53b9c7133e592d089489b7c55bd85c6e3d89"
+        },
+        {
+          "path": "compat/freertos/task.h",
+          "sha256": "025983bcf25b0d6279af43c6c96f2c75c8e8d69c8308c8287ec614be783d77f1"
+        },
+        {
+          "path": "compat/netinet/in.h",
+          "sha256": "5808d6de3c958d09316734e224b1ac87a398afb55e79c160bf5d05c3d7cfe363"
+        },
+        {
+          "path": "compat/odroid_audio.h",
+          "sha256": "4988a1b1877ded073f5c305f9106dfa66a85c8ae6ed3035795c0f035a9634dd9"
+        },
+        {
+          "path": "compat/odroid_display.h",
+          "sha256": "c7e04d6c245b9b231ba8eaa74a7ac7e573eb407f4d5a3e84e1618acdf564909d"
+        },
+        {
+          "path": "compat/odroid_input.h",
+          "sha256": "88a8a603fea032cb2ea32e61ac5fedbb811fbb359bf0497a024ffd5b56f7f2a6"
+        },
+        {
+          "path": "compat/odroid_sdcard.h",
+          "sha256": "f22e8accc86337f06f3e5ab3931d4fd801d062df940724133247ebaa551327ab"
+        },
+        {
+          "path": "compat/odroid_settings.h",
+          "sha256": "922338f5e68bf5975af42c90d3f2010f43b0b113c48742af0645ffb87eb7fb05"
+        },
+        {
+          "path": "compat/odroid_system.h",
+          "sha256": "bca9ccc0b4fb61c0ee2b240d6cb215b019c71ce865b05684f7e8c40a6dda9e26"
+        },
+        {
+          "path": "compat/string",
+          "sha256": "6436abb32f596eb392db89a2bfdc46e1809ae4a66ffad4afa6894e3023e9fcbe"
+        },
+        {
+          "path": "compat/sys/ioctl.h",
+          "sha256": "8fd142a4383d98eb45f18d72a6fea7282a1211274fa156d0a0f1d28eb1f399eb"
+        },
+        {
+          "path": "pax_dirent.h",
+          "sha256": "99c9f436fc18656749f904e78f76220b366517e1fadb2d5b46b74a1641cd32e9"
+        },
+        {
+          "path": "pax_libc.c",
+          "sha256": "b40af5918ea6cafa7e6c058c39d2d042d839dc47b9c10687b9e27a496e799e8e"
+        },
+        {
+          "path": "runtime.h",
+          "sha256": "d1d121ec51afac6b4297432ab1d0f8bc876765e7a88d9d18ca81ad14dce76b38"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/pce",
+      "new": "apps/pce/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "9113c7a98ee75d29edf65c4ef954f29c3305ae8abd0f7ddf11a7462fb5c86fc9"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "53596d8e32532c91f8409da82d0044a2a9765d47750a79a1eebdd6ef5be898ac"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "b87588c8c520b285a8a034481362a3174ed5e292d843e031b378863f8798bcb8"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "fc63e6dd7c8031f8227103ff9ca398e72a1ea5ea04543ef4be555005e9d0c539"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "59d35cf364cf398e96084fd6f4bc9c2a3dec2b868d986e5a4983b29cdb6a0224"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/prosystem",
+      "new": "apps/prosystem/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "64a07123876596a4b49275772090730e99f91468a4be74fa12ffe257d4a34e07"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "9ba4d12b7685e496cc36e6be30c13f595079959f50d691439d42820562c274b6"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "8f2506f4b046ccbb207f3ea83d551a23b07988592255fbef898fe90cabf3d3e7"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "43cee44b6a35c034cae9333551c452d986df9e653548b9ef54e7c94d8b079654"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "efc8815ef094c187c5eb37fdff299d00f01e8807c267108c1941de0e7e780ac1"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_anotherworld",
+      "new": "apps/anotherworld",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "Arduino.h",
+          "sha256": "bbad68a32223a4e93eb7c9677ba7af5b2de5c5e0d669ed3b231257090e9ea1aa"
+        },
+        {
+          "path": "UPSTREAM_README.md",
+          "sha256": "54e66c5adc0bf4070d7faa4469c1beda9e3d80b50a05bff26c763bb74fdb88b9"
+        },
+        {
+          "path": "gbConfig.h",
+          "sha256": "1310a6fa3ed8c48e3888398442b80f181f48c85759d3405dd4a3c5c1b97353a7"
+        },
+        {
+          "path": "main.h",
+          "sha256": "66f5943252b666f61c58528b6f10fa172bd7d5399b382b3e5d956eb536ea04cf"
+        },
+        {
+          "path": "pax_globals.cpp",
+          "sha256": "8d563fca7a0e3dcc3260867ed233c5a4b233fd420b0a039f0456840344e4fe13"
+        },
+        {
+          "path": "pax_main.cpp",
+          "sha256": "3670b8a0effa53a8b99c885352ab42eafb343a702ac8f4e250953058bd4cf99a"
+        },
+        {
+          "path": "pax_system.cpp",
+          "sha256": "9fa55b229aa1f9028c3a8212d9ce625c03f37cb885eda40fe00600faee61ad19"
+        },
+        {
+          "path": "pax_system.h",
+          "sha256": "941f49bf244a3fa29d40f7941652256da8c3cf4b97158b2e8fa7a1d29e6e41ec"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_atari800",
+      "new": "apps/atari800",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "4a4e89e4d43481d92ddd4cd2151dfc7ba095c568223cf07a3b682dfa925a3a6f"
+        },
+        {
+          "path": "pax_platform.c",
+          "sha256": "c18f0a9a7a6b2f304f69d025b7b85a165a1aaf1b244f9663e8e14b73d0e05414"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_azip",
+      "new": "apps/azip",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "AZIP_UPSTREAM_README",
+          "sha256": "23a5bbaf8841d363bae396677ad18bf89652304b3fed7f26997198a2ae9eeb39"
+        },
+        {
+          "path": "font8x16.h",
+          "sha256": "6e665aeca6c8e2b1bc25f60363f0c45cc274a47895396ce9ece2a7dfe013c185"
+        },
+        {
+          "path": "pax_main.cpp",
+          "sha256": "892c612a5363a131778b94769fac1e8c22d9cca15304302b661355be9e414fb9"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_c64",
+      "new": "apps/c64",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "66a1eec10c9ebd3fb2f8eaed210b60543aeade1e6d89d268cfdd7b41e0ab6324"
+        },
+        {
+          "path": "pax_syscalls.c",
+          "sha256": "7191bc160d11b7482872d2cf26c1cb9e3a5eadccb5824fdc336e0e1405d1010b"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_doom",
+      "new": "apps/doom",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "compat/driver/gpio.h",
+          "sha256": "a77798eb862453379869c4d5305c956e8c4917e37017ffdbf82d695ad557a07f"
+        },
+        {
+          "path": "compat/driver/sdmmc_host.h",
+          "sha256": "13d054c34f2393f57a132b83f4e52ebc400221483c4698ac802d67cb79eeee7b"
+        },
+        {
+          "path": "compat/driver/sdspi_host.h",
+          "sha256": "a8f348bece8b563e35d9418244fc008546ba0fd9515cf8db1a08c64b4fcbfa55"
+        },
+        {
+          "path": "compat/esp_attr.h",
+          "sha256": "0c9d92de76041a3adf3260565515a25c2e9a26b4700d80d286e888ad35f7fe6e"
+        },
+        {
+          "path": "compat/esp_heap_caps.h",
+          "sha256": "f724e1a39215b67daa01294727eb3e0f16c5efd214059d259a37226ed2356e3f"
+        },
+        {
+          "path": "compat/esp_heap_trace.h",
+          "sha256": "ec7d3b455e6391b12b42bff692e98198945464d32525e7007b1fba3af7f328a8"
+        },
+        {
+          "path": "compat/esp_system.h",
+          "sha256": "202c0cc5d023aba0abf4e0d656be5dbe63bf7896b7ffdf03d86528e0223bed8d"
+        },
+        {
+          "path": "compat/esp_timer.h",
+          "sha256": "254b6a8db4948542bff5446d047c8d32d18f7631c61fc576f6c4335a7d163911"
+        },
+        {
+          "path": "compat/esp_vfs_fat.h",
+          "sha256": "c9842c480848cf12df6149ecf9654a6182ae7102976f8a42ea9c91646b6d8a23"
+        },
+        {
+          "path": "compat/freertos/FreeRTOS.h",
+          "sha256": "3cbd3c04f24f7d7eb7f28e42cc5a2e25b48091b6f273a4d22a92bc8bd9ee44f3"
+        },
+        {
+          "path": "compat/freertos/event_groups.h",
+          "sha256": "af9989dcc3ba8590643f924b73cadd606d986c889a612401b6131092f43902aa"
+        },
+        {
+          "path": "compat/freertos/queue.h",
+          "sha256": "cb3ab5994ec68aff55c68144efe50fcea347ae0d67e2c0f77cfb6214ead19c6e"
+        },
+        {
+          "path": "compat/freertos/semphr.h",
+          "sha256": "60357ef394f62e5aff30a9036a749282adbab57f20c289755335b9d1ff2b32ae"
+        },
+        {
+          "path": "compat/freertos/task.h",
+          "sha256": "c502e02b74097ceb040aa0da5a25e12eddfc9153e8de3aeaf80fa065b7bb31e6"
+        },
+        {
+          "path": "compat/rg_system.h",
+          "sha256": "293128f4b1a839c58f2c115e5216903573267fd07cbb0e8aa552c3b89994071e"
+        },
+        {
+          "path": "pax_i_sound.c",
+          "sha256": "918dc21f262dcf9771e4eb1981693ddb4de97154a22fe66b600847316a3216bd"
+        },
+        {
+          "path": "pax_i_system.c",
+          "sha256": "116152f5f87c7492e171449d0f1505b5faeb5d4cf17370d8e97308db52bae6d6"
+        },
+        {
+          "path": "pax_i_video.c",
+          "sha256": "421e445c4097b0bfa44478174c1f0c22601ae820b177931172d967c52c311a53"
+        },
+        {
+          "path": "pax_main.c",
+          "sha256": "2483b64ca9643f4ca07ecc368912249d5f08bbf0fa122b655c5630b6bbd8b1b5"
+        },
+        {
+          "path": "pax_rg_stubs.c",
+          "sha256": "19dd854d3ca25007a77f1f08d855902fa342d5d2d028405bb34c43d7267821e2"
+        },
+        {
+          "path": "pax_syscalls.c",
+          "sha256": "ba45ab055f65a67becf3f3d62a938af9e34390819888af34ee423802980f72e2"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_duke3d",
+      "new": "apps/duke3d",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "compat/SDL.h",
+          "sha256": "c7fd4bc42b09d369b27c56c5eef6572493736e7b8a31d54a8b5caf159ab5ab63"
+        },
+        {
+          "path": "compat/SDL_audio.h",
+          "sha256": "9618bf250b7982dcbe811f8c20e8111b61a1f8039eb7dd9fb4523444b49607e3"
+        },
+        {
+          "path": "compat/SDL_endian.h",
+          "sha256": "080897845b3bdbc41cfdc8ea7693f3b8f0fd080ce429da24cf1b0c8a1c6ef6f6"
+        },
+        {
+          "path": "compat/SDL_event.h",
+          "sha256": "68ebe5d23ef6321127f973b11c5530d988262501bdaea7aa44d6e3946f396359"
+        },
+        {
+          "path": "compat/SDL_input.h",
+          "sha256": "b7f63d382a0d0716eb939dba57843947fe745286def03b9dc360754093935556"
+        },
+        {
+          "path": "compat/SDL_scancode.h",
+          "sha256": "cf937abcac6f65319ecd786e79b9a0c63fc8429aa2b247ff14e32ab7e4b0747c"
+        },
+        {
+          "path": "compat/SDL_stdinc.h",
+          "sha256": "47cd160682eb3decf9468c5b5f51cd39251577730abf6f20cd06b508c0ff8008"
+        },
+        {
+          "path": "compat/SDL_system.h",
+          "sha256": "37850127c68a091e4004fb6ae55f071da4d47ea99b948b85cc8237cbd62515da"
+        },
+        {
+          "path": "compat/SDL_video.h",
+          "sha256": "bef84ff529085e313e674ef9151645b9e893c8ac993ba8b2422044c7684c2ed4"
+        },
+        {
+          "path": "compat/begin_code.h",
+          "sha256": "b8edfde8937e0503ba130197cc5d4be91b2e7672ef1485cbbde3db9251fe1bfd"
+        },
+        {
+          "path": "compat/close_code.h",
+          "sha256": "1855ec8b5f4829c7123e7d91287908d3f470663e19712d2980c98586dabafd25"
+        },
+        {
+          "path": "compat/doomtype.h",
+          "sha256": "64b159c6541d01583abfbc5c61f4d79c6b1b9a339abcc04fb1ecfa712a0feac2"
+        },
+        {
+          "path": "compat/driver/adc.h",
+          "sha256": "efcb03c5698825b1f5baa810dec7c5ed891e5ee552194d908ff768f13590f825"
+        },
+        {
+          "path": "compat/driver/gpio.h",
+          "sha256": "bdae4951c4b88f655e29fc2b629745af04162c6072864fdfe307a861aafc0c4f"
+        },
+        {
+          "path": "compat/driver/i2s.h",
+          "sha256": "b091a4387a09a3a7c504737724836807d7c16952ca4ccd5930590664d05b9307"
+        },
+        {
+          "path": "compat/driver/ledc.h",
+          "sha256": "c94bb94251453f5bca895aa9527e81ff094a60816526d8c4a58f1f4a72367e82"
+        },
+        {
+          "path": "compat/driver/sdmmc_host.h",
+          "sha256": "f5e34c3dca947cf8f3ba1983a31406786f3b9810f387fdbb7d4c78fae0c6c69f"
+        },
+        {
+          "path": "compat/driver/sdspi_host.h",
+          "sha256": "2eb73c2bf2f06db6b5f1ba34d1d57e94b8a13208bfca5b5084258e55007f3503"
+        },
+        {
+          "path": "compat/driver/spi_master.h",
+          "sha256": "798537fc273f0c95a960769f748719fd843adac6c9ccb04c17039e93989f44fd"
+        },
+        {
+          "path": "compat/esp32_compat.h",
+          "sha256": "74e771df10a90dc35bd97f57a8ab511a97afb3ef91cbf04267c665ee467d4e27"
+        },
+        {
+          "path": "compat/esp_attr.h",
+          "sha256": "3cca2c88b07a49ca4a0fa75d87b7638343bdfa35eaf4fc371b3390a7e4a7c120"
+        },
+        {
+          "path": "compat/esp_heap_caps.h",
+          "sha256": "f457ae87fec5705da652fb1211d8e36ffad2bcb2c7546d7963c4f3155a786dcb"
+        },
+        {
+          "path": "compat/esp_heap_trace.h",
+          "sha256": "cadf1b25b823ae6be5cf26ed73b8410ab26fabbea20beee95ad5ec6b0061d11d"
+        },
+        {
+          "path": "compat/esp_log.h",
+          "sha256": "3b4e94bbea968657294b548efb4ee19838465cabbbaeb64fd9a45402f0305b83"
+        },
+        {
+          "path": "compat/esp_system.h",
+          "sha256": "7dbda76108df01a8f7f218a1ed3dc310bcd163df1b039df960120519fc4fbb70"
+        },
+        {
+          "path": "compat/esp_timer.h",
+          "sha256": "21a1e861e8a3dc0e8789de461a598b82ef6fce92623348a719d49b39b1bc5046"
+        },
+        {
+          "path": "compat/esp_vfs_fat.h",
+          "sha256": "4298a5af9804bf2c59922287639bf968610d59c21210570f5dcae10547cb9758"
+        },
+        {
+          "path": "compat/freertos/FreeRTOS.h",
+          "sha256": "69c9fc7eb6ea8f15b3ead85db870cffa7744d4a378a71f555d6ae5da16b5cf51"
+        },
+        {
+          "path": "compat/freertos/event_groups.h",
+          "sha256": "63262fe8f27f7408930a27c0300fe27e2e237e8209783b1790bed76b67be2d2c"
+        },
+        {
+          "path": "compat/freertos/queue.h",
+          "sha256": "bd22d35c7a74f2131117dd93dedf58849b896a3cd0c17802dd8418a1f542275c"
+        },
+        {
+          "path": "compat/freertos/semphr.h",
+          "sha256": "8d2d79b13cac4974a0c9e1e58308cb2e60023d5d810b16740e94f0cd868959be"
+        },
+        {
+          "path": "compat/freertos/task.h",
+          "sha256": "f23a906652eadbce07b283c7571303abbbc350349abbb3eba3056aea4b635fbb"
+        },
+        {
+          "path": "compat/lprintf.h",
+          "sha256": "dc3c69abf8030adb212358de9b52a1afe4c6760a25e0bb25fa0b451e55b997d5"
+        },
+        {
+          "path": "compat/spi_lcd.h",
+          "sha256": "994c292b29d53e2a6af690890051259873c8f22132e143eeff4394b0e09e4979"
+        },
+        {
+          "path": "duke_fluidsynth_midi.cpp",
+          "sha256": "3b81584ce3c22cf357fc550d3e716c07d1955ef1c1dccb55eb9c3c3a8e476097"
+        },
+        {
+          "path": "duke_opl_midi.h",
+          "sha256": "c70a0d0c80f30d10c2dfa8884dbbc36a586a0c62190793fcc6248270481e67ba"
+        },
+        {
+          "path": "duke_sf2_midi.h",
+          "sha256": "2eff03ee6d088203e018ca753eb237b7ef96bb3775128635d8c5576a4bdf2076"
+        },
+        {
+          "path": "pax_main.c",
+          "sha256": "23e2f085f0e93daa5da431fd4ef2cb20dadbfb17ca5e47386e68e487db234af0"
+        },
+        {
+          "path": "pax_resample48.cpp",
+          "sha256": "a38690fbb4aaeea73001524175d9952a2be4824797e394ba94fa892b1dc121d6"
+        },
+        {
+          "path": "pax_sdl_audio.c",
+          "sha256": "b137047b68416ca7f874e583873c15ba726e4c813d98d26db5f23ad7b5fbf9e1"
+        },
+        {
+          "path": "pax_sdl_event.c",
+          "sha256": "17f5c1cad07408aa47a66cfee70850ed6e4d01ffaa4fef366db8e0e514b3cb02"
+        },
+        {
+          "path": "pax_sdl_system.c",
+          "sha256": "296b27dbcdcd9997e060e7d71e69dbb461ecdddb98125597e36a9310e943dad8"
+        },
+        {
+          "path": "pax_sdl_video.c",
+          "sha256": "22be0ff2ac327278cecca50b69fbe51435758c9712712a2ab81908c865b9d72d"
+        },
+        {
+          "path": "pax_syscalls.c",
+          "sha256": "dbf6a1d3f8a9f160009a2428f6c3007a07dac06a20215198d1a43649f9e95766"
+        },
+        {
+          "path": "third_party/README.md",
+          "sha256": "8b095da256220c482cda8dc0e78d7c2df3700bac1fcc22d868696a0a2200fb89"
+        },
+        {
+          "path": "third_party/tsf.h",
+          "sha256": "8e59a2e536c711518517e83d211cc7664916cb15d209f2a6a6d4a7a3cbf680d1"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_gb",
+      "new": "apps/gb",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "esp_heap_caps.h",
+          "sha256": "3267ea55d199686ab0ea8976c97543454a173a8906ed274f14bbd7110d856e85"
+        },
+        {
+          "path": "esp_partition.h",
+          "sha256": "b27f4b86c75ffc5db93b10f40f97f49e2ec530ec5987549d9c3a8d3a907f1216"
+        },
+        {
+          "path": "freertos/FreeRTOS.h",
+          "sha256": "ea66d0cde863202d30aa2b9c9115cf69619e5d11c505dc9621335458dd55a0f1"
+        },
+        {
+          "path": "odroid_audio.h",
+          "sha256": "0de7eb885ff6ca4ba9dbed5f2814ab1a00997cc030cbd273d40a9bfa02dacbc5"
+        },
+        {
+          "path": "odroid_display.h",
+          "sha256": "4cf898f8467cc04a7a3a2ef069cabb4951f61b1c9d59cd8a4b26ce192f455557"
+        },
+        {
+          "path": "odroid_sdcard.h",
+          "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+        },
+        {
+          "path": "odroid_settings.h",
+          "sha256": "803cf2426048404cd65434eb91e5bdab1c2837ca26c6baaae9d8e8ee44c54c6c"
+        },
+        {
+          "path": "pax_main.c",
+          "sha256": "b548dafdd5845fe42fc53a9436b5069470596f3421c1bf9dcf3577a95d18db35"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_genesis",
+      "new": "apps/genesis",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "12ac58d6d023af3206118fd28e93bba158a50991fd8a361f25732d67d4c4046c"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_gw",
+      "new": "apps/gw",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "ad8218eea791d838ee4589975b95b94e4f50a8278ed67b6109105b8f48fc36f0"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_gx4000",
+      "new": "apps/gx4000",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "273d9719c97acda93ec32796ec977f290b35d7168577c5215a9dd35a594979f9"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_handy",
+      "new": "apps/handy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "a3a4e4d4bc0cd44111e5080bc5a61c679482f636efca12fadba5ca95f08308a3"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_lvgl",
+      "new": "apps/lvgl",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "lv_conf.h",
+          "sha256": "2445132487ed1d7b6b91cb6c9290a884f91632396e21f19806df6f351bc57529"
+        },
+        {
+          "path": "main.c",
+          "sha256": "d91ffe8af08669b3eaeedee908807afbb07520b4a5a6ad96c065cbd7366b10bc"
+        },
+        {
+          "path": "pax_libc.c",
+          "sha256": "a7d18ff9c11a98ceb029791dad2cb35fb859d4dee191291d0899da29e460c859"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_msx",
+      "new": "apps/msx",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "10e02f128bb1791a39be1019d22683eaf82afa040645a5e6684974c2122fe31b"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_neogeo",
+      "new": "apps/neogeo",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "be5f2c4fed30203df31d3d6952b34a4e2bdb214599ee008fcef8a791e267f415"
+        },
+        {
+          "path": "pax_platform.c",
+          "sha256": "398fbe35c4d3546116d0b3bba3aff1aea5664ab69bdfa23868a40dceb1ecb3d8"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_nes",
+      "new": "apps/nes",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "esp_attr.h",
+          "sha256": "95b472d64b7a9d3e673f1cbaad1c9cd3657cccad9a2e8578798fb932792ed3cc"
+        },
+        {
+          "path": "esp_heap_caps.h",
+          "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+        },
+        {
+          "path": "esp_system.h",
+          "sha256": "6569db426bed804aec4f3625b32875df51833a4f04d652663ccc66ba23c593b9"
+        },
+        {
+          "path": "esp_timer.h",
+          "sha256": "940dfaed8b9bad785bf1745297170549e76a2910558a0a4c5503bb6b43891b29"
+        },
+        {
+          "path": "odroid_input.h",
+          "sha256": "47efcb23ab2201351d59057db6a0d6d3dab1afcec1fb86b872d982d9e2353b26"
+        },
+        {
+          "path": "pax_libc.c",
+          "sha256": "4a538411c326be125b080ce3dd8581853d91ccf21955738accf4387d2115c11e"
+        },
+        {
+          "path": "pax_main.c",
+          "sha256": "ac60b0328bd7e980405b4e68feb9461eaa0fe1b5c6b30720ec6e814100cbe9f6"
+        },
+        {
+          "path": "pax_osd.c",
+          "sha256": "c702cc444b3ee3c34daec1b7535314d9909c7397c444529d362547fca3a9d7bc"
+        },
+        {
+          "path": "pax_platform.c",
+          "sha256": "3df438ead63e5d448350b086d91ef46b21091fc193a6bda4e63749d50ad4c822"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_nesplus",
+      "new": "apps/nesplus",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "30462c52330ce7324c070845ceda70396b3ee1dfe41a67e54d1087ebeb1602c4"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_ngp",
+      "new": "apps/ngp",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "aea4f4fe15a35ba5e2960aee9b01301d9165a5eb290c2ca4b04a2c95f90e8ae8"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_opentyrian",
+      "new": "apps/opentyrian",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "compat/driver/gpio.h",
+          "sha256": "a77798eb862453379869c4d5305c956e8c4917e37017ffdbf82d695ad557a07f"
+        },
+        {
+          "path": "compat/driver/sdmmc_host.h",
+          "sha256": "13d054c34f2393f57a132b83f4e52ebc400221483c4698ac802d67cb79eeee7b"
+        },
+        {
+          "path": "compat/driver/sdspi_host.h",
+          "sha256": "a8f348bece8b563e35d9418244fc008546ba0fd9515cf8db1a08c64b4fcbfa55"
+        },
+        {
+          "path": "compat/esp_attr.h",
+          "sha256": "0c9d92de76041a3adf3260565515a25c2e9a26b4700d80d286e888ad35f7fe6e"
+        },
+        {
+          "path": "compat/esp_heap_caps.h",
+          "sha256": "f724e1a39215b67daa01294727eb3e0f16c5efd214059d259a37226ed2356e3f"
+        },
+        {
+          "path": "compat/esp_heap_trace.h",
+          "sha256": "ec7d3b455e6391b12b42bff692e98198945464d32525e7007b1fba3af7f328a8"
+        },
+        {
+          "path": "compat/esp_system.h",
+          "sha256": "202c0cc5d023aba0abf4e0d656be5dbe63bf7896b7ffdf03d86528e0223bed8d"
+        },
+        {
+          "path": "compat/esp_timer.h",
+          "sha256": "254b6a8db4948542bff5446d047c8d32d18f7631c61fc576f6c4335a7d163911"
+        },
+        {
+          "path": "compat/esp_vfs_fat.h",
+          "sha256": "c9842c480848cf12df6149ecf9654a6182ae7102976f8a42ea9c91646b6d8a23"
+        },
+        {
+          "path": "compat/freertos/FreeRTOS.h",
+          "sha256": "3cbd3c04f24f7d7eb7f28e42cc5a2e25b48091b6f273a4d22a92bc8bd9ee44f3"
+        },
+        {
+          "path": "compat/freertos/event_groups.h",
+          "sha256": "af9989dcc3ba8590643f924b73cadd606d986c889a612401b6131092f43902aa"
+        },
+        {
+          "path": "compat/freertos/queue.h",
+          "sha256": "cb3ab5994ec68aff55c68144efe50fcea347ae0d67e2c0f77cfb6214ead19c6e"
+        },
+        {
+          "path": "compat/freertos/semphr.h",
+          "sha256": "60357ef394f62e5aff30a9036a749282adbab57f20c289755335b9d1ff2b32ae"
+        },
+        {
+          "path": "compat/freertos/task.h",
+          "sha256": "c502e02b74097ceb040aa0da5a25e12eddfc9153e8de3aeaf80fa065b7bb31e6"
+        },
+        {
+          "path": "pax_main.c",
+          "sha256": "b64f586b14fdc9a399f2c12d2a4dc06ef17c3ad49a0f0b2c345c4d395cc0336c"
+        },
+        {
+          "path": "pax_sdl_audio.c",
+          "sha256": "21f185df709bbcfc1ce4dbbdc9ac83242724ddc8908ad83b483633943789c977"
+        },
+        {
+          "path": "pax_sdl_event.c",
+          "sha256": "e6aa06099b9aa19d5441a8dcb485bbd1ca56888e0676eb37a130485f66b14702"
+        },
+        {
+          "path": "pax_sdl_system.c",
+          "sha256": "63e37444f2a1c75f63e7f0b3606b77f946fc1487f117074fc42bc46daf299aa7"
+        },
+        {
+          "path": "pax_sdl_video.c",
+          "sha256": "04cd51eacca4c455a6bc5099fa7ad5b44bd37d5d376231a16973745e955b1ef1"
+        },
+        {
+          "path": "pax_syscalls.c",
+          "sha256": "6638fe8173d6b9be2aac0ec49772e382c02b502c630b519442ac3cb3eff90a78"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_pce",
+      "new": "apps/pce",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "6f6651408cc7b2486491604a15100290cdbfe5f7e4aa6e5fbaccc505561fa31f"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_prosystem",
+      "new": "apps/prosystem",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "935ef448163e22458b072e65714c20d06baf902dfbd2cf5e8678dbd7ef5c8c32"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_quake",
+      "new": "apps/quake",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "compat/driver/gpio.h",
+          "sha256": "a77798eb862453379869c4d5305c956e8c4917e37017ffdbf82d695ad557a07f"
+        },
+        {
+          "path": "compat/driver/sdmmc_host.h",
+          "sha256": "13d054c34f2393f57a132b83f4e52ebc400221483c4698ac802d67cb79eeee7b"
+        },
+        {
+          "path": "compat/driver/sdspi_host.h",
+          "sha256": "a8f348bece8b563e35d9418244fc008546ba0fd9515cf8db1a08c64b4fcbfa55"
+        },
+        {
+          "path": "compat/esp_attr.h",
+          "sha256": "f83071e0db22a55ee2dfc2b7845086a5617a92187b08a82472d30bc98d08d698"
+        },
+        {
+          "path": "compat/esp_heap_caps.h",
+          "sha256": "1e8ef5199735a57da857b6c305b6a616b070f40816ef638b295a412cf5aeb7b7"
+        },
+        {
+          "path": "compat/esp_heap_trace.h",
+          "sha256": "ec7d3b455e6391b12b42bff692e98198945464d32525e7007b1fba3af7f328a8"
+        },
+        {
+          "path": "compat/esp_log.h",
+          "sha256": "cfadbbfa2f7e705c08be80a5af5e53faf1ca03e86cd570c84ee0d16a8b55b308"
+        },
+        {
+          "path": "compat/esp_system.h",
+          "sha256": "202c0cc5d023aba0abf4e0d656be5dbe63bf7896b7ffdf03d86528e0223bed8d"
+        },
+        {
+          "path": "compat/esp_timer.h",
+          "sha256": "254b6a8db4948542bff5446d047c8d32d18f7631c61fc576f6c4335a7d163911"
+        },
+        {
+          "path": "compat/esp_vfs_fat.h",
+          "sha256": "c9842c480848cf12df6149ecf9654a6182ae7102976f8a42ea9c91646b6d8a23"
+        },
+        {
+          "path": "compat/freertos/FreeRTOS.h",
+          "sha256": "3cbd3c04f24f7d7eb7f28e42cc5a2e25b48091b6f273a4d22a92bc8bd9ee44f3"
+        },
+        {
+          "path": "compat/freertos/event_groups.h",
+          "sha256": "af9989dcc3ba8590643f924b73cadd606d986c889a612401b6131092f43902aa"
+        },
+        {
+          "path": "compat/freertos/queue.h",
+          "sha256": "cb3ab5994ec68aff55c68144efe50fcea347ae0d67e2c0f77cfb6214ead19c6e"
+        },
+        {
+          "path": "compat/freertos/semphr.h",
+          "sha256": "60357ef394f62e5aff30a9036a749282adbab57f20c289755335b9d1ff2b32ae"
+        },
+        {
+          "path": "compat/freertos/task.h",
+          "sha256": "c502e02b74097ceb040aa0da5a25e12eddfc9153e8de3aeaf80fa065b7bb31e6"
+        },
+        {
+          "path": "compat/rg_system.h",
+          "sha256": "1404b30538d50191588bbcbdd09c1b6e074a9bd9546629fb1014b3dae695d478"
+        },
+        {
+          "path": "pax_input.c",
+          "sha256": "7804042d4de8bf21e80006fda45c8a1498ea2d0a190266a8bf25410cdd3f76fb"
+        },
+        {
+          "path": "pax_main.c",
+          "sha256": "37b7a1e07a30bbc98d02ec2da89d5ecdb17c9c87aa0e6b61304081f9b1c1f8fc"
+        },
+        {
+          "path": "pax_mp3.cpp",
+          "sha256": "8ab03e4d9a7275a0dffa1a558b0c3e542726f0bbf5343a1e07b9e6e3ce79c714"
+        },
+        {
+          "path": "pax_rg_stubs.c",
+          "sha256": "ff7200db56da0caeda191999647ea7f1bf769fdaa3fcc3c08d1ab7e79f21af54"
+        },
+        {
+          "path": "pax_snd.c",
+          "sha256": "a348826cbbef9942234a21f24617b6023f94267c3ed7d949185328a2ca1dd738"
+        },
+        {
+          "path": "pax_sys.c",
+          "sha256": "1c43352c9b1046f31edb11476bac65de64f7b7379d24b0981024283acdbdfcc1"
+        },
+        {
+          "path": "pax_syscalls.c",
+          "sha256": "4228f87faf37a2bdd36bec1604690d4b4298e6bc507b0e8c2ec7cbe097504396"
+        },
+        {
+          "path": "pax_vid.c",
+          "sha256": "8e390be6ce50f9465f89539fa388509e6ae866fee6c264dc7224a467ccbb4679"
+        },
+        {
+          "path": "third_party/micro-mp3/LICENSE",
+          "sha256": "0680adfab6fbe3f10940a4baa8f05c2e70150a8fcf41822c8f147451d0aee8f0"
+        },
+        {
+          "path": "third_party/micro-mp3/NOTICE",
+          "sha256": "24869b60c1e816ca78d2ace98c62eff82231ea57073652560930d4c4ec0b888f"
+        },
+        {
+          "path": "third_party/micro-mp3/README.md",
+          "sha256": "3a906d255855b4390b14aad48e3bb34b3aa114bd0399298543e5e3b567ce3efc"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/mp3_decoder_selection.h",
+          "sha256": "a7d5dae6fbbc110fb1b73a69877fbabd1d53382145b46638af742dfdd8a7d0eb"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/mp3_mem_funcs.h",
+          "sha256": "c8ed12d118ca86f1e466cd1bde2fbedc55e66f71b42c61de6ce5fb773a3474e1"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/oscl/oscl_base.h",
+          "sha256": "26703bd8e537225fa2edbac63d191d3299f4c433ec1b7f4919148706918b8336"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/oscl/oscl_mem.h",
+          "sha256": "f210ba8faa27ab33e82a8c74e17df102b3b7005eefef3d19af554b44afbb55cb"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pv_mp3_huffman.h",
+          "sha256": "157a4387c095abdc5496623929a49940de54c87e18abab325cf00fba7ba663bb"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pv_mp3dec_fxd_op.h",
+          "sha256": "2b098b7e5a157760f93912c5832520f94f694c2461abab05805d9fa2742a8045"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pv_mp3dec_fxd_op_arm.h",
+          "sha256": "a0d446413b217bdff81d8e917ba53fdcccb3a324a3d1610f70bcb14ba0621238"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pv_mp3dec_fxd_op_arm_gcc.h",
+          "sha256": "2b2086c6087de78c8ad0b7dcc7c2fe76983b87a9e2e792f327557c83e8d43fbe"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pv_mp3dec_fxd_op_c_equivalent.h",
+          "sha256": "68fe857c9f064c55cab5037de6c7a81bbf542bdb371fce8deaa15c4f8f9b27e7"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pv_mp3dec_fxd_op_msc_evc.h",
+          "sha256": "6d32ebbeb377ad52d95cfde3e0147f7618a99b5b78db313471f4751a8e4bdf60"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_alias_reduction.cpp",
+          "sha256": "8b303c437ceeaa908d2dc7fa1772a757d4444037f19fab3ec357bc23fbd153ac"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_alias_reduction.h",
+          "sha256": "fc12379167fd9582373a90879796c9096c482d8cba9b840f6ad648abd4e45627"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_audio_type_defs.h",
+          "sha256": "c538ef72a61fc7a8a92790b24ec25474f01d14fe903c95002325288e803271a1"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_crc.cpp",
+          "sha256": "84a9abe379a2da5a17f5af7cd638c6d7dc66aaf85f1f5270c603cc10ccac53f5"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_crc.h",
+          "sha256": "46e3b1d49eb6ffc564dee8d0542a3921668a1fddd03302d7b3ed2517689e229e"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_dct_16.cpp",
+          "sha256": "f3362da9433cce58d70774da7b78dcf54d828846db10b6cde49dd924426ed875"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_dct_16.h",
+          "sha256": "e6d4cd603f72853a90f04dfaca2a42371adeb0dba8d960c0c5349c28b6d7d438"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_dct_6.cpp",
+          "sha256": "f08e1332a35988703f027a2af08d1b4c723dbb9fa73f7ab06c8575ca7a444e23"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_dct_9.cpp",
+          "sha256": "aa7767b4767659c6c3fe1496568aea4cf896388f4a914922d74cc66c7f22c133"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_dec_defs.h",
+          "sha256": "f322bf23aab2939cebbf4dbbe9be80afca6165397d510bc6a696a091b56d91a8"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_decode_header.cpp",
+          "sha256": "9b3dc6e14fcef72ea56b31e12ff765ce7961d4f3133a5de6abe085d3a857a2ac"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_decode_header.h",
+          "sha256": "fb860c57b25a608e5267148dbd5f3d820b2ccf52ec674627fe54c2011a45995a"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_decode_huff_cw.cpp",
+          "sha256": "c268c1fd6d819a9a9975d10112d4428338e08b9668d659469c5eb28bf59a3ef5"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_decode_huff_cw.h",
+          "sha256": "ca4ffa14ce16c0c3aa08766362a28f7f583435c28dd7d94682406fd2f75312d5"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_dequantize_sample.cpp",
+          "sha256": "15c2e40273eeb2499dfe45d555cc1f186f3c927c941ea1abcd3968814d77dd52"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_dequantize_sample.h",
+          "sha256": "fdacebec62d78aff99b55d5abd07a8d4f9f0a265b3e3e92141706202b34e8ad3"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_equalizer.cpp",
+          "sha256": "19aa86cac38593d9428528260789a48f436cba2a66a37e09f8dbbe43c23079ac"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_equalizer.h",
+          "sha256": "8d449e91245185c4dafbb72ada2ce2c8b7be7394b6106829dc757b778db37268"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_framedecoder.cpp",
+          "sha256": "d737ec733a27a532bc97128a21e7a12183049c3e8d7d52bd63bcbffe1d855659"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_framedecoder.h",
+          "sha256": "6d6b8db14fee20e733e30645427098539b7e94a1d541eba10d940ce772ee70ef"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_get_main_data_size.cpp",
+          "sha256": "c1366c976da7ef0fa4f630ad5bb95d22058563491153867de594c9338dce46a3"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_get_main_data_size.h",
+          "sha256": "b8f2637c7510bb77037651c5d5b1617bf8649f22fb9d4ee642a01c13a7c867cc"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_get_scale_factors.cpp",
+          "sha256": "801f4bcbd44abb8c884be6ec87a59f6670d1af91b20f46421622fac292f39b36"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_get_scale_factors.h",
+          "sha256": "fb0a6782f22d6b6cf7ce7c1723dff905c384e0ba0fdc5052bbd3b0e67059c878"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_get_side_info.cpp",
+          "sha256": "8423b3fc0f7859bad445e99bfee3672660f931fc1a0f4f8115c3332a2bf72e8d"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_get_side_info.h",
+          "sha256": "cea0e2fba048a2a54e626f033ab870377e23594da2e9aba2b224543f7d218758"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_getbits.cpp",
+          "sha256": "06958fe4b9362982303ed6b141298796875fe90332140e5c305c36f33e8626bc"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_getbits.h",
+          "sha256": "05fbc5bd8bd149f8d9abd74255cf146981fcc4cf84033732fa64dd5c344a1578"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_huffman_decoding.cpp",
+          "sha256": "d8e5bf3e7135111088bae877816fafba3f053763bff0b4415f9ebe06de7c53f2"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_huffman_parsing.cpp",
+          "sha256": "240eee9060d5cfa87059053d2e08b1ccb125b816a784178b5734d48e5feb0502"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_imdct_synth.cpp",
+          "sha256": "755a23b9dff1029d2ccbf05390a17073c050ed0d8fc6e1ffe901c3fc2d8b7fb8"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_imdct_synth.h",
+          "sha256": "c7fe07d6abee9fe2017aa7da4cf559e45a12563416df4cbf97847c48333ba5d6"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mdct_18.cpp",
+          "sha256": "a01f396a913cb66f75015f108b9b38ffb20b88c7d59cdc72b3f227704647f8af"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mdct_18.h",
+          "sha256": "c23dbd44ac6d651eee163bf245c7a3d3b247b49929709e934a28623ae95138fa"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mdct_6.cpp",
+          "sha256": "83e3bb1e11b434308b13a4471cc9cbaacc68831c5b92de1ec639c2dca857954e"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mdct_6.h",
+          "sha256": "bdf27e2850cef5a43f04dffe23038545806f3836bf0a809732894ef0278b7569"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mpeg2_get_scale_data.cpp",
+          "sha256": "d7eb7fc7d4b893c3c3404ff67378180ae63c62409ee1bdf4ea60acd05f8c5db0"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mpeg2_get_scale_data.h",
+          "sha256": "6e5cae4e30d287c7aa4a87c1507190b06b5a1c414c48bfc0f2aef83118b6ce62"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mpeg2_get_scale_factors.cpp",
+          "sha256": "b64ebd41aa7804423abbcd1553cbc068be125ff2c7afb7db7cfeac5116ad3d06"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mpeg2_get_scale_factors.h",
+          "sha256": "c1c93f9f8ae5dde2fff407b04ba98c847a5026759083a2eb0aedc5d4bd5eae21"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mpeg2_stereo_proc.cpp",
+          "sha256": "d8344fde6c3550be38321678e827b5ac01b5022195a2b66ae9a1f69fc0e47d08"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_mpeg2_stereo_proc.h",
+          "sha256": "12d6dee53873d9c9495b1c5a04fd49a4cb34fbcad3e8b5ef5bd920628b5fa43b"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_normalize.cpp",
+          "sha256": "27d1040cea0d466fc134be1ab5ec62820eea64a73f4eacdf72266522e4aa6147"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_normalize.h",
+          "sha256": "5505216da9242eae98382de8c873d60937eacbe9505e337c34d270ab3c154ae8"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_poly_phase_synthesis.cpp",
+          "sha256": "d2048de421d2dbb828e9fb9de2707624e8ac9f62c3f912137a9baa1915441785"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_poly_phase_synthesis.h",
+          "sha256": "18377be62aa38af50232b298b69b80e23a864cac86f46a0f16eddac99721186d"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_polyphase_filter_window.cpp",
+          "sha256": "b1c32aa128afd54211b1bef93c064991e55cac4829ea5adeeaa451150489dd4e"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_polyphase_filter_window.h",
+          "sha256": "951a229534f2d7f274020435d015503745b847e70e1e1453b9ab4fb2c94a1498"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_reorder.cpp",
+          "sha256": "3b0959c5a2ad3e376a49da79b3de3cbe5b1be4e5355f9d83298d306ff28b237b"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_reorder.h",
+          "sha256": "f579b081623942db8ebf040121d9d0cd11eac96bb557d2e1edd56df2b6460f35"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_seek_synch.cpp",
+          "sha256": "b5880de532ca478e2eb595a9c530ba0e0aea0de8577c5d7630f6df91d749c74c"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_seek_synch.h",
+          "sha256": "3fb4629df80449fd06068bc15877cf8b991dabb5f8ec89d1507475ff4e74d535"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_stereo_proc.cpp",
+          "sha256": "632cb76ce3965d927adcc5ee2e1d61576a607981767b44f052e11d5853bebd58"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_stereo_proc.h",
+          "sha256": "09b0d55d7892621f93cc9cf6fca33870372041d26c85b9a92f5b1b2529e3e878"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_tables.cpp",
+          "sha256": "87da7d8313477630322335221721bdb4c6fbf7a2b7cdd2c5e5ad21c1a3b6ed5b"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3_tables.h",
+          "sha256": "015aae7a9c34b1254fd37146fd4cc7c0d1eb914a346c43cd83599ead6f291f02"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/pvmp3decoder_api.h",
+          "sha256": "4c7ae73491b8fea5faea7fd21691ea39ef2225eed3a688bc177e2dc44f6adcab"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/s_huffcodetab.h",
+          "sha256": "8abdf42d4645942e12b3fa6600810ae7f271ad9be185a8e8e5be733e930a0206"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/s_mp3bits.h",
+          "sha256": "f49cb234e9c6b5d19a2740e3d2edb61990cf3c3c9090134e9ac8b9a6719eda97"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/s_tmp3dec_chan.h",
+          "sha256": "f7b81269f5e8f58aec5c2e1076959a3acb109db212aacb288e501b0ada0e8d81"
+        },
+        {
+          "path": "third_party/micro-mp3/opencore-mp3dec/s_tmp3dec_file.h",
+          "sha256": "1f36e94ef6cb31cda110ac76bedd5dfa051b3eca104f4c5d597ed307d685dfe7"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_scummvm",
+      "new": "apps/scummvm",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_pthread_stubs.cpp",
+          "sha256": "c9e3c6bebadf3e57f873ad7eb68bd89de765e0fac987b656b7ce234efa3658bb"
+        },
+        {
+          "path": "scummvm_pax.cpp",
+          "sha256": "e758eaf03506ce82c558530b3de063db5f8c002b707f08097b8b06686e5f084a"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_sms",
+      "new": "apps/sms",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "caf0911c8e8e4cfa9ee8931c46de93cc0ca9c789ccea09bc796247aa866152d4"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_snes",
+      "new": "apps/snes",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "cf25e0d3d45c5c0631874486ea748cb6f57e55b9306946ebf051bed86220fe71"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_spectrum",
+      "new": "apps/spectrum",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.c",
+          "sha256": "8e3a40f5d1f1395417841c98c35e5afd891d4e22f60bfe63aead7d4298d69507"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_stella",
+      "new": "apps/stella",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "ca13a92860b220f9aef51db24fa1c08f4bb762090d13108e4595e07b8742a1d1"
+        },
+        {
+          "path": "pax_platform.c",
+          "sha256": "5fc8d0d2c5ef9a4734d72ee8ba7a238c3188826a9fcec47fadfa94cc4132aee7"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_stratagus",
+      "new": "apps/stratagus",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "fluidsynth-pax-toolchain.cmake",
+          "sha256": "ab1b4756f7fe219c9d9acfdbc89b594d7fcaa81d32585296266092e970ec4fce"
+        },
+        {
+          "path": "patches/lua-pax.patch",
+          "sha256": "2cb4e41ae5a40c8224fa3ae8920429926a0ba60057a7ac4b135d8eba5078c711"
+        },
+        {
+          "path": "patches/lua-workspace.patch",
+          "sha256": "0edb3b7dfab0ab699da6164af3886d296dc1d6f326808ebada4a48950b0041a9"
+        },
+        {
+          "path": "patches/startool-extraction.patch",
+          "sha256": "5bf437c6db702e6b6cecea77149871842fae480c3ce1a63997b00ebb0757d84c"
+        },
+        {
+          "path": "patches/stratagus-game-exit.patch",
+          "sha256": "4f6dfe416d60ecf325b51b5b6a3d783a5d189483a998c544f9c72b8d4c366ef7"
+        },
+        {
+          "path": "patches/stratagus-midi-soundfont.patch",
+          "sha256": "b4e2437e506efdba1856ad914b44abee8c72783bf3882dfe368020b5215796f0"
+        },
+        {
+          "path": "patches/stratagus-movement-linux.patch",
+          "sha256": "07e98627026993bf0fef910f6e854233dce3a6bad814bc0c76490eaaa3cdfbb8"
+        },
+        {
+          "path": "patches/stratagus-movement-linux.txt",
+          "sha256": "d33e9e1da32b08ce054e8d208cf501bbafacb068b34d51006b9d6e25a5cd3556"
+        },
+        {
+          "path": "patches/stratagus-pax.patch",
+          "sha256": "698a2335400d9135895db0725a0262ecb85ea724b74d02775a542b25edac232a"
+        },
+        {
+          "path": "patches/stratagus-save-restore.patch",
+          "sha256": "ec0c44e169ce6bb9ba786a5c8954dc26fed8dc8f3eca86e6c9b9b7fe1b6fe29e"
+        },
+        {
+          "path": "patches/stratagus-signed-variable.patch",
+          "sha256": "ef1cea693d7846b00c86386394a20556a96b3f8e4b7851a02992a0fe8528051d"
+        },
+        {
+          "path": "patches/stratagus-title-exit.patch",
+          "sha256": "8d9c54faf22cd7e7056320259492d0f87a201e110e4716e479a738aa2e4c4924"
+        },
+        {
+          "path": "patches/stratagus-workspace.patch",
+          "sha256": "210ca9dc4bc31dfe35515625e278b1f8e4c78bec6ba1709f599dacae7316686d"
+        },
+        {
+          "path": "patches/war1gus-music-format.patch",
+          "sha256": "091d21052d347e2b76dcc8662b730d0660daa946e0618ffea0b5d044031648a5"
+        },
+        {
+          "path": "patches/warcraft-health-trace.patch",
+          "sha256": "9cbd99563f0de4e3ce5bac84c5022e9b91052230f869525d7b6f9b6db56844ce"
+        },
+        {
+          "path": "pax_audio.cpp",
+          "sha256": "a38e8649408469d6d5832b9da74e7b4e71c158d2674a5749c92381b7b4fb9527"
+        },
+        {
+          "path": "pax_audio_ramp.h",
+          "sha256": "a929395fde4193619ea0c0094e4e38e4c2f2851099264e7dd86fa5d49e89391d"
+        },
+        {
+          "path": "pax_audio_spatial.h",
+          "sha256": "7a1f034ef3ab3120d592e36b1342fcf425c6986a0362192e35dd86b8d25c49f2"
+        },
+        {
+          "path": "pax_compat.h",
+          "sha256": "7a44b31c4cc4336d38c6556bf2594b9bd2155dc8509325eff8732385f8e97e1e"
+        },
+        {
+          "path": "pax_debug.h",
+          "sha256": "fa77b00951f4e03f62a12292f2a0d52e8a119c93354b5ac97ce71f66eb9c7e06"
+        },
+        {
+          "path": "pax_eh.ld",
+          "sha256": "e3562b77d92a617d937a0099c0dcab034e8cc5771e195d84bc32931c2e2ed6b6"
+        },
+        {
+          "path": "pax_fini.ld",
+          "sha256": "e06558aa10ea5b52d19b13ca3d6e70882a5c254885f8c6b859febeaa0f2879bc"
+        },
+        {
+          "path": "pax_game_clock.h",
+          "sha256": "dc872fb53f63a8e29391bcb6d84726951c36bf710030063e6e8ffb235a9a05ef"
+        },
+        {
+          "path": "pax_heading.h",
+          "sha256": "88251b37d687fb99e9262b8b89db3bb5a942cc6550e1e5ad88d402313218f236"
+        },
+        {
+          "path": "pax_indexed_png.cpp",
+          "sha256": "e83c61e8f22e8d4fbd074200a8455999f9863d3b145d18f43eb5e7d2fe860c8c"
+        },
+        {
+          "path": "pax_indexed_png.h",
+          "sha256": "84c213558cbb1ee6247057f9256ac753bcd32348def47c986e53bf99ae01f08c"
+        },
+        {
+          "path": "pax_keyboard.h",
+          "sha256": "891aa82244bc8f9d21296cb7d326d04eb33721ccfaa477a5c56f1e34ee047474"
+        },
+        {
+          "path": "pax_main.cpp",
+          "sha256": "902c36eafd93d68d1a3cc4a62cee6f90618167d25670f220c5f33b40a7463f29"
+        },
+        {
+          "path": "pax_menu.cpp",
+          "sha256": "9ba415a632c4e87eee2f3256d58e76402a97f6b7c3f6cb7292365d152380d8fe"
+        },
+        {
+          "path": "pax_menu.h",
+          "sha256": "86c08941a3d6cad2f94b93e804c367c03d612d5c6b8455f1cfe829bdaf0cbad9"
+        },
+        {
+          "path": "pax_midi.h",
+          "sha256": "e6ac3c4a1a6faf4206d35a3a7c6dd724fd3f894be53eabb6f19187517ef6ae07"
+        },
+        {
+          "path": "pax_midi_resample.h",
+          "sha256": "ab693ac3e0418c179d150c7611c469cf8c408db926025c3dded6e5f011a656cf"
+        },
+        {
+          "path": "pax_net_compat.h",
+          "sha256": "5a2187401d8a7a673939f65f259b29106e796b032fc2ac6d048e7ecec4ff82eb"
+        },
+        {
+          "path": "pax_number_format.h",
+          "sha256": "42748dbf6711c2359327f42cc0668425e4bc02de9559e62a6b0266cf3dfff459"
+        },
+        {
+          "path": "pax_paged_fields.h",
+          "sha256": "3981e3f1123dfba6c71b26ce1d8cc05e4207b925001af754698ece6eff40dd09"
+        },
+        {
+          "path": "pax_pixels.h",
+          "sha256": "7429a720c825744500529f7c3dae0da6bb2886c7872ebcffdbe4762829d987ee"
+        },
+        {
+          "path": "pax_platform.cpp",
+          "sha256": "1bf6ce842e7d526df83a337505d03d5dc133f9c5b2ffb9ef3505dd5bc4e70cfc"
+        },
+        {
+          "path": "pax_platform.h",
+          "sha256": "6b85c7f9294dc843e19f3bde6b5f4ea9fabe7100a69535ee7cb42cf75417227a"
+        },
+        {
+          "path": "pax_render_profile.h",
+          "sha256": "0eaa4fab5419f0832a919024f0b8285786fec499c34b684ced875be471c8ca47"
+        },
+        {
+          "path": "pax_resample48.h",
+          "sha256": "acfc17fc7f3ff02b03fa5e0391519613353ebfb7d2df5a71d64765b51f7204fa"
+        },
+        {
+          "path": "pax_resize16.h",
+          "sha256": "570cf4416663495bc637600d68bad36f3b9b408653d091d92217956235b8f67f"
+        },
+        {
+          "path": "pax_results.h",
+          "sha256": "637d7faa7ebb400fa074eee320a49dfd69bd25e8d1ea96acdb40936b2cc242a9"
+        },
+        {
+          "path": "pax_savegame.cpp",
+          "sha256": "e29c058e27143e516f4878d966e63bb0048e9b3efe793e844e58df78604c6bf6"
+        },
+        {
+          "path": "pax_savegame.h",
+          "sha256": "01c3c6eda6043e21bb8e36cea22f00361f2aa94f370d3f136c0967ae7c789fe8"
+        },
+        {
+          "path": "pax_sdl_bridge.cpp",
+          "sha256": "9526437516e542b8f3590e3504f509d04129a2c6844dfe3d0b47aa588924ad6f"
+        },
+        {
+          "path": "pax_singleplayer_stubs.cpp",
+          "sha256": "7a148a046d6a0e198a7ec7bc424e450a3934a15437c7962b168827f2d551681b"
+        },
+        {
+          "path": "pax_soft_round.h",
+          "sha256": "79f71a5dab5bfbdd2347937db0ba7b5f17215d2b70d86fa5387daefbec0b55c3"
+        },
+        {
+          "path": "pax_sound_bank.h",
+          "sha256": "a58c7e95b8c262211e80f6d82980b508eeb26d7b8077bdb95163d94f48c8726b"
+        },
+        {
+          "path": "pax_stdio.c",
+          "sha256": "dadfc18c0f4ce6c3621000a2b88c283314bce720c9b62736ced7334ce82efbb8"
+        },
+        {
+          "path": "pax_syscalls.c",
+          "sha256": "eb27400f38b26dbcdd699cabf450dbd91dde58ba7cddcb7bf8a3f2ff05672eff"
+        },
+        {
+          "path": "pax_touch_samples.h",
+          "sha256": "f165e985181927a3b405cb32dcaf53c194ea1508849e577804ebac99a1c3efe0"
+        },
+        {
+          "path": "pax_video_host_abi.h",
+          "sha256": "b15b277eb05a018dfdabcd6098aac72d7e16a582f1a62f977dcb98c2f8831c46"
+        },
+        {
+          "path": "pax_warcraft_test.h",
+          "sha256": "0cc889dbb32ffb32185ab818608c588c849c2d948c41bce97dc7c0de9b82a847"
+        },
+        {
+          "path": "posix_compat/arpa/inet.h",
+          "sha256": "a89d884bae0c12b42234a19c0a4af7692f287529ae55c1cdcb6627e504ea5c7e"
+        },
+        {
+          "path": "posix_compat/ifaddrs.h",
+          "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+        },
+        {
+          "path": "posix_compat/net/if.h",
+          "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+        },
+        {
+          "path": "posix_compat/netdb.h",
+          "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+        },
+        {
+          "path": "posix_compat/netinet/in.h",
+          "sha256": "a89d884bae0c12b42234a19c0a4af7692f287529ae55c1cdcb6627e504ea5c7e"
+        },
+        {
+          "path": "posix_compat/sys/ioctl.h",
+          "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+        },
+        {
+          "path": "posix_compat/sys/socket.h",
+          "sha256": "b3adf106d95b8934f690943f2921308b90be5b766c4c8ba250c792de56400201"
+        },
+        {
+          "path": "war1gus_music_format.lua",
+          "sha256": "a0bc7d68154b4da52e5207f807efb559b6e843659822762b4c642aa131b4e5cb"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_test",
+      "new": "apps/template",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "main.c",
+          "sha256": "c7bb68851456f8e7b84050c6ef659b070f2d7e98acac28630234cbf460dc1a6b"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_touchtest",
+      "new": "apps/touchtest",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "main.c",
+          "sha256": "5fbf08e4f06c11f2ebf145008fea486e3182e4a492db581df9c00328307c652d"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_wolf4sdl",
+      "new": "apps/wolf4sdl",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "compat/SDL.h",
+          "sha256": "b25957279faa8ab7683209e9d7ed2963fb49f16112a6c254966d344004c98897"
+        },
+        {
+          "path": "compat/SDL_audio.h",
+          "sha256": "9815fadb8647f03f2cd819bcef61624d4daf9f73cf49b7ed8454f89366a0a682"
+        },
+        {
+          "path": "compat/SDL_event.h",
+          "sha256": "5ab21c7340d1c9a4970ac08aa7e7b9f2667543fed4c395a6be94c2d3867935b9"
+        },
+        {
+          "path": "compat/SDL_system.h",
+          "sha256": "e62ed8ca5a47268d8c817bee7eaeecf8c59a87489d47860420df427c75b1692f"
+        },
+        {
+          "path": "compat/SDL_video.h",
+          "sha256": "62206e0125f076d4644c3141dd421518bef3ee88a5e07497d908ee92fbb56fba"
+        },
+        {
+          "path": "compat/esp_attr.h",
+          "sha256": "fc1cf2aec5ba261dfdaf9b0b3aa41910d5225bce4d090f6391761b6455019205"
+        },
+        {
+          "path": "pax_main.cpp",
+          "sha256": "5b75829f576023aca2cd1987482cab57919184d4c0bc59ccc711819c4d171fca"
+        },
+        {
+          "path": "pax_sdl_audio.c",
+          "sha256": "46a99bc61be5699b3122c105d83a5371b9e66d34f7d861dfda63a048b0448598"
+        },
+        {
+          "path": "pax_sdl_event.c",
+          "sha256": "566d27afce5db2e6a69cb8ac108853a078bc477850b42e82be3975a8f40214f4"
+        },
+        {
+          "path": "pax_sdl_system.c",
+          "sha256": "d7a9ca19fb128e5b65251cb3218f50c70bab4696724c1b38cb2e57019d37f003"
+        },
+        {
+          "path": "pax_sdl_video.c",
+          "sha256": "828395d002ec144ebf09092d8ecc7d0f305eed2c3a39e827436f3042bd42ab26"
+        },
+        {
+          "path": "pax_spear_menu.cpp",
+          "sha256": "56e20f455c27e6faa0be465a758d2ce593f0c453a6565bfb600d0d6783485596"
+        },
+        {
+          "path": "pax_syscalls.c",
+          "sha256": "755064bbacc52c2c5bc7f6a6815519557388ae680fa2ded6ece999caeb4f43fb"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/psram_ws",
+      "new": "apps/ws",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "pax_main.cpp",
+          "sha256": "96891a8ff64d42a5b68002c2c9f94a413767dfd9ae40d5d00bb6270e2e1306f3"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/sdkconfig_common.defaults",
+      "new": "apps/sdkconfig_common.defaults",
+      "kind": "file",
+      "files": [
+        {
+          "path": "sdkconfig_common.defaults",
+          "sha256": "3eea850b174928da2bad41e4bad14cd700f97fda627a5b39f7e04cf6739da61c"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/sms",
+      "new": "apps/sms/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "eb2e39a23a6cdef7e5a86067b9d6cdd2f4a63ab8c3701349695a933a3363df61"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "116447622928ff08c8dcd81c66bb8fdb2e0d0fcd71609ff1a6ab26d885fd992c"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "5895700d260c162aa6efa28efe1f84bd1034f5a35ae9a8d1fd510ec7fa97db07"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "43cee44b6a35c034cae9333551c452d986df9e653548b9ef54e7c94d8b079654"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "efc8815ef094c187c5eb37fdff299d00f01e8807c267108c1941de0e7e780ac1"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/snes",
+      "new": "apps/snes/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "0663f240951a93db1dd35d25105a5959628340908fa23646944cc6a08d7b47c6"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "c35d0c186cebab2058716eb008cf889788d2cd129629fa5765b3285d0b991bf4"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "87f9de6c17e93e8ef884b44a01657c3d955f9fec40fc0724cb06548205ddab22"
+        },
+        {
+          "path": "main/snes_run.c",
+          "sha256": "b139f0a7a10a05ce18b2b08c2f7d73c638371af414f2aee79a4dce43ed16c143"
+        },
+        {
+          "path": "main/snes_run.h",
+          "sha256": "ddef3f22d5e88e98cf3788c9bb757f1996c950d62631ab6a05739cdc748a600c"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "c84f71aa827df65c182bdb9ea3f7a8e10e7846cdb01264cf16731cd735a379e0"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "43a84a20ab4b6e477a88f07c33259651e97e29ad5874e482d838d277ec61456a"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/spectrum",
+      "new": "apps/spectrum/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "28253a642759fcfc07e2767fe38aec4362214db57f00ca7c12460f771739110c"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "5e1678400abb2568121b248840495164a4e3323c348353fc305f36a95c87663b"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "33a5946408394f6f7fa2f75e6b4791890930c66f3b9a23b747146e9c7f00e332"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "080ebddff92c4b34510b3768df53e28dc410f063461097cb517ea712de1522e9"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "77aaf71eb3d8dc4b9f666746a8e624f5a3f64bcc6bc65aeb6890e797334a2b95"
+        }
+      ]
+    },
+    {
+      "old": "upstream/retroesp32/apps/stella",
+      "new": "apps/stella/variants/legacy",
+      "kind": "folder",
+      "files": [
+        {
+          "path": "CMakeLists.txt",
+          "sha256": "6331967ea328b4ecd98d3d5a368e37aa2b3602d1014cd27d66d6b00061fc5c03"
+        },
+        {
+          "path": "dependencies.lock",
+          "sha256": "2f0c94d3dd32009b538c240a8f444b9bc12118d2ca663ffa6b28c492aa4fd88a"
+        },
+        {
+          "path": "main/CMakeLists.txt",
+          "sha256": "1dd3d100377f941874805978797bce6fcc4b0bc5c256f3dc5e3a2c59bc62c501"
+        },
+        {
+          "path": "main/main.c",
+          "sha256": "f1aa5dbd37ca721351bcb1d96a6e879b083b18f1b8151e1f575e5b7a44e193fa"
+        },
+        {
+          "path": "sdkconfig",
+          "sha256": "43cee44b6a35c034cae9333551c452d986df9e653548b9ef54e7c94d8b079654"
+        },
+        {
+          "path": "sdkconfig.defaults",
+          "sha256": "efc8815ef094c187c5eb37fdff299d00f01e8807c267108c1941de0e7e780ac1"
+        }
+      ]
+    }
+  ],
+  "compatibility": "The former upstream apps paths are symlinks only. Main sources are owned by pax-modules/apps; legacy variants are preserved separately."
+}

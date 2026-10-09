@@ -1161,187 +1161,233 @@
   "native_sources": [
     {
       "name": "atari800",
-      "source": "upstream/retroesp32/apps/atari800"
+      "source": "apps/atari800/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/atari800"
     },
     {
       "name": "disc_installer",
-      "source": "upstream/retroesp32/apps/disc_installer"
+      "source": "apps/recipe",
+      "original_source": "upstream/retroesp32/apps/disc_installer"
     },
     {
       "name": "gb",
-      "source": "upstream/retroesp32/apps/gb"
+      "source": "apps/gb/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/gb"
     },
     {
       "name": "genesis",
-      "source": "upstream/retroesp32/apps/genesis"
+      "source": "apps/genesis/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/genesis"
     },
     {
       "name": "handy",
-      "source": "upstream/retroesp32/apps/handy"
+      "source": "apps/handy/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/handy"
     },
     {
       "name": "launcher_ui",
-      "source": "upstream/retroesp32/apps/launcher_ui"
+      "source": "apps/launcher_ui",
+      "original_source": "upstream/retroesp32/apps/launcher_ui"
     },
     {
       "name": "neogeo",
-      "source": "upstream/retroesp32/apps/neogeo"
+      "source": "apps/neogeo/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/neogeo"
     },
     {
       "name": "nes",
-      "source": "upstream/retroesp32/apps/nes"
+      "source": "apps/nes/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/nes"
     },
     {
       "name": "pax_emulator_common",
-      "source": "upstream/retroesp32/apps/pax_emulator_common"
+      "source": "apps/pax_emulator_common",
+      "original_source": "upstream/retroesp32/apps/pax_emulator_common"
     },
     {
       "name": "pce",
-      "source": "upstream/retroesp32/apps/pce"
+      "source": "apps/pce/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/pce"
     },
     {
       "name": "prosystem",
-      "source": "upstream/retroesp32/apps/prosystem"
+      "source": "apps/prosystem/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/prosystem"
     },
     {
       "name": "psram_anotherworld",
-      "source": "upstream/retroesp32/apps/psram_anotherworld"
+      "source": "apps/anotherworld",
+      "original_source": "upstream/retroesp32/apps/psram_anotherworld"
     },
     {
       "name": "psram_atari800",
-      "source": "upstream/retroesp32/apps/psram_atari800"
+      "source": "apps/atari800",
+      "original_source": "upstream/retroesp32/apps/psram_atari800"
     },
     {
       "name": "psram_azip",
-      "source": "upstream/retroesp32/apps/psram_azip"
+      "source": "apps/azip",
+      "original_source": "upstream/retroesp32/apps/psram_azip"
     },
     {
       "name": "psram_c64",
-      "source": "upstream/retroesp32/apps/psram_c64"
+      "source": "apps/c64",
+      "original_source": "upstream/retroesp32/apps/psram_c64"
     },
     {
       "name": "psram_doom",
-      "source": "upstream/retroesp32/apps/psram_doom"
+      "source": "apps/doom",
+      "original_source": "upstream/retroesp32/apps/psram_doom"
     },
     {
       "name": "psram_duke3d",
-      "source": "upstream/retroesp32/apps/psram_duke3d"
+      "source": "apps/duke3d",
+      "original_source": "upstream/retroesp32/apps/psram_duke3d"
     },
     {
       "name": "psram_gb",
-      "source": "upstream/retroesp32/apps/psram_gb"
+      "source": "apps/gb",
+      "original_source": "upstream/retroesp32/apps/psram_gb"
     },
     {
       "name": "psram_genesis",
-      "source": "upstream/retroesp32/apps/psram_genesis"
+      "source": "apps/genesis",
+      "original_source": "upstream/retroesp32/apps/psram_genesis"
     },
     {
       "name": "psram_gw",
-      "source": "upstream/retroesp32/apps/psram_gw"
+      "source": "apps/gw",
+      "original_source": "upstream/retroesp32/apps/psram_gw"
     },
     {
       "name": "psram_gx4000",
-      "source": "upstream/retroesp32/apps/psram_gx4000"
+      "source": "apps/gx4000",
+      "original_source": "upstream/retroesp32/apps/psram_gx4000"
     },
     {
       "name": "psram_handy",
-      "source": "upstream/retroesp32/apps/psram_handy"
+      "source": "apps/handy",
+      "original_source": "upstream/retroesp32/apps/psram_handy"
     },
     {
       "name": "psram_lvgl",
-      "source": "upstream/retroesp32/apps/psram_lvgl"
+      "source": "apps/lvgl",
+      "original_source": "upstream/retroesp32/apps/psram_lvgl"
     },
     {
       "name": "psram_msx",
-      "source": "upstream/retroesp32/apps/psram_msx"
+      "source": "apps/msx",
+      "original_source": "upstream/retroesp32/apps/psram_msx"
     },
     {
       "name": "psram_neogeo",
-      "source": "upstream/retroesp32/apps/psram_neogeo"
+      "source": "apps/neogeo",
+      "original_source": "upstream/retroesp32/apps/psram_neogeo"
     },
     {
       "name": "psram_nes",
-      "source": "upstream/retroesp32/apps/psram_nes"
+      "source": "apps/nes",
+      "original_source": "upstream/retroesp32/apps/psram_nes"
     },
     {
       "name": "psram_nesplus",
-      "source": "upstream/retroesp32/apps/psram_nesplus"
+      "source": "apps/nesplus",
+      "original_source": "upstream/retroesp32/apps/psram_nesplus"
     },
     {
       "name": "psram_ngp",
-      "source": "upstream/retroesp32/apps/psram_ngp"
+      "source": "apps/ngp",
+      "original_source": "upstream/retroesp32/apps/psram_ngp"
     },
     {
       "name": "psram_opentyrian",
-      "source": "upstream/retroesp32/apps/psram_opentyrian"
+      "source": "apps/opentyrian",
+      "original_source": "upstream/retroesp32/apps/psram_opentyrian"
     },
     {
       "name": "psram_pce",
-      "source": "upstream/retroesp32/apps/psram_pce"
+      "source": "apps/pce",
+      "original_source": "upstream/retroesp32/apps/psram_pce"
     },
     {
       "name": "psram_prosystem",
-      "source": "upstream/retroesp32/apps/psram_prosystem"
+      "source": "apps/prosystem",
+      "original_source": "upstream/retroesp32/apps/psram_prosystem"
     },
     {
       "name": "psram_quake",
-      "source": "upstream/retroesp32/apps/psram_quake"
+      "source": "apps/quake",
+      "original_source": "upstream/retroesp32/apps/psram_quake"
     },
     {
       "name": "psram_scummvm",
-      "source": "upstream/retroesp32/apps/psram_scummvm"
+      "source": "apps/scummvm",
+      "original_source": "upstream/retroesp32/apps/psram_scummvm"
     },
     {
       "name": "psram_sms",
-      "source": "upstream/retroesp32/apps/psram_sms"
+      "source": "apps/sms",
+      "original_source": "upstream/retroesp32/apps/psram_sms"
     },
     {
       "name": "psram_snes",
-      "source": "upstream/retroesp32/apps/psram_snes"
+      "source": "apps/snes",
+      "original_source": "upstream/retroesp32/apps/psram_snes"
     },
     {
       "name": "psram_spectrum",
-      "source": "upstream/retroesp32/apps/psram_spectrum"
+      "source": "apps/spectrum",
+      "original_source": "upstream/retroesp32/apps/psram_spectrum"
     },
     {
       "name": "psram_stella",
-      "source": "upstream/retroesp32/apps/psram_stella"
+      "source": "apps/stella",
+      "original_source": "upstream/retroesp32/apps/psram_stella"
     },
     {
       "name": "psram_stratagus",
-      "source": "upstream/retroesp32/apps/psram_stratagus"
+      "source": "apps/stratagus",
+      "original_source": "upstream/retroesp32/apps/psram_stratagus"
     },
     {
       "name": "psram_test",
-      "source": "upstream/retroesp32/apps/psram_test"
+      "source": "apps/template",
+      "original_source": "upstream/retroesp32/apps/psram_test"
     },
     {
       "name": "psram_touchtest",
-      "source": "upstream/retroesp32/apps/psram_touchtest"
+      "source": "apps/touchtest",
+      "original_source": "upstream/retroesp32/apps/psram_touchtest"
     },
     {
       "name": "psram_wolf4sdl",
-      "source": "upstream/retroesp32/apps/psram_wolf4sdl"
+      "source": "apps/wolf4sdl",
+      "original_source": "upstream/retroesp32/apps/psram_wolf4sdl"
     },
     {
       "name": "psram_ws",
-      "source": "upstream/retroesp32/apps/psram_ws"
+      "source": "apps/ws",
+      "original_source": "upstream/retroesp32/apps/psram_ws"
     },
     {
       "name": "sms",
-      "source": "upstream/retroesp32/apps/sms"
+      "source": "apps/sms/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/sms"
     },
     {
       "name": "snes",
-      "source": "upstream/retroesp32/apps/snes"
+      "source": "apps/snes/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/snes"
     },
     {
       "name": "spectrum",
-      "source": "upstream/retroesp32/apps/spectrum"
+      "source": "apps/spectrum/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/spectrum"
     },
     {
       "name": "stella",
-      "source": "upstream/retroesp32/apps/stella"
+      "source": "apps/stella/variants/legacy",
+      "original_source": "upstream/retroesp32/apps/stella"
     }
   ]
 }

@@ -3,7 +3,7 @@
   "title": "Quake II",
   "version": "0.1.0",
   "description": "Quake II software renderer as a PSRAM app for the PAX launcher.",
-  "author": "id Software / quake2generic; PAPP port",
+  "author": "id Software / quake2generic; PAX port",
   "category": "Game",
   "license": "GPL-2.0",
   "about": "A 320x240 software-rendered Quake II port. Copy the shareware or retail baseq2 directory to /sd/roms/quake2/baseq2/. Commercial game data is not redistributed.",

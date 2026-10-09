@@ -1,0 +1,16 @@
+diff --git a/src/stratagus/stratagus.cpp b/src/stratagus/stratagus.cpp
+--- a/src/stratagus/stratagus.cpp
++++ b/src/stratagus/stratagus.cpp
+@@ -1039,6 +1039,12 @@
+ 	if (!IsRestart) {
+ 		ShowTitleScreens();
+ 	}
++#ifdef PAPP_STRATAGUS_WARCRAFT
++	// A remote close can end a streamed intro. Do not load menu assets
++	// afterward: the launcher allows only a short cooperative-close window.
++	// Return through engine_worker so audio/tasks stop before image unload.
++	if (papp_exit_requested) { Exit(0); return 0; }
++#endif
+ 
+ 	// Init player data
+ 	ThisPlayer = nullptr;
