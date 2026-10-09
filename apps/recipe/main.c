@@ -1408,6 +1408,10 @@ static bool extract_zip_media(recipe_media_t *media,const char *archive)
   for(int i=0;i<media->file_count && !g_exit_requested;i++){
     recipe_file_t *f=&g_recipe.files[media->first_file+i];
     if(file_exists(f->target)){done++;continue;}
+    pax_file_stat_t occupied={0};
+    if(g_svc->file_stat(f->target,&occupied)==0){
+      report("An empty file or directory occupies the target. Remove it before retrying.",done,media->file_count,COL_WARN);return false;
+    }
     if(!make_parent_dirs(f->target))return false;
     report("Installing ZIP contents...",done,media->file_count,COL_TEXT);uint32_t written=0;
     if(g_svc->file_zip_extract_named(archive,f->source,f->target,MAX_FILE_BYTES,&written)!=0){report("ZIP entry could not be extracted; existing files were kept.",done,media->file_count,COL_ERROR);return false;}
@@ -1675,7 +1679,7 @@ int app_entry(const app_services_t *svc)
         (svc->input_l3_read == NULL || !svc->input_l3_read())) break;
     svc->delay_ms(20);
   }
-  bool previous[PAX_INPUT_MAX] = {0};
+  int previous[PAX_INPUT_MAX] = {0};
   for (;;) {
     pax_gamepad_state_t pad = {0};
     if (svc->input_gamepad_read != NULL) svc->input_gamepad_read(&pad);
