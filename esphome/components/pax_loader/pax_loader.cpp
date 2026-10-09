@@ -1876,6 +1876,22 @@ void PaxLoader::process_ui_call_() {
 }
 
 void PaxLoader::loop() {
+  // Tiny active profile: refresh independently of the running app and keep the
+  // raw overlays in the same theme as the launcher without adding SDK services.
+  static int64_t last_theme_check=0;
+  int64_t theme_now=esp_timer_get_time();
+  if(theme_now-last_theme_check>=2000000){
+    last_theme_check=theme_now;char json[2049]={0};pax_theme_profile_t theme=pax_theme_presets[0];
+    FILE *file=fopen(runtime_path(PAX_THEME_FILE).c_str(),"rb");
+    if(file){size_t n=fread(json,1,sizeof(json)-1,file);bool complete=fgetc(file)==EOF;fclose(file);if(complete && n>0)(void)pax_theme_parse(json,&theme);}
+    static pax_theme_profile_t previous={};
+    if(memcmp(previous.colors,theme.colors,sizeof(theme.colors))!=0){
+      if(this->display_mutex_)xSemaphoreTakeRecursive(this->display_mutex_,portMAX_DELAY);
+      overlay_theme::apply(theme);previous=theme;this->game_menu_frame_dirty_=true;
+      this->redraw_control_overlay_now_(true);
+      if(this->display_mutex_)xSemaphoreGiveRecursive(this->display_mutex_);
+    }
+  }
   // A running PAX may use ui_call_sync() to execute LVGL work on this task.
   // Service it before any early-return or launch bookkeeping below.
   this->process_ui_call_();
@@ -4710,11 +4726,11 @@ void PaxLoader::build_game_menu_frame_() {
   const int width = this->game_menu_width_;
   const int height = this->game_menu_height_;
   const int stride = GAME_MENU_FRAME_WIDTH;
-  constexpr uint16_t border = overlay_theme::MUTED;
-  constexpr uint16_t header = overlay_theme::PANEL;
-  constexpr uint16_t selected = overlay_theme::SELECTED;
-  constexpr uint16_t accent = overlay_theme::ACCENT;
-  constexpr uint16_t text = overlay_theme::TEXT;
+  const uint16_t border = overlay_theme::MUTED;
+  const uint16_t header = overlay_theme::PANEL;
+  const uint16_t selected = overlay_theme::SELECTED;
+  const uint16_t accent = overlay_theme::ACCENT;
+  const uint16_t text = overlay_theme::TEXT;
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, 0, width, height, overlay_theme::BACKGROUND);
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, 0, width, 2, border);
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 0, height - 2, width, 2, border);

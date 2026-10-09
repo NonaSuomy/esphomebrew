@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "list_presentation.h"
+#include "network_file_info.h"
+#include "pax_theme_profile.h"
 
 #define DEFAULT_PANEL_W 800
 #define DEFAULT_PANEL_H 480
@@ -48,7 +50,7 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 24
+#define SETTINGS_FOCUS_COUNT 25
 #define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
 #define LIST_LABEL_BYTES (NAME_BYTES + 120)
 #define DETAIL_ACTION_COUNT 5
@@ -78,15 +80,15 @@
 /* lv_color_hex() takes RGB888, not RGB565.  Keeping these as RGB888 also
  * makes the text colors predictable on both the host-owned and PAX-owned
  * LVGL display configurations. */
-#define COL_BG          0x071525
-#define COL_PANEL       0x102844
-#define COL_SELECTED    0x15699D
-#define COL_ACCENT      0x25C7FF
-#define COL_TEXT        0xF2F7FF
-#define COL_MUTED       0x8BA7C4
-#define COL_OK           0x4ADE80
-#define COL_WARN         0xFBBF24
-#define COL_ERROR        0xF87171
+#define COL_BG (g_theme.colors[0])
+#define COL_PANEL (g_theme.colors[1])
+#define COL_SELECTED (g_theme.colors[2])
+#define COL_ACCENT (g_theme.colors[3])
+#define COL_TEXT (g_theme.colors[4])
+#define COL_MUTED (g_theme.colors[5])
+#define COL_OK (g_theme.colors[6])
+#define COL_WARN (g_theme.colors[7])
+#define COL_ERROR (g_theme.colors[8])
 
 static const app_services_t *g_svc;
 static uint16_t *g_canvas;
@@ -104,6 +106,10 @@ static int g_favorite_count;
 static bool g_favorites_mode;
 static bool g_settings_mode;
 static bool g_keyboard_open;
+static pax_theme_profile_t g_theme;
+#define MAX_THEMES 20
+static pax_theme_profile_t g_themes[MAX_THEMES];
+static int g_theme_count, g_theme_index, g_theme_direction=1;
 static bool g_app_details_enabled = true;
 static bool g_hide_pax_extension, g_list_file_details;
 static pax_file_stat_t g_list_stats[MAX_APPS];
@@ -303,6 +309,7 @@ static lv_obj_t *g_brightness_value;
 static lv_obj_t *g_settings_back_button;
 static lv_obj_t *g_app_details_switch;
 static lv_obj_t *g_list_switches[2];
+static lv_obj_t *g_theme_value_label;
 static lv_obj_t *g_auto_brightness_button;
 static lv_obj_t *g_auto_brightness_state_label;
 static lv_obj_t *g_empty_label;
@@ -990,6 +997,10 @@ static int parse_pax_links(const char *html, int length,
           for (int i = 0; i < copied; i++) paths[count][i] = html[start + i];
           paths[count][copied] = '\0';
         }
+        int tag_start=start-6;while(tag_start>0 && html[tag_start]!='<')tag_start--;
+        int tag_end=end;while(tag_end<length && html[tag_end]!='>')tag_end++;
+        if(tag_end<length)
+          g_list_stats_valid[count]=pax_network_file_info(html+tag_start,(size_t)(tag_end-tag_start+1),&g_list_stats[count]);
         count++;
       }
     }
@@ -3434,6 +3445,11 @@ static bool fetch_app_detail(int index)
     if(g_detail_is_remote){append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nInstalled file: ");append_text(g_detail_file_info,sizeof(g_detail_file_info),g_detail_local_path);}
     append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nSize: ");pax_info_number(g_detail_file_info,sizeof(g_detail_file_info),actual.size,1);
     append_text(g_detail_file_info,sizeof(g_detail_file_info)," bytes\nModified: ");pax_info_date(g_detail_file_info,sizeof(g_detail_file_info),actual.mtime);
+  }else if(g_list_stats_valid[index]){
+    append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nServer size: ");
+    pax_info_number(g_detail_file_info,sizeof(g_detail_file_info),g_list_stats[index].size,1);
+    append_text(g_detail_file_info,sizeof(g_detail_file_info)," bytes\nServer modified: ");
+    pax_info_date(g_detail_file_info,sizeof(g_detail_file_info),g_list_stats[index].mtime);
   }else append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nModified: Unavailable");
 
   char info_path[PATH_BYTES];
@@ -3753,6 +3769,41 @@ static bool save_app_details_preference(void)
   const char *value = g_app_details_enabled ? "1\n" : "0\n";
   const bool saved = g_svc->file_write(value, 1, 2, file) == 2;
   return g_svc->file_close(file) == 0 && saved;
+}
+
+static void load_themes(void)
+{
+  g_theme_count=PAX_THEME_PRESETS;g_theme=pax_theme_presets[0];g_theme_index=0;
+  memcpy(g_themes,pax_theme_presets,sizeof(pax_theme_presets));
+  if(g_svc->file_mkdir)(void)g_svc->file_mkdir(PAX_THEME_FOLDER);
+  if(g_svc->file_list_dir){
+    int entries=g_svc->file_list_dir(PAX_THEME_FOLDER,g_listing,sizeof(g_listing));
+    char *entry=g_listing;
+    for(int i=0;i<entries && g_theme_count<MAX_THEMES;i++){
+      size_t remaining=sizeof(g_listing)-(size_t)(entry-g_listing),n=0;
+      while(n<remaining && entry[n])n++;if(n==remaining)break;
+      char path[PATH_BYTES];copy_text(path,sizeof(path),PAX_THEME_FOLDER);append_text(path,sizeof(path),"/");append_text(path,sizeof(path),entry);
+      if(n && !strchr(entry,'/') && !strchr(entry,'\\') && ends_with(entry,".json")){
+        int length=read_json_file(path);pax_theme_profile_t candidate;
+        if(length>0 && length<=2048 && pax_theme_parse(g_remote,&candidate)){
+          bool duplicate=false;
+          for(int j=0;j<g_theme_count;j++)if(strcmp(candidate.name,g_themes[j].name)==0 && memcmp(candidate.colors,g_themes[j].colors,sizeof(candidate.colors))==0){duplicate=true;break;}
+          if(!duplicate)g_themes[g_theme_count++]=candidate;
+        }
+      }entry+=n+1;
+    }
+  }
+  int length=read_json_file(PAX_THEME_FILE);
+  if(length>0 && length<=2048)(void)pax_theme_parse(g_remote,&g_theme);
+  bool found=false;
+  for(int i=0;i<g_theme_count;i++)if(strcmp(g_themes[i].name,g_theme.name)==0 && memcmp(g_themes[i].colors,g_theme.colors,sizeof(g_theme.colors))==0){g_theme_index=i;found=true;break;}
+  if(!found && g_theme_count<MAX_THEMES){g_theme_index=g_theme_count;g_themes[g_theme_count++]=g_theme;}
+}
+static bool save_theme(void)
+{
+  char json[768];if(!pax_theme_serialize(&g_theme,json,sizeof(json)) || !g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return false;
+  void *f=g_svc->file_open(PAX_THEME_FILE,"w");if(!f)return false;
+  size_t n=strlen(json);bool saved=g_svc->file_write(json,1,n,f)==n;return g_svc->file_close(f)==0 && saved;
 }
 
 static void load_list_preferences(void)
@@ -4076,6 +4127,7 @@ static void add_folder_entries(const char *folder)
 
 static void load_apps(void)
 {
+  memset(g_list_stats_valid,0,sizeof(g_list_stats_valid));
   g_app_count = 0;
   g_catalog_failed = false;
   for (int i = 0; i < MAX_APPS; i++) {
@@ -4105,7 +4157,6 @@ static void load_apps(void)
                         source_label(g_source), MAX_APPS);
     for (int i = 0; i < g_app_count; i++) g_item_source[i] = g_source;
   }
-  memset(g_list_stats_valid,0,sizeof(g_list_stats_valid));
   for(int i=0;i<g_app_count;i++)
     if(g_item_source[i]==SOURCE_STORAGE && g_svc->file_stat)
       g_list_stats_valid[i]=g_svc->file_stat(g_paths[i],&g_list_stats[i])==0 && !g_list_stats[i].is_dir;
@@ -4977,7 +5028,7 @@ static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
     18, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 17, 20, 22, 23, 21
+    13, 14, 15, 16, 17, 20, 22, 23, 24, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -5592,6 +5643,7 @@ static int build_ui_on_host(void *arg)
   g_settings_back_button = NULL;
   g_app_details_switch = NULL;
   g_list_switches[0]=g_list_switches[1]=NULL;
+  g_theme_value_label=NULL;
   g_auto_brightness_button = NULL;
   g_auto_brightness_state_label = NULL;
   g_background_value_label = NULL;
@@ -5982,8 +6034,8 @@ static int build_ui_on_host(void *arg)
     const int row_gap = ui_px(4);
     const int first_row_y = ui_px(24);
     const int step_y = row_h + row_gap;
-    int row_y[29];
-    for (int row = 0; row < 29; row++) {
+    int row_y[30];
+    for (int row = 0; row < 30; row++) {
       int visual_row = row;
       if (row < 20) visual_row += 5;
       else if (row < 25) visual_row -= 20;
@@ -6292,7 +6344,12 @@ static int build_ui_on_host(void *arg)
       lv_obj_add_event_cb(toggle,list_switch_event,LV_EVENT_VALUE_CHANGED,(void *)(intptr_t)option);
       g_settings_focus_widgets[22+option]=toggle;
     }
-    g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[28],
+    settings_text(panel,"THEME",label_x,row_y[28],control_x-label_x-ui_px(6),font,false);
+    lv_obj_t *theme_button=settings_button(panel,24,control_x,row_y[28],control_w,ui_px(18),-49);
+    g_theme_value_label=lv_label_create(theme_button);lv_label_set_text(g_theme_value_label,g_theme.name);
+    lv_obj_set_style_text_color(g_theme_value_label,lv_color_hex(COL_TEXT),LV_PART_MAIN);
+    lv_obj_set_style_text_font(g_theme_value_label,font,LV_PART_MAIN);lv_obj_center(g_theme_value_label);
+    g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[29],
                                               content_w-ui_px(12),&lv_font_montserrat_14,true);
 
     if (g_keyboard_open) {
@@ -6963,6 +7020,7 @@ static int teardown_ui_on_host(void *arg)
   g_settings_back_button = NULL;
   g_app_details_switch = NULL;
   g_list_switches[0]=g_list_switches[1]=NULL;
+  g_theme_value_label=NULL;
   g_auto_brightness_button = NULL;
   g_archive_collection_button = NULL;
   g_background_button = NULL;
@@ -7202,6 +7260,9 @@ static bool poll_controller(void)
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 20) {
       g_app_details_enabled = !g_app_details_enabled;
       g_open_index = -43;
+    }
+    if(g_settings_focus==24 && ((left && !g_pad_last[PAX_INPUT_LEFT]) || (right && !g_pad_last[PAX_INPUT_RIGHT]) || (a && !g_pad_last[PAX_INPUT_A]))){
+      g_theme_direction=left ? -1 : 1;g_open_index=-49;
     }
     if(a && !g_pad_last[PAX_INPUT_A] && (g_settings_focus==22 || g_settings_focus==23)){
       if(g_settings_focus==22)g_hide_pax_extension=!g_hide_pax_extension;
@@ -7501,6 +7562,7 @@ int app_entry(const app_services_t *svc)
   g_favorites_mode = false;
   g_settings_mode = false;
   g_keyboard_open = false;
+  load_themes();
   load_app_details_preference();
   load_list_preferences();
   svc->log_printf("launcher_ui: App Details on Select=%s (missing preference defaults on)\n",
@@ -7748,6 +7810,12 @@ int app_entry(const app_services_t *svc)
       refresh_settings_snapshot(true);
       wait_for_input_release();
       continue;
+    }
+    if(!detail_mode && chosen==-49){
+      g_theme_index=(g_theme_index+g_theme_direction+g_theme_count)%g_theme_count;
+      g_theme=g_themes[g_theme_index];g_theme_direction=1;
+      copy_text(g_settings_message,sizeof(g_settings_message),save_theme() ? "Theme saved; Left/Right changes theme" : "Theme applied; SD card unavailable for saving");
+      g_settings_focus=24;wait_for_input_release();continue;
     }
     if(!detail_mode && chosen==-48){
       copy_text(g_settings_message,sizeof(g_settings_message),save_list_preferences() ? "App list preference saved on SD card" : "Could not save preference; SD card may be unavailable");

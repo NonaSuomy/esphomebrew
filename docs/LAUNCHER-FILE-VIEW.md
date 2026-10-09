@@ -4,7 +4,7 @@ Settings includes **HIDE .PAX EXTENSION** and **FILE DETAILS IN LIST**. Both are
 
 Hide .pax extension changes only the visible app-list label. Filenames, package paths, launching, uninstalling and download targets keep their original values.
 
-File details in list adds a second line with the local package size in bytes and its modified date/time in UTC. Local SD and USB entries use the existing file-stat service. Network, store and Archive entries show “File details unavailable” until information is available locally; browsing does not fetch every remote package just to obtain its date.
+File details in list adds a second line with the package size in bytes and its modified date/time in UTC. Local SD and USB entries use the existing file-stat service. Network entries served by `pax-tools/serve-dev.sh` show live server file sizes and modified times from directory metadata. Restart older servers with this script and use the updated launcher. Other servers, store and Archive entries can still show “File details unavailable” when metadata is absent; browsing does not download every package.
 
 The app details page now includes the full file path, actual local size and modified date, even when the app has no JSON sidecar. Remote entries with an installed copy also show the installed path. Existing version, description, controls and required-data details remain available. Enable **APP DETAILS ON SELECT** to open this page when selecting an app.
 
@@ -12,4 +12,4 @@ The file system provides modified time only. Zero, negative or out-of-range time
 
 Controller Up/Down reaches the new settings, A toggles them, and touch switches work too. Empty-list toolbar navigation remains available.
 
-The updated launcher compiled and passed the 233-test module suite, including preference round trips, filename/path preservation, leap-year dates, 64-bit sizes and settings focus order. Hardware layout and controls still need device testing.
+The updated launcher and server passed 236 module tests, including network metadata, preference round trips, filename/path preservation, leap-year dates, 64-bit sizes and settings focus order. Controller and visual layout checks on hardware are tracked in workspace validation records.

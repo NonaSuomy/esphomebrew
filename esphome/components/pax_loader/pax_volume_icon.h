@@ -7,10 +7,10 @@ namespace esphome {
 namespace pax_loader {
 namespace volume_icon {
 static constexpr int SIZE = 58;
-static constexpr uint16_t BACKGROUND = overlay_theme::PANEL;
-static constexpr uint16_t BODY = overlay_theme::TEXT;
-static constexpr uint16_t ACTIVE = overlay_theme::ACCENT;
-static constexpr uint16_t INACTIVE = overlay_theme::MUTED;
+inline uint16_t &BACKGROUND = overlay_theme::PANEL;
+inline uint16_t &BODY = overlay_theme::TEXT;
+inline uint16_t &ACTIVE = overlay_theme::ACCENT;
+inline uint16_t &INACTIVE = overlay_theme::MUTED;
 
 // Draw in visible coordinates, then map into the panel's 180-degree raw transfer.
 // Keeping a rectangular driver and a wide mouth avoids an arrow-shaped silhouette.
