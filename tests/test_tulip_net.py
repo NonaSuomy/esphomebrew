@@ -13,7 +13,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-PY = Path(__file__).resolve().parent.parent / "ports" / "tulip" / "py"
+PY = Path(__file__).resolve().parent.parent / "apps" / "tulip" / "py"
 PORT_MODULES = ("socket", "tls", "ssl", "network")
 
 

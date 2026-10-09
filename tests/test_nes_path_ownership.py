@@ -41,5 +41,6 @@ int main(void) {
 }
 ''')
             binary = temp / 'ownership'
-            subprocess.run(['gcc', '-std=gnu11', '-Wno-unused-function', '-I'+str(temp), '-I'+str(bp.get_loader_sdk()), str(root/'apps/nes/pax_main.c'), str(fixture), '-o', str(binary)], check=True, capture_output=True)
+            compile_result = subprocess.run(['gcc', '-DPAX_APP_SIDE=1', '-std=gnu11', '-Wno-unused-function', '-I'+str(temp), '-I'+str(bp.get_loader_sdk()), str(root/'apps/nes/pax_main.c'), str(fixture), '-o', str(binary)], capture_output=True)
+            self.assertEqual(compile_result.returncode, 0, compile_result.stderr.decode())
             subprocess.run([str(binary)], check=True)
