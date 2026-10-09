@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "archive_dir": "/sd/roms/redalert/incoming",
+  "media": [
+    {
+      "format": "zip-iso9660",
+      "auto_entry": true,
+      "zip_name": "CD2.zip",
+      "iso_name": "CD2.iso",
+      "download_label": "Download base game (Soviet disc)",
+      "files": [
+        {
+          "source": "INSTALL/REDALERT.MIX",
+          "target": "/sd/roms/redalert/REDALERT.MIX",
+          "url": "https://archive.org/download/CCRedAlert/CD2.iso/INSTALL%2FREDALERT.MIX",
+          "size": 25046328
+        },
+        {
+          "source": "MAIN.MIX",
+          "target": "/sd/roms/redalert/MAIN.MIX",
+          "url": "https://archive.org/download/CCRedAlert/CD2.iso/MAIN.MIX",
+          "size": 500577414
+        }
+      ]
+    },
+    {
+      "format": "zip-iso9660",
+      "auto_entry": true,
+      "zip_name": "cncredalertalliedcd1.zip",
+      "iso_name": "CD1.iso",
+      "download_label": "Download Allied disc data (optional)",
+      "files": [
+        {
+          "source": "MAIN.MIX",
+          "target": "/sd/roms/redalert/allied/MAIN.MIX",
+          "optional": true,
+          "url": "https://archive.org/download/CCRedAlert/CD1.iso/MAIN.MIX",
+          "size": 454605294
+        }
+      ]
+    }
+  ]
+}

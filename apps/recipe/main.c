@@ -1,5 +1,5 @@
 /*
- * disc_installer — a standalone PAX for recipe-driven game-data extraction.
+ * recipe — a standalone PAX for recipe-driven game-data extraction.
  *
  * This app owns the ZIP/ISO/CUE parsing and extraction buffers. launcher_ui
  * only hands it a local app-info JSON path, so the disc parser is unloaded
@@ -43,6 +43,8 @@
 typedef struct {
   char source[ENTRY_CAP];
   char target[PATH_CAP];
+  char url[512];
+  unsigned expected_size;
   bool optional;
   bool present;
 } recipe_file_t;
@@ -51,6 +53,8 @@ typedef struct {
   char format[24];
   char entry[ENTRY_CAP];
   char zip_name[NAME_CAP];
+  char iso_name[NAME_CAP];
+  char download_label[NAME_CAP];
   bool auto_entry;
   int first_file;
   int file_count;
@@ -92,6 +96,8 @@ static bool g_byte_progress_active;
 static bool g_success;
 static char g_incoming_names[MAX_INCOMING_FILES][ENTRY_CAP];
 static int g_incoming_count;
+static int g_download_rows;
+static int g_download_media[MAX_MEDIA];
 static int g_focused_incoming;
 static volatile int g_requested_incoming = -1;
 static volatile bool g_exit_requested;
@@ -370,6 +376,10 @@ static bool parse_recipe(const char *json, int length)
     }
     (void)json_get_string(json, item_end, item_start, "zip_name", media->zip_name,
                           sizeof(media->zip_name));
+    (void)json_get_string(json, item_end, item_start, "iso_name", media->iso_name, sizeof(media->iso_name));
+    if (media->iso_name[0] != '\0' && (!ends_with_ci(media->iso_name, ".iso") ||
+        strchr(media->iso_name, '/') != NULL || strchr(media->iso_name, '\\') != NULL)) return false;
+    (void)json_get_string(json, item_end, item_start, "download_label", media->download_label, sizeof(media->download_label));
     if (media->zip_name[0] != '\0' &&
         (strchr(media->zip_name, '/') != NULL || strchr(media->zip_name, '\\') != NULL ||
          !ends_with_ci(media->zip_name, ".zip"))) return false;
@@ -393,6 +403,13 @@ static bool parse_recipe(const char *json, int length)
           !json_get_string(json, file_end, file_start, "target", file->target,
                            sizeof(file->target)) || !relative_path_valid(file->source) ||
           !path_under_roms(file->target)) return false;
+      int url_start, url_end;
+      if (json_object_field(json, file_end, file_start, "url", &url_start, &url_end)) {
+        if (!json_get_string(json, file_end, file_start, "url", file->url, sizeof(file->url)) ||
+            strncmp(file->url, "https://archive.org/download/", 29) != 0 ||
+            !json_get_uint(json, file_end, file_start, "size", &file->expected_size) ||
+            file->expected_size == 0 || file->expected_size > MAX_FILE_BYTES) return false;
+      }
       file->optional = json_get_bool(json, file_end, file_start, "optional");
       for (int i = 0; i < g_recipe.file_count; ++i)
         if (strcmp(g_recipe.files[i].target, file->target) == 0) return false;
@@ -429,7 +446,7 @@ static bool ensure_redalert_base_mix(const char *json_path)
     (void)text_copy(file->target, sizeof(file->target), target);
     media->file_count++;
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: added missing legacy Red Alert recipe entry for %s\n", target);
+      g_svc->log_printf("recipe: added missing legacy Red Alert recipe entry for %s\n", target);
     return true;
   }
   return false;
@@ -499,7 +516,18 @@ static bool text_equal_ci(const char *left, const char *right)
 static int scan_incoming_files(void)
 {
   g_incoming_count = 0;
+  g_download_rows = 0;
   memset(g_incoming_names, 0, sizeof(g_incoming_names));
+  for (int m = 0; m < g_recipe.media_count; ++m) {
+    bool downloadable = false;
+    for (int f = 0; f < g_recipe.media[m].file_count; ++f)
+      if (g_recipe.files[g_recipe.media[m].first_file + f].url[0] != '\0') downloadable = true;
+    if (downloadable) {
+      g_download_media[g_download_rows++] = m;
+      text_copy(g_incoming_names[g_incoming_count++], ENTRY_CAP,
+                g_recipe.media[m].download_label[0] ? g_recipe.media[m].download_label : "Download missing game files");
+    }
+  }
   if (g_svc == NULL || g_svc->file_list_dir == NULL || g_svc->mem_alloc == NULL ||
       g_svc->mem_free == NULL) return 0;
   if (g_svc->file_mkdir != NULL && g_svc->file_mkdir(g_recipe.archive_dir) != 0) {
@@ -547,12 +575,22 @@ static int incoming_media_index(const char *name)
     for (int i = 0; i < g_recipe.media_count; ++i)
       if (g_recipe.media[i].zip_name[0] != '\0' &&
           text_equal_ci(name, g_recipe.media[i].zip_name)) return i;
+    for (int i = 0; i < g_recipe.media_count; ++i) {
+      char zip_alias[NAME_CAP];
+      if (g_recipe.media[i].iso_name[0] && text_copy(zip_alias, sizeof(zip_alias), g_recipe.media[i].iso_name)) {
+        size_t n = text_len(zip_alias);
+        memcpy(zip_alias + n - 3, "zip", 3);
+        if (text_equal_ci(name, zip_alias)) return i;
+      }
+    }
     /* A one-disc recipe can be tried against any disc image in incoming.
      * Sources absent from that disc are skipped, letting another CD supply
      * the remaining outputs on a later selection. */
     return g_recipe.media_count == 1 ? 0 : -1;
   }
   if (!ends_with_ci(name, ".iso")) return -1;
+  for (int i = 0; i < g_recipe.media_count; ++i)
+    if (g_recipe.media[i].iso_name[0] && text_equal_ci(name, g_recipe.media[i].iso_name)) return i;
   if (g_recipe.media_count == 1) return 0;
   const char *name_end = name + text_len(name);
   for (int i = 0; i < g_recipe.media_count; ++i) {
@@ -576,11 +614,11 @@ static void incoming_button_event(lv_event_t *event)
   const intptr_t item = (intptr_t)lv_event_get_user_data(event);
   if (item < 0) {
     if (g_svc != NULL && g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: touchscreen Back clicked\n");
+      g_svc->log_printf("recipe: touchscreen Back clicked\n");
     g_exit_requested = true;
-  } else if (item < g_incoming_count) {
+  } else if (!g_processing_media && item < g_incoming_count) {
     if (g_svc != NULL && g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: touchscreen selected item=%d name=%s\n",
+      g_svc->log_printf("recipe: touchscreen selected item=%d name=%s\n",
                         (int)item, g_incoming_names[item]);
     g_requested_incoming = (int)item;
   }
@@ -603,7 +641,7 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     if (data->point.y >= g_height) data->point.y = g_height - 1;
     data->state = LV_INDEV_STATE_PRESSED;
     if (!g_touch_was_down && g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: touch press at %d,%d (canvas %d,%d)\n",
+      g_svc->log_printf("recipe: touch press at %d,%d (canvas %d,%d)\n",
                         x, y, (int)data->point.x, (int)data->point.y);
   } else {
     data->state = LV_INDEV_STATE_RELEASED;
@@ -703,7 +741,7 @@ static int build_ui_on_host(void *unused)
     }
   }
   if (g_svc != NULL && g_svc->log_printf != NULL)
-    g_svc->log_printf("disc_installer: touch input %s; canvas=%dx%d\n",
+    g_svc->log_printf("recipe: touch input %s; canvas=%dx%d\n",
                       g_touch_indev != NULL ? "ready" : "unavailable",
                       g_width, g_height);
   lv_obj_t *screen = lv_display_get_screen_active(g_display);
@@ -719,7 +757,7 @@ static int build_ui_on_host(void *unused)
   lv_obj_set_style_border_width(panel, 2, LV_PART_MAIN);
   lv_obj_set_style_radius(panel, 14, LV_PART_MAIN);
   lv_obj_t *title = lv_label_create(panel);
-  lv_label_set_text(title, "CHOOSE A DISC TO EXTRACT");
+  lv_label_set_text(title, "GET GAME DATA");
   lv_obj_set_style_text_color(title, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
   lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 16);
   g_back_button = lv_button_create(panel);
@@ -771,7 +809,9 @@ static int build_ui_on_host(void *unused)
                         (void *)(intptr_t)i);
   }
   g_empty_label = lv_label_create(g_incoming_list);
-  lv_label_set_text(g_empty_label, "No .ZIP or .ISO files found.\n\nCopy disc images into:\n/sd/roms/redalert/incoming");
+  char empty_text[PATH_CAP + 64] = "No disc images found. Copy .ZIP or .ISO files into:\n";
+  text_append(empty_text, sizeof(empty_text), g_recipe.archive_dir);
+  lv_label_set_text(g_empty_label, empty_text);
   lv_obj_set_style_text_color(g_empty_label, lv_color_hex(COL_MUTED), LV_PART_MAIN);
   lv_obj_center(g_empty_label);
   g_progress_bar = lv_bar_create(panel);
@@ -786,7 +826,7 @@ static int build_ui_on_host(void *unused)
   lv_obj_align(g_progress_label, LV_ALIGN_TOP_LEFT, 20, g_height / 2 + 30);
   lv_label_set_text(g_progress_label, "0 / 0 files");
   lv_obj_t *hint = lv_label_create(panel);
-  lv_label_set_text(hint, "Touch or D-pad + A to process a disc. B returns; missing files can come from another disc.");
+  lv_label_set_text(hint, "Choose a download or a local disc. Existing files are kept. B returns.");
   lv_obj_set_style_text_color(hint, lv_color_hex(COL_MUTED), LV_PART_MAIN);
   lv_obj_align(hint, LV_ALIGN_BOTTOM_LEFT, 20, -14);
   g_processing_media = false;
@@ -849,7 +889,7 @@ static void report(const char *status, uint32_t done, uint32_t total, uint32_t c
   (void)text_copy(g_status, sizeof(g_status), status);
   g_done = done;
   g_total = total;
-  if (g_svc->log_printf != NULL) g_svc->log_printf("disc_installer: %s (%u/%u)\n", g_status, done, total);
+  if (g_svc->log_printf != NULL) g_svc->log_printf("recipe: %s (%u/%u)\n", g_status, done, total);
   if (g_svc->ui_call_sync != NULL)
     (void)g_svc->ui_call_sync(update_ui_on_host, NULL, 1500);
 }
@@ -985,7 +1025,7 @@ static void iso_copy_progress(void *context, uint64_t copied, uint64_t total)
     if (g_last_progress_log_us == 0 || now_us - g_last_progress_log_us >= 1000000U || copied >= total) {
       g_last_progress_log_us = now_us;
       if (g_svc->log_printf != NULL)
-        g_svc->log_printf("disc_installer: progress %llu/%llu bytes at %llu B/s\n",
+        g_svc->log_printf("recipe: progress %llu/%llu bytes at %llu B/s\n",
           (unsigned long long)copied, (unsigned long long)total,
           (unsigned long long)g_byte_rate_bps);
     }
@@ -1066,7 +1106,7 @@ static bool stage_media(const recipe_media_t *media, const char *archive,
       text_copy(g_status, sizeof(g_status), "Using the staged ISO; resuming missing-file extraction...");
       report(g_status, g_done, g_total, COL_TEXT);
       if (g_svc->log_printf != NULL)
-        g_svc->log_printf("disc_installer: reusing cached ISO %s (%llu bytes) for %s\n",
+        g_svc->log_printf("recipe: reusing cached ISO %s (%llu bytes) for %s\n",
           image_path, (unsigned long long)cached_size, archive);
       *layout = (iso9660_layout_t){0, 2048, 0};
       return true;
@@ -1139,13 +1179,13 @@ static int extract_one(const char *image_path, const char *source, const char *t
   if (file_exists(target)) return 1;
   if (!path_under_roms(target) || !make_parent_dirs(target)) {
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: cannot prepare target folder for %s\n", target);
+      g_svc->log_printf("recipe: cannot prepare target folder for %s\n", target);
     return -1;
   }
   char temp[PATH_CAP];
   if (!text_copy(temp, sizeof(temp), target) || !text_append(temp, sizeof(temp), ".disc-tmp")) {
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: temporary output path is too long for %s\n", target);
+      g_svc->log_printf("recipe: temporary output path is too long for %s\n", target);
     return -2;
   }
   (void)g_svc->file_remove(temp);
@@ -1153,21 +1193,21 @@ static int extract_one(const char *image_path, const char *source, const char *t
   if (input == NULL || g_svc->file_seek(input, 0, 2) != 0) {
     if (input) (void)g_svc->file_close(input);
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: cannot open/seek staged image %s\n", image_path);
+      g_svc->log_printf("recipe: cannot open/seek staged image %s\n", image_path);
     return -3;
   }
   const long size = g_svc->file_tell(input);
   if (size <= 0 || g_svc->file_seek(input, 0, 0) != 0) {
     (void)g_svc->file_close(input);
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: invalid staged image size %ld for %s\n", size, image_path);
+      g_svc->log_printf("recipe: invalid staged image size %ld for %s\n", size, image_path);
     return -3;
   }
   void *output = g_svc->file_open(temp, "wb");
   if (output == NULL) {
     (void)g_svc->file_close(input);
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: cannot create temporary output %s\n", temp);
+      g_svc->log_printf("recipe: cannot create temporary output %s\n", temp);
     return -4;
   }
   io_ctx_t in_ctx = {g_svc, input}, out_ctx = {g_svc, output};
@@ -1181,7 +1221,7 @@ static int extract_one(const char *image_path, const char *source, const char *t
   (void)g_svc->file_close(input);
   if (result != 0 || out_closed != 0 || copied == 0) {
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("disc_installer: ISO copy failed source=%s image=%s image_bytes=%ld iso_result=%d source_bytes=%llu limit=%u copied=%llu close_result=%d\n",
+      g_svc->log_printf("recipe: ISO copy failed source=%s image=%s image_bytes=%ld iso_result=%d source_bytes=%llu limit=%u copied=%llu close_result=%d\n",
         source, image_path, size, result, (unsigned long long)source_bytes,
         (unsigned)MAX_FILE_BYTES, (unsigned long long)copied, out_closed);
     (void)g_svc->file_remove(temp);
@@ -1190,7 +1230,7 @@ static int extract_one(const char *image_path, const char *source, const char *t
   if (file_exists(target) || g_svc->file_rename(temp, target) != 0) {
     const bool target_exists = file_exists(target);
     if (g_svc->log_printf != NULL && !target_exists)
-      g_svc->log_printf("disc_installer: cannot commit extracted file %s -> %s\n", temp, target);
+      g_svc->log_printf("recipe: cannot commit extracted file %s -> %s\n", temp, target);
     (void)g_svc->file_remove(temp);
     return target_exists ? 1 : -6;
   }
@@ -1228,6 +1268,86 @@ static void remove_staged_cache_files(void)
   g_svc->mem_free(listing);
 }
 
+/* The firmware streams to a temporary file and commits on HTTP success.
+ * Keep existing files; check the published member size before accepting a new one.
+ * The UI stays responsive, but we finish an in-flight transfer before closing. */
+static bool download_media(int media_index)
+{
+  if (g_svc->archive_download_start == NULL || g_svc->store_install_status == NULL ||
+      g_svc->file_stat == NULL || g_svc->file_mkdir == NULL || g_svc->file_remove == NULL) {
+    report("Update firmware to enable direct downloads. Local disc extraction is available.", 0, 0, COL_WARN);
+    return false;
+  }
+  recipe_media_t *media = &g_recipe.media[media_index];
+  uint32_t total = 0, done = 0;
+  for (int f = 0; f < media->file_count; ++f)
+    if (g_recipe.files[media->first_file + f].url[0]) total++;
+  for (int f = 0; f < media->file_count && !g_exit_requested; ++f) {
+    recipe_file_t *mapping = &g_recipe.files[media->first_file + f];
+    if (!mapping->url[0]) continue;
+    pax_file_stat_t existing = {0};
+    if (g_svc->file_stat(mapping->target, &existing) == 0) {
+      if (existing.is_dir || existing.size == 0) {
+        report("An empty file or directory occupies the target. Remove it before retrying.", done, total, COL_WARN);
+        return false;
+      }
+      done++;
+      report("Keeping an existing game file.", done, total, COL_TEXT);
+      continue;
+    }
+    char parent[PATH_CAP];
+    text_copy(parent, sizeof(parent), mapping->target);
+    char *slash = strrchr(parent, '/');
+    if (slash == NULL) return false;
+    *slash = '\0';
+    (void)g_svc->file_mkdir(parent);
+    if (g_svc->archive_download_start(mapping->url, mapping->target) != 0) {
+      report("Could not start download. Retry or choose a local disc image.", done, total, COL_WARN);
+      return false;
+    }
+    bool complete = false;
+    uint64_t last_update = 0;
+    for (;;) {
+      pax_install_progress_t progress = {0};
+      if (g_svc->store_install_status(&progress) != 0) {
+        /* Do not unload while the firmware transfer may still be running. */
+        g_svc->delay_ms(100);
+        continue;
+      }
+      if (progress.state == 2 || progress.state == 3) {
+        complete = progress.state == 2;
+        if (!complete) report(progress.status[0] ? progress.status : "Download failed. Retry or use a local disc.", done, total, COL_WARN);
+        break;
+      }
+      const uint64_t now = g_svc->get_time_us();
+      if (now - last_update >= 250000) {
+        char status[STATUS_CAP] = "Downloading ";
+        text_append(status, sizeof(status), mapping->source);
+        g_byte_progress_active = true;
+        g_byte_done = progress.done;
+        g_byte_total = mapping->expected_size;
+        report(status, done, total, COL_TEXT);
+        last_update = now;
+      }
+      (void)g_svc->ui_call_sync(pump_ui_on_host, NULL, 1000);
+      g_svc->delay_ms(50);
+    }
+    g_byte_progress_active = false;
+    if (!complete) return false;
+    pax_file_stat_t received = {0};
+    if (g_svc->file_stat(mapping->target, &received) != 0 || received.is_dir ||
+        received.size != mapping->expected_size) {
+      (void)g_svc->file_remove(mapping->target);
+      report("Download size did not match. Retry or choose a local disc image.", done, total, COL_ERROR);
+      return false;
+    }
+    done++;
+  }
+  report(g_exit_requested ? "Stopped between files; completed downloads were kept." :
+         "Game files downloaded. Local disc extraction remains available.", done, total, COL_OK);
+  return done == total;
+}
+
 static bool run_recipe_for_incoming(int incoming_index)
 {
   if (g_svc->file_open == NULL || g_svc->file_close == NULL || g_svc->file_read == NULL ||
@@ -1237,6 +1357,7 @@ static bool run_recipe_for_incoming(int incoming_index)
     return false;
   }
   if (incoming_index < 0 || incoming_index >= g_incoming_count) return false;
+  if (incoming_index < g_download_rows) return download_media(g_download_media[incoming_index]);
   const char *archive_name = g_incoming_names[incoming_index];
   const int media_index = incoming_media_index(archive_name);
   if (media_index < 0 || media_index >= g_recipe.media_count) {
@@ -1427,7 +1548,9 @@ int app_entry(const app_services_t *svc)
   g_exit_requested = false;
   g_processing_media = false;
   g_touch_was_down = false;
-  if (g_incoming_count > 0) {
+  if (g_download_rows > 0) {
+    text_copy(g_status, sizeof(g_status), "Download missing game files directly, or select a local disc image below.");
+  } else if (g_incoming_count > 0) {
     char initial_status[STATUS_CAP] = "Found ";
     (void)append_u32(initial_status, sizeof(initial_status), (uint32_t)g_incoming_count);
     (void)text_append(initial_status, sizeof(initial_status), " disc image(s). Select one to continue extraction.");
@@ -1463,35 +1586,35 @@ int app_entry(const app_services_t *svc)
     const bool b = pad.values[PAX_INPUT_B] != 0;
     const bool menu = pad.values[PAX_INPUT_MENU] != 0;
     if (up && !previous[PAX_INPUT_UP] && svc->log_printf != NULL)
-      svc->log_printf("disc_installer: gamepad UP edge (focused=%d items=%d)\n",
+      svc->log_printf("recipe: gamepad UP edge (focused=%d items=%d)\n",
                       g_focused_incoming, g_incoming_count);
     if (down && !previous[PAX_INPUT_DOWN] && svc->log_printf != NULL)
-      svc->log_printf("disc_installer: gamepad DOWN edge (focused=%d items=%d)\n",
+      svc->log_printf("recipe: gamepad DOWN edge (focused=%d items=%d)\n",
                       g_focused_incoming, g_incoming_count);
     if (up && !previous[PAX_INPUT_UP] && g_incoming_count > 0) {
       const int old = g_focused_incoming;
       const int next = g_focused_incoming > 0 ? g_focused_incoming - 1 : g_incoming_count - 1;
       const int result = svc->ui_call_sync(focus_incoming_on_host, (void *)(intptr_t)next, 1000);
       if (svc->log_printf != NULL)
-        svc->log_printf("disc_installer: gamepad UP focus=%d->%d ui_result=%d\n",
+        svc->log_printf("recipe: gamepad UP focus=%d->%d ui_result=%d\n",
                         old, next, result);
     } else if (down && !previous[PAX_INPUT_DOWN] && g_incoming_count > 0) {
       const int old = g_focused_incoming;
       const int next = g_focused_incoming + 1 < g_incoming_count ? g_focused_incoming + 1 : 0;
       const int result = svc->ui_call_sync(focus_incoming_on_host, (void *)(intptr_t)next, 1000);
       if (svc->log_printf != NULL)
-        svc->log_printf("disc_installer: gamepad DOWN focus=%d->%d ui_result=%d\n",
+        svc->log_printf("recipe: gamepad DOWN focus=%d->%d ui_result=%d\n",
                         old, next, result);
     }
     if (a && !previous[PAX_INPUT_A] && g_incoming_count > 0) {
       if (svc->log_printf != NULL)
-        svc->log_printf("disc_installer: gamepad A select focus=%d\n", g_focused_incoming);
+        svc->log_printf("recipe: gamepad A select focus=%d\n", g_focused_incoming);
       g_requested_incoming = g_focused_incoming;
     }
     if ((b && !previous[PAX_INPUT_B]) || (menu && !previous[PAX_INPUT_MENU]) ||
         (svc->input_l3_read != NULL && svc->input_l3_read())) {
       if (svc->log_printf != NULL)
-        svc->log_printf("disc_installer: gamepad Back pressed (B=%d menu=%d)\n", b, menu);
+        svc->log_printf("recipe: gamepad Back pressed (B=%d menu=%d)\n", b, menu);
       g_exit_requested = true;
     }
     memcpy(previous, pad.values, sizeof(previous));
@@ -1507,7 +1630,7 @@ int app_entry(const app_services_t *svc)
     }
     if (g_exit_requested) break;
     if (svc->ui_call_sync(pump_ui_on_host, NULL, 1000) != 0 && svc->log_printf != NULL)
-      svc->log_printf("disc_installer: UI event pump failed\n");
+      svc->log_printf("recipe: UI event pump failed\n");
     svc->delay_ms(20);
   }
   (void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);

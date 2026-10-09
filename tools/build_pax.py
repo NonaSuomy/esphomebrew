@@ -684,6 +684,36 @@ def store_info(name: str, manifest: dict, app_dir: Path) -> dict:
         info.update(canvas_listing(name, manifest["canvas"]))
     if "requires" in manifest:
         info["requires"] = requires_info(name, manifest["requires"])
+    if "install_recipe" in manifest:
+        recipe_path = manifest["install_recipe"]
+        if not isinstance(recipe_path, str) or Path(recipe_path).name != recipe_path:
+            raise ValueError(f"{name}: install_recipe must be a filename inside the app folder")
+        recipe = json.loads((app_dir / recipe_path).read_text())
+        if recipe.get("version") != 1 or not 1 <= len(recipe.get("media", [])) <= 4:
+            raise ValueError(f"{name}: invalid installation recipe")
+        targets = set()
+        requires_info(name, [{"path": recipe.get("archive_dir", "")}])
+        count = 0
+        for media in recipe["media"]:
+            if media.get("format") not in ("zip-iso9660", "zip-cue-bin") or not media.get("files"):
+                raise ValueError(f"{name}: unsupported recipe media")
+            for item in media["files"]:
+                requires_info(name, [{"path": item.get("target", "")}])
+                source = item.get("source", "")
+                if not source or source.startswith("/") or any(p in ("", ".", "..") for p in source.split("/")):
+                    raise ValueError(f"{name}: unsafe recipe source")
+                target = item["target"].lower()
+                if target in targets:
+                    raise ValueError(f"{name}: duplicate recipe target")
+                targets.add(target)
+                count += 1
+                if "url" in item and (not isinstance(item["url"], str) or
+                    not item["url"].startswith("https://archive.org/download/") or
+                    type(item.get("size")) is not int or not 0 < item["size"] <= 512 * 1024 * 1024):
+                    raise ValueError(f"{name}: invalid direct download URL or size")
+        if count > 24:
+            raise ValueError(f"{name}: too many recipe files")
+        info["extract"] = recipe
     if "icon" in manifest:
         info["icon"] = listing_png(name, app_dir, manifest["icon"], "icon", MAX_ICON_BYTES, MAX_ICON_SIDE, MAX_ICON_SIDE)
     if "screenshots" in manifest:

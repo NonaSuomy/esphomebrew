@@ -47,7 +47,7 @@ DEFAULT_STORE = "https://nonasuomy.github.io/esphomebrew/"
 # What describes the app rather than one build of it: the store build's source
 # commit, changelog and version are left out, since this .pax may differ.
 COPIED_FIELDS = ("title", "description", "author", "category", "license", "about", "controls", "upstream", "canvas",
-                 "canvas_recommended", "requires")
+                 "canvas_recommended", "requires", "extract")
 MAX_ICON_BYTES = 64 * 1024
 MAX_ICON_SIDE = 256
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"

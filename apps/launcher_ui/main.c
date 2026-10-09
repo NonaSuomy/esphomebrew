@@ -3490,7 +3490,7 @@ static const char *detail_action_text(int action)
     return g_detail_uninstall_confirm ? "CONFIRM REMOVE" : "UNINSTALL";
   }
   if (action == 3)
-    return g_detail_extract_recipe.valid ? "EXTRACT DATA" : "BACK";
+    return g_detail_extract_recipe.valid ? "GET GAME DATA" : "BACK";
   return "BACK";
 }
 

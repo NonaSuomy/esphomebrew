@@ -147,7 +147,7 @@ def screenshot_name(app: dict, index: int) -> str:
 
 
 LISTING_FIELDS = ("author", "category", "license", "about", "changelog", "controls", "upstream", "canvas",
-                  "canvas_recommended")
+                  "canvas_recommended", "extract")
 
 
 def requires_list(app: dict) -> list[dict]:

@@ -1381,9 +1381,10 @@ void PaxLoader::request_upload_url_(const std::string &url, const std::string &p
     ESP_LOGW(TAG, "Ignoring SD upload with a path that is too long: %s", path.c_str());
     return;
   }
-  const bool launcher_is_active = allow_launcher && this->launched_ && !this->pax_loading_ &&
-      this->running_app_source_.find("launcher_ui.pax") != std::string::npos;
-  if (this->install_task_handle_ != nullptr || (this->launched_ && !launcher_is_active) || this->pax_loading_) {
+  const bool data_installer_is_active = allow_launcher && this->launched_ && !this->pax_loading_ &&
+      (this->running_app_source_.find("launcher_ui.pax") != std::string::npos ||
+       this->running_app_source_.find("recipe.pax") != std::string::npos);
+  if (this->install_task_handle_ != nullptr || (this->launched_ && !data_installer_is_active) || this->pax_loading_) {
     this->set_progress_(false, 0, 0, "%s", "Close the running app before uploading");
     ESP_LOGW(TAG, "Ignoring SD upload while the loader is busy: %s", path.c_str());
     return;
@@ -1400,6 +1401,7 @@ void PaxLoader::request_upload_url_(const std::string &url, const std::string &p
   this->install_info_.sha256 = sha256;
   this->install_url_ = url;
   this->install_done_ = false;
+  this->set_progress_(true, 0, size, "%s", "Starting download");
   if (xTaskCreatePinnedToCoreWithCaps(&PaxLoader::pax_install_task_entry_, "pax_file_upload", 20480, this, 4,
                                       &this->install_task_handle_, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
     this->install_task_handle_ = nullptr;

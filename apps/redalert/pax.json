@@ -440,5 +440,6 @@
       "note": "Optional low-resolution expansion data",
       "optional": true
     }
-  ]
+  ],
+  "install_recipe": "install-recipe.json"
 }

@@ -51,6 +51,15 @@ class FakeOpener:
 
 
 class ListingTests(unittest.TestCase):
+    def test_installation_recipe_survives_local_listing(self):
+        pax = self.folder / "doom.pax"
+        pax.write_bytes(b"P" * 50)
+        recipe = {"version": 1, "media": []}
+        self.store["psram_doom"]["extract"] = recipe
+        listing, _ = ml.build_listing(pax, self.store, "http://lan:8000/", False, False)
+        self.assertEqual(listing["extract"], recipe)
+        self.store["psram_doom"].pop("extract")
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.folder = Path(self.tmp.name)

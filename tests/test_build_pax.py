@@ -40,6 +40,33 @@ class ManifestTests(unittest.TestCase):
             self.assertNotIn("PAPP_COMPAT_H", aliases)
             self.assertIn("#define PAPP_VALUE PAX_VALUE", aliases)
 
+    def test_install_recipe_survives_listing_generation(self):
+        folder = APPS / "redalert"
+        manifest = json.loads((folder / "pax.json").read_text())
+        listing = bp.store_info("redalert", manifest, folder)
+        self.assertEqual(listing["extract"], json.loads((folder / "install-recipe.json").read_text()))
+        self.assertTrue(all(f["url"].startswith("https://archive.org/download/CCRedAlert/")
+                            for m in listing["extract"]["media"] for f in m["files"]))
+
+    def test_install_recipe_rejects_unsafe_downloads_and_targets(self):
+        recipe = json.loads((APPS / "redalert/install-recipe.json").read_text())
+        with tempfile.TemporaryDirectory() as td:
+            folder = Path(td)
+            for bad in ("http://archive.org/download/x", "https://evil.example/game.mix"):
+                altered = json.loads(json.dumps(recipe))
+                altered["media"][0]["files"][0]["url"] = bad
+                (folder / "recipe.json").write_text(json.dumps(altered))
+                with self.assertRaises(ValueError):
+                    bp.store_info("demo", {"install_recipe": "recipe.json"}, folder)
+            for key, value in (("size", 0), ("size", True), ("target", "/sd/roms/../bad"), ("source", "../bad")):
+                altered = json.loads(json.dumps(recipe))
+                altered["media"][0]["files"][0][key] = value
+                (folder / "recipe.json").write_text(json.dumps(altered))
+                with self.assertRaises(ValueError):
+                    bp.store_info("demo", {"install_recipe": "recipe.json"}, folder)
+            with self.assertRaises(ValueError):
+                bp.store_info("demo", {"install_recipe": "../recipe.json"}, folder)
+
     def test_every_manifest_is_valid(self):
         manifests = sorted(APPS.glob("*/pax.json"))
         self.assertTrue(manifests)

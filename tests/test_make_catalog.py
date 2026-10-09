@@ -56,6 +56,12 @@ def raw(path: str) -> str:
 
 
 class DataTests(unittest.TestCase):
+    def test_store_sidecar_keeps_installation_recipe(self):
+        item = app(data=False)
+        recipe = {"version": 1, "media": []}
+        item["extract"] = recipe
+        self.assertEqual(mc.store_entry(REPO, item)["extract"], recipe)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.out = Path(self.tmp.name) / "site"
