@@ -1311,16 +1311,16 @@ static int scummvm_run(const app_services_t *svc) {
 		char autostart_path[256];
 		scummvm_storage_path(autostart_path, sizeof(autostart_path), "/roms/scummvm/kq6");
 		const char *argv[] = { "scummvm",
-			"--path", autostart_path, NULL };
-		scummvm_main(3, argv);
+			"--path", autostart_path, "--auto-detect", NULL };
+		scummvm_main(4, argv);
 	#elif defined(SCUMMVM_PAX_AUTOSTART_QFG4)
 		/* Test build: bypass the launcher and auto-detect the installed QFG4
 		 * directory so the engine/data/input path can be verified end-to-end. */
 		char autostart_path[256];
 		scummvm_storage_path(autostart_path, sizeof(autostart_path), "/roms/scummvm/qfg4");
 		const char *argv[] = { "scummvm",
-			"--path", autostart_path, NULL };
-		scummvm_main(3, argv);
+			"--path", autostart_path, "--auto-detect", NULL };
+		scummvm_main(4, argv);
 	#else
 		const char *argv[] = { "scummvm", NULL };
 		scummvm_main(1, argv);
