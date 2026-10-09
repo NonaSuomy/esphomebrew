@@ -16,6 +16,10 @@ Work in `apps/`. `legacy/` holds references and is never a build input.
 
 The preview combines the recorded upstream base, the current PAX source and the incoming revision with a three-way merge. It never changes active source files. New upstream files and deletions are listed separately for review because the port may intentionally select only part of a core. After completing and verifying an update, change that app's `ref` in `upstream-bases.json` to the exact incoming commit and record any new selected files. Commit the source and base record together. A conflicted preview has no patch, so a partial update cannot be accidentally applied.
 
+## Original app adapter updates
+
+The moved adapters are owned by pax-modules, so fetching an engine does not overwrite them. app-source-migration.json records their original app paths and source revision; each recipe also records its original repository and pin. Review the upstream changes between that base and the incoming revision at the original path, then merge the relevant changes into apps/<app> while retaining the PAX service calls, naming and local fixes. Rebuild and test before recording the new base. Engine/core updates and adapter updates are reviewed separately because they can change different interfaces.
+
 ## Manifest-based upstream sources
 
 Each `apps/<app>/pax.json` pins its original source URL and revision. Update that pin deliberately, review the local adapters and patches under the same app directory, and rebuild. These sources are downloaded into `.cache/`; cache contents are replaceable and are not the place for fixes.
