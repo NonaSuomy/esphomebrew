@@ -40,8 +40,3 @@ int pax_nes_load_rom(const char *path)
 }
 void pax_nes_cleanup(void) { if (pax_nes_rom_data) _pax_svc->mem_free(pax_nes_rom_data); pax_nes_rom_data = NULL; }
 void app_return_to_launcher(void) { pax_exit_requested = 1; pax_nes_request_exit(); }
-
-/* Save states are intentionally disabled in the first PAX port. */
-void save_sram(void) {}
-void load_sram(void) {}
-void state_setslot(int slot) { (void)slot; }

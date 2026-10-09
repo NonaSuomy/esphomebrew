@@ -78,6 +78,47 @@ static void watchdog_task(void *arg)
     }
 }
 
+/*
+ * The canvas: the largest of Doom's sizes that fits in what the loader offers
+ * (display_get_size: the store's Screen setting, else the listing's
+ * recommended size, else the device default), or the smallest when none does.
+ * The 320x200 frame is scaled to fill it (pax_i_video.c). A launcher without
+ * display_set_canvas, or one that refuses the size, keeps the 800x480 canvas
+ * and the original 2.4x (768x480).
+ */
+float pax_doom_scale = 2.4f;
+
+static void choose_canvas(const app_services_t *svc)
+{
+    /* Largest first; the same sizes as "canvas" in pax.json. */
+    static const struct { int w, h, tenths; } sizes[] = {
+        {960, 600, 30},   /* 960x600: 3x, the panel's full height       */
+        {800, 480, 24},   /* 768x480 on the classic canvas              */
+        {640, 400, 20},   /* 640x400: 2x, the least to send per frame   */
+    };
+    const int count = (int)(sizeof(sizes) / sizeof(sizes[0]));
+    if (!svc->display_get_size || !svc->display_set_canvas)
+        return;
+    int offer_w = 0, offer_h = 0;
+    svc->display_get_size(&offer_w, &offer_h);
+    int pick = count - 1;
+    for (int i = 0; i < count; i++) {
+        if (sizes[i].w <= offer_w && sizes[i].h <= offer_h) {
+            pick = i;
+            break;
+        }
+    }
+    if (svc->display_set_canvas(sizes[pick].w, sizes[pick].h) == 0) {
+        pax_doom_scale = sizes[pick].tenths / 10.0f;
+        svc->log_printf("Doom PAX: offered a %dx%d canvas, using %dx%d (320x200 x%d.%d)\n",
+                        offer_w, offer_h, sizes[pick].w, sizes[pick].h,
+                        sizes[pick].tenths / 10, sizes[pick].tenths % 10);
+    } else {
+        svc->log_printf("Doom PAX: %dx%d canvas refused, keeping 800x480\n",
+                        sizes[pick].w, sizes[pick].h);
+    }
+}
+
 /* Cleanup functions from pax_syscalls.c */
 extern void pax_cleanup_fds(void);
 extern void pax_cleanup_heap(void);
@@ -97,8 +138,11 @@ int app_entry(const app_services_t *svc)
 
     svc->log_printf("=== Doom PSRAM App Starting ===\n");
 
-    /* Scale 1:1 — pax_i_video uses display_write_frame_custom with 2.4f */
+    /* Scale 1:1 — pax_i_video uses display_write_frame_custom with pax_doom_scale */
     svc->display_set_scale(1.0f, 1.0f);
+
+    /* Pick the canvas on this task, which draws (I_FinishUpdate). */
+    choose_canvas(svc);
 
     /* Start watchdog on core 1 */
     svc->task_create(watchdog_task, "doom_wd", 4096, NULL, 1, &s_wd_handle, 1);

@@ -32,9 +32,9 @@
   },
   "build": "custom",
   "patches": [
-    "local:ports/quake2/patches/*.patch"
+    "local:apps/quake2/patches/*.patch"
   ],
-  "linker_script": "local:ports/quake2/psram_app.ld",
+  "linker_script": "local:apps/quake2/psram_app.ld",
   "source": {
     "repo": "https://github.com/alexkid77/ESP32_QUAKE2",
     "ref": "0c37920e0af6c01bb88d1e8c4a0fcf148be5e57e",
@@ -49,7 +49,7 @@
   ],
   "includes": [
     "components/quake2/source",
-    "local:ports/quake2"
+    "local:apps/quake2"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -114,7 +114,7 @@
       ]
     },
     {
-      "dir": "local:ports/quake2",
+      "dir": "local:apps/quake2",
       "prefix": "net_",
       "files": [
         "pax_net.c"
@@ -135,7 +135,7 @@
       ]
     },
     {
-      "dir": "local:ports/quake2",
+      "dir": "local:apps/quake2",
       "prefix": "papp_",
       "files": [
         "pax_main.c",
@@ -151,7 +151,7 @@
       ]
     },
     {
-      "dir": "local:ports/quake2",
+      "dir": "local:apps/quake2",
       "prefix": "mp3_",
       "files": [
         "pax_mp3.cpp"

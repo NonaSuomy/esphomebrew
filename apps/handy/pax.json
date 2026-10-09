@@ -32,12 +32,12 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_handy",
-    "local:ports/retroesp32/components/handy",
-    "local:ports/retroesp32/apps/pax_emulator_common",
-    "local:ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/handy",
+    "local:apps/handy/core",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat_cxx",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -80,7 +80,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/handy",
+      "dir": "local:apps/handy/core",
       "files": [
         "cart.cpp",
         "eeprom.cpp",
@@ -95,21 +95,21 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_handy",
+      "dir": "local:apps/handy",
       "files": [
         "pax_main.cpp"
       ],
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/pax_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
         "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
         "pax_syscalls.c"
       ],

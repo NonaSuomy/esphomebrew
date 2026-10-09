@@ -4,7 +4,7 @@
   "mapping": [
     {
       "old": "upstream/retroesp32/apps/atari800",
-      "new": "apps/atari800/variants/legacy",
+      "new": "legacy/native-apps/atari800",
       "kind": "folder",
       "files": [
         {
@@ -54,7 +54,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/gb",
-      "new": "apps/gb/variants/legacy",
+      "new": "legacy/native-apps/gb",
       "kind": "folder",
       "files": [
         {
@@ -85,7 +85,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/genesis",
-      "new": "apps/genesis/variants/legacy",
+      "new": "legacy/native-apps/genesis",
       "kind": "folder",
       "files": [
         {
@@ -124,7 +124,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/handy",
-      "new": "apps/handy/variants/legacy",
+      "new": "legacy/native-apps/handy",
       "kind": "folder",
       "files": [
         {
@@ -190,7 +190,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/neogeo",
-      "new": "apps/neogeo/variants/legacy",
+      "new": "legacy/native-apps/neogeo",
       "kind": "folder",
       "files": [
         {
@@ -229,7 +229,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/nes",
-      "new": "apps/nes/variants/legacy",
+      "new": "legacy/native-apps/nes",
       "kind": "folder",
       "files": [
         {
@@ -363,7 +363,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/pce",
-      "new": "apps/pce/variants/legacy",
+      "new": "legacy/native-apps/pce",
       "kind": "folder",
       "files": [
         {
@@ -394,7 +394,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/prosystem",
-      "new": "apps/prosystem/variants/legacy",
+      "new": "legacy/native-apps/prosystem",
       "kind": "folder",
       "files": [
         {
@@ -1913,7 +1913,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/sms",
-      "new": "apps/sms/variants/legacy",
+      "new": "legacy/native-apps/sms",
       "kind": "folder",
       "files": [
         {
@@ -1944,7 +1944,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/snes",
-      "new": "apps/snes/variants/legacy",
+      "new": "legacy/native-apps/snes",
       "kind": "folder",
       "files": [
         {
@@ -1983,7 +1983,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/spectrum",
-      "new": "apps/spectrum/variants/legacy",
+      "new": "legacy/native-apps/spectrum",
       "kind": "folder",
       "files": [
         {
@@ -2014,7 +2014,7 @@
     },
     {
       "old": "upstream/retroesp32/apps/stella",
-      "new": "apps/stella/variants/legacy",
+      "new": "legacy/native-apps/stella",
       "kind": "folder",
       "files": [
         {

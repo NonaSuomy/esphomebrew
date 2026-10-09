@@ -1,6 +1,6 @@
 # PAX module inventory
 
-34 manifest recipes; 46 native source folders are organized under apps/; older variants are separated within their app folders.
+34 manifest recipes; 34 native source folders are organized under apps/; reference-only variants are under legacy/.
 
 | Recipe | Output | Upstream pin |
 | --- | --- | --- |
@@ -39,4 +39,4 @@
 | [video](apps/video/pax.json) | `video.pax` | https://github.com/FFmpeg/FFmpeg @ `3a0867c2bfda` |
 | [ws](apps/ws/pax.json) | `ws.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 
-Native source paths and dependency/local-port details are recorded in modules.json. The conversions variant is preserved separately under variants/conversions. Existing compiled files are not evidence of a fresh rebuild; consult the root validation report.
+Native source paths and dependency/local-port details are recorded in modules.json. The conversions variant is preserved separately under legacy/conversions. Existing compiled files are not evidence of a fresh rebuild; consult the root validation report.

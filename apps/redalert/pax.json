@@ -39,15 +39,15 @@
     "path": "redalert"
   },
   "patches": [
-    "local:ports/redalert/patches/*.patch"
+    "local:apps/redalert/patches/*.patch"
   ],
-  "linker_script": "local:ports/redalert/pax_cpp.ld",
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
   "includes": [
-    "local:ports/redalert/net",
+    "local:apps/redalert/net",
     "common",
     "redalert",
     ".",
-    "local:ports/redalert",
+    "local:apps/redalert",
     "local:"
   ],
   "cflags": [
@@ -360,7 +360,7 @@
       "archive": true
     },
     {
-      "dir": "local:ports/redalert",
+      "dir": "local:apps/redalert",
       "prefix": "papp_",
       "files": [
         "pax_main.cpp",

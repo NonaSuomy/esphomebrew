@@ -14,9 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 import dev_build_apps as dba  # noqa: E402
 
 OPENLARA = {"publish": True, "dev_build": True,
-            "patches": ["local:ports/openlara/patches/*.patch"],
-            "linker_script": "local:ports/redalert/pax_cpp.ld"}
-TULIP = {"publish": True, "dev_build": True, "patches": ["local:ports/tulip/patches/*.patch"]}
+            "patches": ["local:apps/openlara/patches/*.patch"],
+            "linker_script": "local:apps/redalert/pax_cpp.ld"}
+TULIP = {"publish": True, "dev_build": True, "patches": ["local:apps/tulip/patches/*.patch"]}
 NETSURF = {"publish": False, "source": {"repo": "https://example.invalid/netsurf"}}
 DOOM = {"publish": True}
 
@@ -25,11 +25,11 @@ class SelectTest(unittest.TestCase):
     apps = {"openlara": OPENLARA, "tulip": TULIP, "netsurf": NETSURF}
 
     def test_only_the_apps_a_branch_touches(self):
-        self.assertEqual(dba.select(self.apps, ["ports/openlara/patches/0009-x.patch"]), ["openlara"])
+        self.assertEqual(dba.select(self.apps, ["apps/openlara/patches/0009-x.patch"]), ["openlara"])
         self.assertEqual(dba.select(self.apps, ["apps/tulip/pax.json", "docs/building.md"]), ["tulip"])
 
     def test_a_shared_port_folder_rebuilds_every_app_using_it(self):
-        self.assertEqual(dba.select(self.apps, ["ports/redalert/pax_cpp.ld"]), ["openlara"])
+        self.assertEqual(dba.select(self.apps, ["apps/redalert/pax_cpp.ld"]), ["openlara"])
 
     def test_build_changes_or_no_base_rebuild_all(self):
         everything = ["netsurf", "openlara", "tulip"]
@@ -41,7 +41,7 @@ class SelectTest(unittest.TestCase):
         self.assertEqual(dba.select(self.apps, []), [])
 
     def test_folder_prefixes_do_not_match_longer_names(self):
-        self.assertEqual(dba.select({"tulip": TULIP}, ["ports/tulipx/a.c", "apps/tulip2/pax.json"]), [])
+        self.assertEqual(dba.select({"tulip": TULIP}, ["apps/tulipx/a.c", "apps/tulip2/pax.json"]), [])
 
 
 class WipAppsTest(unittest.TestCase):

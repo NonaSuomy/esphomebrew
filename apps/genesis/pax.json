@@ -32,20 +32,20 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_genesis",
-    "local:ports/retroesp32/components/gwenesis",
-    "local:ports/retroesp32/components/gwenesis/src",
-    "local:ports/retroesp32/components/gwenesis/src/bus",
-    "local:ports/retroesp32/components/gwenesis/src/cpus/M68K",
-    "local:ports/retroesp32/components/gwenesis/src/cpus/Z80",
-    "local:ports/retroesp32/components/gwenesis/src/io",
-    "local:ports/retroesp32/components/gwenesis/src/sound",
-    "local:ports/retroesp32/components/gwenesis/src/vdp",
-    "local:ports/retroesp32/components/gwenesis/src/savestate",
-    "local:ports/retroesp32/apps/pax_emulator_common",
-    "local:ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/genesis",
+    "local:apps/genesis/core",
+    "local:apps/genesis/core/src",
+    "local:apps/genesis/core/src/bus",
+    "local:apps/genesis/core/src/cpus/M68K",
+    "local:apps/genesis/core/src/cpus/Z80",
+    "local:apps/genesis/core/src/io",
+    "local:apps/genesis/core/src/sound",
+    "local:apps/genesis/core/src/vdp",
+    "local:apps/genesis/core/src/savestate",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat_cxx",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -88,7 +88,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/gwenesis",
+      "dir": "local:apps/genesis/core",
       "files": [
         "src/bus/gwenesis_bus.c",
         "src/cpus/M68K/m68kcpu.c",
@@ -106,21 +106,21 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_genesis",
+      "dir": "local:apps/genesis",
       "files": [
         "pax_main.c"
       ],
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/pax_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
         "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
         "pax_syscalls.c"
       ],

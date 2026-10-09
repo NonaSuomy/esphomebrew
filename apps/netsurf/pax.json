@@ -162,12 +162,12 @@
     "fonts/matplotlib/lib/matplotlib/mpl-data/fonts/ttf/LICENSE_DEJAVU"
   ],
   "patches": [
-    "local:ports/netsurf/patches/*.patch"
+    "local:apps/netsurf/patches/*.patch"
   ],
   "prebuild": [
     [
       "{python}",
-      "{repo}/ports/netsurf/gen_netsurf.py",
+      "{repo}/apps/netsurf/gen_netsurf.py",
       "--src",
       "{src}",
       "--gen",
@@ -176,10 +176,10 @@
       "{units}"
     ]
   ],
-  "linker_script": "local:ports/redalert/pax_cpp.ld",
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
   "includes": [
-    "local:ports/netsurf/include",
-    "local:ports/netsurf/freetype",
+    "local:apps/netsurf/include",
+    "local:apps/netsurf/freetype",
     "local:",
     "libs/libwapcaplet/include",
     "libs/libparserutils/include",
@@ -587,14 +587,14 @@
         "frontends",
         "content/handlers",
         ".pax-gen",
-        "local:ports/netsurf"
+        "local:apps/netsurf"
       ],
       "files": [
         "*.c"
       ]
     },
     {
-      "dir": "local:ports/netsurf",
+      "dir": "local:apps/netsurf",
       "prefix": "papp_",
       "includes": [
         ".",

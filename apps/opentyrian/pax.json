@@ -13,9 +13,9 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/opentyrian/port/compat",
-    "local:ports/opentyrian/sdl",
-    "local:ports/opentyrian/game"
+    "local:apps/opentyrian/port/compat",
+    "local:apps/opentyrian/sdl",
+    "local:apps/opentyrian/game"
   ],
   "cflags": [
     "-DPAX_APP_SIDE=1",
@@ -27,7 +27,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/opentyrian/game",
+      "dir": "local:apps/opentyrian/game",
       "files": [
         "animlib.c",
         "arg_parse.c",
@@ -85,7 +85,7 @@
       "prefix": "game_"
     },
     {
-      "dir": "local:ports/opentyrian/port",
+      "dir": "local:apps/opentyrian/port",
       "files": [
         "pax_main.c",
         "pax_sdl_video.c",

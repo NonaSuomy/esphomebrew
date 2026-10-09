@@ -39,12 +39,8 @@
     "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
     "path": "apps/psram_doom"
   },
-  "patches": [
-    "local:ports/retroesp32/patches/*.patch",
-    "local:ports/doom/patches/*.patch"
-  ],
   "includes": [
-    "apps/psram_doom/compat",
+    "local:apps/doom/compat",
     "components/psram_app_loader/include",
     "components/prboom"
   ],
@@ -154,14 +150,14 @@
       ]
     },
     {
-      "dir": "apps/psram_doom",
+      "dir": "local:apps/doom",
       "files": [
-        "papp_main.c",
-        "papp_i_video.c",
-        "papp_i_sound.c",
-        "papp_i_system.c",
-        "papp_rg_stubs.c",
-        "papp_syscalls.c"
+        "pax_main.c",
+        "pax_i_video.c",
+        "pax_i_sound.c",
+        "pax_i_system.c",
+        "pax_rg_stubs.c",
+        "pax_syscalls.c"
       ]
     }
   ],

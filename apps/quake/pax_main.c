@@ -53,6 +53,10 @@ static void watchdog_task(void *arg)
     int held_ms = 0;
 
     for (;;) {
+        if (_pax_svc->input_l3_read && _pax_svc->input_l3_read()) {
+            pax_exit_requested = 1;
+            while (1) _pax_svc->delay_ms(100);
+        }
         _pax_svc->input_gamepad_read(&state);
         if (state.values[PAX_INPUT_MENU]) {
             held_ms += 100;

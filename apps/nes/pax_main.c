@@ -2,6 +2,7 @@
 #define PAX_APP_SIDE 1
 #include "runtime.h"
 #include "psram_app.h"
+#include "pax_nes_options.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,12 +47,9 @@ void pax_nes_request_exit(void)
 static void nes_watchdog(void *arg)
 {
     (void)arg;
-    pax_gamepad_state_t pad;
     int held = 0;
     for (;;) {
-        _pax_svc->input_gamepad_read(&pad);
-        if (pad.values[PAX_INPUT_MENU] ||
-            (_pax_svc->input_l3_read && _pax_svc->input_l3_read())) {
+        if (_pax_svc->input_l3_read && _pax_svc->input_l3_read()) {
             if (++held >= 3) {
                 pax_nes_exit = 1;
                 pax_exit_requested = 1;
@@ -110,14 +108,18 @@ int app_entry(const app_services_t *svc)
     svc->task_create(nes_watchdog, "nes_wd", 4096, NULL, 2, &watchdog, 1);
 
     int result = -1;
+    int core_owns_path = 0;
     if (pax_nes_load_rom(rom_path) == 0) {
+        pax_nes_options_load_for_current_rom(svc);
         char *argv[] = { rom_path, NULL };
+        /* nofrendo stores argv[0] and frees it during core shutdown. */
+        core_owns_path = 1;
         result = nofrendo_main(1, argv);
     }
 
     if (watchdog) svc->task_delete(watchdog);
     pax_nes_cleanup();
-    svc->mem_free(rom_path);
+    if (!core_owns_path) svc->mem_free(rom_path);
     svc->display_clear(0);
     svc->display_flush();
     svc->log_printf("=== NES PAX exited (%d) ===\n", result);

@@ -1,0 +1,24 @@
+diff --git a/components/quake2/source/client/snd_dma.c b/components/quake2/source/client/snd_dma.c
+--- a/components/quake2/source/client/snd_dma.c
++++ b/components/quake2/source/client/snd_dma.c
+@@ -1118,6 +1118,12 @@ void GetSoundtime(void)
+ {
++#ifdef PAPP_APP_SIDE
++	/* The playback task knows the absolute frame cursor. Inferring wraps
++	 * from a modulo DMA position loses time during long SD/map loads. */
++	extern int papp_sound_time(void);
++	soundtime = papp_sound_time();
++#else
+ 	int		samplepos;
+ 	static	int		buffers;
+ 	static	int		oldsamplepos;
+ 	int		fullsamples;
+ 	
+@@ -1144,6 +1150,7 @@ void GetSoundtime(void)
+ 	soundtime = buffers*fullsamples + samplepos/dma.channels;
++#endif
+ }
+ 
+ 
+ void S_Update_(void)
+ {

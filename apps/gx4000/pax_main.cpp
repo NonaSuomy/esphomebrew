@@ -5,14 +5,14 @@
 #include "gx4000_display.h"
 
 extern "C" {
-#include "arnold/cpcglob.h"
-#include "arnold/cpc.h"
-#include "arnold/arnold.h"
-#include "arnold/asic.h"
-#include "arnold/render.h"
-#include "arnold/garray.h"
-#include "arnold/host.h"
-#include "arnold/audioevent.h"
+#include "core/cpcglob.h"
+#include "core/cpc.h"
+#include "core/arnold.h"
+#include "core/asic.h"
+#include "core/render.h"
+#include "core/garray.h"
+#include "core/host.h"
+#include "core/audioevent.h"
 }
 
 #include <stdint.h>

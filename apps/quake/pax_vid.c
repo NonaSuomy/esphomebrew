@@ -7,6 +7,8 @@
  * 320×240 render, 8-bit indexed pixels with palette conversion.
  */
 #include "psram_app.h"
+extern void *heap_caps_malloc(size_t size, uint32_t caps);
+extern void heap_caps_free(void *ptr);
 #include <string.h>
 #include <stdint.h>
 #include <math.h>
@@ -56,7 +58,7 @@ void VID_Init(unsigned char *palette)
 {
     /* Allocate double-buffered surface data in PSRAM */
     for (int i = 0; i < 2; i++) {
-        s_surface_data[i] = (uint8_t *)_pax_svc->mem_caps_alloc(
+        s_surface_data[i] = (uint8_t *)heap_caps_malloc(
             BASEWIDTH * BASEHEIGHT, PAX_MEM_CAP_SPIRAM);
         if (!s_surface_data[i]) {
             _pax_svc->log_printf("QUAKE: Failed to allocate surface %d\n", i);
@@ -64,7 +66,7 @@ void VID_Init(unsigned char *palette)
         }
         __builtin_memset(s_surface_data[i], 0, BASEWIDTH * BASEHEIGHT);
 
-        s_surface_palette[i] = (uint16_t *)_pax_svc->mem_caps_alloc(
+        s_surface_palette[i] = (uint16_t *)heap_caps_malloc(
             256 * sizeof(uint16_t), PAX_MEM_CAP_SPIRAM);
         if (!s_surface_palette[i]) {
             _pax_svc->log_printf("QUAKE: Failed to allocate palette %d\n", i);
@@ -73,7 +75,7 @@ void VID_Init(unsigned char *palette)
     }
 
     /* Allocate RGB565 conversion buffer */
-    s_conv_buf = (uint16_t *)_pax_svc->mem_caps_alloc(
+    s_conv_buf = (uint16_t *)heap_caps_malloc(
         BASEWIDTH * BASEHEIGHT * sizeof(uint16_t), PAX_MEM_CAP_SPIRAM);
     if (!s_conv_buf) {
         _pax_svc->log_printf("QUAKE: Failed to allocate conv buffer\n");
@@ -81,7 +83,7 @@ void VID_Init(unsigned char *palette)
     }
 
     /* Allocate Z-buffer in PSRAM */
-    s_zbuffer = (int16_t *)_pax_svc->mem_caps_alloc(
+    s_zbuffer = (int16_t *)heap_caps_malloc(
         BASEWIDTH * BASEHEIGHT * sizeof(int16_t), PAX_MEM_CAP_SPIRAM);
     if (!s_zbuffer) {
         _pax_svc->log_printf("QUAKE: Failed to allocate zbuffer\n");
@@ -89,7 +91,7 @@ void VID_Init(unsigned char *palette)
     }
 
     /* Allocate surfcache in PSRAM */
-    s_surfcache = (uint8_t *)_pax_svc->mem_caps_alloc(
+    s_surfcache = (uint8_t *)heap_caps_malloc(
         SURFCACHE_SIZE, PAX_MEM_CAP_SPIRAM);
     if (!s_surfcache) {
         _pax_svc->log_printf("QUAKE: Failed to allocate surfcache\n");

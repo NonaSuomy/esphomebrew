@@ -23,7 +23,7 @@
     "path": "apps/psram_touchtest"
   },
   "patches": [
-    "local:ports/retroesp32/patches/*.patch",
-    "local:ports/touchtest/patches/*.patch"
+    "local:apps/_shared/retroesp32-patches/*.patch",
+    "local:apps/touchtest/patches/*.patch"
   ]
 }

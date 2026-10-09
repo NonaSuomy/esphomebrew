@@ -32,16 +32,16 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_neogeo",
-    "local:ports/retroesp32/components/gngeo",
-    "local:ports/retroesp32/components/gngeo/include",
-    "local:ports/retroesp32/components/gngeo/generator68k",
-    "local:ports/retroesp32/components/gngeo/mamez80",
-    "local:ports/retroesp32/components/gngeo/ym2610",
-    "local:ports/retroesp32/apps/pax_emulator_common",
-    "local:ports/retroesp32/apps/pax_emulator_common/compat",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/neogeo",
+    "local:apps/neogeo/core",
+    "local:apps/neogeo/core/include",
+    "local:apps/neogeo/core/generator68k",
+    "local:apps/neogeo/core/mamez80",
+    "local:apps/neogeo/core/ym2610",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -87,7 +87,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/gngeo",
+      "dir": "local:apps/neogeo/core",
       "files": [
         "emu.c",
         "memory.c",
@@ -135,7 +135,7 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_neogeo",
+      "dir": "local:apps/neogeo",
       "files": [
         "pax_main.c",
         "pax_platform.c"
@@ -143,14 +143,14 @@
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/pax_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
         "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
         "pax_syscalls.c"
       ],

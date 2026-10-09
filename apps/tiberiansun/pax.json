@@ -26,11 +26,11 @@
     "ref": "84675569c257529db17fcb0bc6e06889bc258523",
     "path": "."
   },
-  "linker_script": "local:ports/tiberiansun/pax_cpp.ld",
+  "linker_script": "local:apps/tiberiansun/pax_cpp.ld",
   "includes": [
     "local:",
     "local:esphome/components/pax_loader",
-    "local:ports/tiberiansun"
+    "local:apps/tiberiansun"
   ],
   "cxxflags": [
     "-std=gnu++20",
@@ -46,7 +46,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/tiberiansun",
+      "dir": "local:apps/tiberiansun",
       "prefix": "ts_",
       "files": [
         "pax_main.cpp",
@@ -58,7 +58,7 @@
       ]
     },
     {
-      "dir": "local:ports/tiberiandawn",
+      "dir": "local:apps/tiberiandawn",
       "prefix": "ts_",
       "files": [
         "pax_syscalls.c"

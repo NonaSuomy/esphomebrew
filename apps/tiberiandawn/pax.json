@@ -39,15 +39,15 @@
     "path": "tiberiandawn"
   },
   "patches": [
-    "local:ports/tiberiandawn/patches/*.patch"
+    "local:apps/tiberiandawn/patches/*.patch"
   ],
-  "linker_script": "local:ports/tiberiandawn/pax_cpp.ld",
+  "linker_script": "local:apps/tiberiandawn/pax_cpp.ld",
   "includes": [
-    "local:ports/tiberiandawn/net",
+    "local:apps/tiberiandawn/net",
     "common",
     "tiberiandawn",
     ".",
-    "local:ports/tiberiandawn",
+    "local:apps/tiberiandawn",
     "local:"
   ],
   "cflags": [
@@ -125,7 +125,7 @@
       ]
     },
     {
-      "dir": "local:ports/tiberiandawn",
+      "dir": "local:apps/tiberiandawn",
       "prefix": "papp_",
       "files": [
         "pax_main.cpp",

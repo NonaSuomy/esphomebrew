@@ -32,12 +32,12 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_snes",
-    "local:ports/retroesp32/components/snes9x",
-    "local:ports/retroesp32/apps/pax_emulator_common",
-    "local:ports/retroesp32/apps/pax_emulator_common/compat",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/snes",
+    "local:apps/snes/core",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -76,7 +76,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/snes9x",
+      "dir": "local:apps/snes/core",
       "files": [
         "spc700.c",
         "memmap.c",
@@ -106,21 +106,21 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_snes",
+      "dir": "local:apps/snes",
       "files": [
         "pax_main.c"
       ],
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/pax_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
         "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
         "pax_syscalls.c"
       ],

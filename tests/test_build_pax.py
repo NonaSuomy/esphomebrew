@@ -9,6 +9,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
@@ -19,6 +20,26 @@ APPS = Path(__file__).resolve().parent.parent / "apps"
 
 
 class ManifestTests(unittest.TestCase):
+    def test_legacy_sources_cannot_be_build_inputs(self):
+        for folder in ("ports", "legacy", "variants"):
+            with self.subTest(folder=folder):
+                with self.assertRaisesRegex(ValueError, "reference-only"):
+                    bp.source_file(bp.ROOT, "local:" + folder + "/demo/main.c")
+                with self.assertRaisesRegex(ValueError, "reference-only"):
+                    bp.source_file(bp.ROOT, "local:apps/../" + folder + "/demo/main.c")
+
+    def test_compatibility_aliases_do_not_define_header_guards(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            header = root / "apps/demo/compat.h"
+            header.parent.mkdir(parents=True)
+            header.write_text("#ifndef PAX_COMPAT_H\n#define PAX_COMPAT_H\n#define PAX_VALUE 1\n#endif\n")
+            with mock.patch.object(bp, "ROOT", root):
+                result = bp.get_upstream_compat({"name": "demo", "includes": ["local:apps/demo"]})
+            aliases = (result / "upstream_compat.h").read_text()
+            self.assertNotIn("PAPP_COMPAT_H", aliases)
+            self.assertIn("#define PAPP_VALUE PAX_VALUE", aliases)
+
     def test_every_manifest_is_valid(self):
         manifests = sorted(APPS.glob("*/pax.json"))
         self.assertTrue(manifests)
@@ -261,10 +282,10 @@ class PortRecipeTests(unittest.TestCase):
         run("add", "f.txt")
         run("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "f")
         local = Path(self.tmp.name) / "repo"
-        (local / "ports/demo/patches").mkdir(parents=True)
-        (local / "ports/demo/patches/0001-two.patch").write_text(
+        (local / "apps/demo/patches").mkdir(parents=True)
+        (local / "apps/demo/patches/0001-two.patch").write_text(
             "--- a/f.txt\n+++ b/f.txt\n@@ -1 +1 @@\n-one\n+two\n")
-        pattern = "local:ports/demo/patches/*.patch"
+        pattern = "local:apps/demo/patches/*.patch"
         saved, bp.ROOT = bp.ROOT, local
         try:
             self.assertEqual(bp.apply_patches(repo, [pattern]), ["0001-two.patch"])
@@ -275,7 +296,7 @@ class PortRecipeTests(unittest.TestCase):
             self.assertEqual(bp.apply_patches(repo, [pattern]), ["0001-two.patch"])
             self.assertEqual((repo / "f.txt").read_text(), "two\n")
             with self.assertRaises(ValueError):
-                bp.apply_patches(repo, ["local:ports/demo/patches/none-*.patch"])
+                bp.apply_patches(repo, ["local:apps/demo/patches/none-*.patch"])
         finally:
             bp.ROOT = saved
 

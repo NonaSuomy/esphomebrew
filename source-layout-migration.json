@@ -1,0 +1,302 @@
+{
+  "active_root": "apps",
+  "legacy_root": "legacy",
+  "backup": "pax-github/backups/source-consolidation-20261009/app-code-before-consolidation.tar.gz",
+  "promoted": [
+    {
+      "from": "ports/doom",
+      "to": "apps/doom"
+    },
+    {
+      "from": "ports/lvgl",
+      "to": "apps/lvgl"
+    },
+    {
+      "from": "ports/nes",
+      "to": "apps/nes"
+    },
+    {
+      "from": "ports/netsurf",
+      "to": "apps/netsurf"
+    },
+    {
+      "from": "ports/openlara",
+      "to": "apps/openlara"
+    },
+    {
+      "from": "ports/opentyrian",
+      "to": "apps/opentyrian"
+    },
+    {
+      "from": "ports/quake",
+      "to": "apps/quake"
+    },
+    {
+      "from": "ports/quake2",
+      "to": "apps/quake2"
+    },
+    {
+      "from": "ports/redalert",
+      "to": "apps/redalert"
+    },
+    {
+      "from": "ports/template",
+      "to": "apps/template"
+    },
+    {
+      "from": "ports/tiberiandawn",
+      "to": "apps/tiberiandawn"
+    },
+    {
+      "from": "ports/tiberiansun",
+      "to": "apps/tiberiansun"
+    },
+    {
+      "from": "ports/touchtest",
+      "to": "apps/touchtest"
+    },
+    {
+      "from": "ports/tulip",
+      "to": "apps/tulip"
+    },
+    {
+      "from": "ports/video",
+      "to": "apps/video"
+    },
+    {
+      "from": "ports/retroesp32/apps/pax_emulator_common",
+      "to": "apps/pax_emulator_common"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_atari800",
+      "to": "apps/atari800"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_c64",
+      "to": "apps/c64"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_gb",
+      "to": "apps/gb"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_genesis",
+      "to": "apps/genesis"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_gw",
+      "to": "apps/gw"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_gx4000",
+      "to": "apps/gx4000"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_handy",
+      "to": "apps/handy"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_msx",
+      "to": "apps/msx"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_neogeo",
+      "to": "apps/neogeo"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_nesplus",
+      "to": "apps/nesplus"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_ngp",
+      "to": "apps/ngp"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_pce",
+      "to": "apps/pce"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_prosystem",
+      "to": "apps/prosystem"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_sms",
+      "to": "apps/sms"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_snes",
+      "to": "apps/snes"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_spectrum",
+      "to": "apps/spectrum"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_stella",
+      "to": "apps/stella"
+    },
+    {
+      "from": "ports/retroesp32/apps/psram_ws",
+      "to": "apps/ws"
+    },
+    {
+      "from": "ports/retroesp32/components/arnold",
+      "to": "apps/gx4000/core"
+    },
+    {
+      "from": "ports/retroesp32/components/atari800",
+      "to": "apps/atari800/core"
+    },
+    {
+      "from": "ports/retroesp32/components/fmsx",
+      "to": "apps/msx/core"
+    },
+    {
+      "from": "ports/retroesp32/components/frodo",
+      "to": "apps/c64/core"
+    },
+    {
+      "from": "ports/retroesp32/components/gngeo",
+      "to": "apps/neogeo/core"
+    },
+    {
+      "from": "ports/retroesp32/components/gnuboy",
+      "to": "apps/gb/core"
+    },
+    {
+      "from": "ports/retroesp32/components/gw_emulator",
+      "to": "apps/gw/core"
+    },
+    {
+      "from": "ports/retroesp32/components/gwenesis",
+      "to": "apps/genesis/core"
+    },
+    {
+      "from": "ports/retroesp32/components/handy",
+      "to": "apps/handy/core"
+    },
+    {
+      "from": "ports/retroesp32/components/huexpress",
+      "to": "apps/pce/core"
+    },
+    {
+      "from": "ports/retroesp32/components/nofrendo_rg",
+      "to": "apps/nesplus/core"
+    },
+    {
+      "from": "ports/retroesp32/components/oswan",
+      "to": "apps/ws/core"
+    },
+    {
+      "from": "ports/retroesp32/components/prosystem",
+      "to": "apps/prosystem/core"
+    },
+    {
+      "from": "ports/retroesp32/components/race",
+      "to": "apps/ngp/core"
+    },
+    {
+      "from": "ports/retroesp32/components/smsplus",
+      "to": "apps/sms/core"
+    },
+    {
+      "from": "ports/retroesp32/components/snes9x",
+      "to": "apps/snes/core"
+    },
+    {
+      "from": "ports/retroesp32/components/spectrum",
+      "to": "apps/spectrum/core"
+    },
+    {
+      "from": "ports/retroesp32/components/stella",
+      "to": "apps/stella/core"
+    },
+    {
+      "from": "ports/retroesp32/patches",
+      "to": "apps/_shared/retroesp32-patches"
+    }
+  ],
+  "reconciled_differences": [
+    {
+      "active": "apps/pax_emulator_common/runtime.h",
+      "reference": "ports/retroesp32/apps/pax_emulator_common/runtime.h",
+      "choice": "retain newer apps version"
+    },
+    {
+      "active": "apps/c64/pax_main.cpp",
+      "reference": "ports/retroesp32/apps/psram_c64/pax_main.cpp",
+      "choice": "retain newer apps version"
+    }
+  ],
+  "dependency_links": {
+    "apps/scummvm/engine": "upstream/scummvm",
+    "apps/stratagus/engine": "upstream/stratagus",
+    "apps/stargus/data-source": "upstream/stargus",
+    "apps/_shared/vanilla-conquer": "upstream/vanilla-conquer",
+    "apps/_shared/lvgl": "upstream/retroesp32/third_party/lvgl",
+    "apps/nes/core": "upstream/retroesp32/components/nofrendo",
+    "apps/wolf4sdl/core": "upstream/retroesp32/components/wolf4sdl",
+    "apps/anotherworld/core": "upstream/retroesp32/components/anotherworld",
+    "apps/azip/core": "upstream/retroesp32/components/azip",
+    "apps/duke3d/core": "upstream/retroesp32/components/duke3d",
+    "apps/doom/core": "upstream/retroesp32/components/prboom",
+    "apps/_shared/fluidsynth": "upstream/fluidsynth"
+  },
+  "core_to_app": {
+    "arnold": "gx4000",
+    "atari800": "atari800",
+    "fmsx": "msx",
+    "frodo": "c64",
+    "gngeo": "neogeo",
+    "gnuboy": "gb",
+    "gw_emulator": "gw",
+    "gwenesis": "genesis",
+    "handy": "handy",
+    "huexpress": "pce",
+    "nofrendo_rg": "nesplus",
+    "oswan": "ws",
+    "prosystem": "prosystem",
+    "race": "ngp",
+    "smsplus": "sms",
+    "snes9x": "snes",
+    "spectrum": "spectrum",
+    "stella": "stella"
+  },
+  "status": "active apps sources verified; ports and alternatives archived as reference-only",
+  "adapter_patch_promotion": {
+    "nes": {
+      "reference": "legacy/app-patches/nes",
+      "active": "apps/nes",
+      "engine_patch": "apps/nes/patches/0001-save-state-core.patch",
+      "merged_features": [
+        "ROM selection and shutdown",
+        "save-state/shared menu",
+        "persisted video options",
+        "newer frame pacing",
+        "ROM path ownership"
+      ]
+    },
+    "doom": {
+      "reference": "legacy/app-patches/doom",
+      "active": "apps/doom",
+      "merged_features": [
+        "chosen canvas dimensions",
+        "close before next frame"
+      ]
+    },
+    "quake": {
+      "reference": "legacy/app-patches/quake",
+      "active": "apps/quake",
+      "merged_features": [
+        "immediate remote close",
+        "tracked arena and video allocations"
+      ]
+    }
+  },
+  "adapter_sources_promoted_from_recipe": [
+    "doom",
+    "duke3d",
+    "nes",
+    "quake"
+  ]
+}

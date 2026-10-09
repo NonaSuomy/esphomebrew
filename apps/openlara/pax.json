@@ -55,12 +55,12 @@
     "path": "components/openlara"
   },
   "patches": [
-    "local:ports/openlara/patches/*.patch"
+    "local:apps/openlara/patches/*.patch"
   ],
-  "linker_script": "local:ports/redalert/pax_cpp.ld",
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
   "includes": [
     "components/openlara/src",
-    "local:ports/openlara",
+    "local:apps/openlara",
     "local:"
   ],
   "cflags": [
@@ -126,7 +126,7 @@
       ]
     },
     {
-      "dir": "local:ports/openlara",
+      "dir": "local:apps/openlara",
       "prefix": "papp_",
       "files": [
         "pax_main.cpp",

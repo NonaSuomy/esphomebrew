@@ -10,13 +10,13 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-        "ports/retroesp32/apps/psram_atari800",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/atari800",
-        "ports/retroesp32/components/atari800/include"
+        "apps/_shared/component-includes",
+        "apps/atari800",
+        "apps/atari800/core",
+        "apps/atari800/core/include",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat_cxx"
       ],
       "output": "atari800.pax",
       "published": true,
@@ -37,10 +37,10 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/components/frodo"
+        "apps/c64",
+        "apps/c64/core",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat"
       ],
       "output": "c64.pax",
       "published": true,
@@ -65,8 +65,10 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/doom/patches/*.patch",
-        "ports/retroesp32/patches/*.patch"
+        "apps/_shared/retroesp32-patches/*.patch",
+        "apps/doom",
+        "apps/doom/compat",
+        "apps/doom/patches/*.patch"
       ],
       "output": "doom.pax",
       "published": true,
@@ -81,7 +83,11 @@
         "path": "apps/psram_duke3d"
       },
       "dependencies": [],
-      "local_inputs": [],
+      "local_inputs": [
+        "apps/_shared/psram_app.ld",
+        "apps/duke3d",
+        "apps/duke3d/compat"
+      ],
       "output": "duke3d.pax",
       "published": true,
       "data": []
@@ -96,12 +102,12 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_gb",
-        "ports/retroesp32/components/gnuboy",
-        "ports/retroesp32/components/gnuboy/include"
+        "apps/c64",
+        "apps/gb",
+        "apps/gb/core",
+        "apps/gb/core/include",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat"
       ],
       "output": "gb.pax",
       "published": true,
@@ -122,20 +128,20 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_genesis",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/gwenesis",
-        "ports/retroesp32/components/gwenesis/src",
-        "ports/retroesp32/components/gwenesis/src/bus",
-        "ports/retroesp32/components/gwenesis/src/cpus/M68K",
-        "ports/retroesp32/components/gwenesis/src/cpus/Z80",
-        "ports/retroesp32/components/gwenesis/src/io",
-        "ports/retroesp32/components/gwenesis/src/savestate",
-        "ports/retroesp32/components/gwenesis/src/sound",
-        "ports/retroesp32/components/gwenesis/src/vdp"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/genesis",
+        "apps/genesis/core",
+        "apps/genesis/core/src",
+        "apps/genesis/core/src/bus",
+        "apps/genesis/core/src/cpus/M68K",
+        "apps/genesis/core/src/cpus/Z80",
+        "apps/genesis/core/src/io",
+        "apps/genesis/core/src/savestate",
+        "apps/genesis/core/src/sound",
+        "apps/genesis/core/src/vdp",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat_cxx"
       ],
       "output": "genesis.pax",
       "published": true,
@@ -156,15 +162,15 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_gw",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/gw_emulator",
-        "ports/retroesp32/components/gw_emulator/src",
-        "ports/retroesp32/components/gw_emulator/src/cpus",
-        "ports/retroesp32/components/gw_emulator/src/gw_sys"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/gw",
+        "apps/gw/core",
+        "apps/gw/core/src",
+        "apps/gw/core/src/cpus",
+        "apps/gw/core/src/gw_sys",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat"
       ],
       "output": "gw.pax",
       "published": true,
@@ -185,13 +191,13 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_gx4000",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/arnold",
-        "ports/retroesp32/components/arnold/z80"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/gx4000",
+        "apps/gx4000/core",
+        "apps/gx4000/core/z80",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat_cxx"
       ],
       "output": "gx4000.pax",
       "published": true,
@@ -212,12 +218,12 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_handy",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/handy"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/handy",
+        "apps/handy/core",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat_cxx"
       ],
       "output": "handy.pax",
       "published": true,
@@ -252,15 +258,15 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_msx",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/fmsx",
-        "ports/retroesp32/components/fmsx/EMULib",
-        "ports/retroesp32/components/fmsx/Z80",
-        "ports/retroesp32/components/fmsx/fMSX"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/msx",
+        "apps/msx/core",
+        "apps/msx/core/EMULib",
+        "apps/msx/core/Z80",
+        "apps/msx/core/fMSX",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat_cxx"
       ],
       "output": "msx.pax",
       "published": true,
@@ -281,16 +287,16 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_neogeo",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/gngeo",
-        "ports/retroesp32/components/gngeo/generator68k",
-        "ports/retroesp32/components/gngeo/include",
-        "ports/retroesp32/components/gngeo/mamez80",
-        "ports/retroesp32/components/gngeo/ym2610"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/neogeo",
+        "apps/neogeo/core",
+        "apps/neogeo/core/generator68k",
+        "apps/neogeo/core/include",
+        "apps/neogeo/core/mamez80",
+        "apps/neogeo/core/ym2610",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat"
       ],
       "output": "neogeo.pax",
       "published": true,
@@ -311,8 +317,10 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/nes",
-        "ports/nes/patches/*.patch"
+        "apps/nes",
+        "apps/nes/patches/0001-save-state-core.patch",
+        "apps/opentyrian",
+        "apps/pax_emulator_common"
       ],
       "output": "nes.pax",
       "published": true,
@@ -334,14 +342,14 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_nesplus",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/nofrendo_rg",
-        "ports/retroesp32/components/nofrendo_rg/mappers",
-        "ports/retroesp32/components/nofrendo_rg/nes"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/nesplus",
+        "apps/nesplus/core",
+        "apps/nesplus/core/mappers",
+        "apps/nesplus/core/nes",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat"
       ],
       "output": "nesplus.pax",
       "published": true,
@@ -464,11 +472,11 @@
       ],
       "local_inputs": [
         "",
-        "ports/netsurf",
-        "ports/netsurf/freetype",
-        "ports/netsurf/include",
-        "ports/netsurf/patches/*.patch",
-        "ports/redalert/pax_cpp.ld"
+        "apps/netsurf",
+        "apps/netsurf/freetype",
+        "apps/netsurf/include",
+        "apps/netsurf/patches/*.patch",
+        "apps/redalert/pax_cpp.ld"
       ],
       "output": "netsurf.pax",
       "published": true,
@@ -484,12 +492,12 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_ngp",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/race"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/ngp",
+        "apps/ngp/core",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat_cxx"
       ],
       "output": "ngp.pax",
       "published": true,
@@ -511,9 +519,9 @@
       "dependencies": [],
       "local_inputs": [
         "",
-        "ports/openlara",
-        "ports/openlara/patches/*.patch",
-        "ports/redalert/pax_cpp.ld"
+        "apps/openlara",
+        "apps/openlara/patches/*.patch",
+        "apps/redalert/pax_cpp.ld"
       ],
       "output": "openlara.pax",
       "published": true,
@@ -539,10 +547,10 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/opentyrian/game",
-        "ports/opentyrian/port",
-        "ports/opentyrian/port/compat",
-        "ports/opentyrian/sdl"
+        "apps/opentyrian/game",
+        "apps/opentyrian/port",
+        "apps/opentyrian/port/compat",
+        "apps/opentyrian/sdl"
       ],
       "output": "opentyrian.pax",
       "published": true,
@@ -563,14 +571,14 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_pce",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/huexpress",
-        "ports/retroesp32/components/huexpress/engine",
-        "ports/retroesp32/components/huexpress/includes"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat",
+        "apps/pce",
+        "apps/pce/core",
+        "apps/pce/core/engine",
+        "apps/pce/core/includes"
       ],
       "output": "pce.pax",
       "published": true,
@@ -591,13 +599,13 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_prosystem",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/prosystem",
-        "ports/retroesp32/components/prosystem/include"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat",
+        "apps/prosystem",
+        "apps/prosystem/core",
+        "apps/prosystem/core/include"
       ],
       "output": "prosystem.pax",
       "published": true,
@@ -618,7 +626,10 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/quake/patches/*.patch"
+        "apps/quake",
+        "apps/quake/compat",
+        "apps/quake/patches/*.patch",
+        "apps/quake/third_party/micro-mp3/opencore-mp3dec"
       ],
       "output": "quake.pax",
       "published": true,
@@ -640,9 +651,9 @@
         }
       ],
       "local_inputs": [
-        "ports/quake2",
-        "ports/quake2/patches/*.patch",
-        "ports/quake2/psram_app.ld"
+        "apps/quake2",
+        "apps/quake2/patches/*.patch",
+        "apps/quake2/psram_app.ld"
       ],
       "output": "quake2.pax",
       "published": false,
@@ -664,10 +675,10 @@
       "dependencies": [],
       "local_inputs": [
         "",
-        "ports/redalert",
-        "ports/redalert/net",
-        "ports/redalert/patches/*.patch",
-        "ports/redalert/pax_cpp.ld"
+        "apps/redalert",
+        "apps/redalert/net",
+        "apps/redalert/patches/*.patch",
+        "apps/redalert/pax_cpp.ld"
       ],
       "output": "redalert.pax",
       "published": true,
@@ -742,15 +753,15 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_sms",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/smsplus",
-        "ports/retroesp32/components/smsplus/cpu",
-        "ports/retroesp32/components/smsplus/include",
-        "ports/retroesp32/components/smsplus/sound"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat",
+        "apps/sms",
+        "apps/sms/core",
+        "apps/sms/core/cpu",
+        "apps/sms/core/include",
+        "apps/sms/core/sound"
       ],
       "output": "sms.pax",
       "published": true,
@@ -771,12 +782,12 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_snes",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/snes9x"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat",
+        "apps/snes",
+        "apps/snes/core"
       ],
       "output": "snes.pax",
       "published": true,
@@ -797,13 +808,13 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_spectrum",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/spectrum",
-        "ports/retroesp32/components/spectrum/include"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat",
+        "apps/spectrum",
+        "apps/spectrum/core",
+        "apps/spectrum/core/include"
       ],
       "output": "spectrum.pax",
       "published": true,
@@ -824,15 +835,15 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_stella",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/stella",
-        "ports/retroesp32/components/stella/common",
-        "ports/retroesp32/components/stella/emucore",
-        "ports/retroesp32/components/stella/gui"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat",
+        "apps/stella",
+        "apps/stella/core",
+        "apps/stella/core/common",
+        "apps/stella/core/emucore",
+        "apps/stella/core/gui"
       ],
       "output": "stella.pax",
       "published": true,
@@ -853,7 +864,7 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/template"
+        "apps/template"
       ],
       "output": "template.pax",
       "published": false,
@@ -870,10 +881,10 @@
       "dependencies": [],
       "local_inputs": [
         "",
-        "ports/tiberiandawn",
-        "ports/tiberiandawn/net",
-        "ports/tiberiandawn/patches/*.patch",
-        "ports/tiberiandawn/pax_cpp.ld"
+        "apps/tiberiandawn",
+        "apps/tiberiandawn/net",
+        "apps/tiberiandawn/patches/*.patch",
+        "apps/tiberiandawn/pax_cpp.ld"
       ],
       "output": "tiberiandawn.pax",
       "published": true,
@@ -1022,10 +1033,10 @@
       "dependencies": [],
       "local_inputs": [
         "",
-        "esphome/components/pax_loader",
-        "ports/tiberiandawn",
-        "ports/tiberiansun",
-        "ports/tiberiansun/pax_cpp.ld"
+        "apps/tiberiandawn",
+        "apps/tiberiansun",
+        "apps/tiberiansun/pax_cpp.ld",
+        "esphome/components/pax_loader"
       ],
       "output": "tiberiansun.pax",
       "published": true,
@@ -1068,8 +1079,8 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/patches/*.patch",
-        "ports/touchtest/patches/*.patch"
+        "apps/_shared/retroesp32-patches/*.patch",
+        "apps/touchtest/patches/*.patch"
       ],
       "output": "touchtest.pax",
       "published": true,
@@ -1097,10 +1108,10 @@
       ],
       "local_inputs": [
         "",
-        "ports/redalert/pax_cpp.ld",
-        "ports/tulip",
-        "ports/tulip/include",
-        "ports/tulip/patches/*.patch"
+        "apps/redalert/pax_cpp.ld",
+        "apps/tulip",
+        "apps/tulip/include",
+        "apps/tulip/patches/*.patch"
       ],
       "output": "tulip.pax",
       "published": true,
@@ -1123,9 +1134,9 @@
       "dependencies": [],
       "local_inputs": [
         "",
-        "ports/redalert/pax_cpp.ld",
-        "ports/video",
-        "ports/video/patches/*.patch"
+        "apps/redalert/pax_cpp.ld",
+        "apps/video",
+        "apps/video/patches/*.patch"
       ],
       "output": "video.pax",
       "published": false,
@@ -1141,12 +1152,12 @@
       },
       "dependencies": [],
       "local_inputs": [
-        "ports/retroesp32/apps/pax_emulator_common",
-        "ports/retroesp32/apps/pax_emulator_common/compat_cxx",
-        "ports/retroesp32/apps/psram_c64",
-        "ports/retroesp32/apps/psram_ws",
-        "ports/retroesp32/components",
-        "ports/retroesp32/components/oswan"
+        "apps/_shared/component-includes",
+        "apps/c64",
+        "apps/pax_emulator_common",
+        "apps/pax_emulator_common/compat_cxx",
+        "apps/ws",
+        "apps/ws/core"
       ],
       "output": "ws.pax",
       "published": true,
@@ -1160,29 +1171,9 @@
   ],
   "native_sources": [
     {
-      "name": "atari800",
-      "source": "apps/atari800/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/atari800"
-    },
-    {
       "name": "disc_installer",
       "source": "apps/recipe",
       "original_source": "upstream/retroesp32/apps/disc_installer"
-    },
-    {
-      "name": "gb",
-      "source": "apps/gb/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/gb"
-    },
-    {
-      "name": "genesis",
-      "source": "apps/genesis/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/genesis"
-    },
-    {
-      "name": "handy",
-      "source": "apps/handy/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/handy"
     },
     {
       "name": "launcher_ui",
@@ -1190,29 +1181,9 @@
       "original_source": "upstream/retroesp32/apps/launcher_ui"
     },
     {
-      "name": "neogeo",
-      "source": "apps/neogeo/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/neogeo"
-    },
-    {
-      "name": "nes",
-      "source": "apps/nes/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/nes"
-    },
-    {
       "name": "pax_emulator_common",
       "source": "apps/pax_emulator_common",
       "original_source": "upstream/retroesp32/apps/pax_emulator_common"
-    },
-    {
-      "name": "pce",
-      "source": "apps/pce/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/pce"
-    },
-    {
-      "name": "prosystem",
-      "source": "apps/prosystem/variants/legacy",
-      "original_source": "upstream/retroesp32/apps/prosystem"
     },
     {
       "name": "psram_anotherworld",
@@ -1368,25 +1339,67 @@
       "name": "psram_ws",
       "source": "apps/ws",
       "original_source": "upstream/retroesp32/apps/psram_ws"
+    }
+  ],
+  "reference_sources": [
+    {
+      "name": "atari800",
+      "source": "legacy/native-apps/atari800",
+      "original_source": "upstream/retroesp32/apps/atari800"
+    },
+    {
+      "name": "gb",
+      "source": "legacy/native-apps/gb",
+      "original_source": "upstream/retroesp32/apps/gb"
+    },
+    {
+      "name": "genesis",
+      "source": "legacy/native-apps/genesis",
+      "original_source": "upstream/retroesp32/apps/genesis"
+    },
+    {
+      "name": "handy",
+      "source": "legacy/native-apps/handy",
+      "original_source": "upstream/retroesp32/apps/handy"
+    },
+    {
+      "name": "neogeo",
+      "source": "legacy/native-apps/neogeo",
+      "original_source": "upstream/retroesp32/apps/neogeo"
+    },
+    {
+      "name": "nes",
+      "source": "legacy/native-apps/nes",
+      "original_source": "upstream/retroesp32/apps/nes"
+    },
+    {
+      "name": "pce",
+      "source": "legacy/native-apps/pce",
+      "original_source": "upstream/retroesp32/apps/pce"
+    },
+    {
+      "name": "prosystem",
+      "source": "legacy/native-apps/prosystem",
+      "original_source": "upstream/retroesp32/apps/prosystem"
     },
     {
       "name": "sms",
-      "source": "apps/sms/variants/legacy",
+      "source": "legacy/native-apps/sms",
       "original_source": "upstream/retroesp32/apps/sms"
     },
     {
       "name": "snes",
-      "source": "apps/snes/variants/legacy",
+      "source": "legacy/native-apps/snes",
       "original_source": "upstream/retroesp32/apps/snes"
     },
     {
       "name": "spectrum",
-      "source": "apps/spectrum/variants/legacy",
+      "source": "legacy/native-apps/spectrum",
       "original_source": "upstream/retroesp32/apps/spectrum"
     },
     {
       "name": "stella",
-      "source": "apps/stella/variants/legacy",
+      "source": "legacy/native-apps/stella",
       "original_source": "upstream/retroesp32/apps/stella"
     }
   ]

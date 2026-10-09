@@ -32,7 +32,7 @@
     "path": "apps/psram_duke3d"
   },
   "includes": [
-    "apps/psram_duke3d/compat",
+    "local:apps/duke3d/compat",
     "components/psram_app_loader/include",
     "components/duke3d/Engine",
     "components/duke3d/Game",
@@ -129,15 +129,22 @@
       ]
     },
     {
-      "dir": "apps/psram_duke3d",
+      "dir": "local:apps/duke3d",
       "prefix": "papp_",
       "files": [
-        "papp_main.c",
-        "papp_syscalls.c",
-        "papp_sdl_video.c",
-        "papp_sdl_audio.c",
-        "papp_sdl_event.c",
-        "papp_sdl_system.c"
+        "pax_main.c",
+        "pax_syscalls.c",
+        "pax_sdl_video.c",
+        "pax_sdl_audio.c",
+        "pax_sdl_event.c",
+        "pax_sdl_system.c"
+      ]
+    },
+    {
+      "dir": "local:apps/duke3d",
+      "prefix": "resample_",
+      "files": [
+        "pax_resample48.cpp"
       ]
     }
   ],
@@ -157,5 +164,6 @@
         "sha256": "b218feef4a7b0e48027de17746bd744dc0624b275b9dac0ea8a726f85b48887f"
       }
     ]
-  }
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld"
 }

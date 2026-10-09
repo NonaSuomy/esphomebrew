@@ -69,7 +69,9 @@ static void audio_feed_task(void *arg)
             /* Mix SD-card MP3 music into the same stream as Duke's sound
              * effects. The launcher then applies the shared blocking audio
              * submit path to the combined buffer. */
+#ifdef PAX_DUKE_MUSIC
             pax_duke_music_mix((int16_t *)s_sdl_buffer, SAMPLECOUNT);
+#endif
 
             /* Mono S16 → stereo interleaved */
             const int16_t *mono = (const int16_t *)s_sdl_buffer;
@@ -169,7 +171,9 @@ void SDL_CloseAudio(void)
 void pax_sound_shutdown(void)
 {
     SDL_CloseAudio();
+#ifdef PAX_DUKE_MUSIC
     pax_duke_music_shutdown();
+#endif
 }
 
 int SDL_BuildAudioCVT(SDL_AudioCVT *cvt, Uint16 src_format, Uint8 src_channels,

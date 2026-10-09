@@ -1,0 +1,31 @@
+diff --git a/common/soundio_common.cpp b/common/soundio_common.cpp
+--- a/common/soundio_common.cpp
++++ b/common/soundio_common.cpp
+@@ -858,7 +858,10 @@ bool Sample_Status(int index)
+         return false;
+     }
+ 
+-    return SoundImp_Sample_Status(st->Imp);
++    // A temporary backend underrun is not the end of a streamed sample.
++    // Maintenance will refill it; do not let the theme manager replace it
++    // while unread audio is still pending.
++    return st->MoreSource || SoundImp_Sample_Status(st->Imp);
+ }
+ 
+ bool Is_Sample_Playing(const void* sample)
+@@ -1071,8 +1074,13 @@ static int Get_Free_Sample_Handle(int priority)
+     }
+ 
+     if (index < 0) {
+-        for (index = 0; index < MAX_SAMPLE_TRACKERS && LockedData.SampleTracker[index].Priority > priority; ++index) {
+-            ;
++        for (index = 0; index < MAX_SAMPLE_TRACKERS; ++index) {
++            // Speech/SFX must not evict the active score stream when all
++            // voices are busy. Drop the effect instead of restarting music.
++            if (!LockedData.SampleTracker[index].IsScore
++                && LockedData.SampleTracker[index].Priority <= priority) {
++                break;
++            }
+         }
+ 
+         if (index == MAX_SAMPLE_TRACKERS) {

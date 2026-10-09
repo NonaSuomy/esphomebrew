@@ -66,20 +66,23 @@ def get_upstream_compat(manifest: dict) -> Path:
     target = ROOT / ".cache" / "upstream_compat" / manifest.get("name", "unnamed")
     target.mkdir(parents=True, exist_ok=True)
     tokens = set()
-    local_ports = set()
+    header_guards = set()
+    local_apps = set()
     def collect(value):
-        if isinstance(value, str) and value.startswith("local:ports/"):
-            local_ports.add(ROOT / "/".join(value[6:].split("/")[:2]))
+        if isinstance(value, str) and value.startswith("local:apps/"):
+            parts = value[6:].split("/")
+            local_apps.add(ROOT / "/".join(parts[:3 if parts[1] == "_shared" else 2]))
         elif isinstance(value, dict):
             for item in value.values(): collect(item)
         elif isinstance(value, list):
             for item in value: collect(item)
     collect(manifest)
-    for folder in [*sorted(local_ports), ROOT / "esphome" / "components" / "pax_loader"]:
+    for folder in [*sorted(local_apps), ROOT / "esphome" / "components" / "pax_loader"]:
         for path in folder.rglob("*"):
             if not path.is_file() or path.suffix not in (".c", ".cpp", ".h", ".hpp"):
                 continue
             content = path.read_text(errors="ignore")
+            header_guards.update(re.findall(r"#ifndef\s+(\w+)\s+#define\s+\1\b", content))
             tokens.update(token for token in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", content)
                           if any(mark in token for mark in ("PAX", "Pax", "pax")))
             if "pax" in path.name and path.suffix in (".h", ".hpp"):
@@ -88,7 +91,7 @@ def get_upstream_compat(manifest: dict) -> Path:
                 # A repeated basename is allowed only for identical interface wrappers.
                 wrapper.write_text('#include "' + str(path) + '"\n')
     aliases = ["#ifndef PAX_APP_SIDE\n#define PAX_APP_SIDE 1\n#endif\n"]
-    for token in sorted(tokens):
+    for token in sorted(tokens - header_guards):
         old = token.replace("PAX", "PAPP").replace("Pax", "Papp").replace("pax", "papp")
         aliases.append(f"#ifndef {old}\n#define {old} {token}\n#endif\n")
     (target / "upstream_compat.h").write_text("".join(aliases))
@@ -366,8 +369,12 @@ def source_file(root: Path, rel: str) -> Path:
     """
     if rel.startswith(LOCAL_PREFIX):
         root, rel = ROOT, rel[len(LOCAL_PREFIX):]
+        if rel.split("/")[0] in ("ports", "legacy", "variants"):
+            raise ValueError(f"reference-only source cannot be built: {rel}")
     root = root.resolve()
     path = (root / rel).resolve()
+    if root == ROOT.resolve() and path.is_relative_to(root) and path != root and path.relative_to(root).parts[0] in ("ports", "legacy", "variants"):
+        raise ValueError(f"reference-only source cannot be built: {rel}")
     if path != root and root not in path.parents:
         raise ValueError(f"path '{rel}' leaves the {'repository' if root == ROOT.resolve() else 'source checkout'}")
     return path

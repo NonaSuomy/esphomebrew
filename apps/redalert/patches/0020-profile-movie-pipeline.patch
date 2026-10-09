@@ -1,0 +1,95 @@
+--- a/redalert/conquer.cpp
++++ b/redalert/conquer.cpp
+@@ -85,6 +85,9 @@
+ #include "common/vqaloader.h"
+ #include "common/settings.h"
+ #include "common/winasm.h"
++#ifdef PAPP_APP_SIDE
++#include "papp_port.h"
++#endif
+ 
+ int RESFACTOR = 2;
+ 
+@@ -2131,6 +2134,9 @@
+ {
+     CCFileClass* file;
+     int error;
++#ifdef PAPP_APP_SIDE
++    const long long io_start = papp_time_us();
++#endif
+ 
+     file = (CCFileClass*)vqa->VQAio;
+ 
+@@ -2225,6 +2231,24 @@
+         break;
+     }
+ 
++#ifdef PAPP_APP_SIDE
++    static long long window = 0, io_us = 0;
++    static unsigned calls = 0;
++    static unsigned long long bytes = 0;
++    if (action == VQACMD_READ || action == VQACMD_SEEK) {
++        const long long now = papp_time_us();
++        if (window == 0) window = now;
++        io_us += now - io_start;
++        ++calls;
++        if (action == VQACMD_READ && !error) bytes += (unsigned short)nbytes;
++        if (now - window >= 5000000) {
++            papp_svc->log_printf("RA movie I/O: %llu bytes, %u calls, %lld ms of %lld ms\n",
++                                 bytes, calls, io_us / 1000, (now - window) / 1000);
++            window = now; io_us = 0; calls = 0; bytes = 0;
++        }
++    }
++#endif
++
+     return (error);
+ }
+ #endif
+--- a/common/vqadrawer.cpp
++++ b/common/vqadrawer.cpp
+@@ -19,6 +19,12 @@
+ #include "vqapalette.h"
+ #include <string.h>
+ 
++#ifdef PAPP_APP_SIDE
++#include "papp_port.h"
++static long long movie_window = 0, movie_decode_us = 0;
++static unsigned movie_decoded = 0;
++#endif
++
+ int VQA_DrawFrame_Buffer(VQAHandle* handle)
+ {
+     VQAConfig* config = &handle->Config;
+@@ -53,6 +59,9 @@
+         vqabuf->Drawer.Flags &= ~1;
+     }
+ 
++#ifdef PAPP_APP_SIDE
++    const long long decode_start = papp_time_us();
++#endif
+     vqabuf->UnVQ(curframe->Codebook->Buffer,
+                  curframe->Pointers,
+                  vqabuf->Drawer.ScreenOffset + vqabuf->Drawer.ImageBuf,
+@@ -60,6 +69,22 @@
+                  vqabuf->Drawer.NumRows,
+                  vqabuf->Drawer.ImageWidth);
+ 
++#ifdef PAPP_APP_SIDE
++    const long long decoded_at = papp_time_us();
++    if (movie_window == 0) movie_window = decode_start;
++    movie_decode_us += decoded_at - decode_start;
++    ++movie_decoded;
++    if (decoded_at - movie_window >= 5000000) {
++        papp_svc->log_printf("RA movie decode: %u fresh frames, frame=%u, skipped=%u, "
++                             "unvq=%lld us/frame over %lld ms\n",
++                             movie_decoded, curframe->FrameNum, drawer->NumSkipped,
++                             movie_decode_us / movie_decoded, (decoded_at - movie_window) / 1000);
++        movie_window = decoded_at;
++        movie_decode_us = 0;
++        movie_decoded = 0;
++    }
++#endif
++
+     vqabuf->Drawer.LastFrameNum = curframe->FrameNum;
+     vqabuf->Flipper.CurFrame = curframe;
+     vqabuf->Flags |= 1;

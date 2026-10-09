@@ -31,13 +31,13 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_spectrum",
-    "local:ports/retroesp32/components/spectrum",
-    "local:ports/retroesp32/components/spectrum/include",
-    "local:ports/retroesp32/apps/pax_emulator_common",
-    "local:ports/retroesp32/apps/pax_emulator_common/compat",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/spectrum",
+    "local:apps/spectrum/core",
+    "local:apps/spectrum/core/include",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -86,7 +86,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/spectrum",
+      "dir": "local:apps/spectrum/core",
       "files": [
         "ay_sound.c",
         "compr.c",
@@ -119,21 +119,21 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_spectrum",
+      "dir": "local:apps/spectrum",
       "files": [
         "pax_main.c"
       ],
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/pax_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
         "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
         "pax_syscalls.c"
       ],

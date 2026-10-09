@@ -1,4 +1,4 @@
-"""Tests for the Tulip port's network modules (ports/tulip/py: socket, tls,
+"""Tests for the Tulip port's network modules (apps/tulip/py: socket, tls,
 ssl, network) under CPython, with a fake _paxnet (the loader's services,
 pax_net.c) and a fake MicroPython clock.
 

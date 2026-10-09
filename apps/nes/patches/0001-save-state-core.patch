@@ -1,0 +1,115 @@
+diff --git a/components/nofrendo/include/nesstate.h b/components/nofrendo/include/nesstate.h
+--- a/components/nofrendo/include/nesstate.h
++++ b/components/nofrendo/include/nesstate.h
+@@ -31,6 +31,8 @@
+ extern void state_setslot(int slot);
+ //extern int state_load();
+ //extern int state_save();
++int papp_nes_state_save(const char *filename);
++int papp_nes_state_load(const char *filename);
+ 
+ void save_sram();
+ void load_sram();
+diff --git a/components/nofrendo/nes/nesstate.c b/components/nofrendo/nes/nesstate.c
+--- a/components/nofrendo/nes/nesstate.c
++++ b/components/nofrendo/nes/nesstate.c
+@@ -35,13 +35,17 @@
+ #include <libsnss.h>
+ #include "nes6502.h"
+ 
++#if !defined(PAPP_APP_SIDE)
+ #include "odroid_sdcard.h"
+ #include "odroid_settings.h"
+ #include "odroid_display.h"
++#endif
+ 
+ extern nes_t* console_nes;
++#if !defined(PAPP_APP_SIDE)
+ extern nes6502_context cpu;
+ extern const char* SD_BASE_PATH;
++#endif
+ 
+ #define  FIRST_STATE_SLOT  0
+ #define  LAST_STATE_SLOT   9
+@@ -374,9 +378,9 @@ void load_mapperblock(nes_t *state, SNSS_FILE *snssFile)
+ }
+ 
+ 
+-static int state_save(char* fn)
++int papp_nes_state_save(const char *fn)
+ {
+-   SNSS_FILE *snssFile;
++   SNSS_FILE *snssFile = NULL;
+    SNSS_RETURN_CODE status;
+ 
+    nes_t *machine;
+@@ -446,21 +450,18 @@ static int state_save(char* fn)
+ _error:
+    printf("error: %s", SNSS_GetErrorString(status));
+    SNSS_CloseFile(&snssFile);
+-   abort();
++   return -1;
+ }
+ 
+ 
+-extern bool forceConsoleReset;
+-
+-static int state_load(char* fn)
++int papp_nes_state_load(const char *fn)
+ {
+-   SNSS_FILE *snssFile;
++   SNSS_FILE *snssFile = NULL;
+    SNSS_RETURN_CODE status;
+    SNSS_BLOCK_TYPE block_type;
+ 
+    unsigned int i;
+    nes_t *machine;
+-   nes_t nes;
+ 
+    /* get our machine's context pointer */
+    machine = console_nes;
+@@ -474,9 +475,8 @@ int papp_nes_state_load(const char *fn)
+    if (SNSS_OK != status)
+    {
+        printf("state_load: file '%s' could not be opened.\n", fn);
+-       forceConsoleReset = true;
+-       return 0; //goto _error;
+-  }
++       goto _error;
++   }
+ 
+ 
+    /* iterate through all present blocks */
+@@ -527,6 +527,8 @@
+ 
+    /* close file, we're done */
+    status = SNSS_CloseFile(&snssFile);
++   if (SNSS_OK != status)
++      goto _error;
+ 
+    printf("State %d restored", state_slot);
+ 
+@@ -535,10 +537,11 @@ static int state_load(char* fn)
+ _error:
+    gui_sendmsg(GUI_RED, "error: %s", SNSS_GetErrorString(status));
+    SNSS_CloseFile(&snssFile);
+-   abort();
++   return -1;
+ }
+ 
+ 
++#if !defined(PAPP_APP_SIDE)
+ void save_sram()
+ {
+     odroid_display_lock_nes_display();
+@@ -623,6 +626,10 @@ void load_sram()
+ 
+     odroid_display_unlock_nes_display();
+ }
++#else
++void save_sram(void) {}
++void load_sram(void) {}
++#endif
+ 
+ /*
+ ** $Log: nesstate.c,v $

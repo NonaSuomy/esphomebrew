@@ -6,7 +6,7 @@ in apps/<name>/pax.json. Every branch uploads its dev builds to the same
 "dev-builds" release, so a branch that rebuilt all of them would replace
 another branch's test build of an app it never touched. A branch therefore
 builds only the apps whose files it changes: apps/<name>/ and the folders
-the manifest points at with "local:" paths (ports/<port>/...). Changes to
+the manifest points at with "local:" paths (apps/<port>/...). Changes to
 the build itself (tools/build_pax.py, the workflow) rebuild them all, and
 so does a run with no main branch to compare against.
 

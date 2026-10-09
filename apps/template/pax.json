@@ -13,7 +13,7 @@
   },
   "groups": [
     {
-      "dir": "local:ports/template",
+      "dir": "local:apps/template",
       "files": [
         "main.c"
       ]

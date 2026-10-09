@@ -64,12 +64,12 @@
     "lv_binding_micropython_tulip/include"
   ],
   "patches": [
-    "local:ports/tulip/patches/*.patch"
+    "local:apps/tulip/patches/*.patch"
   ],
   "prebuild": [
     [
       "{python}",
-      "{repo}/ports/tulip/gen_tulip.py",
+      "{repo}/apps/tulip/gen_tulip.py",
       "--src",
       "{src}",
       "--gen",
@@ -80,10 +80,10 @@
       "{jobs}"
     ]
   ],
-  "linker_script": "local:ports/redalert/pax_cpp.ld",
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
   "includes": [
-    "local:ports/tulip",
-    "local:ports/tulip/include",
+    "local:apps/tulip",
+    "local:apps/tulip/include",
     "local:",
     "micropython",
     ".pax-gen",
@@ -296,7 +296,7 @@
       ]
     },
     {
-      "dir": "local:ports/tulip",
+      "dir": "local:apps/tulip",
       "prefix": "papp_",
       "files": [
         "pax_main.c",

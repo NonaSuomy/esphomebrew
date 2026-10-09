@@ -42,12 +42,12 @@
     "path": "apps/psram_nes"
   },
   "patches": [
-    "local:ports/nes/patches/*.patch"
+    "local:apps/nes/patches/0001-save-state-core.patch"
   ],
   "includes": [
-    "local:ports/nes",
-    "apps/psram_nes",
-    "apps/papp_emulator_common",
+    "local:apps/nes",
+    "local:apps/nes",
+    "local:apps/pax_emulator_common",
     "components/psram_app_loader/include",
     "components/nofrendo/include"
   ],
@@ -146,22 +146,22 @@
       ]
     },
     {
-      "dir": "apps/psram_nes",
+      "dir": "local:apps/nes",
       "files": [
-        "papp_main.c",
-        "papp_osd.c",
-        "papp_platform.c",
-        "papp_libc.c"
+        "pax_main.c",
+        "pax_osd.c",
+        "pax_platform.c",
+        "pax_libc.c"
       ]
     },
     {
-      "dir": "apps/psram_opentyrian",
+      "dir": "local:apps/opentyrian",
       "files": [
-        "papp_syscalls.c"
+        "pax_syscalls.c"
       ]
     },
     {
-      "dir": "local:ports/nes",
+      "dir": "local:apps/nes",
       "files": [
         "pax_nes_options.c"
       ]

@@ -40,24 +40,24 @@
     "compat"
   ],
   "patches": [
-    "local:ports/video/patches/*.patch"
+    "local:apps/video/patches/*.patch"
   ],
   "prebuild": [
     [
       "{python}",
-      "{repo}/ports/video/gen_ffmpeg.py",
+      "{repo}/apps/video/gen_ffmpeg.py",
       "--src",
       "{src}",
       "--gen",
       "{gen}"
     ]
   ],
-  "linker_script": "local:ports/redalert/pax_cpp.ld",
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
   "includes": [
     ".pax-gen",
     ".",
     "compat/atomics/dummy",
-    "local:ports/video",
+    "local:apps/video",
     "local:"
   ],
   "cflags": [
@@ -420,7 +420,7 @@
       ]
     },
     {
-      "dir": "local:ports/video",
+      "dir": "local:apps/video",
       "prefix": "papp_",
       "files": [
         "pax_main.c",

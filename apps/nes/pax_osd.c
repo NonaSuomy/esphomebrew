@@ -7,6 +7,7 @@
 #include "vid_drv.h"
 #include "event.h"
 #include "nesinput.h"
+#include "pax_nes_options.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,7 @@ extern void nes_poweroff(void);
 static bitmap_t *screen;
 static uint8_t *indexed;
 static uint16_t *rgb565;
+static uint16_t *cropped_rgb565;
 static uint16_t palette[256];
 static void (*sound_cb)(void *, int);
 static unsigned pax_video_frames;
@@ -53,6 +55,26 @@ static void vpalette(rgb_t *p) {
 static void vclear(uint8_t c) { if (indexed) memset(indexed, c, W * H); }
 static bitmap_t *vlock(void) { if (!screen) screen = bmp_createhw(indexed, W, H, W); return screen; }
 static void vfree(int n, rect_t *r) { (void)n; (void)r; }
+static void pax_nes_display_frame(void)
+{
+    pax_nes_options_apply_palette();
+    const uint16_t *output = rgb565;
+    uint16_t output_width = W;
+    if (pax_nes_options_crop_sides()) {
+        if (!cropped_rgb565)
+            cropped_rgb565 = _pax_svc->mem_caps_alloc(
+                (size_t)(W - 16) * H * sizeof(uint16_t), PAX_MEM_CAP_SPIRAM | PAX_MEM_CAP_DMA);
+        if (cropped_rgb565) {
+            for (int y = 0; y < H; ++y)
+                memcpy(cropped_rgb565 + y * (W - 16), rgb565 + y * W + 8,
+                       (W - 16) * sizeof(uint16_t));
+            output = cropped_rgb565;
+            output_width = W - 16;
+        }
+    }
+    _pax_svc->display_write_frame_custom(output, output_width, H,
+                                           pax_nes_options_scale(), false);
+}
 static void vblit(bitmap_t *b, int n, rect_t *r) {
     (void)n; (void)r;
     if (!b || !b->line[0] || !_pax_svc) return;
@@ -64,7 +86,7 @@ static void vblit(bitmap_t *b, int n, rect_t *r) {
     if (pax_video_frames < 4)
         _pax_svc->log_printf("NES PAX: submitting video frame=%u\n",
                               pax_video_frames + 1u);
-    _pax_svc->display_write_frame_custom(rgb565, W, H, 2.0f, false);
+    pax_nes_display_frame();
     ++pax_video_frames;
     if ((pax_video_frames % 60u) == 0u)
         _pax_svc->log_printf("NES PAX: video frames=%u nonzero_pixels=%u\n",
@@ -92,8 +114,10 @@ void osd_freeinput(void) {}
 void osd_getinput(void)
 {
     static int old;
+    static int menu_was_down;
     pax_gamepad_state_t p;
     int now = 0;
+    const int shared_menu = pax_nes_shared_menu_attach(_pax_svc, rgb565, W, H);
     _pax_svc->input_gamepad_read(&p);
     if (p.values[PAX_INPUT_SELECT]) now |= 1 << 0;
     if (p.values[PAX_INPUT_START])  now |= 1 << 3;
@@ -103,7 +127,11 @@ void osd_getinput(void)
     if (p.values[PAX_INPUT_LEFT])   now |= 1 << 7;
     if (p.values[PAX_INPUT_A])      now |= 1 << 13;
     if (p.values[PAX_INPUT_B])      now |= 1 << 14;
-    if (p.values[PAX_INPUT_MENU] || (p.values[PAX_INPUT_L] && p.values[PAX_INPUT_R]) || pax_exit_requested) {
+    const int menu_down = p.values[PAX_INPUT_MENU];
+    const int menu_pressed = menu_down && !menu_was_down;
+    menu_was_down = menu_down;
+    if ((p.values[PAX_INPUT_L] && p.values[PAX_INPUT_R]) || pax_exit_requested ||
+        (_pax_svc->input_l3_read && _pax_svc->input_l3_read())) {
         /* osd_getinput() runs inside the emulation call stack.  Do not call
          * main_quit() here: it destroys the NES machine while the current
          * frame is still unwinding and corrupts the heap.  Request a clean
@@ -112,6 +140,23 @@ void osd_getinput(void)
         pax_nes_exit = 1;
         nofrendo_quit_flag = 1;
         nes_poweroff();
+        /* Stop processing input events in the same frame as shutdown. */
+        old = now;
+        return;
+    }
+    if (!shared_menu && (menu_pressed || pax_nes_menu_swipe_down_pressed(_pax_svc))) {
+        if (_pax_svc->log_printf)
+            _pax_svc->log_printf("NES PAX: in-game menu trigger (menu=%d)\n", menu_down);
+        if (pax_nes_menu_run(_pax_svc, rgb565, W, H)) {
+            pax_exit_requested = 1;
+            pax_nes_exit = 1;
+            nofrendo_quit_flag = 1;
+            nes_poweroff();
+        }
+        /* Discard buttons used by the modal menu rather than leaking them
+         * into the next game's controller event. */
+        old = now;
+        return;
     }
     int changed = now ^ old;
     const int events[16] = { event_joypad1_select,0,0,event_joypad1_start,event_joypad1_up,event_joypad1_right,event_joypad1_down,event_joypad1_left,0,0,0,0,0,event_joypad1_a,event_joypad1_b,0 };
@@ -123,7 +168,7 @@ void osd_getinput(void)
 }
 
 int osd_init(void) { indexed = _pax_svc->mem_alloc(W * H); rgb565 = _pax_svc->mem_caps_alloc(W * H * 2, PAX_MEM_CAP_SPIRAM | PAX_MEM_CAP_DMA); return indexed && rgb565 ? 0 : -1; }
-void osd_shutdown(void) { bmp_destroy(&screen); if (indexed) _pax_svc->mem_free(indexed); if (rgb565) _pax_svc->mem_free(rgb565); indexed = NULL; rgb565 = NULL; sound_cb = NULL; }
+void osd_shutdown(void) { pax_nes_shared_menu_detach(); bmp_destroy(&screen); if (indexed) _pax_svc->mem_free(indexed); if (rgb565) _pax_svc->mem_free(rgb565); if (cropped_rgb565) _pax_svc->mem_free(cropped_rgb565); indexed = NULL; rgb565 = NULL; cropped_rgb565 = NULL; sound_cb = NULL; }
 void osd_main_dummy(void) {}
 
 /* Called by the nofrendo APU bridge in pax_audio.c. */

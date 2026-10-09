@@ -31,14 +31,14 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_pce",
-    "local:ports/retroesp32/components/huexpress",
-    "local:ports/retroesp32/components/huexpress/includes",
-    "local:ports/retroesp32/components/huexpress/engine",
-    "local:ports/retroesp32/apps/pax_emulator_common",
-    "local:ports/retroesp32/apps/pax_emulator_common/compat",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/pce",
+    "local:apps/pce/core",
+    "local:apps/pce/core/includes",
+    "local:apps/pce/core/engine",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -85,7 +85,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/huexpress",
+      "dir": "local:apps/pce/core",
       "files": [
         "engine/bios.c",
         "engine/bp.c",
@@ -117,21 +117,21 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_pce",
+      "dir": "local:apps/pce",
       "files": [
         "pax_main.c"
       ],
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/pax_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
         "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
         "pax_syscalls.c"
       ],

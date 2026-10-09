@@ -7,6 +7,8 @@
  * Also replaces quake_main.c's fatfs_proxy_init/deinit with no-ops.
  */
 #include "psram_app.h"
+extern void *heap_caps_malloc(size_t size, uint32_t caps);
+extern void heap_caps_free(void *ptr);
 #include <string.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -418,7 +420,7 @@ void esp32_quake_main(int argc, char **argv, const char *basedir,
 
     /* 8MB Hunk for P4 */
     parms.memsize = 8192 * 1024;
-    parms.membase = _pax_svc->mem_caps_alloc(parms.memsize, PAX_MEM_CAP_SPIRAM);
+    parms.membase = heap_caps_malloc(parms.memsize, PAX_MEM_CAP_SPIRAM);
     parms.basedir = (char *)basedir;
 
     if (parms.membase == NULL)

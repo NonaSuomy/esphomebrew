@@ -1,0 +1,17 @@
+--- a/common/settings.cpp
++++ b/common/settings.cpp
+@@ -72,7 +72,14 @@
+     Video.Width = ini.Get_Int("Video", "Width", Video.Width);
+     Video.Height = ini.Get_Int("Video", "Height", Video.Height);
+     Video.FrameLimit = ini.Get_Int("Video", "FrameLimit", Video.FrameLimit);
++#ifdef PAPP_APP_SIDE
++    // Desktop's 120-fps default creates unnecessary page-copy/PSRAM traffic
++    // on the P4. Limit presentation, not the game's deterministic tick rate.
++    if (Video.FrameLimit <= 0 || Video.FrameLimit > 30) {
++        Video.FrameLimit = 30;
++    }
++#endif
+     Video.HardwareCursor = ini.Get_Bool("Video", "HardwareCursor", Video.HardwareCursor);
+     Video.DOSMode = ini.Get_Bool("Video", "DOSMode", Video.DOSMode);
+     Video.Scaler = ini.Get_String("Video", "Scaler", Video.Scaler);
+     Video.Driver = ini.Get_String("Video", "Driver", Video.Driver);

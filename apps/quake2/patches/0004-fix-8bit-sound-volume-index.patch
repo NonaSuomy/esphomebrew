@@ -1,0 +1,13 @@
+diff --git a/components/quake2/source/client/snd_mix.c b/components/quake2/source/client/snd_mix.c
+--- a/components/quake2/source/client/snd_mix.c
++++ b/components/quake2/source/client/snd_mix.c
+@@ -335,6 +335,7 @@ void S_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count, int offset)
+ 	if (ch->rightvol > 255)
+ 		ch->rightvol = 255;
+ 		
+-	lscale = snd_scaletable[ ch->leftvol >> 11];
+-	rscale = snd_scaletable[ ch->rightvol >> 11];
++	/* Volume is 0..255; snd_scaletable has 32 entries. */
++	lscale = snd_scaletable[ ch->leftvol >> 3];
++	rscale = snd_scaletable[ ch->rightvol >> 3];
+ 	sfx = (signed char *)sc->data + ch->pos;

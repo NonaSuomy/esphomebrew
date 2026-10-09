@@ -31,15 +31,15 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_sms",
-    "local:ports/retroesp32/components/smsplus",
-    "local:ports/retroesp32/components/smsplus/include",
-    "local:ports/retroesp32/components/smsplus/cpu",
-    "local:ports/retroesp32/components/smsplus/sound",
-    "local:ports/retroesp32/apps/pax_emulator_common",
-    "local:ports/retroesp32/apps/pax_emulator_common/compat",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/sms",
+    "local:apps/sms/core",
+    "local:apps/sms/core/include",
+    "local:apps/sms/core/cpu",
+    "local:apps/sms/core/sound",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -78,7 +78,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/smsplus",
+      "dir": "local:apps/sms/core",
       "files": [
         "config.c",
         "crc32.c",
@@ -112,21 +112,21 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_sms",
+      "dir": "local:apps/sms",
       "files": [
         "pax_main.c"
       ],
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/pax_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
         "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
         "pax_syscalls.c"
       ],

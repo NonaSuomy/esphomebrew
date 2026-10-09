@@ -6,7 +6,9 @@
  *
  * The Doom engine renders into screens[0].data as 8-bit indexed pixels.
  * I_FinishUpdate converts that to RGB565 using the current palette LUT,
- * then submits via display_write_frame_custom (320×200, scale 2.4).
+ * then submits via display_write_frame_custom (320×200, scaled by
+ * pax_doom_scale to fill the canvas pax_main.c chose: 2.0x on 640x400,
+ * 2.4x on 800x480, 3.0x on 960x600).
  */
 #include "psram_app.h"
 #include <string.h>
@@ -20,6 +22,7 @@
 
 extern const app_services_t *_pax_svc;
 extern volatile int pax_exit_requested;
+extern float pax_doom_scale;   /* pax_main.c: fills the chosen canvas */
 
 extern int SCREENWIDTH;
 extern int SCREENHEIGHT;
@@ -58,6 +61,14 @@ void I_UpdateNoBlit(void)
 
 void I_FinishUpdate(void)
 {
+    /* Frame callbacks run on the entry task: safe to unwind its exit jump.
+     * The loader's close signal must not wait for the MENU watchdog. */
+    extern void app_return_to_launcher(void);
+    if (pax_exit_requested ||
+        (_pax_svc->input_l3_read && _pax_svc->input_l3_read())) {
+        app_return_to_launcher();
+        return;
+    }
     if (!surface_data || !s_conv_buf)
         return;
 
@@ -77,8 +88,8 @@ void I_FinishUpdate(void)
     if (h < 240)
         __builtin_memset(s_conv_buf + h * 320, 0, (240 - h) * 320 * sizeof(uint16_t));
 
-    /* Submit: 320×200 input, scale 2.4, rotate 270° via PPA */
-    _pax_svc->display_write_frame_custom(s_conv_buf, 320, h, 2.4f, false);
+    /* Submit: 320×200 input, scaled to the canvas and rotated via PPA */
+    _pax_svc->display_write_frame_custom(s_conv_buf, 320, h, pax_doom_scale, false);
 }
 
 bool I_StartDisplay(void)

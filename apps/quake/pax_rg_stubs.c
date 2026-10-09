@@ -6,6 +6,8 @@
  * or are no-ops.
  */
 #include "psram_app.h"
+extern void *heap_caps_malloc(size_t size, uint32_t caps);
+extern void heap_caps_free(void *ptr);
 #include <rg_system.h>
 #include <string.h>
 #include <stdarg.h>
@@ -68,7 +70,7 @@ rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t allo
     s->height = height;
     s->stride = width;
     s->format = format;
-    s->data = _pax_svc->mem_caps_alloc(width * height, PAX_MEM_CAP_SPIRAM);
+    s->data = heap_caps_malloc(width * height, PAX_MEM_CAP_SPIRAM);
     if (s->data)
         __builtin_memset(s->data, 0, width * height);
     if (format & RG_PIXEL_PALETTE)
@@ -82,10 +84,10 @@ void rg_surface_free(rg_surface_t *surface)
 {
     if (!surface) return;
     if (surface->free_data && surface->data)
-        _pax_svc->mem_free(surface->data);
+        heap_caps_free(surface->data);
     if (surface->free_palette && surface->palette)
-        _pax_svc->mem_free(surface->palette);
-    _pax_svc->mem_free(surface);
+        heap_caps_free(surface->palette);
+    heap_caps_free(surface);
 }
 
 bool rg_surface_save_image_file(rg_surface_t *s, const char *fn, int w, int h)
