@@ -12,7 +12,7 @@ name: Dev builds
 on:
   push:
     branches: ["claude/**", "nona/**", "pax/**"]
-    paths: ["apps/**", "ports/**", "tools/build_pax.py", "tools/dev_build_apps.py", ".github/workflows/dev-builds.yml"]
+    paths: ["apps/**", "tools/build_pax.py", "tools/dev_build_apps.py", ".github/workflows/dev-builds.yml"]
   workflow_dispatch:
 
 permissions:
@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache
-          key: pax-dev-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py', 'ports/**') }}
+          key: pax-dev-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py', 'apps/**') }}
           restore-keys: pax-dev-
 
       - name: Build work-in-progress apps
