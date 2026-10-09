@@ -1,0 +1,36 @@
+{
+  "target": "esp32-p4-elecrow-pax-3button.yaml",
+  "status": "compiled; not flashed",
+  "files": [
+    {
+      "file": "bootloader.bin",
+      "size": 22208,
+      "sha256": "66d9ad8d34d5429e8d78d72e6ca91ee5f403c72bf29465872242125711a09179"
+    },
+    {
+      "file": "firmware.bin",
+      "size": 1728864,
+      "sha256": "0c29f823c479293ce81e8670a43b646d7b49a1b6fc8447a488531f1d5c8db5a9"
+    },
+    {
+      "file": "firmware.factory.bin",
+      "size": 1794400,
+      "sha256": "64505bb6019959f1ad39ac08c5e7f899ec83727b1450175b45e00493d06e35de"
+    },
+    {
+      "file": "firmware.ota.bin",
+      "size": 1728864,
+      "sha256": "0c29f823c479293ce81e8670a43b646d7b49a1b6fc8447a488531f1d5c8db5a9"
+    },
+    {
+      "file": "ota_data_initial.bin",
+      "size": 8192,
+      "sha256": "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f"
+    },
+    {
+      "file": "partitions.bin",
+      "size": 3072,
+      "sha256": "1a0727f7935aff03694457fb7f5c76e289a7b0f71017b8c649e4ae9e4034028f"
+    }
+  ]
+}
