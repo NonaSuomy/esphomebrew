@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "list_presentation.h"
 
 #define DEFAULT_PANEL_W 800
 #define DEFAULT_PANEL_H 480
@@ -47,7 +48,9 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 22
+#define SETTINGS_FOCUS_COUNT 24
+#define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
+#define LIST_LABEL_BYTES (NAME_BYTES + 120)
 #define DETAIL_ACTION_COUNT 5
 #define DETAIL_ACTIONS_DEFAULT 4
 #define MAX_ROM_CHOICES 128
@@ -102,6 +105,10 @@ static bool g_favorites_mode;
 static bool g_settings_mode;
 static bool g_keyboard_open;
 static bool g_app_details_enabled = true;
+static bool g_hide_pax_extension, g_list_file_details;
+static pax_file_stat_t g_list_stats[MAX_APPS];
+static bool g_list_stats_valid[MAX_APPS];
+static char g_detail_file_info[PATH_BYTES + 240];
 static bool g_auto_brightness_enabled;
 static volatile bool g_filter_dirty;
 static volatile bool g_settings_dirty;
@@ -295,6 +302,7 @@ static lv_obj_t *g_volume_value;
 static lv_obj_t *g_brightness_value;
 static lv_obj_t *g_settings_back_button;
 static lv_obj_t *g_app_details_switch;
+static lv_obj_t *g_list_switches[2];
 static lv_obj_t *g_auto_brightness_button;
 static lv_obj_t *g_auto_brightness_state_label;
 static lv_obj_t *g_empty_label;
@@ -3417,6 +3425,17 @@ static bool fetch_app_detail(int index)
     g_detail_is_installed = true;
   }
 
+  copy_text(g_detail_file_info,sizeof(g_detail_file_info),"File: ");
+  append_text(g_detail_file_info,sizeof(g_detail_file_info),g_paths[index]);
+  pax_file_stat_t actual={0};
+  bool have_stat=g_detail_local_path[0] && g_svc->file_stat &&
+                 g_svc->file_stat(g_detail_local_path,&actual)==0 && !actual.is_dir;
+  if(have_stat){
+    if(g_detail_is_remote){append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nInstalled file: ");append_text(g_detail_file_info,sizeof(g_detail_file_info),g_detail_local_path);}
+    append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nSize: ");pax_info_number(g_detail_file_info,sizeof(g_detail_file_info),actual.size,1);
+    append_text(g_detail_file_info,sizeof(g_detail_file_info)," bytes\nModified: ");pax_info_date(g_detail_file_info,sizeof(g_detail_file_info),actual.mtime);
+  }else append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nModified: Unavailable");
+
   char info_path[PATH_BYTES];
   if (!replace_package_suffix(g_paths[index], info_path, sizeof(info_path), ".json")) {
     copy_text(g_install_status, sizeof(g_install_status), "No JSON sidecar for this entry; launch remains available.");
@@ -3734,6 +3753,21 @@ static bool save_app_details_preference(void)
   const char *value = g_app_details_enabled ? "1\n" : "0\n";
   const bool saved = g_svc->file_write(value, 1, 2, file) == 2;
   return g_svc->file_close(file) == 0 && saved;
+}
+
+static void load_list_preferences(void)
+{
+  char value[12];g_hide_pax_extension=false;g_list_file_details=false;
+  if(read_small_file(LIST_PREF_FILE,value,sizeof(value))){
+    g_hide_pax_extension=value[0]=='1';g_list_file_details=strlen(value)>1 && value[1]=='1';
+  }
+}
+static bool save_list_preferences(void)
+{
+  if(!g_svc || !g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return false;
+  void *file=g_svc->file_open(LIST_PREF_FILE,"w");if(!file)return false;
+  char value[3]={g_hide_pax_extension?'1':'0',g_list_file_details?'1':'0','\n'};
+  bool saved=g_svc->file_write(value,1,3,file)==3;return g_svc->file_close(file)==0 && saved;
 }
 
 static void save_background_preference(void)
@@ -4071,6 +4105,10 @@ static void load_apps(void)
                         source_label(g_source), MAX_APPS);
     for (int i = 0; i < g_app_count; i++) g_item_source[i] = g_source;
   }
+  memset(g_list_stats_valid,0,sizeof(g_list_stats_valid));
+  for(int i=0;i<g_app_count;i++)
+    if(g_item_source[i]==SOURCE_STORAGE && g_svc->file_stat)
+      g_list_stats_valid[i]=g_svc->file_stat(g_paths[i],&g_list_stats[i])==0 && !g_list_stats[i].is_dir;
   apply_filter();
 }
 
@@ -4767,6 +4805,15 @@ static void app_details_switch_event(lv_event_t *event)
   g_open_index = -43;
 }
 
+static void list_switch_event(lv_event_t *event)
+{
+  if(lv_event_get_code(event)!=LV_EVENT_VALUE_CHANGED)return;
+  int option=(int)(intptr_t)lv_event_get_user_data(event);
+  bool enabled=g_list_switches[option] && lv_obj_has_state(g_list_switches[option],LV_STATE_CHECKED);
+  if(option==0)g_hide_pax_extension=enabled;else g_list_file_details=enabled;
+  g_settings_focus=22+option;g_open_index=-48;
+}
+
 static void begin_network_edit(int field)
 {
   if (field < 0 || field > 3) return;
@@ -4930,7 +4977,7 @@ static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
     18, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 17, 20, 21
+    13, 14, 15, 16, 17, 20, 22, 23, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -5149,14 +5196,14 @@ static int update_selection_on_host(void *arg)
     else
       lv_obj_clear_state(g_archive_up_button, LV_STATE_DISABLED);
   }
-  char visible_names[VISIBLE_ROWS][NAME_BYTES];
+  char visible_names[VISIBLE_ROWS][LIST_LABEL_BYTES];
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     const int view_index = g_first_visible + row;
     const bool visible = view_index < g_view_count;
     if (g_buttons[row] != NULL) {
       if (visible) {
         const int index = g_visible_indices[view_index];
-        copy_text(visible_names[row], NAME_BYTES, display_name_for(index));
+        pax_list_label(visible_names[row], sizeof(visible_names[row]), display_name_for(index), g_hide_pax_extension, g_list_file_details, g_list_stats_valid[index] ? &g_list_stats[index] : NULL);
         lv_label_set_text(g_labels[row], visible_names[row]);
         lv_obj_clear_flag(g_buttons[row], LV_OBJ_FLAG_HIDDEN);
         style_button(g_buttons[row], view_index == selected);
@@ -5221,6 +5268,11 @@ static int update_selection_on_host(void *arg)
     else lv_obj_clear_state(g_app_details_switch, LV_STATE_CHECKED);
     lv_obj_set_style_border_color(g_app_details_switch,
         lv_color_hex(g_settings_focus == 20 ? COL_ACCENT : COL_MUTED), LV_PART_MAIN);
+  }
+  for(int option=0;option<2;option++)if(g_list_switches[option]){
+    if(option==0 ? g_hide_pax_extension : g_list_file_details)lv_obj_add_state(g_list_switches[option],LV_STATE_CHECKED);
+    else lv_obj_clear_state(g_list_switches[option],LV_STATE_CHECKED);
+    lv_obj_set_style_border_color(g_list_switches[option],lv_color_hex(g_settings_focus==22+option ? COL_ACCENT : COL_MUTED),LV_PART_MAIN);
   }
   if (g_auto_brightness_button != NULL) {
     style_button(g_auto_brightness_button, g_settings_focus == 2);
@@ -5514,7 +5566,7 @@ static int mouse_scroll_on_host(void *arg)
 static int build_ui_on_host(void *arg)
 {
   (void)arg;
-  char host_names[VISIBLE_ROWS][NAME_BYTES];
+  char host_names[VISIBLE_ROWS][LIST_LABEL_BYTES];
   /* load_apps() already fetched and parsed this source on the PAX worker.
    * Copy its bounded snapshot here for LVGL instead of repeating SD/network
    * I/O from the ESPHome UI task. In particular, a TLS fetch here could block
@@ -5539,6 +5591,7 @@ static int build_ui_on_host(void *arg)
   g_brightness_value = NULL;
   g_settings_back_button = NULL;
   g_app_details_switch = NULL;
+  g_list_switches[0]=g_list_switches[1]=NULL;
   g_auto_brightness_button = NULL;
   g_auto_brightness_state_label = NULL;
   g_background_value_label = NULL;
@@ -5579,7 +5632,7 @@ static int build_ui_on_host(void *arg)
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     const int view_index = g_first_visible + row;
     if (view_index < g_view_count)
-      copy_text(host_names[row], NAME_BYTES, display_name_for(g_visible_indices[view_index]));
+      pax_list_label(host_names[row], sizeof(host_names[row]), display_name_for(g_visible_indices[view_index]), g_hide_pax_extension, g_list_file_details, g_list_stats_valid[g_visible_indices[view_index]] ? &g_list_stats[g_visible_indices[view_index]] : NULL);
     else
       host_names[row][0] = '\0';
   }
@@ -5929,8 +5982,8 @@ static int build_ui_on_host(void *arg)
     const int row_gap = ui_px(4);
     const int first_row_y = ui_px(24);
     const int step_y = row_h + row_gap;
-    int row_y[27];
-    for (int row = 0; row < 27; row++) {
+    int row_y[29];
+    for (int row = 0; row < 29; row++) {
       int visual_row = row;
       if (row < 20) visual_row += 5;
       else if (row < 25) visual_row -= 20;
@@ -6222,8 +6275,25 @@ static int build_ui_on_host(void *arg)
                         (void *)(intptr_t)20);
     lv_obj_add_event_cb(g_app_details_switch, app_details_switch_event, LV_EVENT_VALUE_CHANGED, NULL);
     g_settings_focus_widgets[20] = g_app_details_switch;
-    g_settings_message_label = settings_text(panel, g_settings_message, label_x, row_y[26],
-                                              content_w - ui_px(12), &lv_font_montserrat_14, true);
+    const char *list_options[2]={"HIDE .PAX EXTENSION","FILE DETAILS IN LIST"};
+    for(int option=0;option<2;option++){
+      settings_text(panel,list_options[option],label_x,row_y[26+option],control_x-label_x-ui_px(6),font,false);
+      lv_obj_t *toggle=lv_switch_create(panel);g_list_switches[option]=toggle;
+      lv_obj_set_size(toggle,ui_px(44),ui_px(18));
+      lv_obj_set_pos(toggle,control_x,row_y[26+option]+(row_h-ui_px(18))/2);
+      if(option==0 ? g_hide_pax_extension : g_list_file_details)lv_obj_add_state(toggle,LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(toggle,lv_color_hex(COL_PANEL),LV_PART_MAIN);
+      lv_obj_set_style_bg_color(toggle,lv_color_hex(COL_OK),LV_PART_INDICATOR|LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(toggle,lv_color_hex(COL_MUTED),LV_PART_INDICATOR);
+      lv_obj_set_style_bg_color(toggle,lv_color_hex(COL_TEXT),LV_PART_KNOB);
+      lv_obj_set_style_border_width(toggle,1,LV_PART_MAIN);
+      lv_obj_set_style_border_color(toggle,lv_color_hex(g_settings_focus==22+option ? COL_ACCENT : COL_MUTED),LV_PART_MAIN);
+      lv_obj_add_event_cb(toggle,settings_focus_event,LV_EVENT_PRESSED,(void *)(intptr_t)(22+option));
+      lv_obj_add_event_cb(toggle,list_switch_event,LV_EVENT_VALUE_CHANGED,(void *)(intptr_t)option);
+      g_settings_focus_widgets[22+option]=toggle;
+    }
+    g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[28],
+                                              content_w-ui_px(12),&lv_font_montserrat_14,true);
 
     if (g_keyboard_open) {
       g_keyboard = lv_keyboard_create(screen);
@@ -6434,6 +6504,16 @@ static int build_ui_on_host(void *arg)
     int content_y = lv_obj_get_height(about_heading) + ui_px(4);
     lv_obj_set_pos(info_label, 0, content_y);
     content_y += lv_obj_get_height(info_label) + ui_px(9);
+
+    lv_obj_t *package_info=lv_label_create(info_view);
+    lv_label_set_text(package_info,g_detail_file_info);
+    lv_label_set_long_mode(package_info,LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(package_info,info_width-ui_px(6));
+    lv_obj_set_style_text_color(package_info,lv_color_hex(COL_MUTED),LV_PART_MAIN);
+    lv_obj_set_style_text_font(package_info,&lv_font_montserrat_14,LV_PART_MAIN);
+    lv_obj_set_pos(package_info,0,content_y);
+    lv_obj_clear_flag(package_info,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_update_layout(package_info);content_y+=lv_obj_get_height(package_info)+ui_px(9);
 
     lv_obj_t *files_heading = lv_label_create(info_view);
     lv_label_set_text(files_heading, "FILES ON THE CARD");
@@ -6685,12 +6765,13 @@ static int build_ui_on_host(void *arg)
      * could leave an otherwise valid label with no visible text. */
     const char *visible_name = index >= 0 ? host_names[row] : "";
     lv_label_set_text(label, visible_name);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(label, LV_PCT(100));
     lv_obj_set_height(label, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_left(label, ui_px(8), LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(COL_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, g_list_file_details ? &lv_font_montserrat_14 : font, LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
     lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
   }
@@ -6881,6 +6962,7 @@ static int teardown_ui_on_host(void *arg)
   g_brightness_value = NULL;
   g_settings_back_button = NULL;
   g_app_details_switch = NULL;
+  g_list_switches[0]=g_list_switches[1]=NULL;
   g_auto_brightness_button = NULL;
   g_archive_collection_button = NULL;
   g_background_button = NULL;
@@ -7120,6 +7202,11 @@ static bool poll_controller(void)
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 20) {
       g_app_details_enabled = !g_app_details_enabled;
       g_open_index = -43;
+    }
+    if(a && !g_pad_last[PAX_INPUT_A] && (g_settings_focus==22 || g_settings_focus==23)){
+      if(g_settings_focus==22)g_hide_pax_extension=!g_hide_pax_extension;
+      else g_list_file_details=!g_list_file_details;
+      g_open_index=-48;
     }
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 21) g_open_index = -9;
     if ((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3) {
@@ -7415,6 +7502,7 @@ int app_entry(const app_services_t *svc)
   g_settings_mode = false;
   g_keyboard_open = false;
   load_app_details_preference();
+  load_list_preferences();
   svc->log_printf("launcher_ui: App Details on Select=%s (missing preference defaults on)\n",
                   g_app_details_enabled ? "ON" : "OFF");
   g_filter_dirty = false;
@@ -7660,6 +7748,10 @@ int app_entry(const app_services_t *svc)
       refresh_settings_snapshot(true);
       wait_for_input_release();
       continue;
+    }
+    if(!detail_mode && chosen==-48){
+      copy_text(g_settings_message,sizeof(g_settings_message),save_list_preferences() ? "App list preference saved on SD card" : "Could not save preference; SD card may be unavailable");
+      wait_for_input_release();continue;
     }
     if (!detail_mode && chosen == -43) {
       copy_text(g_settings_message, sizeof(g_settings_message),
