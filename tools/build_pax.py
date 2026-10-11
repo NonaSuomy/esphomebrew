@@ -58,6 +58,7 @@ def get_loader_sdk() -> Path:
     if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
         shutil.copy2(source, target)
     shutil.copy2(source.parent / "pax_theme_profile.h", LOADER_SDK_DIR / "pax_theme_profile.h")
+    shutil.copy2(source.parent / "pax_wifi_settings.h", LOADER_SDK_DIR / "pax_wifi_settings.h")
     return LOADER_SDK_DIR
 
 

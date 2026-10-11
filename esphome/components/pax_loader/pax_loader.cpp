@@ -69,6 +69,8 @@ struct psram_app {
   pax_header_t header{};
 };
 
+#include "pax_wifi_stream.h"
+
 namespace esphome {
 namespace pax_loader {
 
@@ -1876,6 +1878,7 @@ void PaxLoader::process_ui_call_() {
 }
 
 void PaxLoader::loop() {
+  pax_wifi::loop();
   // Tiny active profile: refresh independently of the running app and keep the
   // raw overlays in the same theme as the launcher without adding SDK services.
   static int64_t last_theme_check=0;
@@ -9350,6 +9353,8 @@ int PaxLoader::svc_file_zip_extract_first_impl(
 }
 
 void *PaxLoader::svc_file_open(const char *path, const char *mode) {
+  if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
+    return own_pax_file(pax_wifi::open(mode));
   const std::string mapped = runtime_path(path);
   FILE *file = std::fopen(mapped.c_str(), mode);
   // Apps open their data at fixed /sd/... paths. When a read-only open misses

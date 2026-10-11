@@ -24,7 +24,7 @@ class ListPresentationTests(unittest.TestCase):
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "list_presentation.h"
-#define SETTINGS_FOCUS_COUNT 25
+#define SETTINGS_FOCUS_COUNT 29
 #define LIST_PREF_FILE "view-preference"
 static bool g_hide_pax_extension,g_list_file_details;
 static const app_services_t *g_svc;
@@ -52,7 +52,7 @@ int main(void){
  g_hide_pax_extension=g_list_file_details=true;assert(save_list_preferences());g_hide_pax_extension=g_list_file_details=false;
  load_list_preferences();assert(g_hide_pax_extension && g_list_file_details);
  g_list_file_details=false;assert(save_list_preferences());load_list_preferences();assert(g_hide_pax_extension && !g_list_file_details);
- bool seen[25]={0};int focus=18;for(int i=0;i<25;i++){assert(focus>=0 && focus<25 && !seen[focus]);seen[focus]=true;int next=settings_focus_step(focus,1);assert(settings_focus_step(next,-1)==focus);focus=next;}assert(focus==18 && seen[22] && seen[23] && seen[24]);
+ bool seen[29]={0};int focus=18;for(int i=0;i<29;i++){assert(focus>=0 && focus<29 && !seen[focus]);seen[focus]=true;int next=settings_focus_step(focus,1);assert(settings_focus_step(next,-1)==focus);focus=next;}assert(focus==18 && seen[22] && seen[23] && seen[24] && seen[25] && seen[26] && seen[27] && seen[28]);
  return 0;
 }
 '''

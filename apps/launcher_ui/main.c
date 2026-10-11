@@ -1,3 +1,4 @@
+#include "pax_wifi_settings.h"
 #include "rom_profiles.h"
 /*
  * launcher_ui — phase 2 LVGL PAX.
@@ -51,7 +52,7 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 25
+#define SETTINGS_FOCUS_COUNT 29
 #define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
 #define LIST_LABEL_BYTES (NAME_BYTES + 120)
 #define DETAIL_ACTION_COUNT 5
@@ -120,7 +121,7 @@ static char g_detail_file_info[PATH_BYTES + 240];
 static bool g_auto_brightness_enabled;
 static volatile bool g_filter_dirty;
 static volatile bool g_settings_dirty;
-static char g_search_text[64];
+static char g_search_text[PATH_BYTES];
 static int g_archive_level;
 static char g_archive_identifier[128];
 static char g_archive_title[NAME_BYTES];
@@ -163,6 +164,10 @@ static int g_storage_app_count[PAX_STORAGE_COUNT];
 static bool g_storage_status_inferred[PAX_STORAGE_COUNT];
 static bool g_storage_path_accessible[PAX_STORAGE_COUNT];
 static int g_network_edit_field = -1;
+static pax_wifi_status_t g_wifi_status;
+static bool g_wifi_available, g_wifi_password_changed;
+static char g_wifi_ssid[33], g_wifi_password[65];
+static lv_obj_t *g_network_extra_labels[4];
 static char g_search_before_settings_edit[sizeof(g_search_text)];
 static char g_settings_message[128];
 static int g_keyboard_focus;
@@ -3775,15 +3780,73 @@ static bool save_app_details_preference(void)
   return g_svc->file_close(file) == 0 && saved;
 }
 
+static bool normalize_network_url(const char *input, char *out, size_t capacity)
+{
+  if(!input || !out || capacity<2)return false;
+  size_t n=strlen(input);
+  while(n && (input[n-1]=='\n' || input[n-1]=='\r' || input[n-1]==' '))n--;
+  const int prefix=has_prefix(input,"http://") ? 7 : has_prefix(input,"https://") ? 8 : 0;
+  if(!prefix || n<=(size_t)prefix || n+2>capacity)return false;
+  for(size_t i=0;i<n;i++)if((unsigned char)input[i]<=32 || (unsigned char)input[i]>126 || input[i]=='[' || input[i]==']' || input[i]=='@' || input[i]=='#' || input[i]=='?')return false;
+  size_t authority_end=(size_t)prefix;
+  while(authority_end<n && input[authority_end]!='/')authority_end++;
+  size_t host_end=(size_t)prefix;
+  while(host_end<authority_end && input[host_end]!=':')host_end++;
+  if(host_end==(size_t)prefix)return false;
+  for(size_t i=(size_t)prefix;i<host_end;i++){
+    const char ch=input[i];
+    if(!((ch>='a'&&ch<='z')||(ch>='A'&&ch<='Z')||(ch>='0'&&ch<='9')||ch=='.'||ch=='-'))return false;
+  }
+  if(host_end<authority_end){
+    unsigned port=0;
+    if(host_end+1==authority_end)return false;
+    for(size_t i=host_end+1;i<authority_end;i++){
+      if(input[i]<'0'||input[i]>'9')return false;
+      port=port*10u+(unsigned)(input[i]-'0');if(port>65535u)return false;
+    }
+    if(!port)return false;
+  }
+  memcpy(out,input,n);if(out[n-1]!='/')out[n++]='/';out[n]=0;return true;
+}
 static void load_network_url(void)
 {
-  int length=read_json_file("/sd/roms/pax/.launcher_ui_network_url.txt");
-  if(length<=0 || length>=PATH_BYTES)return;
-  while(length>0 && (g_remote[length-1]=='\n' || g_remote[length-1]=='\r' || g_remote[length-1]==' '))g_remote[--length]=0;
-  if(!has_prefix(g_remote,"http://") && !has_prefix(g_remote,"https://"))return;
-  for(int i=0;i<length;i++)if((unsigned char)g_remote[i]<=32 || (unsigned char)g_remote[i]>126)return;
-  if(length<9 || g_remote[length-1]!='/')return;
-  copy_text(g_network_url,sizeof(g_network_url),g_remote);
+  char value[PATH_BYTES];
+  if(read_small_file("/sd/roms/pax/.launcher_ui_network_url.txt",value,sizeof(value)))
+    (void)normalize_network_url(value,g_network_url,sizeof(g_network_url));
+}
+static bool save_network_url(const char *value)
+{
+  char normalized[PATH_BYTES];
+  if(!normalize_network_url(value,normalized,sizeof(normalized)))return false;
+  if(!g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return false;
+  void *f=g_svc->file_open("/sd/roms/pax/.launcher_ui_network_url.txt","wb");if(!f)return false;
+  size_t n=strlen(normalized);bool saved=g_svc->file_write(normalized,1,n,f)==n;
+  saved=g_svc->file_close(f)==0 && saved;
+  if(saved)copy_text(g_network_url,sizeof(g_network_url),normalized);
+  return saved;
+}
+static void refresh_wifi_settings(bool load)
+{
+  g_wifi_available=false;
+  if(g_svc->file_open && g_svc->file_read && g_svc->file_close){
+    void *f=g_svc->file_open(PAX_WIFI_SETTINGS_FILE,"rb");
+    if(f){pax_wifi_status_t status={0};size_t n=g_svc->file_read(&status,1,sizeof(status),f);g_svc->file_close(f);
+      if(n==sizeof(status) && status.magic==PAX_WIFI_SETTINGS_MAGIC && status.ssid[32]==0){g_wifi_status=status;g_wifi_available=true;}
+    }
+  }
+  if(load){copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),g_wifi_available ? g_wifi_status.ssid : "");secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=false;}
+}
+static void apply_wifi_settings(void)
+{
+  pax_wifi_request_t request={0};request.magic=PAX_WIFI_SETTINGS_MAGIC;request.replace_password=g_wifi_password_changed;
+  copy_text(request.ssid,sizeof(request.ssid),g_wifi_ssid);copy_text(request.password,sizeof(request.password),g_wifi_password);
+  if(!pax_wifi_request_valid(&request)){copy_text(g_settings_message,sizeof(g_settings_message),"SSID required; password must be 8-63 characters, 64 hex digits, or blank for open Wi-Fi");secure_clear(&request,sizeof(request));return;}
+  void *f=g_svc->file_open ? g_svc->file_open(PAX_WIFI_SETTINGS_FILE,"wb") : NULL;
+  if(!f){copy_text(g_settings_message,sizeof(g_settings_message),"Wi-Fi controls require the updated firmware");secure_clear(&request,sizeof(request));return;}
+  bool accepted=g_svc->file_write(&request,1,sizeof(request),f)==sizeof(request);
+  accepted=g_svc->file_close(f)==0 && accepted;secure_clear(&request,sizeof(request));
+  if(accepted){secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=false;}
+  copy_text(g_settings_message,sizeof(g_settings_message),accepted ? "Connecting; failed Wi-Fi changes revert after 45 seconds" : "Wi-Fi request rejected; another connection may be in progress");
 }
 
 static void load_themes(void)
@@ -3964,6 +4027,7 @@ static bool ipv4_from_text(const char *text, uint32_t *out)
 static void refresh_settings_snapshot(bool load_network_config)
 {
   if (g_svc == NULL) return;
+  refresh_wifi_settings(load_network_config);
   if (g_svc->network_config_get != NULL) {
     pax_network_config_t current = {0};
     if (g_svc->network_config_get(&current) == 0) {
@@ -4892,12 +4956,13 @@ static void list_switch_event(lv_event_t *event)
 
 static void begin_network_edit(int field)
 {
-  if (field < 0 || field > 3) return;
+  if (field < 0 || field > 6) return;
   copy_text(g_search_before_settings_edit, sizeof(g_search_before_settings_edit), g_search_text);
   uint32_t value = field == 0 ? g_network_config.ipv4 :
                    field == 1 ? g_network_config.netmask :
                    field == 2 ? g_network_config.gateway : g_network_config.dns;
-  ipv4_to_text(value, g_search_text, sizeof(g_search_text));
+  if(field<4)ipv4_to_text(value,g_search_text,sizeof(g_search_text));
+  else copy_text(g_search_text,sizeof(g_search_text),field==4 ? g_network_url : field==5 ? g_wifi_ssid : g_wifi_password);
   g_network_edit_field = field;
   g_keyboard_focus = 0;
   g_keyboard_open = true;
@@ -4906,20 +4971,26 @@ static void begin_network_edit(int field)
 
 static bool commit_network_edit(void)
 {
-  if (g_network_edit_field < 0 || g_network_edit_field > 3) return false;
+  if (g_network_edit_field < 0 || g_network_edit_field > 6) return false;
   uint32_t address = 0;
   const int field = g_network_edit_field;
-  const bool valid = ipv4_from_text(g_search_text, &address);
-  if (valid) {
+  bool valid=false;
+  if(field==4){char normalized[PATH_BYTES];valid=normalize_network_url(g_search_text,normalized,sizeof(normalized)) && save_network_url(normalized);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Development server URL saved on SD" : "Use an HTTP(S) IPv4 address or hostname; SD is required to save");}
+  else if(field==5){valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_wifi_ssid);if(valid)copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Wi-Fi name staged; choose APPLY WI-FI" : "Wi-Fi name must be 1-32 bytes");}
+  else if(field==6){valid=strlen(g_search_text)<sizeof(g_wifi_password);if(valid){copy_text(g_wifi_password,sizeof(g_wifi_password),g_search_text);g_wifi_password_changed=true;}copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Password staged; choose APPLY WI-FI (blank means open network)" : "Password is too long");}
+  else valid=ipv4_from_text(g_search_text,&address);
+  if (field<4 && valid) {
     if (field == 0) g_network_config.ipv4 = address;
     else if (field == 1) g_network_config.netmask = address;
     else if (field == 2) g_network_config.gateway = address;
     else g_network_config.dns = address;
     copy_text(g_settings_message, sizeof(g_settings_message), "Address staged; select APPLY NETWORK to save");
-  } else {
+  } else if(field<4) {
     copy_text(g_settings_message, sizeof(g_settings_message), "Invalid IPv4 address; expected n.n.n.n");
   }
+  secure_clear(g_search_text,sizeof(g_search_text));
   copy_text(g_search_text, sizeof(g_search_text), g_search_before_settings_edit);
+  secure_clear(g_search_before_settings_edit,sizeof(g_search_before_settings_edit));
   g_network_edit_field = -1;
   g_toolbar_focus = -1;
   return valid;
@@ -5053,7 +5124,7 @@ static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
     18, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 17, 20, 22, 23, 24, 21
+    13, 14, 15, 16, 25, 26, 27, 28, 17, 20, 22, 23, 24, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -5425,6 +5496,13 @@ static int update_selection_on_host(void *arg)
     if (g_archive_login_button_label != NULL)
       lv_label_set_text(g_archive_login_button_label, g_archive_authenticated ? "SIGN OUT" : "SIGN IN");
   }
+  static uint32_t last_wifi_refresh=0;
+  uint32_t wifi_now=tick_cb();
+  if(wifi_now-last_wifi_refresh>=1000){refresh_wifi_settings(false);last_wifi_refresh=wifi_now;}
+  for(int i=0;i<4;i++)if(g_network_extra_labels[i]){
+    const char *value=i==0 ? g_network_url : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RETRYING PREVIOUS WI-FI" : "APPLY WI-FI");
+    lv_label_set_text(g_network_extra_labels[i],value);
+  }
   if (g_network_dhcp_label != NULL)
     lv_label_set_text(g_network_dhcp_label, g_network_config.dhcp_enabled ? "ON" : "OFF");
   if (g_network_status_label != NULL) {
@@ -5717,6 +5795,7 @@ static int build_ui_on_host(void *arg)
   g_network_dhcp_button = NULL;
   g_network_dhcp_label = NULL;
   g_network_apply_button = NULL;
+  for(int i=0;i<4;i++)g_network_extra_labels[i]=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;
   g_archive_auth_status_label = NULL;
@@ -5975,10 +6054,12 @@ static int build_ui_on_host(void *arg)
     copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 access key");
   else if (g_settings_mode && g_archive_auth_edit_field == 3)
     copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 secret key");
+  if(g_settings_mode && g_network_edit_field>=4)copy_text(search_placeholder,sizeof(search_placeholder),g_network_edit_field==4 ? "http://computer-ip:8000/" : g_network_edit_field==5 ? "Wi-Fi network name" : "New Wi-Fi password; blank for open");
+  lv_textarea_set_max_length(g_search_area,g_network_edit_field==5 ? 32 : g_network_edit_field==6 ? 64 : sizeof(g_search_text)-1);
   lv_textarea_set_placeholder_text(g_search_area, search_placeholder);
   lv_textarea_set_text(g_search_area, g_search_text);
   lv_textarea_set_password_mode(g_search_area,
-      g_settings_mode && (g_archive_auth_edit_field == 1 || g_archive_auth_edit_field == 3));
+      g_settings_mode && (g_archive_auth_edit_field == 1 || g_archive_auth_edit_field == 3 || g_network_edit_field == 6));
   lv_obj_set_style_bg_color(g_search_area, lv_color_hex(COL_BG), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(g_search_area, (lv_opa_t)140, LV_PART_MAIN);
   lv_obj_set_style_border_color(g_search_area, lv_color_hex(COL_MUTED), LV_PART_MAIN);
@@ -6091,11 +6172,13 @@ static int build_ui_on_host(void *arg)
     const int row_gap = ui_px(4);
     const int first_row_y = ui_px(24);
     const int step_y = row_h + row_gap;
-    int row_y[30];
-    for (int row = 0; row < 30; row++) {
+    int row_y[34];
+    for (int row = 0; row < 34; row++) {
       int visual_row = row;
       if (row < 20) visual_row += 5;
       else if (row < 25) visual_row -= 20;
+      if(row>=30)visual_row=24+(row-30);
+      else if(visual_row>=24)visual_row+=4;
       row_y[row] = first_row_y + step_y * visual_row;
       /* Keep the extra breathing room after the Archive S3 status even
        * though the five Storage rows now precede the network settings. */
@@ -6330,6 +6413,17 @@ static int build_ui_on_host(void *arg)
       lv_obj_set_style_text_color(g_network_value_labels[field], lv_color_hex(COL_TEXT), LV_PART_MAIN);
       lv_obj_set_style_text_font(g_network_value_labels[field], &lv_font_montserrat_14, LV_PART_MAIN);
       lv_obj_align(g_network_value_labels[field], LV_ALIGN_LEFT_MID, 0, 0);
+    }
+    const char *extra_names[4]={"DEVELOPMENT SERVER URL","WI-FI NAME","WI-FI PASSWORD","CHANGE WI-FI"};
+    for(int item=0;item<4;item++){
+      settings_text(panel,extra_names[item],label_x,row_y[30+item],control_x-label_x-ui_px(6),font,false);
+      lv_obj_t *button=settings_button(panel,25+item,control_x,row_y[30+item],control_w,ui_px(18),-62-item);
+      g_network_extra_labels[item]=lv_label_create(button);
+      lv_obj_set_width(g_network_extra_labels[item],control_w-ui_px(12));
+      lv_label_set_long_mode(g_network_extra_labels[item],LV_LABEL_LONG_DOT);
+      lv_obj_set_style_text_font(g_network_extra_labels[item],&lv_font_montserrat_14,LV_PART_MAIN);
+      lv_obj_set_style_text_color(g_network_extra_labels[item],lv_color_hex(COL_TEXT),LV_PART_MAIN);
+      lv_obj_center(g_network_extra_labels[item]);
     }
     settings_text(panel, "SAVE NETWORK SETTINGS", label_x, row_y[19],
                   control_x - label_x - ui_px(6), font, false);
@@ -7085,6 +7179,7 @@ static int teardown_ui_on_host(void *arg)
   g_network_dhcp_button = NULL;
   g_network_dhcp_label = NULL;
   g_network_apply_button = NULL;
+  for(int i=0;i<4;i++)g_network_extra_labels[i]=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;
   for (int i = 0; i < 4; i++) g_network_value_labels[i] = NULL;
@@ -7311,6 +7406,7 @@ static bool poll_controller(void)
     }
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus >= 13 && g_settings_focus <= 16)
       g_open_index = -30 - (g_settings_focus - 13);
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=25 && g_settings_focus<=28)g_open_index=-62-(g_settings_focus-25);
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 17) g_open_index = -35;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 18) g_open_index = -36;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 19) g_open_index = -37;
@@ -7930,6 +8026,8 @@ int app_entry(const app_services_t *svc)
       wait_for_input_release();
       continue;
     }
+    if(!detail_mode && chosen<=-62 && chosen>=-64){begin_network_edit(4+(-62-chosen));wait_for_input_release();continue;}
+    if(!detail_mode && chosen==-65){apply_wifi_settings();wait_for_input_release();continue;}
     if (!detail_mode && chosen == -34) {
       g_network_config.dhcp_enabled = !g_network_config.dhcp_enabled;
       copy_text(g_settings_message, sizeof(g_settings_message), "DHCP mode staged; select APPLY NETWORK");
