@@ -223,6 +223,7 @@ def render(repo: str, apps: list[dict]) -> str:
         f"<body><h1>PAX Store</h1><p>Apps for the ESP32-P4 from "
         f"<a href=\"https://github.com/{html.escape(repo)}\">{html.escape(repo)}</a>. "
         "Point the ESPHome <code>pax_loader</code> <code>catalog_url</code> at this page.</p>\n"
+        '<p><a href="install/">Install PAX firmware on your device</a></p>\n'
         "<ul>\n" + "\n".join(rows) + "\n</ul>\n"
         "<p><a href=\"store.json\">store.json</a></p></body></html>\n"
     )

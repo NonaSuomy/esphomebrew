@@ -1,0 +1,51 @@
+{
+  "built_at": "2026-10-11",
+  "repositories": {
+    "pax-esphome": "27f2394c0582f5dd11ce5dbb7799369bb8527263",
+    "pax-esphome/dependencies/esphome": "9723f3615861744ad311bfd5a5577256b6ccfb04",
+    "pax-tools": "7b39428a9c0bf927f207d4f0c7eae0c9a5ab560d",
+    "pax-modules": "f0da41d9df83d9cd6fcfe0159ddbfd61a1345a47"
+  },
+  "firmware": [
+    {
+      "board": "waveshare7b",
+      "yaml": "esp32-p4-waveshare-7b-pax-web.yaml",
+      "bytes": 1995104,
+      "sha256": "3895fb70efbb94125b008f781ac0f21a2a9f4be3b42d6d8e391ad143f3b77d4e",
+      "hardware_tested": false,
+      "chip_revision": "rev3"
+    },
+    {
+      "board": "elecrow",
+      "yaml": "esp32-p4-elecrow-pax-web.yaml",
+      "bytes": 2032480,
+      "sha256": "92b023c17d462a0d3fd2c77d5be4ca70adb8e59811478701dbfb7e743f696d44",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1"
+    },
+    {
+      "board": "waveshare",
+      "yaml": "esp32-p4-waveshare-pax-web.yaml",
+      "bytes": 2005824,
+      "sha256": "14a8d0b93446f5528385a102cc3d8ea4f65a48305dc5461d073d5d3290d1c491",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1"
+    },
+    {
+      "board": "nano720",
+      "yaml": "esp32-p4-nano-pax-3button.yaml",
+      "bytes": 1757008,
+      "sha256": "eced81e4a1da40990e75dd3e355f204893cc76a1d61c5c4f818451c38b3c5904",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1"
+    },
+    {
+      "board": "nano1080",
+      "yaml": "esp32-p4-nano-pax-hdmi1080.yaml",
+      "bytes": 1757136,
+      "sha256": "f48d9a4fced67d6b4bba4e990c839bc12e3ff5552a0c405a0d7627a1281a1269",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1"
+    }
+  ]
+}

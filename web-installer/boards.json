@@ -1,0 +1,70 @@
+[
+  {
+    "id": "elecrow",
+    "title": "Elecrow AIO",
+    "subtitle": "7-inch touchscreen \u00b7 Wi-Fi",
+    "photo": "https://media-cdn.elecrow.com/media/webp_image/catalog/product/cache/b6b9577937e6a96f50e53ddc42983628/a/l/all-in-one_starter_kit_for_esp32-p4.webp",
+    "status": "Hardware available \u00b7 public build awaiting test",
+    "experimental": true,
+    "note": "Select the Elecrow All-in-one Starter Kit. Set up Wi-Fi over serial after installation. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "elecrow",
+        "7-inch \u00b7 1024 \u00d7 600"
+      ]
+    ],
+    "manufacturer": "Elecrow"
+  },
+  {
+    "id": "waveshare7b",
+    "manufacturer": "Waveshare",
+    "title": "ESP32-P4-WIFI6-Touch-LCD-7B",
+    "subtitle": "Integrated 7-inch touchscreen \u00b7 Wi-Fi",
+    "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-WIFI6-Touch-LCD-7B-details-intro-37e8c520b79287a41876ba4b583720f1.webp",
+    "status": "Awaiting external hardware test",
+    "experimental": true,
+    "note": "For the integrated Touch-LCD-7B board. Use its USB-to-UART Type-C port for serial installation and Wi-Fi setup. Requires compatible ESP-Hosted firmware on the C6. Chip revision: 3.",
+    "profiles": [
+      [
+        "waveshare7b",
+        "7B \u00b7 1024 \u00d7 600"
+      ]
+    ]
+  },
+  {
+    "id": "nano",
+    "title": "ESP32-P4-NANO",
+    "subtitle": "HDMI monitor or TV \u00b7 Ethernet",
+    "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-NANO-details-intro-23027e78f7ed1654d68fc7e5bdc4362a.webp",
+    "status": "HDMI hardware test pending",
+    "experimental": true,
+    "note": "Requires the EBYTE ECA20-MHA1-I (GSV1172), configured for two-lane DSI input, and a correctly wired adapter. Use Ethernet and a USB keyboard or gamepad. Audio uses the board codec; HDMI audio is not configured. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "nano720",
+        "720p \u00b7 60 Hz (recommended)"
+      ],
+      [
+        "nano1080",
+        "1080p \u00b7 30 Hz"
+      ]
+    ],
+    "manufacturer": "Waveshare"
+  },
+  {
+    "id": "waveshare",
+    "title": "Waveshare ESP32-P4-WIFI6",
+    "subtitle": "7-inch DSI touchscreen \u00b7 Wi-Fi",
+    "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-WIFI6-details-intro-911fb2f4c7e9661438776e729cb02b40.webp",
+    "status": "Awaiting external hardware test",
+    "experimental": true,
+    "note": "For ESP32-P4-WIFI6 with the original 7-inch 1024 \u00d7 600 DSI panel. The 7B panel needs a different configuration. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "waveshare",
+        "Original 7-inch \u00b7 1024 \u00d7 600"
+      ]
+    ],
+    "manufacturer": "Waveshare"
+  }
+]

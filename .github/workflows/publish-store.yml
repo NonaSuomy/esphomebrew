@@ -7,7 +7,7 @@ on:
   # Website-only repairs can reuse the latest successful build on main.
   push:
     branches: [main]
-    paths: ["tools/make_catalog.py", "tests/test_make_catalog.py", ".github/workflows/publish-store.yml"]
+    paths: ["tools/make_catalog.py", "tests/test_make_catalog.py", ".github/workflows/publish-store.yml", "web-installer/**", "tools/check_web_installer.py"]
   workflow_run:
     workflows: [Build PAPPs]
     types: [completed]
@@ -107,6 +107,12 @@ jobs:
 
       - name: Write catalog and app data
         run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache --built-at "${{ steps.run.outputs.built_at }}"
+
+      - name: Add browser firmware installer
+        run: |
+          mkdir -p site/install
+          cp -a web-installer/. site/install/
+          python3 tools/check_web_installer.py site/install
 
       - name: Validate PAX catalog downloads and JSON sidecars
         run: |
