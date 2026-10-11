@@ -35,9 +35,9 @@ static void copy_text(char *out,size_t n,const char *text){snprintf(out,n,"%s",t
 static void append_text(char *out,size_t n,const char *text){snprintf(out+strlen(out),n-strlen(out),"%s",text);}
 static bool extract_ends_with_ci(const char *name,const char *ext){size_t a=strlen(name),b=strlen(ext);return a>=b&&!strcasecmp(name+a-b,ext);}
 static int list(const char *folder,char *out,int n){
- const char entries[]="demo.NES\0game.GBC\0set.ZIP\0wrong.txt\0directory.nes/\0";
+ const char entries[]="demo.NES\0game.GBC\0set.ZIP\0wrong.txt\0directory.nes/\0a_very_long_game_name_which_exceeds_the_display_label_but_must_still_be_selectable.GBC\0";
  if(strstr(folder,"/nesplus/"))return -1;
- assert(n>(int)sizeof(entries));memcpy(out,entries,sizeof(entries));return 5;
+ assert(n>(int)sizeof(entries));memcpy(out,entries,sizeof(entries));return 6;
 }
 static int zip(const char *path,const char *extensions,const char *folder,const char *stem,char *out,size_t n){
  (void)path;assert(!strcmp(folder,"/sd/roms/pax/.zipcache"));extracted++;
@@ -67,7 +67,8 @@ int main(){
  assert(!strcmp(g_rom_picker_paths[0],"/sd/roms/nes/demo.NES"));
  rom_picker_add_folder("/sd/roms/nes/","SD  ");assert(g_rom_picker_count==4);
  assert(rom_picker_set_selected_game());assert(!strcmp(configured,"/sd/roms/nes/demo.NES"));assert(!strcmp(sidecar_path,"/sd/roms/pax/nes.rom"));
- rom_picker_load_games("gb-debug.pax");assert(g_rom_picker_count==4);
+ rom_picker_load_games("gb-debug.pax");assert(g_rom_picker_count==6);
+ assert(strstr(g_rom_picker_paths[2],"still_be_selectable.GBC"));
  assert(!strcmp(g_rom_picker_paths[0],"/sd/roms/gb/game.GBC"));g_rom_picker_selected=1;
  assert(rom_picker_set_selected_game());assert(extracted==1);assert(!strcmp(filter,".gb|.gbc|"));assert(!strncmp(cache_name,"gb_",3));assert(!strcmp(sidecar_path,"/sd/roms/pax/gb.rom"));
  fail_extract=1;configured[0]=0;assert(!rom_picker_set_selected_game());assert(!configured[0]);fail_extract=0;

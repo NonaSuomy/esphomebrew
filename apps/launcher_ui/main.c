@@ -4282,7 +4282,7 @@ static void rom_picker_add_folder(const char *folder, const char *storage_tag)
     if (length == 0 || name[length - 1] == '/' ||
         !pax_rom_profile_accepts(g_rom_picker_profile, name)) continue;
 
-    if (strlen(folder) + length >= PATH_BYTES || length + strlen(storage_tag) >= NAME_BYTES) continue;
+    if (strlen(folder) + length >= PATH_BYTES) continue;
     char path[PATH_BYTES];
     copy_text(path, sizeof(path), folder);
     append_text(path, sizeof(path), name);
