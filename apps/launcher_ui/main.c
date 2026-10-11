@@ -354,6 +354,7 @@ static lv_obj_t *g_archive_progress;
  * and label per entry needlessly holds LVGL heap while the launcher runs. */
 static lv_obj_t *g_buttons[VISIBLE_ROWS];
 static lv_obj_t *g_labels[VISIBLE_ROWS];
+static lv_obj_t *g_list_detail_labels[VISIBLE_ROWS];
 /* The launcher is the one PAX that is allowed to use the panel's native
  * logical size.  It is unloaded before an emulator starts, so its larger
  * LVGL framebuffer does not consume game memory or video bandwidth. */
@@ -5214,6 +5215,37 @@ static void restore_launcher_resume_state(void)
   g_favorites_mode = favorites != 0;
 }
 
+static void update_list_row_text(int row, int index, const char *name)
+{
+  lv_obj_t *label = g_labels[row];
+  lv_obj_t *details = g_list_detail_labels[row];
+  lv_label_set_text(label, name);
+  lv_obj_update_layout(g_buttons[row]);
+  const int width = lv_obj_get_content_width(g_buttons[row]);
+  const int inset = ui_px(8);
+  int detail_width = 0;
+  if (g_list_file_details && index >= 0) {
+    char text[120];
+    pax_list_details(text, sizeof(text), g_list_stats_valid[index] ? &g_list_stats[index] : NULL);
+    const lv_font_t *detail_font = g_ui_scale >= 1.5f ? &lv_font_montserrat_20 : &lv_font_montserrat_12;
+    lv_obj_set_style_text_font(details, detail_font, LV_PART_MAIN);
+    lv_label_set_text(details, text);
+    lv_point_t size;
+    lv_text_get_size(&size, text, detail_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    detail_width = size.x;
+    if (detail_width > width * 3 / 5) detail_width = width * 3 / 5;
+    lv_obj_set_width(details, detail_width);
+    lv_obj_clear_flag(details, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_align(details, LV_ALIGN_RIGHT_MID, -inset, 0);
+  } else {
+    lv_obj_add_flag(details, LV_OBJ_FLAG_HIDDEN);
+  }
+  int name_width = width - 2 * inset - (detail_width ? detail_width + inset : 0);
+  if (name_width < 1) name_width = 1;
+  lv_obj_set_width(label, name_width);
+  lv_obj_align(label, LV_ALIGN_LEFT_MID, inset, 0);
+}
+
 static int update_selection_on_host(void *arg)
 {
   (void)arg;
@@ -5278,9 +5310,9 @@ static int update_selection_on_host(void *arg)
     if (g_buttons[row] != NULL) {
       if (visible) {
         const int index = g_visible_indices[view_index];
-        pax_list_label(visible_names[row], sizeof(visible_names[row]), display_name_for(index), g_hide_pax_extension, g_list_file_details, g_list_stats_valid[index] ? &g_list_stats[index] : NULL);
-        lv_label_set_text(g_labels[row], visible_names[row]);
+        pax_list_label(visible_names[row], sizeof(visible_names[row]), display_name_for(index), g_hide_pax_extension);
         lv_obj_clear_flag(g_buttons[row], LV_OBJ_FLAG_HIDDEN);
+        update_list_row_text(row, index, visible_names[row]);
         style_button(g_buttons[row], view_index == selected);
       } else {
         lv_obj_add_flag(g_buttons[row], LV_OBJ_FLAG_HIDDEN);
@@ -5649,6 +5681,7 @@ static int build_ui_on_host(void *arg)
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     g_buttons[row] = NULL;
     g_labels[row] = NULL;
+    g_list_detail_labels[row] = NULL;
   }
   g_settings_panel = NULL;
   g_detail_info_view = NULL;
@@ -5708,7 +5741,7 @@ static int build_ui_on_host(void *arg)
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     const int view_index = g_first_visible + row;
     if (view_index < g_view_count)
-      pax_list_label(host_names[row], sizeof(host_names[row]), display_name_for(g_visible_indices[view_index]), g_hide_pax_extension, g_list_file_details, g_list_stats_valid[g_visible_indices[view_index]] ? &g_list_stats[g_visible_indices[view_index]] : NULL);
+      pax_list_label(host_names[row], sizeof(host_names[row]), display_name_for(g_visible_indices[view_index]), g_hide_pax_extension);
     else
       host_names[row][0] = '\0';
   }
@@ -6841,20 +6874,19 @@ static int build_ui_on_host(void *arg)
     lv_obj_add_event_cb(g_buttons[row], list_touch_event, LV_EVENT_RELEASED, NULL);
     lv_obj_t *label = lv_label_create(g_buttons[row]);
     g_labels[row] = label;
-    /* Make the row label an explicit, opaque, full-width child.  The
-     * default button layout/style differs between LVGL 9 minor versions and
-     * could leave an otherwise valid label with no visible text. */
-    const char *visible_name = index >= 0 ? host_names[row] : "";
-    lv_label_set_text(label, visible_name);
-    lv_label_set_long_mode(label, LV_LABEL_LONG_CLIP);
-    lv_obj_set_width(label, LV_PCT(100));
+    lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
     lv_obj_set_height(label, LV_SIZE_CONTENT);
-    lv_obj_set_style_pad_left(label, ui_px(8), LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(COL_TEXT), LV_PART_MAIN);
     lv_obj_set_style_text_opa(label, LV_OPA_COVER, LV_PART_MAIN);
-    lv_obj_set_style_text_font(label, g_list_file_details ? &lv_font_montserrat_14 : font, LV_PART_MAIN);
+    lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_t *details = lv_label_create(g_buttons[row]);
+    g_list_detail_labels[row] = details;
+    lv_label_set_long_mode(details, LV_LABEL_LONG_DOT);
+    lv_obj_set_height(details, LV_SIZE_CONTENT);
+    lv_obj_set_style_text_color(details, lv_color_hex(COL_MUTED), LV_PART_MAIN);
+    lv_obj_set_style_text_align(details, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
+    update_list_row_text(row, index, index >= 0 ? host_names[row] : "");
   }
   if (g_keyboard_open) {
     /* Keep the native keyboard in the same PAX display tree so the loader's
@@ -7081,6 +7113,7 @@ static int teardown_ui_on_host(void *arg)
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     g_buttons[row] = NULL;
     g_labels[row] = NULL;
+    g_list_detail_labels[row] = NULL;
   }
   lv_deinit();
   return 0;

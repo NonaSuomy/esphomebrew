@@ -22,14 +22,16 @@ static void pax_info_date(char *out,size_t cap,int64_t stamp)
  pax_info_append(out,cap,"-");pax_info_number(out,cap,days+1,2);pax_info_append(out,cap," ");
  pax_info_number(out,cap,(stamp/3600)%24,2);pax_info_append(out,cap,":");pax_info_number(out,cap,(stamp/60)%60,2);pax_info_append(out,cap," UTC");
 }
-static void pax_list_label(char *out,size_t cap,const char *name,bool hide,bool details,const pax_file_stat_t *info)
+static void pax_list_label(char *out,size_t cap,const char *name,bool hide)
 {
  if(!cap)return;out[0]=0;pax_info_append(out,cap,name);
  size_t n=strlen(out);
  if(hide && n>=4 && out[n-4]=='.' && (out[n-3]=='p'||out[n-3]=='P') &&
     (out[n-2]=='a'||out[n-2]=='A') && (out[n-1]=='x'||out[n-1]=='X'))out[n-4]=0;
- if(!details)return;
- pax_info_append(out,cap,"\n");
+}
+static void pax_list_details(char *out,size_t cap,const pax_file_stat_t *info)
+{
+ if(!cap)return;out[0]=0;
  if(!info){pax_info_append(out,cap,"File details unavailable");return;}
  pax_info_number(out,cap,info->size,1);pax_info_append(out,cap," bytes | ");pax_info_date(out,cap,info->mtime);
 }

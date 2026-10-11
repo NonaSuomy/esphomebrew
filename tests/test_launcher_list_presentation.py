@@ -37,16 +37,16 @@ static int close_file(void *f){(void)f;return 0;}
 int main(void){
  char text[256];const char name[]="scummvm-sky.pax";
  pax_file_stat_t stat={.size=5368709120ULL,.mtime=951849000};
- pax_list_label(text,sizeof(text),name,true,false,&stat);assert(strcmp(text,"scummvm-sky")==0);assert(strcmp(name,"scummvm-sky.pax")==0);
- pax_list_label(text,sizeof(text),name,false,false,&stat);assert(strcmp(text,name)==0);
- pax_list_label(text,sizeof(text),"Demo.PAX",true,false,NULL);assert(strcmp(text,"Demo")==0);
- pax_list_label(text,sizeof(text),"pax-example.zip",true,false,NULL);assert(strcmp(text,"pax-example.zip")==0);
- pax_list_label(text,sizeof(text),name,true,true,&stat);assert(strcmp(text,"scummvm-sky\n5368709120 bytes | 2000-02-29 18:30 UTC")==0);
+ pax_list_label(text,sizeof(text),name,true);assert(strcmp(text,"scummvm-sky")==0);assert(strcmp(name,"scummvm-sky.pax")==0);
+ pax_list_label(text,sizeof(text),name,false);assert(strcmp(text,name)==0);
+ pax_list_label(text,sizeof(text),"Demo.PAX",true);assert(strcmp(text,"Demo")==0);
+ pax_list_label(text,sizeof(text),"pax-example.zip",true);assert(strcmp(text,"pax-example.zip")==0);
+ pax_list_details(text,sizeof(text),&stat);assert(strcmp(text,"5368709120 bytes | 2000-02-29 18:30 UTC")==0);
  text[0]=0;pax_info_date(text,sizeof(text),4107542400LL);assert(strcmp(text,"2100-03-01 00:00 UTC")==0);
  text[0]=0;pax_info_date(text,sizeof(text),0);assert(strcmp(text,"Unavailable")==0);
  text[0]=0;pax_info_date(text,sizeof(text),-1);assert(strcmp(text,"Unavailable")==0);
- pax_list_label(text,sizeof(text),name,true,true,NULL);assert(strstr(text,"File details unavailable"));
- char tiny[4];pax_list_label(tiny,sizeof(tiny),name,true,true,&stat);assert(tiny[3]==0);
+ pax_list_details(text,sizeof(text),NULL);assert(strstr(text,"File details unavailable"));
+ char tiny[4];pax_list_details(tiny,sizeof(tiny),&stat);assert(tiny[3]==0);
  app_services_t svc={0};svc.file_open=open_file;svc.file_read=read_file;svc.file_write=write_file;svc.file_close=close_file;g_svc=&svc;
  load_list_preferences();assert(!g_hide_pax_extension && !g_list_file_details);
  g_hide_pax_extension=g_list_file_details=true;assert(save_list_preferences());g_hide_pax_extension=g_list_file_details=false;

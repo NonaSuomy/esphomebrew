@@ -15,3 +15,5 @@ Controller Up/Down reaches the new settings, A toggles them, and touch switches 
 The updated launcher and server passed 236 module tests, including network metadata, preference round trips, filename/path preservation, leap-year dates, 64-bit sizes and settings focus order. Controller and visual layout checks on hardware are tracked in workspace validation records.
 
 If the LAN changes, put the development server URL (including trailing `/`) in the SD file `roms/pax/.launcher_ui_network_url.txt`, for example `http://192.168.0.162:8000/`, then restart the launcher. This replaces the historical Ethernet default without rebuilding.
+
+With list details enabled, app names stay large on the left and file size/date appear at the right end of the same row. Long names are shortened to keep the two columns from overlapping.
