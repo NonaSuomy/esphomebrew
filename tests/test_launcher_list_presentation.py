@@ -24,9 +24,11 @@ class ListPresentationTests(unittest.TestCase):
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "list_presentation.h"
-#define SETTINGS_FOCUS_COUNT 29
+#include "list_sort.h"
+#define SETTINGS_FOCUS_COUNT 30
 #define LIST_PREF_FILE "view-preference"
 static bool g_hide_pax_extension,g_list_file_details;
+static int g_sort_mode;
 static const app_services_t *g_svc;
 static char stored[12];static int offset;static bool missing=true;
 static void *open_file(const char *path,const char *mode){assert(strcmp(path,LIST_PREF_FILE)==0);offset=0;if(mode[0]=='r' && missing)return NULL;if(mode[0]=='w'){memset(stored,0,sizeof(stored));missing=false;}return stored;}
@@ -52,7 +54,10 @@ int main(void){
  g_hide_pax_extension=g_list_file_details=true;assert(save_list_preferences());g_hide_pax_extension=g_list_file_details=false;
  load_list_preferences();assert(g_hide_pax_extension && g_list_file_details);
  g_list_file_details=false;assert(save_list_preferences());load_list_preferences();assert(g_hide_pax_extension && !g_list_file_details);
- bool seen[29]={0};int focus=18;for(int i=0;i<29;i++){assert(focus>=0 && focus<29 && !seen[focus]);seen[focus]=true;int next=settings_focus_step(focus,1);assert(settings_focus_step(next,-1)==focus);focus=next;}assert(focus==18 && seen[22] && seen[23] && seen[24] && seen[25] && seen[26] && seen[27] && seen[28]);
+ strcpy(stored,"11\n");load_list_preferences();assert(g_sort_mode==PAX_SORT_SOURCE && g_list_file_details);
+ g_sort_mode=PAX_SORT_NEWEST;assert(save_list_preferences());g_sort_mode=0;load_list_preferences();assert(g_sort_mode==PAX_SORT_NEWEST);
+ strcpy(stored,"119\n");load_list_preferences();assert(g_sort_mode==PAX_SORT_SOURCE);
+ bool seen[30]={0};int focus=18;for(int i=0;i<30;i++){assert(focus>=0 && focus<30 && !seen[focus]);seen[focus]=true;int next=settings_focus_step(focus,1);assert(settings_focus_step(next,-1)==focus);focus=next;}assert(focus==18 && seen[22] && seen[23] && seen[24] && seen[25] && seen[26] && seen[27] && seen[28] && seen[29]);
  return 0;
 }
 '''

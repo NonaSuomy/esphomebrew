@@ -57,6 +57,7 @@ class FriendlyNamesTests(unittest.TestCase):
 #include <assert.h>
 typedef struct {uint64_t size;int64_t mtime;} pax_file_stat_t;
 #include "network_file_info.h"
+#include "list_sort.h"
 #define MAX_APPS 4
 #define NAME_BYTES 64
 #define PATH_BYTES 256
@@ -69,6 +70,8 @@ static bool g_favorites_mode=false;
 static char g_search_text[128];
 static bool path_is_favorite(const char *p){(void)p;return true;}
 static int find_bytes(const char *text,int length,const char *needle){(void)length;const char *p=strstr(text,needle);return p?(int)(p-text):-1;}
+static int g_sort_mode;
+static pax_file_stat_t g_list_stats[MAX_APPS];static bool g_list_stats_valid[MAX_APPS];
 static int reads=0;
 static int read_json_file(const char *p){reads++;assert(strstr(p,".json"));if(strstr(p,"missing"))return -1;strcpy(g_remote,strstr(p,"blank")?"{\"title\":\"  \"}":"{\"title\":\"Another World\"}");return (int)strlen(g_remote);}
 static int http_fetch(const char *p,char *body,int cap){(void)body;(void)cap;return read_json_file(p);}
@@ -84,6 +87,23 @@ int main(void){
  int before=reads;load_list_title(0);assert(reads==before);
  strcpy(g_search_text,"Another World");apply_filter();assert(g_view_count==1 && g_visible_indices[0]==0);
  strcpy(g_search_text,"anotherworld.pax");apply_filter();assert(g_view_count==1 && g_visible_indices[0]==0);
+ /* Exercise the real filtered-index sort without moving canonical records. */
+ strcpy(g_search_text,"");g_app_count=4;
+ strcpy(g_names[3],"another.pax");strcpy(g_titles[3],"another world");strcpy(g_paths[3],"/usb0/another.pax");
+ g_list_stats_valid[0]=g_list_stats_valid[1]=g_list_stats_valid[2]=true;
+ g_list_stats[0].size=5368709120ULL;g_list_stats[0].mtime=100;
+ g_list_stats[1].size=1;g_list_stats[1].mtime=300;
+ g_list_stats[2].size=300;g_list_stats[2].mtime=0;
+ const int expected[7][4]={{0,1,2,3},{0,3,2,1},{1,2,0,3},{1,0,3,2},{0,1,3,2},{0,2,1,3},{1,2,0,3}};
+ for(g_sort_mode=0;g_sort_mode<PAX_SORT_COUNT;g_sort_mode++){
+  apply_filter();assert(g_view_count==4);
+  for(int i=0;i<4;i++)assert(g_visible_indices[i]==expected[g_sort_mode][i]);
+  assert(!strcmp(g_names[0],"anotherworld.pax"));assert(!strcmp(g_paths[0],"/sd/roms/pax/anotherworld.pax"));
+ }
+ g_sort_mode=PAX_SORT_NEWEST;strcpy(g_search_text,"Another World");apply_filter();assert(g_view_count==2);
+ assert(g_visible_indices[0]==0 && g_visible_indices[1]==3);
+ g_list_stats[2].mtime=-1;strcpy(g_search_text,"");apply_filter();assert(g_visible_indices[3]==2);
+ g_list_stats[2].mtime=253402300800LL;apply_filter();assert(g_visible_indices[3]==2);
  char title[64];const char *tag="<a data-pax-title-url=\"Caf%C3%A9%3A%20%22A%26B%22%20%2F%20%2B%20100%25\">";
  assert(pax_network_title(tag,strlen(tag),title,sizeof(title)));assert(!strcmp(title,"Café: \"A&B\" / + 100%"));
  const char *bad[]={"<a data-pax-title-url=''>","<a data-pax-title-url='%00'>","<a data-pax-title-url='%ZZ'>","<a data-pax-title-url='%20%20'>","<a data-pax-title-url='%0A'>","<a data-pax-title-url='abc"};
