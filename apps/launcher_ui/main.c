@@ -3774,7 +3774,7 @@ static bool save_app_details_preference(void)
 
 static void load_network_url(void)
 {
-  int length=read_json_file("/sd/roms/pax/.launcher_ui_network_url");
+  int length=read_json_file("/sd/roms/pax/.launcher_ui_network_url.txt");
   if(length<=0 || length>=PATH_BYTES)return;
   while(length>0 && (g_remote[length-1]=='\n' || g_remote[length-1]=='\r' || g_remote[length-1]==' '))g_remote[--length]=0;
   if(!has_prefix(g_remote,"http://") && !has_prefix(g_remote,"https://"))return;
