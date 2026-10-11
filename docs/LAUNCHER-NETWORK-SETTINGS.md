@@ -4,7 +4,7 @@ Open Settings with Select. The Network section contains DHCP, device IP,
 subnet, gateway and DNS; SAVE NETWORK applies those device settings. Use DHCP
 on a new Wi-Fi network unless you have an address reserved for this device.
 
-DEVELOPMENT SERVER edits the computer's PAX server URL, for example
+DEV SERVER URL edits the computer's PAX server URL, for example
 `http://192.168.0.162:8000/`. Start `pax-tools/serve-dev.sh` on that computer.
 The URL is saved on SD in `roms/pax/.launcher_ui_network_url.txt`. Use an IPv4
 address or hostname; IPv6 literals are not supported by the current client.

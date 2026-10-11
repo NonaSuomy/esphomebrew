@@ -6414,7 +6414,7 @@ static int build_ui_on_host(void *arg)
       lv_obj_set_style_text_font(g_network_value_labels[field], &lv_font_montserrat_14, LV_PART_MAIN);
       lv_obj_align(g_network_value_labels[field], LV_ALIGN_LEFT_MID, 0, 0);
     }
-    const char *extra_names[4]={"DEVELOPMENT SERVER URL","WI-FI NAME","WI-FI PASSWORD","CHANGE WI-FI"};
+    const char *extra_names[4]={"DEV SERVER URL","WI-FI NAME","WI-FI PASSWORD","CHANGE WI-FI"};
     for(int item=0;item<4;item++){
       settings_text(panel,extra_names[item],label_x,row_y[30+item],control_x-label_x-ui_px(6),font,false);
       lv_obj_t *button=settings_button(panel,25+item,control_x,row_y[30+item],control_w,ui_px(18),-62-item);
