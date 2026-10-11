@@ -53,7 +53,7 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 30
+#define SETTINGS_FOCUS_COUNT 31
 #define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
 #define LIST_LABEL_BYTES (NAME_BYTES + 120)
 #define DETAIL_ACTION_COUNT 5
@@ -119,6 +119,7 @@ static int g_theme_count, g_theme_index, g_theme_direction=1;
 static bool g_app_details_enabled = true;
 static bool g_hide_pax_extension, g_list_file_details;
 static int g_sort_mode, g_sort_direction=1;
+static int g_size_unit, g_size_direction=1;
 static pax_file_stat_t g_list_stats[MAX_APPS];
 static bool g_list_stats_valid[MAX_APPS];
 static char g_detail_file_info[PATH_BYTES + 240];
@@ -323,6 +324,7 @@ static lv_obj_t *g_app_details_switch;
 static lv_obj_t *g_list_switches[2];
 static lv_obj_t *g_theme_value_label;
 static lv_obj_t *g_sort_value_label;
+static lv_obj_t *g_size_value_label;
 static lv_obj_t *g_auto_brightness_button;
 static lv_obj_t *g_auto_brightness_state_label;
 static lv_obj_t *g_empty_label;
@@ -3907,9 +3909,10 @@ static bool save_theme(void)
 
 static void load_list_preferences(void)
 {
-  char value[12];g_hide_pax_extension=false;g_list_file_details=false;g_sort_mode=PAX_SORT_SOURCE;
+  char value[12];g_hide_pax_extension=false;g_list_file_details=false;g_sort_mode=PAX_SORT_SOURCE;g_size_unit=PAX_SIZE_BYTES;
   if(read_small_file(LIST_PREF_FILE,value,sizeof(value))){
     g_hide_pax_extension=value[0]=='1';g_list_file_details=strlen(value)>1 && value[1]=='1';
+    if(strlen(value)>3 && value[3]>='0' && value[3]<'0'+PAX_SIZE_COUNT)g_size_unit=value[3]-'0';
     if(strlen(value)>2 && value[2]>='0' && value[2]<'0'+PAX_SORT_COUNT)g_sort_mode=value[2]-'0';
   }
 }
@@ -3917,7 +3920,7 @@ static bool save_list_preferences(void)
 {
   if(!g_svc || !g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return false;
   void *file=g_svc->file_open(LIST_PREF_FILE,"w");if(!file)return false;
-  char value[4]={g_hide_pax_extension?'1':'0',g_list_file_details?'1':'0',(char)('0'+g_sort_mode),'\n'};
+  char value[5]={g_hide_pax_extension?'1':'0',g_list_file_details?'1':'0',(char)('0'+g_sort_mode),(char)('0'+g_size_unit),'\n'};
   bool saved=g_svc->file_write(value,1,sizeof(value),file)==sizeof(value);return g_svc->file_close(file)==0 && saved;
 }
 
@@ -5163,7 +5166,7 @@ static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
     18, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 25, 26, 27, 28, 17, 20, 22, 23, 29, 24, 21
+    13, 14, 15, 16, 25, 26, 27, 28, 17, 20, 22, 23, 30, 29, 24, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -5336,7 +5339,7 @@ static void update_list_row_text(int row, int index, const char *name)
   int detail_width = 0;
   if (g_list_file_details && index >= 0) {
     char text[120];
-    pax_list_details(text, sizeof(text), g_list_stats_valid[index] ? &g_list_stats[index] : NULL);
+    pax_list_details_units(text, sizeof(text), g_list_stats_valid[index] ? &g_list_stats[index] : NULL,g_size_unit);
     const lv_font_t *detail_font = g_ui_scale >= 1.5f ? &lv_font_montserrat_20 : &lv_font_montserrat_12;
     lv_obj_set_style_text_font(details, detail_font, LV_PART_MAIN);
     lv_label_set_text(details, text);
@@ -5502,6 +5505,7 @@ static int update_selection_on_host(void *arg)
     else lv_obj_clear_state(g_list_switches[option],LV_STATE_CHECKED);
     lv_obj_set_style_border_color(g_list_switches[option],lv_color_hex(g_settings_focus==22+option ? COL_ACCENT : COL_MUTED),LV_PART_MAIN);
   }
+  if(g_size_value_label)lv_label_set_text(g_size_value_label,pax_size_unit_name(g_size_unit));
   if(g_sort_value_label)lv_label_set_text(g_sort_value_label,pax_sort_name(g_sort_mode));
   if (g_auto_brightness_button != NULL) {
     style_button(g_auto_brightness_button, g_settings_focus == 2);
@@ -5833,7 +5837,7 @@ static int build_ui_on_host(void *arg)
   g_app_details_switch = NULL;
   g_list_switches[0]=g_list_switches[1]=NULL;
   g_theme_value_label=NULL;
-  g_sort_value_label=NULL;
+  g_sort_value_label=NULL;g_size_value_label=NULL;
   g_auto_brightness_button = NULL;
   g_auto_brightness_state_label = NULL;
   g_background_value_label = NULL;
@@ -6227,15 +6231,16 @@ static int build_ui_on_host(void *arg)
     const int row_gap = ui_px(4);
     const int first_row_y = ui_px(24);
     const int step_y = row_h + row_gap;
-    int row_y[35];
-    for (int row = 0; row < 35; row++) {
+    int row_y[36];
+    for (int row = 0; row < 36; row++) {
       int visual_row = row;
       if (row < 20) visual_row += 5;
       else if (row < 25) visual_row -= 20;
       if(row>=30)visual_row=24+(row-30);
       else if(visual_row>=24)visual_row+=4;
-      if(row==34)visual_row=32;
-      else if(row==28 || row==29)visual_row++;
+      if(row==35)visual_row=32;
+      else if(row==34)visual_row=33;
+      else if(row==28 || row==29)visual_row+=2;
       row_y[row] = first_row_y + step_y * visual_row;
       /* Keep the extra breathing room after the Archive S3 status even
        * though the five Storage rows now precede the network settings. */
@@ -6552,6 +6557,11 @@ static int build_ui_on_host(void *arg)
       lv_obj_add_event_cb(toggle,list_switch_event,LV_EVENT_VALUE_CHANGED,(void *)(intptr_t)option);
       g_settings_focus_widgets[22+option]=toggle;
     }
+    settings_text(panel,"FILE SIZE UNITS",label_x,row_y[35],control_x-label_x-ui_px(6),font,false);
+    lv_obj_t *size_button=settings_button(panel,30,control_x,row_y[35],control_w,ui_px(18),-68);
+    g_size_value_label=lv_label_create(size_button);lv_label_set_text(g_size_value_label,pax_size_unit_name(g_size_unit));
+    lv_obj_set_style_text_color(g_size_value_label,lv_color_hex(COL_TEXT),LV_PART_MAIN);
+    lv_obj_set_style_text_font(g_size_value_label,font,LV_PART_MAIN);lv_obj_center(g_size_value_label);
     settings_text(panel,"LIST SORT",label_x,row_y[34],control_x-label_x-ui_px(6),font,false);
     lv_obj_t *sort_button=settings_button(panel,29,control_x,row_y[34],control_w,ui_px(18),-67);
     g_sort_value_label=lv_label_create(sort_button);lv_label_set_text(g_sort_value_label,pax_sort_name(g_sort_mode));
@@ -7233,7 +7243,7 @@ static int teardown_ui_on_host(void *arg)
   g_app_details_switch = NULL;
   g_list_switches[0]=g_list_switches[1]=NULL;
   g_theme_value_label=NULL;
-  g_sort_value_label=NULL;
+  g_sort_value_label=NULL;g_size_value_label=NULL;
   g_auto_brightness_button = NULL;
   g_archive_collection_button = NULL;
   g_background_button = NULL;
@@ -7476,6 +7486,9 @@ static bool poll_controller(void)
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 20) {
       g_app_details_enabled = !g_app_details_enabled;
       g_open_index = -43;
+    }
+    if(g_settings_focus==30 && ((left && !g_pad_last[PAX_INPUT_LEFT]) || (right && !g_pad_last[PAX_INPUT_RIGHT]) || (a && !g_pad_last[PAX_INPUT_A]))){
+      g_size_direction=left ? -1 : 1;g_open_index=-68;
     }
     if(g_settings_focus==29 && ((left && !g_pad_last[PAX_INPUT_LEFT]) || (right && !g_pad_last[PAX_INPUT_RIGHT]) || (a && !g_pad_last[PAX_INPUT_A]))){
       g_sort_direction=left ? -1 : 1;g_open_index=-67;
@@ -8037,6 +8050,11 @@ int app_entry(const app_services_t *svc)
       g_theme=g_themes[g_theme_index];g_theme_direction=1;
       copy_text(g_settings_message,sizeof(g_settings_message),save_theme() ? "Theme saved; Left/Right changes theme" : "Theme applied; SD card unavailable for saving");
       g_settings_focus=24;wait_for_input_release();continue;
+    }
+    if(!detail_mode && chosen==-68){
+      g_size_unit=(g_size_unit+g_size_direction+PAX_SIZE_COUNT)%PAX_SIZE_COUNT;g_size_direction=1;
+      copy_text(g_settings_message,sizeof(g_settings_message),save_list_preferences() ? "Size units saved (KB = 1000 bytes)" : "Size units applied; SD unavailable for saving");
+      g_settings_focus=30;wait_for_input_release();continue;
     }
     if(!detail_mode && chosen==-67){
       g_sort_mode=(g_sort_mode+g_sort_direction+PAX_SORT_COUNT)%PAX_SORT_COUNT;g_sort_direction=1;
