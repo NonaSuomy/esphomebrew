@@ -107,6 +107,7 @@ static bool g_favorites_mode;
 static bool g_settings_mode;
 static bool g_keyboard_open;
 static pax_theme_profile_t g_theme;
+static char g_network_url[PATH_BYTES]="http://10.20.30.158:8000/";
 #define MAX_THEMES 20
 static pax_theme_profile_t g_themes[MAX_THEMES];
 static int g_theme_count, g_theme_index, g_theme_direction=1;
@@ -399,7 +400,7 @@ static const char *source_label(int source)
 
 static const char *source_url(int source)
 {
-  if (source == SOURCE_NETWORK) return "http://10.20.30.158:8000/";
+  if (source == SOURCE_NETWORK) return g_network_url;
   if (source == SOURCE_STORE) return "https://nonasuomy.github.io/esphomebrew/";
   return NULL;
 }
@@ -3769,6 +3770,17 @@ static bool save_app_details_preference(void)
   const char *value = g_app_details_enabled ? "1\n" : "0\n";
   const bool saved = g_svc->file_write(value, 1, 2, file) == 2;
   return g_svc->file_close(file) == 0 && saved;
+}
+
+static void load_network_url(void)
+{
+  int length=read_json_file("/sd/roms/pax/.launcher_ui_network_url");
+  if(length<=0 || length>=PATH_BYTES)return;
+  while(length>0 && (g_remote[length-1]=='\n' || g_remote[length-1]=='\r' || g_remote[length-1]==' '))g_remote[--length]=0;
+  if(!has_prefix(g_remote,"http://") && !has_prefix(g_remote,"https://"))return;
+  for(int i=0;i<length;i++)if((unsigned char)g_remote[i]<=32 || (unsigned char)g_remote[i]>126)return;
+  if(length<9 || g_remote[length-1]!='/')return;
+  copy_text(g_network_url,sizeof(g_network_url),g_remote);
 }
 
 static void load_themes(void)
@@ -7562,6 +7574,7 @@ int app_entry(const app_services_t *svc)
   g_favorites_mode = false;
   g_settings_mode = false;
   g_keyboard_open = false;
+  load_network_url();
   load_themes();
   load_app_details_preference();
   load_list_preferences();
