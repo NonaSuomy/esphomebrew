@@ -3207,7 +3207,7 @@ static bool replace_package_suffix(const char *path, char *out, size_t capacity,
   copy_text(out, capacity, path);
   size_t length = strlen(out);
   if (length < 4 || !ends_with(out, ".pax")) return false;
-  length -= 5;
+  length -= 4;
   if (length + strlen(suffix) + 1 > capacity) return false;
   memcpy(out + length, suffix, strlen(suffix) + 1);
   return true;
