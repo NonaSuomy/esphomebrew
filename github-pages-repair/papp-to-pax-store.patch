@@ -1,0 +1,298 @@
+From 869bf358571723a4d7a66b6240e918e2a256dfba Mon Sep 17 00:00:00 2001
+From: NonaSuomy <nonasuomy@live.com>
+Date: Sun, 11 Oct 2026 09:15:23 -0400
+Subject: [PATCH] Publish the GitHub Pages store as PAX with friendly titles
+
+---
+ .github/workflows/publish-store.yml | 31 +++++++++++++++++--
+ tests/test_make_catalog.py          | 41 +++++++++++++++++++++---
+ tests/test_make_listing.py          |  2 +-
+ tools/make_catalog.py               | 48 ++++++++++++++++-------------
+ 4 files changed, 94 insertions(+), 28 deletions(-)
+
+diff --git a/.github/workflows/publish-store.yml b/.github/workflows/publish-store.yml
+index 9893f1e..59c9aeb 100644
+--- a/.github/workflows/publish-store.yml
++++ b/.github/workflows/publish-store.yml
+@@ -2,8 +2,12 @@ name: Publish store
+ 
+ # After "Build PAPPs" succeeds on main: one GitHub Release per app version
+ # (tag <name>-v<version>, asset <name>-<version>.papp), then the Pages catalog
+-# the device's papp_loader catalog_url points at.
++# the device's pax_loader catalog_url points at.
+ on:
++  # Website-only repairs can reuse the latest successful build on main.
++  push:
++    branches: [main]
++    paths: ["tools/make_catalog.py", "tests/test_make_catalog.py", ".github/workflows/publish-store.yml"]
+   workflow_run:
+     workflows: [Build PAPPs]
+     types: [completed]
+@@ -26,7 +30,7 @@ concurrency:
+ 
+ jobs:
+   publish:
+-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
++    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+     runs-on: ubuntu-latest
+     environment:
+       name: github-pages
+@@ -103,6 +107,29 @@ jobs:
+       - name: Write catalog and app data
+         run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache
+ 
++      - name: Validate PAX catalog downloads and JSON sidecars
++        run: |
++          python3 - <<'EOF'
++          import hashlib, json, re
++          from pathlib import Path
++          site = Path("site")
++          apps = json.loads((site / "store.json").read_text())["apps"]
++          page = (site / "index.html").read_text()
++          links = re.findall(r'href="([^"<>]+\.pax)"', page)
++          assert apps and len(links) == len(apps), "Empty or incomplete PAX catalog"
++          assert not re.search(r'href="[^"<>]+\.papp"', page), "Legacy package links in PAX catalog"
++          for app in apps:
++              name = app["file"]
++              assert name.endswith(".pax") and name in links, name
++              package = site / name
++              assert package.stat().st_size == app["size"], name
++              assert hashlib.sha256(package.read_bytes()).hexdigest() == app["sha256"], name
++              assert json.loads(package.with_suffix(".json").read_text()) == app, name
++              if app.get("data"):
++                  assert (site / name.replace(".pax", ".files")).read_text().startswith("# pax-data 1\n"), name
++          print(f"Validated {len(apps)} PAX downloads, hashes and JSON sidecars")
++          EOF
++
+       # Provision/read the repository's Pages site before deploying the artifact.
+       # This makes a newly created release repository work without a manual
+       # first deployment from the Pages settings screen.
+diff --git a/tests/test_make_catalog.py b/tests/test_make_catalog.py
+index 2e7e47d..8dedd71 100644
+--- a/tests/test_make_catalog.py
++++ b/tests/test_make_catalog.py
+@@ -29,7 +29,7 @@ def sha(data: bytes) -> str:
+ 
+ 
+ def app(name="psram_doom", data=True) -> dict:
+-    a = {"name": name, "title": "Doom", "version": "0.1.0", "description": "d", "file": f"{name}.papp",
++    a = {"name": name, "title": "Doom", "version": "0.1.0", "description": "d", "file": f"{name}.pax",
+          "size": 40, "sha256": "ab" * 32, "abi": 1, "source": {"repo": "r", "ref": "f" * 40, "path": "p"}}
+     if data:
+         a["data"] = {
+@@ -56,6 +56,39 @@ def raw(path: str) -> str:
+ 
+ 
+ class DataTests(unittest.TestCase):
++    def test_legacy_build_artifacts_publish_as_pax_with_matching_sidecars(self):
++        with tempfile.TemporaryDirectory() as td:
++            root = Path(td); dist = root / "dist"; dist.mkdir(); out = root / "site"
++            items = [app("legacy", data=False), app("current", data=False)]
++            items[0]["file"] = "legacy.papp"
++            for item in items:
++                payload = b"ABI-1 package bytes: " + item["name"].encode()
++                item["size"] = len(payload); item["sha256"] = sha(payload)
++                (dist / item["file"]).write_bytes(payload)
++            (dist / "build.json").write_text(json.dumps({"apps": items}))
++            subprocess.run([sys.executable, str(Path(mc.__file__)), "--repo", REPO,
++                            "--dist", str(dist), "--out", str(out)], check=True, capture_output=True)
++            page = (out / "index.html").read_text()
++            self.assertIn("PAX Store", page); self.assertNotIn(".papp", page)
++            self.assertIn('data-pax-title-url="Doom"', page)
++            entries = json.loads((out / "store.json").read_text())["apps"]
++            for item in items:
++                entry = next(a for a in entries if a["name"] == item["name"])
++                name = item["name"] + "-0.1.0.pax"
++                self.assertIn(f'href="{name}"', page)
++                self.assertEqual((out / name).read_bytes(), (dist / item["file"]).read_bytes())
++                self.assertEqual(sha((out / name).read_bytes()), entry["sha256"])
++                self.assertEqual(entry["file"], name)
++                self.assertTrue(entry["url"].endswith(name))
++                self.assertEqual(json.loads((out / name.replace(".pax", ".json")).read_text()), entry)
++                self.assertTrue(entry["release_url"].endswith(".papp" if item["name"] == "legacy" else ".pax"))
++
++    def test_store_sidecar_keeps_installation_recipe(self):
++        item = app(data=False)
++        recipe = {"version": 1, "media": []}
++        item["extract"] = recipe
++        self.assertEqual(mc.store_entry(REPO, item)["extract"], recipe)
++
+     def setUp(self):
+         self.tmp = tempfile.TemporaryDirectory()
+         self.out = Path(self.tmp.name) / "site"
+@@ -67,7 +100,7 @@ class DataTests(unittest.TestCase):
+         opener = FakeOpener({raw("SDcard/roms/doom/doom1.wad"): WAD, raw("SDcard/roms/quake/id1/pak0.pak"): PAK})
+         text = mc.publish_data(REPO, app(), self.out, None, opener)
+         lines = text.splitlines()
+-        self.assertEqual(lines[0], "# papp-data 1")
++        self.assertEqual(lines[0], "# pax-data 1")
+         size, digest, target, url = lines[2].split(" ")
+         self.assertEqual((int(size), digest, target), (len(WAD), sha(WAD), "roms/doom/doom1.wad"))
+         self.assertEqual(url, "https://nonasuomy.github.io/esphomebrew/data/psram_doom/roms/doom/doom1.wad")
+@@ -115,7 +148,7 @@ class DataTests(unittest.TestCase):
+         self.assertEqual(store["psram_doom"]["data"]["list_url"], "https://nonasuomy.github.io/esphomebrew/psram_doom-0.1.0.files")
+         self.assertNotIn("data", store["psram_lvgl"])
+         page = (self.out / "index.html").read_text()
+-        self.assertNotIn(".files", page)  # the device only follows .papp links
++        self.assertNotIn(".files", page)  # the device only follows .pax links
+ 
+     def test_listing_sidecar_and_icon(self):
+         dist = Path(self.tmp.name) / "dist"
+@@ -159,7 +192,7 @@ class DataTests(unittest.TestCase):
+                                                  "url": "https://nonasuomy.github.io/esphomebrew/psram_lvgl-0.1.0-screen1.png"}])
+         self.assertEqual((self.out / "psram_lvgl-0.1.0-screen1.png").read_bytes(), mc_png(800, 480))
+         self.assertEqual(json.loads((self.out / "psram_lvgl-0.1.0.json").read_text()), entry)
+-        # Sizes for "PAPP X KB + data Y MB", also for apps without listing extras.
++        # Sizes for "PAX X KB + data Y MB", also for apps without listing extras.
+         self.assertEqual((store["psram_doom"]["size"], store["psram_doom"]["data_size"]), (40, len(WAD) + len(PAK)))
+         self.assertNotIn("icon", store["psram_doom"])
+         self.assertTrue((self.out / "psram_doom-0.1.0.json").exists())
+diff --git a/tests/test_make_listing.py b/tests/test_make_listing.py
+index 66a0cde..f6a3edd 100644
+--- a/tests/test_make_listing.py
++++ b/tests/test_make_listing.py
+@@ -83,7 +83,7 @@ class ListingTests(unittest.TestCase):
+         self.assertNotIn("url", listing["icon"])
+         self.assertEqual(listing["data_size"], len(WAD))
+         self.assertIn(f"{len(WAD)} {sha(WAD)} roms/doom/doom1.wad {PAGES}data/psram_doom/roms/doom/doom1.wad", files)
+-        self.assertTrue(files.startswith("# papp-data 1\n# doom: shareware\n"))
++        self.assertTrue(files.startswith("# pax-data 1\n# doom: shareware\n"))
+ 
+     def test_other_apps_get_a_basic_listing_and_their_own_icon(self):
+         papp = self.folder / "azip-1.2.papp"
+diff --git a/tools/make_catalog.py b/tools/make_catalog.py
+index e0b649a..f3b4fee 100644
+--- a/tools/make_catalog.py
++++ b/tools/make_catalog.py
+@@ -1,21 +1,21 @@
+ #!/usr/bin/env python3
+ """Write the store catalog (index.html + store.json) from dist/build.json.
+ 
+-The ESPHome papp_loader reads `catalog_url` as HTML: every href ending in
+-.papp becomes a button labelled with the link's file name, and relative links
+-resolve against the catalog URL. Each app's .papp is copied into the site
+-itself (e.g. lvgl-0.3.0.papp) and linked relatively, so devices download
++The ESPHome pax_loader reads `catalog_url` as HTML: every href ending in
++.pax becomes a button labelled with the link's file name, and relative links
++resolve against the catalog URL. Each app's .pax is copied into the site
++itself (e.g. lvgl-0.3.0.pax) and linked relatively, so devices download
+ from GitHub Pages. Pages uses Let's Encrypt (ISRG Root X1), which the ESP-IDF
+ certificate bundle verifies; github.com release downloads chain to Sectigo's
+ newer ECC root and fail verification on-device (seen on ESP-IDF 6.1). The
+ GitHub Release stays the versioned archive and is linked by its tag page, which
+-is not a .papp link. The loader downloads at most 64 KB of catalog, so the page
+-stays small and holds no other .papp links.
++is not a .pax link. The loader downloads at most 64 KB of catalog, so the page
++stays small and holds no other .pax links.
+ 
+-Apps that need files on the card (a game's data) list them in papp.json under
++Apps that need files on the card (a game's data) list them in pax.json under
+ "data", pinned by commit, size and sha256. Those files are downloaded, checked
+ and published under data/<app>/, and each such app gets a plain-text file list
+-next to its .papp (doom-0.2.1.papp -> doom-0.2.1.files). The
++next to its .pax (doom-0.2.1.pax -> doom-0.2.1.files). The
+ loader reads that list before launching and fetches whatever the card is
+ missing. One line per file:
+ 
+@@ -38,7 +38,7 @@ import urllib.request
+ from pathlib import Path
+ 
+ MAX_CATALOG_BYTES = 64 * 1024
+-DATA_LIST_HEADER = "# papp-data 1"
++DATA_LIST_HEADER = "# pax-data 1"
+ 
+ 
+ def release_tag(app: dict) -> str:
+@@ -46,12 +46,16 @@ def release_tag(app: dict) -> str:
+ 
+ 
+ def asset_name(app: dict) -> str:
+-    return f"{app['name']}-{app['version']}.papp"
++    return f"{app['name']}-{app['version']}.pax"
+ 
+ 
+ def asset_url(repo: str, app: dict) -> str:
+     """Archived copy on the GitHub Release."""
+-    return f"https://github.com/{repo}/releases/download/{release_tag(app)}/{asset_name(app)}"
++    # Previously released versions retain their original asset extension. Pages
++    # publishes the same ABI-1 bytes as .pax; do not invent a missing release asset.
++    suffix = ".papp" if Path(app.get("file", "")).suffix == ".papp" else ".pax"
++    archived = f"{app['name']}-{app['version']}{suffix}"
++    return f"https://github.com/{repo}/releases/download/{release_tag(app)}/{archived}"
+ 
+ 
+ def pages_base(repo: str) -> str:
+@@ -65,7 +69,7 @@ def pages_url(repo: str, app: dict) -> str:
+ 
+ 
+ def data_list_name(app: dict) -> str:
+-    """The app's data file list; the loader finds it by swapping .papp for .files."""
++    """The app's data file list; the loader finds it by swapping .pax for .files."""
+     return f"{app['name']}-{app['version']}.files"
+ 
+ 
+@@ -134,7 +138,7 @@ def release_page(repo: str, app: dict) -> str:
+ 
+ 
+ def sidecar_name(app: dict) -> str:
+-    """The app's listing as JSON; the loader finds it by swapping .papp for .json."""
++    """The app's listing as JSON; the loader finds it by swapping .pax for .json."""
+     return f"{app['name']}-{app['version']}.json"
+ 
+ 
+@@ -147,12 +151,12 @@ def screenshot_name(app: dict, index: int) -> str:
+ 
+ 
+ LISTING_FIELDS = ("author", "category", "license", "about", "changelog", "controls", "upstream", "canvas",
+-                  "canvas_recommended")
++                  "canvas_recommended", "extract")
+ 
+ 
+ def requires_list(app: dict) -> list[dict]:
+     """What the app needs on the card, for the store's tick-or-cross check: its
+-    "requires" from papp.json, then each data file the store downloads for it
++    "requires" from pax.json, then each data file the store downloads for it
+     (as /sd/<target>, marked "download")."""
+     required = list(app.get("requires", []))
+     for f in app.get("data", {}).get("files", []):
+@@ -203,7 +207,7 @@ def render(repo: str, apps: list[dict]) -> str:
+         icon = (f'<img src="{html.escape(icon_name(app))}" width="32" height="32" alt=""> '
+                 if app.get("icon") else "")
+         rows.append(
+-            f'<li>{icon}<a href="{html.escape(asset_name(app))}">{html.escape(asset_name(app))}</a>'
++            f'<li>{icon}<a href="{html.escape(asset_name(app))}" data-pax-title-url="{urllib.parse.quote(app["title"], safe="")}">{html.escape(asset_name(app))}</a>'
+             f" {html.escape(app['title'])} &middot; {app['size'] // 1024} KB"
+             + (f" + {data_size(app) / 1e6:.1f} MB data" if app.get("data") else "")
+             + f" &middot; <code>{app['sha256'][:12]}</code>"
+@@ -212,11 +216,11 @@ def render(repo: str, apps: list[dict]) -> str:
+             + "</li>"
+         )
+     return (
+-        "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>PAPP Store</title>"
++        "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>PAX Store</title>"
+         "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>\n"
+-        f"<body><h1>PAPP Store</h1><p>Apps for the ESP32-P4 from "
++        f"<body><h1>PAX Store</h1><p>Apps for the ESP32-P4 from "
+         f"<a href=\"https://github.com/{html.escape(repo)}\">{html.escape(repo)}</a>. "
+-        "Point the ESPHome <code>papp_loader</code> <code>catalog_url</code> at this page.</p>\n"
++        "Point the ESPHome <code>pax_loader</code> <code>catalog_url</code> at this page.</p>\n"
+         "<ul>\n" + "\n".join(rows) + "\n</ul>\n"
+         "<p><a href=\"store.json\">store.json</a></p></body></html>\n"
+     )
+@@ -240,9 +244,11 @@ def main() -> int:
+     store = {"apps": [store_entry(args.repo, a) for a in sorted(apps, key=lambda a: a["name"])]}
+     args.out.mkdir(parents=True, exist_ok=True)
+     for a, entry in zip(sorted(apps, key=lambda a: a["name"]), store["apps"]):
++        # Build manifests may still refer to .papp artifacts during migration.
++        # ABI-1 bytes and checksums are unchanged; only the public filename changes.
+         shutil.copyfile(args.dist / a["file"], args.out / asset_name(a))
+-        # The app's full listing next to its .papp (swap .papp for .json), so a
+-        # device reading the HTML catalog, or a folder of .papp files, can show it.
++        # The app's full listing next to its .pax (swap .pax for .json), so a
++        # device reading the HTML catalog, or a folder of .pax files, can show it.
+         (args.out / sidecar_name(a)).write_text(json.dumps(entry, indent=2) + "\n")
+         if a.get("icon"):
+             (args.out / icon_name(a)).write_bytes(base64.b64decode(a["icon"]["base64"]))
+-- 
+2.55.0
+

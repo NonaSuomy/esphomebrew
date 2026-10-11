@@ -56,6 +56,33 @@ def raw(path: str) -> str:
 
 
 class DataTests(unittest.TestCase):
+    def test_legacy_build_artifacts_publish_as_pax_with_matching_sidecars(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td); dist = root / "dist"; dist.mkdir(); out = root / "site"
+            items = [app("legacy", data=False), app("current", data=False)]
+            items[0]["file"] = "legacy.papp"
+            for item in items:
+                payload = b"ABI-1 package bytes: " + item["name"].encode()
+                item["size"] = len(payload); item["sha256"] = sha(payload)
+                (dist / item["file"]).write_bytes(payload)
+            (dist / "build.json").write_text(json.dumps({"apps": items}))
+            subprocess.run([sys.executable, str(Path(mc.__file__)), "--repo", REPO,
+                            "--dist", str(dist), "--out", str(out)], check=True, capture_output=True)
+            page = (out / "index.html").read_text()
+            self.assertIn("PAX Store", page); self.assertNotIn(".papp", page)
+            self.assertIn('data-pax-title-url="Doom"', page)
+            entries = json.loads((out / "store.json").read_text())["apps"]
+            for item in items:
+                entry = next(a for a in entries if a["name"] == item["name"])
+                name = item["name"] + "-0.1.0.pax"
+                self.assertIn(f'href="{name}"', page)
+                self.assertEqual((out / name).read_bytes(), (dist / item["file"]).read_bytes())
+                self.assertEqual(sha((out / name).read_bytes()), entry["sha256"])
+                self.assertEqual(entry["file"], name)
+                self.assertTrue(entry["url"].endswith(name))
+                self.assertEqual(json.loads((out / name.replace(".pax", ".json")).read_text()), entry)
+                self.assertTrue(entry["release_url"].endswith(".papp" if item["name"] == "legacy" else ".pax"))
+
     def test_store_sidecar_keeps_installation_recipe(self):
         item = app(data=False)
         recipe = {"version": 1, "media": []}

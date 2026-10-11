@@ -51,7 +51,11 @@ def asset_name(app: dict) -> str:
 
 def asset_url(repo: str, app: dict) -> str:
     """Archived copy on the GitHub Release."""
-    return f"https://github.com/{repo}/releases/download/{release_tag(app)}/{asset_name(app)}"
+    # Previously released versions retain their original asset extension. Pages
+    # publishes the same ABI-1 bytes as .pax; do not invent a missing release asset.
+    suffix = ".papp" if Path(app.get("file", "")).suffix == ".papp" else ".pax"
+    archived = f"{app['name']}-{app['version']}{suffix}"
+    return f"https://github.com/{repo}/releases/download/{release_tag(app)}/{archived}"
 
 
 def pages_base(repo: str) -> str:
@@ -240,6 +244,8 @@ def main() -> int:
     store = {"apps": [store_entry(args.repo, a) for a in sorted(apps, key=lambda a: a["name"])]}
     args.out.mkdir(parents=True, exist_ok=True)
     for a, entry in zip(sorted(apps, key=lambda a: a["name"]), store["apps"]):
+        # Build manifests may still refer to .papp artifacts during migration.
+        # ABI-1 bytes and checksums are unchanged; only the public filename changes.
         shutil.copyfile(args.dist / a["file"], args.out / asset_name(a))
         # The app's full listing next to its .pax (swap .pax for .json), so a
         # device reading the HTML catalog, or a folder of .pax files, can show it.
