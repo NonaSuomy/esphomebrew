@@ -1,51 +1,61 @@
 {
   "built_at": "2026-10-11",
   "repositories": {
-    "pax-esphome": "27f2394c0582f5dd11ce5dbb7799369bb8527263",
+    "pax-esphome": "8f4eeeba71c3c7a04214c8b803d0b3bc41d7a019",
     "pax-esphome/dependencies/esphome": "9723f3615861744ad311bfd5a5577256b6ccfb04",
-    "pax-tools": "7b39428a9c0bf927f207d4f0c7eae0c9a5ab560d",
-    "pax-modules": "f0da41d9df83d9cd6fcfe0159ddbfd61a1345a47"
+    "pax-tools": "00a9deceb0785bf9c19fde7cda92bf7b4dde766e",
+    "pax-modules": "1a5d33201ecffeb825a30ff591e32412d39ecae6"
   },
   "firmware": [
     {
       "board": "waveshare7b",
       "yaml": "esp32-p4-waveshare-7b-pax-web.yaml",
-      "bytes": 1995104,
-      "sha256": "3895fb70efbb94125b008f781ac0f21a2a9f4be3b42d6d8e391ad143f3b77d4e",
+      "bytes": 2013856,
+      "sha256": "a835535b3873221148bb03962940eb0638fcc7e3856675829fbfbc71768cb0be",
       "hardware_tested": false,
-      "chip_revision": "rev3"
+      "chip_revision": "rev3",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false
     },
     {
       "board": "elecrow",
       "yaml": "esp32-p4-elecrow-pax-web.yaml",
-      "bytes": 2032480,
-      "sha256": "92b023c17d462a0d3fd2c77d5be4ca70adb8e59811478701dbfb7e743f696d44",
+      "bytes": 2051360,
+      "sha256": "2a694b3f7c086b9f15cc82e8f59e5cf594203a4fa94964021792ce205b1c2e9c",
       "hardware_tested": false,
-      "chip_revision": "rev0/1"
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": true
     },
     {
       "board": "waveshare",
       "yaml": "esp32-p4-waveshare-pax-web.yaml",
-      "bytes": 2005824,
-      "sha256": "14a8d0b93446f5528385a102cc3d8ea4f65a48305dc5461d073d5d3290d1c491",
+      "bytes": 2024576,
+      "sha256": "b787c574f62de415f39f21800bb72e780456c9f8c31201b82e578321edbd8cf1",
       "hardware_tested": false,
-      "chip_revision": "rev0/1"
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false
     },
     {
       "board": "nano720",
       "yaml": "esp32-p4-nano-pax-3button.yaml",
-      "bytes": 1757008,
-      "sha256": "eced81e4a1da40990e75dd3e355f204893cc76a1d61c5c4f818451c38b3c5904",
+      "bytes": 1792256,
+      "sha256": "34881ecad81cd74fc9eb0a59d8a605ac797c2ddee3d87924086ddf9694f7f91d",
       "hardware_tested": false,
-      "chip_revision": "rev0/1"
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false
     },
     {
       "board": "nano1080",
       "yaml": "esp32-p4-nano-pax-hdmi1080.yaml",
-      "bytes": 1757136,
-      "sha256": "f48d9a4fced67d6b4bba4e990c839bc12e3ff5552a0c405a0d7627a1281a1269",
+      "bytes": 1792368,
+      "sha256": "ec9db3ef2143e22768f89b8eba1ef52805e5712b8676eea3ac9146bbfa51e6da",
       "hardware_tested": false,
-      "chip_revision": "rev0/1"
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false
     }
   ]
 }
