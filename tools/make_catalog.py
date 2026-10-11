@@ -202,6 +202,9 @@ def store_entry(repo: str, a: dict) -> dict:
 
 
 def render(repo: str, apps: list[dict]) -> str:
+    # Version the script so an older browser cache cannot keep old install behavior.
+    script = Path(__file__).resolve().parent.parent / "web-store" / "store-install.js"
+    script_version = hashlib.sha256(script.read_bytes()).hexdigest()[:12]
     rows = []
     for app in sorted(apps, key=lambda a: a["name"]):
         # Keep icons external and exactly one PAX link per app for the loader.
@@ -228,7 +231,7 @@ def render(repo: str, apps: list[dict]) -> str:
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         '<meta name="theme-color" content="#061326">'
         '<meta name="description" content="Games, emulators and apps for your PAX device. Download apps or install firmware for your ESP32-P4 board.">'
-        f'<style>{styles}</style><script defer src="store-install.js"></script></head>\n<body>'
+        f'<style>{styles}</style><script defer src="store-install.js?v={script_version}"></script></head>\n<body>'
         '<header><div class="header-inner"><a class="brand" href="./">PAX / ESPHOMEBREW</a>'
         '<nav aria-label="Main navigation"><a href="install/">Install firmware</a>'
         f'<a href="https://github.com/{html.escape(repo)}">GitHub</a></nav></div></header>'
