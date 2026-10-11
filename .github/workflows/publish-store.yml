@@ -2,8 +2,12 @@ name: Publish store
 
 # After "Build PAPPs" succeeds on main: one GitHub Release per app version
 # (tag <name>-v<version>, asset <name>-<version>.papp), then the Pages catalog
-# the device's papp_loader catalog_url points at.
+# the device's pax_loader catalog_url points at.
 on:
+  # Website-only repairs can reuse the latest successful build on main.
+  push:
+    branches: [main]
+    paths: ["tools/make_catalog.py", "tests/test_make_catalog.py", ".github/workflows/publish-store.yml"]
   workflow_run:
     workflows: [Build PAPPs]
     types: [completed]
@@ -26,7 +30,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -102,6 +106,29 @@ jobs:
 
       - name: Write catalog and app data
         run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache
+
+      - name: Validate PAX catalog downloads and JSON sidecars
+        run: |
+          python3 - <<'EOF'
+          import hashlib, json, re
+          from pathlib import Path
+          site = Path("site")
+          apps = json.loads((site / "store.json").read_text())["apps"]
+          page = (site / "index.html").read_text()
+          links = re.findall(r'href="([^"<>]+\.pax)"', page)
+          assert apps and len(links) == len(apps), "Empty or incomplete PAX catalog"
+          assert not re.search(r'href="[^"<>]+\.papp"', page), "Legacy package links in PAX catalog"
+          for app in apps:
+              name = app["file"]
+              assert name.endswith(".pax") and name in links, name
+              package = site / name
+              assert package.stat().st_size == app["size"], name
+              assert hashlib.sha256(package.read_bytes()).hexdigest() == app["sha256"], name
+              assert json.loads(package.with_suffix(".json").read_text()) == app, name
+              if app.get("data"):
+                  assert (site / name.replace(".pax", ".files")).read_text().startswith("# pax-data 1\n"), name
+          print(f"Validated {len(apps)} PAX downloads, hashes and JSON sidecars")
+          EOF
 
       # Provision/read the repository's Pages site before deploying the artifact.
       # This makes a newly created release repository work without a manual

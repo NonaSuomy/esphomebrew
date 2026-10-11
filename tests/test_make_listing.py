@@ -83,7 +83,7 @@ class ListingTests(unittest.TestCase):
         self.assertNotIn("url", listing["icon"])
         self.assertEqual(listing["data_size"], len(WAD))
         self.assertIn(f"{len(WAD)} {sha(WAD)} roms/doom/doom1.wad {PAGES}data/psram_doom/roms/doom/doom1.wad", files)
-        self.assertTrue(files.startswith("# papp-data 1\n# doom: shareware\n"))
+        self.assertTrue(files.startswith("# pax-data 1\n# doom: shareware\n"))
 
     def test_other_apps_get_a_basic_listing_and_their_own_icon(self):
         papp = self.folder / "azip-1.2.papp"
