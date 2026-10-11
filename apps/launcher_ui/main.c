@@ -1,3 +1,4 @@
+#include "rom_profiles.h"
 /*
  * launcher_ui — phase 2 LVGL PAX.
  *
@@ -244,6 +245,7 @@ static detail_file_t g_detail_files[MAX_DETAIL_FILES];
 static int g_detail_file_count;
 static extract_recipe_t g_detail_extract_recipe;
 static int g_detail_action_count = DETAIL_ACTIONS_DEFAULT;
+static const pax_rom_profile_t *g_rom_picker_profile;
 static bool g_rom_picker_active;
 static bool g_rom_picker_rom_selected;
 static int g_rom_picker_count;
@@ -4248,26 +4250,13 @@ static int update_rom_picker_on_host(void *unused)
   }
   if (g_rom_picker_status != NULL) {
     if (g_rom_picker_count == 0)
-      lv_label_set_text(g_rom_picker_status, "No .nes or .zip games found in the NES ROM folders.");
+      lv_label_set_text_fmt(g_rom_picker_status, "No games found in roms/%s/ on SD or USB. Formats: %s ZIP",
+                            g_rom_picker_profile->id, g_rom_picker_profile->extensions);
     else
       lv_label_set_text_fmt(g_rom_picker_status, "%d game%s  |  A SELECT  |  B BACK",
                             g_rom_picker_count, g_rom_picker_count == 1 ? "" : "s");
   }
   return 0;
-}
-
-static bool rom_picker_path_is_nes_app(const char *path)
-{
-  if (path == NULL) return false;
-  const char *base = path;
-  for (const char *p = path; *p != '\0'; p++) if (*p == '/') base = p + 1;
-  char app[NAME_BYTES];
-  copy_text(app, sizeof(app), base);
-  if (!extract_ends_with_ci(app, ".pax")) return false;
-  app[strlen(app) - 5] = '\0';
-  for (char *p = app; *p != '\0'; p++)
-    if (*p >= 'A' && *p <= 'Z') *p = (char)(*p + ('a' - 'A'));
-  return strcmp(app, "nes") == 0 || strncmp(app, "nes-", 4) == 0;
 }
 
 static void rom_picker_add_folder(const char *folder, const char *storage_tag)
@@ -4278,7 +4267,7 @@ static void rom_picker_add_folder(const char *folder, const char *storage_tag)
   const int entry_count = g_svc->file_list_dir(folder, g_listing, sizeof(g_listing));
   if (entry_count < 0) {
     if (g_svc->log_printf != NULL)
-      g_svc->log_printf("launcher_ui: NES ROM folder unavailable: %s\n", folder);
+      g_svc->log_printf("launcher_ui: ROM folder unavailable: %s\n", folder);
     return;
   }
   const int count_before = g_rom_picker_count;
@@ -4291,34 +4280,49 @@ static void rom_picker_add_folder(const char *folder, const char *storage_tag)
     if (cursor + (int)length >= (int)sizeof(g_listing)) break;
     cursor += (int)length + 1;
     if (length == 0 || name[length - 1] == '/' ||
-        (!extract_ends_with_ci(name, ".nes") && !extract_ends_with_ci(name, ".zip"))) continue;
+        !pax_rom_profile_accepts(g_rom_picker_profile, name)) continue;
 
+    if (strlen(folder) + length >= PATH_BYTES || length + strlen(storage_tag) >= NAME_BYTES) continue;
+    char path[PATH_BYTES];
+    copy_text(path, sizeof(path), folder);
+    append_text(path, sizeof(path), name);
     bool duplicate = false;
     for (int i = 0; i < g_rom_picker_count; i++)
-      if (strcmp(g_rom_picker_names[i], name) == 0 &&
-          strcmp(g_rom_picker_paths[i], folder) == 0) duplicate = true;
+      if (strcmp(g_rom_picker_paths[i], path) == 0) duplicate = true;
     if (duplicate) continue;
-
     const int index = g_rom_picker_count++;
-    copy_text(g_rom_picker_paths[index], sizeof(g_rom_picker_paths[index]), folder);
-    append_text(g_rom_picker_paths[index], sizeof(g_rom_picker_paths[index]), name);
+    copy_text(g_rom_picker_paths[index], sizeof(g_rom_picker_paths[index]), path);
     copy_text(g_rom_picker_names[index], sizeof(g_rom_picker_names[index]), storage_tag);
     append_text(g_rom_picker_names[index], sizeof(g_rom_picker_names[index]), name);
   }
   if (g_svc->log_printf != NULL)
-    g_svc->log_printf("launcher_ui: NES ROM folder %s entries=%d supported=%d\n",
+    g_svc->log_printf("launcher_ui: ROM folder %s entries=%d supported=%d\n",
                       folder, entry_count, g_rom_picker_count - count_before);
 }
 
-static void rom_picker_load_games(void)
+static void rom_picker_load_games(const char *app_path)
 {
   g_rom_picker_count = 0;
   g_rom_picker_selected = 0;
   g_rom_picker_first = 0;
   g_rom_picker_rows_shown = ROM_PICKER_VISIBLE_ROWS;
   g_rom_picker_rom_selected = false;
-  rom_picker_add_folder("/sd/roms/nes/", "SD  ");
-  rom_picker_add_folder("/usb0/roms/nes/", "USB ");
+  g_rom_picker_profile = pax_rom_profile_for_app(app_path);
+  if (g_rom_picker_profile == NULL) return;
+  char folder[PATH_BYTES];
+  copy_text(folder, sizeof(folder), "/sd/roms/");
+  append_text(folder, sizeof(folder), g_rom_picker_profile->id);
+  append_text(folder, sizeof(folder), "/");
+  rom_picker_add_folder(folder, "SD  ");
+  copy_text(folder, sizeof(folder), "/usb0/roms/");
+  append_text(folder, sizeof(folder), g_rom_picker_profile->id);
+  append_text(folder, sizeof(folder), "/");
+  rom_picker_add_folder(folder, "USB ");
+  /* NES Plus also uses the shared NES collection and its disk BIOS. */
+  if (strcmp(g_rom_picker_profile->id, "nesplus") == 0) {
+    rom_picker_add_folder("/sd/roms/nes/", "SD  ");
+    rom_picker_add_folder("/usb0/roms/nes/", "USB ");
+  }
 }
 
 static bool rom_picker_set_selected_game(void)
@@ -4327,7 +4331,8 @@ static bool rom_picker_set_selected_game(void)
     return false;
   char launch_path[PATH_BYTES];
   copy_text(launch_path, sizeof(launch_path), g_rom_picker_paths[g_rom_picker_selected]);
-  if (extract_ends_with_ci(launch_path, ".zip")) {
+  if (extract_ends_with_ci(launch_path, ".zip") &&
+      strstr(g_rom_picker_profile->extensions, ".zip|") == NULL) {
     if (g_svc->file_zip_extract_first == NULL) {
       copy_text(g_install_status, sizeof(g_install_status), "ZIP extraction is not available in this firmware.");
       return false;
@@ -4336,24 +4341,31 @@ static bool rom_picker_set_selected_game(void)
     for (const unsigned char *p = (const unsigned char *)launch_path; *p != '\0'; p++)
       hash = (hash ^ *p) * 16777619U;
     static const char hex[] = "0123456789abcdef";
-    char cache_stem[13] = "nes_00000000";
+    char cache_stem[64];
+    copy_text(cache_stem, sizeof(cache_stem), g_rom_picker_profile->id);
+    append_text(cache_stem, sizeof(cache_stem), "_00000000");
+    const size_t hash_start = strlen(cache_stem) - 8;
     char extracted[PATH_BYTES];
     for (int digit = 0; digit < 8; digit++)
-      cache_stem[4 + digit] = hex[(hash >> (28 - digit * 4)) & 0x0fU];
-    if (g_svc->file_zip_extract_first(launch_path, ".nes|", "/sd/roms/pax/.zipcache",
+      cache_stem[hash_start + digit] = hex[(hash >> (28 - digit * 4)) & 0x0fU];
+    if (g_svc->file_zip_extract_first(launch_path, g_rom_picker_profile->extensions, "/sd/roms/pax/.zipcache",
                                      cache_stem, extracted, sizeof(extracted)) != 0) {
-      copy_text(g_install_status, sizeof(g_install_status), "Could not extract a .nes ROM from that ZIP.");
+      copy_text(g_install_status, sizeof(g_install_status), "No compatible ROM could be extracted from that ZIP.");
       return false;
     }
     copy_text(launch_path, sizeof(launch_path), extracted);
   }
   if (g_svc->settings_rom_path_set == NULL) {
-    copy_text(g_install_status, sizeof(g_install_status), "This firmware cannot save the NES ROM selection.");
+    copy_text(g_install_status, sizeof(g_install_status), "This firmware cannot save the ROM selection.");
     return false;
   }
   g_svc->settings_rom_path_set(launch_path);
   if (g_svc->file_open != NULL && g_svc->file_write != NULL && g_svc->file_close != NULL) {
-    void *sidecar = g_svc->file_open("/sd/roms/pax/nes.rom", "wb");
+    char config_path[PATH_BYTES];
+    copy_text(config_path, sizeof(config_path), "/sd/roms/pax/");
+    append_text(config_path, sizeof(config_path), g_rom_picker_profile->id);
+    append_text(config_path, sizeof(config_path), ".rom");
+    void *sidecar = g_svc->file_open(config_path, "wb");
     if (sidecar != NULL) {
       const size_t length = strlen(launch_path);
       (void)g_svc->file_write(launch_path, 1, length, sidecar);
@@ -4362,7 +4374,7 @@ static bool rom_picker_set_selected_game(void)
     }
   }
   g_rom_picker_rom_selected = true;
-  g_svc->log_printf("launcher_ui: selected NES ROM %s\n", launch_path);
+  g_svc->log_printf("launcher_ui: selected ROM %s\n", launch_path);
   return true;
 }
 
@@ -4390,7 +4402,7 @@ static int build_rom_picker_overlay(lv_obj_t *screen)
   lv_obj_clear_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
 
   lv_obj_t *title = lv_label_create(panel);
-  lv_label_set_text(title, "SELECT NES GAME");
+  lv_label_set_text_fmt(title, "SELECT GAME: %s", g_rom_picker_profile->title);
   lv_obj_set_style_text_color(title, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
   lv_obj_set_style_text_font(title, ui_font(), LV_PART_MAIN);
   lv_obj_align(title, LV_ALIGN_TOP_MID, 0, ui_px(5));
@@ -8030,11 +8042,11 @@ int app_entry(const app_services_t *svc)
     }
     if (detail_mode && chosen == 0) {
       if (g_detail_index >= 0 && g_detail_index < g_app_count &&
-          rom_picker_path_is_nes_app(g_paths[g_detail_index])) {
-        rom_picker_load_games();
+          pax_rom_profile_for_app(g_paths[g_detail_index]) != NULL) {
+        rom_picker_load_games(g_paths[g_detail_index]);
         g_rom_picker_app_index = g_detail_index;
         g_rom_picker_active = true;
-        svc->log_printf("launcher_ui: opening NES ROM picker (%d local games)\n",
+        svc->log_printf("launcher_ui: opening ROM picker (%d local games)\n",
                         g_rom_picker_count);
         wait_for_input_release();
         continue;
@@ -8046,11 +8058,11 @@ int app_entry(const app_services_t *svc)
     }
     if (!detail_mode && !g_rom_picker_active && !g_rom_picker_rom_selected &&
         chosen >= 0 && chosen < g_app_count &&
-        rom_picker_path_is_nes_app(g_paths[chosen])) {
-      rom_picker_load_games();
+        pax_rom_profile_for_app(g_paths[chosen]) != NULL) {
+      rom_picker_load_games(g_paths[chosen]);
       g_rom_picker_app_index = chosen;
       g_rom_picker_active = true;
-      svc->log_printf("launcher_ui: opening NES ROM picker (%d local games)\n",
+      svc->log_printf("launcher_ui: opening ROM picker (%d local games)\n",
                       g_rom_picker_count);
       wait_for_input_release();
       continue;
