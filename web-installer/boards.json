@@ -4,7 +4,7 @@
     "title": "Elecrow AIO",
     "subtitle": "7-inch touchscreen \u00b7 Wi-Fi",
     "photo": "https://media-cdn.elecrow.com/media/webp_image/catalog/product/cache/b6b9577937e6a96f50e53ddc42983628/a/l/all-in-one_starter_kit_for_esp32-p4.webp",
-    "status": "Hardware available \u00b7 public build awaiting test",
+    "status": "SD transfers tested \u00b7 public display check pending",
     "experimental": true,
     "note": "Select the Elecrow All-in-one Starter Kit. Set up Wi-Fi over serial after installation. Chip revision: 0/1; production rev3 needs a separate build.",
     "profiles": [
