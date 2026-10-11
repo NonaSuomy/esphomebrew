@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import html
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import io
+import json
 import os
 from pathlib import Path
 import urllib.parse
@@ -40,6 +41,16 @@ class PaxRequestHandler(SimpleHTTPRequestHandler):
             if full.is_file():
                 mtime=max(0,int(stat.st_mtime))
                 metadata=f' data-pax-size="{stat.st_size}" data-pax-mtime="{mtime}"'
+                if full.suffix == '.pax':
+                    try:
+                        sidecar = full.with_suffix('.json')
+                        if sidecar.stat().st_size <= 204800:
+                            info = json.loads(sidecar.read_text(encoding='utf-8'))
+                            app_title = info.get('title') if isinstance(info, dict) else None
+                            if isinstance(app_title, str) and app_title.strip() and len(app_title.encode('utf-8')) < 64 and not any(ord(c) < 32 or ord(c) == 127 for c in app_title):
+                                metadata += f' data-pax-title-url="{urllib.parse.quote(app_title, safe="")}"'
+                    except (OSError, UnicodeError, ValueError):
+                        pass  # Missing/broken metadata leaves the filename usable.
                 try:date=datetime.fromtimestamp(mtime,timezone.utc).strftime('%Y-%m-%d %H:%M UTC') if mtime else 'date unavailable'
                 except (ValueError,OverflowError,OSError):date='date unavailable'
                 detail=f' — {stat.st_size} bytes | {date}'

@@ -203,7 +203,7 @@ def render(repo: str, apps: list[dict]) -> str:
         icon = (f'<img src="{html.escape(icon_name(app))}" width="32" height="32" alt=""> '
                 if app.get("icon") else "")
         rows.append(
-            f'<li>{icon}<a href="{html.escape(asset_name(app))}">{html.escape(asset_name(app))}</a>'
+            f'<li>{icon}<a href="{html.escape(asset_name(app))}" data-pax-title-url="{urllib.parse.quote(app["title"], safe="")}">{html.escape(asset_name(app))}</a>'
             f" {html.escape(app['title'])} &middot; {app['size'] // 1024} KB"
             + (f" + {data_size(app) / 1e6:.1f} MB data" if app.get("data") else "")
             + f" &middot; <code>{app['sha256'][:12]}</code>"

@@ -8,13 +8,13 @@ File details in list shows the package size in bytes and its modified date/time 
 
 The app details page now includes the full file path, actual local size and modified date, even when the app has no JSON sidecar. Remote entries with an installed copy also show the installed path. Existing version, description, controls and required-data details remain available. Enable **APP DETAILS ON SELECT** to open this page when selecting an app.
 
-The Network list shows package filenames and file details. Selecting an app reads its matching JSON sidecar for title, version, description, controls and installation information. The entire basename must match: `gb.pax` uses `gb.json`, including when stored in a nested folder.
+SD, USB, Network, Store and favorites lists use each matching JSON sidecar’s `title` as the friendly app name, for example `anotherworld.pax` displays **Another World**. Search matches both this title and the original filename/path. Missing or blank titles fall back to the filename; the hide-extension option applies to that fallback only. Titles never rename downloads or installed files. The development server and generated Store HTML include URL-encoded `data-pax-title-url` metadata so all titles arrive in one directory request. Older/custom servers and saved favorites fall back to fetching matching JSON sidecars. Selecting an app reads its matching JSON sidecar for title, version, description, controls and installation information. The entire basename must match: `gb.pax` uses `gb.json`, including when stored in a nested folder.
 
 The file system provides modified time only. Zero, negative or out-of-range timestamps display “Unavailable”; no creation date is invented. Dates are formatted as `YYYY-MM-DD HH:MM UTC`. The system’s reported storage timestamps determine their accuracy.
 
 Controller Up/Down reaches the new settings, A toggles them, and touch switches work too. Empty-list toolbar navigation remains available.
 
-The updated launcher and server passed 236 module tests, including network metadata, preference round trips, filename/path preservation, leap-year dates, 64-bit sizes and settings focus order. Controller and visual layout checks on hardware are tracked in workspace validation records.
+The updated launcher and server passed 245 module tests, including network metadata, preference round trips, filename/path preservation, leap-year dates, 64-bit sizes and settings focus order. Controller and visual layout checks on hardware are tracked in workspace validation records.
 
 If the LAN changes, put the development server URL (including trailing `/`) in the SD file `roms/pax/.launcher_ui_network_url.txt`, for example `http://192.168.0.162:8000/`, then restart the launcher. This replaces the historical Ethernet default without rebuilding.
 

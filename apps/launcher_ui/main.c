@@ -99,6 +99,8 @@ static uint16_t *g_canvas;
  * back to app_open() without relying on a service-allocated pointer being
  * visible in both address spaces. */
 static char g_names[MAX_APPS][NAME_BYTES];
+/* Display titles never replace the canonical package names or paths. */
+static char g_titles[MAX_APPS][NAME_BYTES];
 static char g_paths[MAX_APPS][PATH_BYTES];
 static int g_item_source[MAX_APPS];
 static int g_visible_indices[MAX_APPS];
@@ -1008,8 +1010,10 @@ static int parse_pax_links(const char *html, int length,
         }
         int tag_start=start-6;while(tag_start>0 && html[tag_start]!='<')tag_start--;
         int tag_end=end;while(tag_end<length && html[tag_end]!='>')tag_end++;
-        if(tag_end<length)
+        if(tag_end<length) {
           g_list_stats_valid[count]=pax_network_file_info(html+tag_start,(size_t)(tag_end-tag_start+1),&g_list_stats[count]);
+          (void)pax_network_title(html+tag_start,(size_t)(tag_end-tag_start+1),g_titles[count],NAME_BYTES);
+        }
         count++;
       }
     }
@@ -3426,7 +3430,7 @@ static bool fetch_app_detail(int index)
   copy_text(g_detail_name, sizeof(g_detail_name), base);
   if (ends_with(g_detail_name, ".pax")) g_detail_name[strlen(g_detail_name) - 4] = '\0';
   copy_text(g_detail_title, sizeof(g_detail_title), display_name_for(index));
-  if (ends_with(g_detail_title, ".pax")) g_detail_title[strlen(g_detail_title) - 4] = '\0';
+  if (!g_titles[index][0] && ends_with(g_detail_title, ".pax")) g_detail_title[strlen(g_detail_title) - 4] = '\0';
 
   if (g_detail_is_remote) {
     g_detail_is_installed = detail_package_present(g_detail_name, g_detail_local_path,
@@ -3549,6 +3553,7 @@ static const char *detail_action_text(int action)
 static const char *display_name_for(int index)
 {
   if (index < 0 || index >= MAX_APPS) return "PAX";
+  if (g_titles[index][0] != '\0') return g_titles[index];
   if (g_names[index][0] != '\0') return g_names[index];
 
   /* Older loader builds and a partially populated directory buffer can leave
@@ -3690,7 +3695,8 @@ static void apply_filter(void)
   const bool apply_search = g_source != SOURCE_ARCHIVE;
   for (int i = 0; i < g_app_count; i++) {
     if (g_favorites_mode && !path_is_favorite(g_paths[i])) continue;
-    if (apply_search && !contains_case_insensitive(g_names[i], g_search_text) &&
+    if (apply_search && !contains_case_insensitive(display_name_for(i), g_search_text) &&
+        !contains_case_insensitive(g_names[i], g_search_text) &&
         !contains_case_insensitive(g_paths[i], g_search_text)) continue;
     g_visible_indices[g_view_count++] = i;
   }
@@ -4204,6 +4210,20 @@ static void add_folder_entries(const char *folder)
   }
 }
 
+static void load_list_title(int index)
+{
+  if (g_titles[index][0] != '\0' || !ends_with(g_paths[index], ".pax")) return;
+  char sidecar[PATH_BYTES];
+  if (!replace_package_suffix(g_paths[index], sidecar, sizeof(sidecar), ".json")) return;
+  /* Directory HTML is fully parsed before reusing the HTTP/JSON buffer. */
+  const bool remote = has_prefix(sidecar, "http://") || has_prefix(sidecar, "https://");
+  int length = remote ? http_fetch(sidecar, g_remote, REMOTE_BYTES) : read_json_file(sidecar);
+  if (length > 0) {
+    if (!json_string_field(g_remote, length, "title", g_titles[index], NAME_BYTES) ||
+        !pax_list_title_valid(g_titles[index])) g_titles[index][0] = '\0';
+  }
+}
+
 static void load_apps(void)
 {
   memset(g_list_stats_valid,0,sizeof(g_list_stats_valid));
@@ -4211,6 +4231,7 @@ static void load_apps(void)
   g_catalog_failed = false;
   for (int i = 0; i < MAX_APPS; i++) {
     g_names[i][0] = '\0';
+    g_titles[i][0] = '\0';
     g_paths[i][0] = '\0';
     g_archive_filenames[i][0] = '\0';
     g_archive_record_type[i] = 0;
@@ -4236,9 +4257,11 @@ static void load_apps(void)
                         source_label(g_source), MAX_APPS);
     for (int i = 0; i < g_app_count; i++) g_item_source[i] = g_source;
   }
-  for(int i=0;i<g_app_count;i++)
+  for(int i=0;i<g_app_count;i++) {
+    load_list_title(i);
     if(g_item_source[i]==SOURCE_STORAGE && g_svc->file_stat)
       g_list_stats_valid[i]=g_svc->file_stat(g_paths[i],&g_list_stats[i])==0 && !g_list_stats[i].is_dir;
+  }
   apply_filter();
 }
 
@@ -5392,7 +5415,7 @@ static int update_selection_on_host(void *arg)
     if (g_buttons[row] != NULL) {
       if (visible) {
         const int index = g_visible_indices[view_index];
-        pax_list_label(visible_names[row], sizeof(visible_names[row]), display_name_for(index), g_hide_pax_extension);
+        pax_list_label(visible_names[row], sizeof(visible_names[row]), display_name_for(index), g_hide_pax_extension && !g_titles[index][0]);
         lv_obj_clear_flag(g_buttons[row], LV_OBJ_FLAG_HIDDEN);
         update_list_row_text(row, index, visible_names[row]);
         style_button(g_buttons[row], view_index == selected);
@@ -5834,7 +5857,7 @@ static int build_ui_on_host(void *arg)
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     const int view_index = g_first_visible + row;
     if (view_index < g_view_count)
-      pax_list_label(host_names[row], sizeof(host_names[row]), display_name_for(g_visible_indices[view_index]), g_hide_pax_extension);
+      pax_list_label(host_names[row], sizeof(host_names[row]), display_name_for(g_visible_indices[view_index]), g_hide_pax_extension && !g_titles[g_visible_indices[view_index]][0]);
     else
       host_names[row][0] = '\0';
   }
@@ -7714,6 +7737,7 @@ int app_entry(const app_services_t *svc)
   if (g_canvas == NULL) return -2;
   for (int i = 0; i < MAX_APPS; i++) {
     g_names[i][0] = '\0';
+    g_titles[i][0] = '\0';
     g_paths[i][0] = '\0';
   }
 
