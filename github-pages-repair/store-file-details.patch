@@ -1,0 +1,154 @@
+From 92d56f245e13c5c94af718d4fabe349c12dad97a Mon Sep 17 00:00:00 2001
+From: NonaSuomy <nonasuomy@live.com>
+Date: Sun, 11 Oct 2026 09:25:13 -0400
+Subject: [PATCH] Publish Store file sizes and CI build timestamps for the
+ launcher
+
+---
+ .github/workflows/publish-store.yml |  6 +++++-
+ tests/test_make_catalog.py          | 13 ++++++++++++-
+ tools/make_catalog.py               | 21 ++++++++++++++++++++-
+ 3 files changed, 37 insertions(+), 3 deletions(-)
+
+diff --git a/.github/workflows/publish-store.yml b/.github/workflows/publish-store.yml
+index 59c9aeb..eb78309 100644
+--- a/.github/workflows/publish-store.yml
++++ b/.github/workflows/publish-store.yml
+@@ -61,6 +61,7 @@ jobs:
+           fi
+           echo "id=$id" >> "$GITHUB_OUTPUT"
+           echo "sha=$(gh run view "$id" -R "$REPO" --json headSha --jq .headSha)" >> "$GITHUB_OUTPUT"
++          echo "built_at=$(gh run view "$id" -R "$REPO" --json startedAt --jq .startedAt)" >> "$GITHUB_OUTPUT"
+ 
+       - uses: actions/download-artifact@v4
+         with:
+@@ -105,7 +106,7 @@ jobs:
+           restore-keys: papp-data-
+ 
+       - name: Write catalog and app data
+-        run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache
++        run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache --built-at "${{ steps.run.outputs.built_at }}"
+ 
+       - name: Validate PAX catalog downloads and JSON sidecars
+         run: |
+@@ -121,6 +122,9 @@ jobs:
+           for app in apps:
+               name = app["file"]
+               assert name.endswith(".pax") and name in links, name
++              assert app["built_at"] > 0, name
++              assert f'data-pax-size="{app["size"]}"' in page, name
++              assert f'data-pax-mtime="{app["built_at"]}"' in page, name
+               package = site / name
+               assert package.stat().st_size == app["size"], name
+               assert hashlib.sha256(package.read_bytes()).hexdigest() == app["sha256"], name
+diff --git a/tests/test_make_catalog.py b/tests/test_make_catalog.py
+index 8dedd71..6158740 100644
+--- a/tests/test_make_catalog.py
++++ b/tests/test_make_catalog.py
+@@ -3,6 +3,7 @@
+ Run: python3 -m unittest discover -s tests
+ """
+ 
++import argparse
+ import base64
+ import hashlib
+ import io
+@@ -67,7 +68,7 @@ class DataTests(unittest.TestCase):
+                 (dist / item["file"]).write_bytes(payload)
+             (dist / "build.json").write_text(json.dumps({"apps": items}))
+             subprocess.run([sys.executable, str(Path(mc.__file__)), "--repo", REPO,
+-                            "--dist", str(dist), "--out", str(out)], check=True, capture_output=True)
++                            "--dist", str(dist), "--out", str(out), "--built-at", "2026-10-08T12:34:56Z"], check=True, capture_output=True)
+             page = (out / "index.html").read_text()
+             self.assertIn("PAX Store", page); self.assertNotIn(".papp", page)
+             self.assertIn('data-pax-title-url="Doom"', page)
+@@ -76,6 +77,9 @@ class DataTests(unittest.TestCase):
+                 entry = next(a for a in entries if a["name"] == item["name"])
+                 name = item["name"] + "-0.1.0.pax"
+                 self.assertIn(f'href="{name}"', page)
++                self.assertIn(f'data-pax-size="{item["size"]}"', page)
++                self.assertIn(f'data-pax-mtime="{mc.build_timestamp("2026-10-08T12:34:56Z")}"', page)
++                self.assertEqual(entry["built_at"], mc.build_timestamp("2026-10-08T12:34:56Z"))
+                 self.assertEqual((out / name).read_bytes(), (dist / item["file"]).read_bytes())
+                 self.assertEqual(sha((out / name).read_bytes()), entry["sha256"])
+                 self.assertEqual(entry["file"], name)
+@@ -83,6 +87,13 @@ class DataTests(unittest.TestCase):
+                 self.assertEqual(json.loads((out / name.replace(".pax", ".json")).read_text()), entry)
+                 self.assertTrue(entry["release_url"].endswith(".papp" if item["name"] == "legacy" else ".pax"))
+ 
++    def test_store_details_do_not_invent_unknown_build_dates(self):
++        page = mc.render(REPO, [app(data=False)])
++        self.assertIn('data-pax-size="40" data-pax-mtime="0"', page)
++        self.assertEqual(mc.build_timestamp("2026-10-08T12:34:56Z"), mc.build_timestamp("2026-10-08T08:34:56-04:00"))
++        for invalid in ("not a date", "2026-10-08T12:34:56", "1970-01-01T00:00:00Z"):
++            with self.assertRaises(argparse.ArgumentTypeError): mc.build_timestamp(invalid)
++
+     def test_store_sidecar_keeps_installation_recipe(self):
+         item = app(data=False)
+         recipe = {"version": 1, "media": []}
+diff --git a/tools/make_catalog.py b/tools/make_catalog.py
+index f3b4fee..46c3185 100644
+--- a/tools/make_catalog.py
++++ b/tools/make_catalog.py
+@@ -27,6 +27,7 @@ missing. One line per file:
+ from __future__ import annotations
+ 
+ import argparse
++from datetime import datetime
+ import base64
+ import hashlib
+ import html
+@@ -184,6 +185,7 @@ def store_entry(repo: str, a: dict) -> dict:
+         "info_url": pages_base(repo) + sidecar_name(a),
+         "release_url": asset_url(repo, a),
+         "size": a["size"],
++        **({"built_at": a["built_at"]} if a.get("built_at") else {}),
+         "data_size": data_size(a),
+         "sha256": a["sha256"],
+         "abi": a["abi"],
+@@ -207,7 +209,7 @@ def render(repo: str, apps: list[dict]) -> str:
+         icon = (f'<img src="{html.escape(icon_name(app))}" width="32" height="32" alt=""> '
+                 if app.get("icon") else "")
+         rows.append(
+-            f'<li>{icon}<a href="{html.escape(asset_name(app))}" data-pax-title-url="{urllib.parse.quote(app["title"], safe="")}">{html.escape(asset_name(app))}</a>'
++            f'<li>{icon}<a href="{html.escape(asset_name(app))}" data-pax-title-url="{urllib.parse.quote(app["title"], safe="")}" data-pax-size="{app["size"]}" data-pax-mtime="{app.get("built_at", 0)}">{html.escape(asset_name(app))}</a>'
+             f" {html.escape(app['title'])} &middot; {app['size'] // 1024} KB"
+             + (f" + {data_size(app) / 1e6:.1f} MB data" if app.get("data") else "")
+             + f" &middot; <code>{app['sha256'][:12]}</code>"
+@@ -226,16 +228,33 @@ def render(repo: str, apps: list[dict]) -> str:
+     )
+ 
+ 
++def build_timestamp(value: str) -> int:
++    """An actual CI build start, never the artifact extraction/publish time."""
++    try:
++        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
++        if stamp.tzinfo is None:
++            raise ValueError("timezone required")
++        seconds = int(stamp.timestamp())
++        if seconds <= 0 or seconds > 253402300799:
++            raise ValueError("timestamp out of range")
++        return seconds
++    except (ValueError, OverflowError) as error:
++        raise argparse.ArgumentTypeError("build time must be an ISO-8601 timestamp with timezone") from error
++
++
+ def main() -> int:
+     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+     parser.add_argument("--repo", required=True, help="OWNER/REPO that hosts the releases")
+     parser.add_argument("--dist", type=Path, default=Path("dist"))
+     parser.add_argument("--out", type=Path, default=Path("site"))
+     parser.add_argument("--data-cache", type=Path, help="keep downloaded data files here (by sha256) between runs")
++    parser.add_argument("--built-at", type=build_timestamp, help="CI build start timestamp (ISO-8601 with timezone); Store list date")
+     args = parser.parse_args()
+ 
+     # Apps marked "publish": false are work in progress: built, but not in the store.
+     apps = [a for a in json.loads((args.dist / "build.json").read_text())["apps"] if a.get("publish", True)]
++    if args.built_at:
++        apps = [{**a, "built_at": args.built_at} for a in apps]
+     page = render(args.repo, apps)
+     if len(page.encode()) > MAX_CATALOG_BYTES:
+         print(f"catalog is {len(page.encode())} bytes; the device reads at most {MAX_CATALOG_BYTES}", file=sys.stderr)
+-- 
+2.55.0
+

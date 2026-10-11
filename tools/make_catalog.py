@@ -27,6 +27,7 @@ missing. One line per file:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import base64
 import hashlib
 import html
@@ -184,6 +185,7 @@ def store_entry(repo: str, a: dict) -> dict:
         "info_url": pages_base(repo) + sidecar_name(a),
         "release_url": asset_url(repo, a),
         "size": a["size"],
+        **({"built_at": a["built_at"]} if a.get("built_at") else {}),
         "data_size": data_size(a),
         "sha256": a["sha256"],
         "abi": a["abi"],
@@ -207,7 +209,7 @@ def render(repo: str, apps: list[dict]) -> str:
         icon = (f'<img src="{html.escape(icon_name(app))}" width="32" height="32" alt=""> '
                 if app.get("icon") else "")
         rows.append(
-            f'<li>{icon}<a href="{html.escape(asset_name(app))}" data-pax-title-url="{urllib.parse.quote(app["title"], safe="")}">{html.escape(asset_name(app))}</a>'
+            f'<li>{icon}<a href="{html.escape(asset_name(app))}" data-pax-title-url="{urllib.parse.quote(app["title"], safe="")}" data-pax-size="{app["size"]}" data-pax-mtime="{app.get("built_at", 0)}">{html.escape(asset_name(app))}</a>'
             f" {html.escape(app['title'])} &middot; {app['size'] // 1024} KB"
             + (f" + {data_size(app) / 1e6:.1f} MB data" if app.get("data") else "")
             + f" &middot; <code>{app['sha256'][:12]}</code>"
@@ -226,16 +228,33 @@ def render(repo: str, apps: list[dict]) -> str:
     )
 
 
+def build_timestamp(value: str) -> int:
+    """An actual CI build start, never the artifact extraction/publish time."""
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            raise ValueError("timezone required")
+        seconds = int(stamp.timestamp())
+        if seconds <= 0 or seconds > 253402300799:
+            raise ValueError("timestamp out of range")
+        return seconds
+    except (ValueError, OverflowError) as error:
+        raise argparse.ArgumentTypeError("build time must be an ISO-8601 timestamp with timezone") from error
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--repo", required=True, help="OWNER/REPO that hosts the releases")
     parser.add_argument("--dist", type=Path, default=Path("dist"))
     parser.add_argument("--out", type=Path, default=Path("site"))
     parser.add_argument("--data-cache", type=Path, help="keep downloaded data files here (by sha256) between runs")
+    parser.add_argument("--built-at", type=build_timestamp, help="CI build start timestamp (ISO-8601 with timezone); Store list date")
     args = parser.parse_args()
 
     # Apps marked "publish": false are work in progress: built, but not in the store.
     apps = [a for a in json.loads((args.dist / "build.json").read_text())["apps"] if a.get("publish", True)]
+    if args.built_at:
+        apps = [{**a, "built_at": args.built_at} for a in apps]
     page = render(args.repo, apps)
     if len(page.encode()) > MAX_CATALOG_BYTES:
         print(f"catalog is {len(page.encode())} bytes; the device reads at most {MAX_CATALOG_BYTES}", file=sys.stderr)

@@ -8,3 +8,9 @@ The isolated remote repair passed 220 Python tests. The current PAX module/store
 
 Deployment: https://github.com/NonaSuomy/esphomebrew/actions/runs/38142486967
 Website: https://nonasuomy.github.io/esphomebrew/
+
+## Store file details
+
+Follow-up commit `92d56f2` adds `data-pax-size` and `data-pax-mtime` to each download link. The date is the start timestamp of the successful CI build that produced the package, passed by the publication workflow as `--built-at`. The JSON sidecar also records `built_at`. An unknown date stays zero; the publisher never substitutes the artifact extraction or Pages deployment time.
+
+Preserved patch: `store-file-details.patch`. Deployment: https://github.com/NonaSuomy/esphomebrew/actions/runs/38143098831
