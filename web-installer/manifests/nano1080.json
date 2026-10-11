@@ -1,0 +1,17 @@
+{
+  "name": "PAX nano1080",
+  "version": "2026.10.11",
+  "new_install_prompt_erase": true,
+  "new_install_improv_wait_time": 0,
+  "builds": [
+    {
+      "chipFamily": "ESP32-P4",
+      "parts": [
+        {
+          "path": "../firmware/pax-nano1080.factory.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
