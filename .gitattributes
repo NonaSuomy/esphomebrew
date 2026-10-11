@@ -1,0 +1,3 @@
+web-installer/firmware/*.bin binary
+web-installer/kits/*.zip binary
+web-installer/sd/*.zip binary
