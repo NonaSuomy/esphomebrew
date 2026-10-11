@@ -127,6 +127,34 @@ static bool sync_file_(FILE *file, const char *path) {
   return true;
 }
 
+static void warn_if_not_durable_(const std::string &path);
+
+static esp_err_t commit_upload_(const std::string& path, const std::string& part) {
+  esp_err_t err = ESP_OK;
+  const std::string backup = path + ".upload.bak";
+  struct stat target{};
+  const bool had_target = stat(path.c_str(), &target) == 0;
+  if (had_target) {
+    std::remove(backup.c_str());
+    if (std::rename(path.c_str(), backup.c_str()) != 0) {
+      ESP_LOGE(TAG, "Cannot stage existing target %s (errno %d)", path.c_str(), errno);
+      err = ESP_FAIL;
+    }
+  }
+  if (err == ESP_OK && std::rename(part.c_str(), path.c_str()) != 0) {
+    ESP_LOGE(TAG, "Cannot commit %s (errno %d)", path.c_str(), errno);
+    err = ESP_FAIL;
+    if (had_target && std::rename(backup.c_str(), path.c_str()) != 0)
+      ESP_LOGE(TAG, "Could not restore previous target %s (errno %d)", path.c_str(), errno);
+  }
+  if (err == ESP_OK) {
+    warn_if_not_durable_(path);
+    if (had_target && std::remove(backup.c_str()) != 0 && errno != ENOENT)
+      ESP_LOGW(TAG, "Could not remove old target backup %s (errno %d)", backup.c_str(), errno);
+  }
+  return err;
+}
+
 struct SavedNetworkConfig {
   uint32_t magic;
   int32_t dhcp_enabled;
@@ -793,7 +821,7 @@ static std::string archive_search_term(const std::string &query, const std::stri
 }
 
 void PaxLoader::request_launch_rom(const std::string &emulator, const std::string &rom_path) {
-  if (this->launched_ || this->launch_pending_) {
+  if (this->launched_ || this->launch_pending_ || this->web_storage_busy_) {
     ESP_LOGW(TAG, "Ignoring emulator/ROM launch while a PAX is starting or running");
     return;
   }
@@ -2216,7 +2244,7 @@ void PaxLoader::loop() {
     return;
   }
 
-  if (!this->launch_pending_ || this->path_.empty())
+  if (!this->launch_pending_ || this->path_.empty() || this->web_storage_busy_)
     return;
   ESP_LOGI(TAG, "Processing launch request: %s", this->path_.c_str());
   this->launch_pending_ = false;
@@ -2453,7 +2481,7 @@ void PaxLoader::start_archive_search_() {
     ESP_LOGW(TAG, "Cannot search Archive.org while the device is offline");
     return;
   }
-  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr) {
+  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr || this->web_storage_busy_) {
     this->archive_search_pending_ = true;
     this->archive_search_due_us_ = esp_timer_get_time() + 1000000;
     return;
@@ -2544,7 +2572,7 @@ void PaxLoader::open_archive_system(size_t system_index) {
 #endif
     return;
   }
-  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr) {
+  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr || this->web_storage_busy_) {
     ESP_LOGW(TAG, "Archive.org refresh waits until the running storage operation ends");
     return;
   }
@@ -2653,7 +2681,7 @@ void PaxLoader::refresh_archive() {
     ESP_LOGW(TAG, "Cannot refresh Archive.org source while the device is offline");
     return;
   }
-  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr) {
+  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr || this->web_storage_busy_) {
     ESP_LOGW(TAG, "Archive.org refresh waits until the running storage operation ends");
     return;
   }
@@ -4250,7 +4278,7 @@ void PaxLoader::refresh_rom_selector() {
 void PaxLoader::select_rom(const std::string &path) {
   if (path.empty())
     return;
-  if (this->launched_ || this->launch_pending_) {
+  if (this->launched_ || this->launch_pending_ || this->web_storage_busy_) {
     ESP_LOGW(TAG, "Ignoring ROM selection while a PAX is starting or running: %s", path.c_str());
     return;
   }
@@ -6426,7 +6454,7 @@ void PaxLoader::delete_file(const std::string &path) {
     ESP_LOGW(TAG, "deletefile refused: %s is not a text or leftover file under /sd/", path.c_str());
     return;
   }
-  if (this->launched_) {
+  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr || this->web_storage_busy_) {
     ESP_LOGW(TAG, "deletefile refused while an app is running (it may still use %s)", path.c_str());
     return;
   }
@@ -6458,7 +6486,7 @@ void PaxLoader::write_file(const std::string &path, const std::string &data) {
              static_cast<unsigned>(WRITE_FILE_MAX_BYTES));
     return;
   }
-  if (this->launched_) {
+  if (this->launched_ || this->pax_loading_ || this->install_task_handle_ != nullptr || this->web_storage_busy_) {
     ESP_LOGW(TAG, "writefile refused while an app is running (it may rewrite %s on exit)", path.c_str());
     return;
   }
@@ -10915,6 +10943,12 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
                                           uint32_t total, size_t index, size_t count) {
   ESP_LOGI(TAG, "Downloading %s (%lu bytes) from %s", path.c_str(), static_cast<unsigned long>(file.size),
            file.url.c_str());
+  if (!network::is_connected())
+    return ESP_ERR_INVALID_STATE;
+  if (file.url.rfind("https://", 0) == 0) {
+    for (uint8_t attempt = 0; attempt < 100 && std::time(nullptr) < MIN_VALID_TLS_TIME; attempt++)
+      vTaskDelay(pdMS_TO_TICKS(100));
+  }
   std::string current_url = file.url;
   esp_http_client_handle_t client = nullptr;
   int64_t content_length = -1;
@@ -11118,27 +11152,7 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
     }
   }
   if (err == ESP_OK) {
-    const std::string backup = path + ".upload.bak";
-    struct stat target{};
-    const bool had_target = stat(path.c_str(), &target) == 0;
-    if (had_target) {
-      std::remove(backup.c_str());
-      if (std::rename(path.c_str(), backup.c_str()) != 0) {
-        ESP_LOGE(TAG, "Cannot stage existing target %s (errno %d)", path.c_str(), errno);
-        err = ESP_FAIL;
-      }
-    }
-    if (err == ESP_OK && std::rename(part.c_str(), path.c_str()) != 0) {
-      ESP_LOGE(TAG, "Cannot commit %s (errno %d)", path.c_str(), errno);
-      err = ESP_FAIL;
-      if (had_target && std::rename(backup.c_str(), path.c_str()) != 0)
-        ESP_LOGE(TAG, "Could not restore previous target %s (errno %d)", path.c_str(), errno);
-    }
-    if (err == ESP_OK) {
-      warn_if_not_durable_(path);
-      if (had_target && std::remove(backup.c_str()) != 0 && errno != ENOENT)
-        ESP_LOGW(TAG, "Could not remove old target backup %s (errno %d)", backup.c_str(), errno);
-    }
+    err = commit_upload_(path, part);
   }
   if (err != ESP_OK) {
     std::remove(part.c_str());
@@ -11146,6 +11160,93 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
   }
   ESP_LOGI(TAG, "Saved %s%s", path.c_str(), file.sha256.empty() ? "" : " (sha256 ok)");
   return ESP_OK;
+}
+
+
+bool PaxLoader::begin_web_transfer() {
+  if (this->web_storage_busy_ || this->launched_ || this->pax_loading_ || this->launch_pending_ ||
+      this->install_task_handle_ != nullptr || this->archive_loading_)
+    return false;
+  this->global_close_requested_ = false;
+  this->web_storage_busy_ = true;
+  return true;
+}
+
+void PaxLoader::end_web_transfer() {
+  this->web_storage_busy_ = false;
+  this->refresh_catalog();
+}
+
+esp_err_t PaxLoader::download_web_file(const data::DataFile &file) {
+  if (!this->web_storage_busy_ || !data::safe_target(file.target) || !data::is_sha256_hex(file.sha256) ||
+      !is_network_url(file.url.c_str()) || file.size == 0 || file.size > data::MAX_FILE_SIZE)
+    return ESP_ERR_INVALID_ARG;
+  const std::string root = runtime_path("/sd");
+#ifdef PAX_LOADER_USE_SD_MMC
+  struct stat mounted{};
+  if (this->sd_mmc_ != nullptr && stat(root.c_str(), &mounted) != 0)
+    this->sd_mmc_->mount();
+#endif
+  if (!make_parent_dirs(root, file.target))
+    return ESP_ERR_NOT_FOUND;
+  return this->download_data_file_(file, root + "/" + file.target, 0, file.size, 1, 1);
+}
+
+esp_err_t PaxLoader::receive_web_file(const std::string &path, uint32_t size, const std::string &sha256,
+                                     WebRead read, void *context) {
+  if (!this->web_storage_busy_ || path.rfind("/sd/", 0) != 0 || !data::safe_target(path.substr(4)) ||
+      size > data::MAX_FILE_SIZE || !data::is_sha256_hex(sha256) || read == nullptr)
+    return ESP_ERR_INVALID_ARG;
+  const std::string root = runtime_path("/sd");
+#ifdef PAX_LOADER_USE_SD_MMC
+  struct stat mounted{};
+  if (this->sd_mmc_ != nullptr && stat(root.c_str(), &mounted) != 0)
+    this->sd_mmc_->mount();
+#endif
+  if (!make_parent_dirs(root, path.substr(4)))
+    return ESP_ERR_NOT_FOUND;
+  const std::string target = runtime_path(path.c_str());
+  recover_staged_file_(target, ".upload.bak");
+  struct stat existing{};
+  if (stat(target.c_str(), &existing) == 0 && !S_ISREG(existing.st_mode))
+    return ESP_ERR_INVALID_ARG;
+  const std::string part = target + ".part";
+  FILE *out = std::fopen(part.c_str(), "wb");
+  if (out == nullptr)
+    return ESP_ERR_NOT_FOUND;
+  uint8_t buffer[4096];
+  data::Sha256 hash;
+  uint32_t done = 0;
+  esp_err_t err = ESP_OK;
+  this->set_progress_(true, 0, size, "Uploading %.60s", path.c_str());
+  while (done < size) {
+    const int count = read(context, buffer, std::min<size_t>(sizeof(buffer), size - done));
+    if (count <= 0 || static_cast<size_t>(count) > std::min<size_t>(sizeof(buffer), size - done)) {
+      err = ESP_ERR_INVALID_SIZE;
+      break;
+    }
+    if (std::fwrite(buffer, 1, count, out) != static_cast<size_t>(count)) {
+      err = ESP_FAIL;
+      break;
+    }
+    hash.update(buffer, count);
+    done += count;
+    this->set_progress_(true, done, size, "Uploading %.48s (%lu / %lu bytes)", path.c_str(),
+                        static_cast<unsigned long>(done), static_cast<unsigned long>(size));
+  }
+  if (err == ESP_OK && hash.hex() != sha256)
+    err = ESP_ERR_INVALID_CRC;
+  if (err == ESP_OK && !sync_file_(out, part.c_str()))
+    err = ESP_FAIL;
+  if (std::fclose(out) != 0 && err == ESP_OK)
+    err = ESP_FAIL;
+  if (err == ESP_OK)
+    err = commit_upload_(target, part);
+  if (err != ESP_OK)
+    std::remove(part.c_str());
+  this->set_progress_(false, done, size, "%s %.48s: %s", err == ESP_OK ? "Saved" : "Upload failed",
+                      path.c_str(), esp_err_to_name(err));
+  return err;
 }
 
 esp_err_t psram_app_load_url(const char *url, psram_app_handle_t *out_handle) {

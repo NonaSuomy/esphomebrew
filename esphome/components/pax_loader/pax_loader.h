@@ -1,6 +1,7 @@
 #pragma once
 #include "pax_launcher_regions.h"
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <utility>
@@ -135,7 +136,19 @@ class PaxLoader : public Component {
   // Called by the download code on the loader task; thread safe.
   void set_progress_(bool active, uint32_t done, uint32_t total, const char *format, ...)
       __attribute__((format(printf, 5, 6)));
+  // The web component reserves storage on the main loop before doing I/O on its worker.
+  bool begin_web_transfer();
+  void end_web_transfer();
+  using WebRead = int (*)(void *, uint8_t *, size_t);
+  esp_err_t receive_web_file(const std::string &path, uint32_t size, const std::string &sha256,
+                             WebRead read, void *context);
+  esp_err_t download_web_file(const data::DataFile &file);
+  std::atomic<bool> web_storage_busy_{false};
   void request_launch(const std::string &path) {
+    if (this->web_storage_busy_) {
+      ESP_LOGW("pax_loader", "Wait for the SD transfer before launching");
+      return;
+    }
     if (path.empty()) {
       ESP_LOGW("pax_loader", "Ignoring empty PAX launch request");
       return;

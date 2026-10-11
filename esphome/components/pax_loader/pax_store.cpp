@@ -1077,7 +1077,7 @@ bool PaxLoader::uninstall_app(const std::string &app, bool delete_data) {
     ESP_LOGW(TAG, "Uninstall of %s refused while an app is running (%s)", app.c_str(), this->running_source_.c_str());
     return false;
   }
-  if (this->install_task_handle_ != nullptr) {
+  if (this->install_task_handle_ != nullptr || this->web_storage_busy_) {
     ESP_LOGW(TAG, "Uninstall of %s refused while an install runs", app.c_str());
     return false;
   }
@@ -1145,7 +1145,7 @@ bool PaxLoader::uninstall_app(const std::string &app, bool delete_data) {
 // ── Install ─────────────────────────────────────────────────────────────────
 
 void PaxLoader::start_install_(int index) {
-  if (this->install_task_handle_ != nullptr || this->launched_ || index < 0 ||
+  if (this->install_task_handle_ != nullptr || this->web_storage_busy_ || this->launched_ || index < 0 ||
       static_cast<size_t>(index) >= this->app_info_.size())
     return;
   const AppInfo &info = this->app_info_[index];
@@ -1184,7 +1184,7 @@ int PaxLoader::start_install_from_pax_(const char *url, const char *name, const 
   if (!this->launched_ || this->pax_loading_ ||
       this->running_app_source_.find("launcher_ui.pax") == std::string::npos)
     return -1;
-  if (this->install_task_handle_ != nullptr)
+  if (this->install_task_handle_ != nullptr || this->web_storage_busy_)
     return -2;
 
   this->install_index_ = -1;
@@ -1317,7 +1317,7 @@ void PaxLoader::request_install_url(const std::string &url, const std::string &n
       return;
     }
   }
-  if (this->install_task_handle_ != nullptr || this->launched_ || this->pax_loading_) {
+  if (this->install_task_handle_ != nullptr || this->web_storage_busy_ || this->launched_ || this->pax_loading_) {
     this->set_progress_(false, 0, 0, "%s", "Close the running app before saving a PAX");
     ESP_LOGW(TAG, "Ignoring PAX install while the loader is busy: %s", name.c_str());
     return;
@@ -1384,7 +1384,7 @@ void PaxLoader::request_upload_url_(const std::string &url, const std::string &p
   const bool data_installer_is_active = allow_launcher && this->launched_ && !this->pax_loading_ &&
       (this->running_app_source_.find("launcher_ui.pax") != std::string::npos ||
        this->running_app_source_.find("recipe.pax") != std::string::npos);
-  if (this->install_task_handle_ != nullptr || (this->launched_ && !data_installer_is_active) || this->pax_loading_) {
+  if (this->install_task_handle_ != nullptr || this->web_storage_busy_ || (this->launched_ && !data_installer_is_active) || this->pax_loading_) {
     this->set_progress_(false, 0, 0, "%s", "Close the running app before uploading");
     ESP_LOGW(TAG, "Ignoring SD upload while the loader is busy: %s", path.c_str());
     return;
@@ -2128,7 +2128,7 @@ void PaxLoader::run_detail_action_(uint8_t action) {
   const int index = this->detail_index_;
   if (index < 0 || static_cast<size_t>(index) >= this->catalog_entries_.size())
     return;
-  if (this->install_task_handle_ != nullptr && action != ACTION_BACK)
+  if ((this->install_task_handle_ != nullptr || this->web_storage_busy_) && action != ACTION_BACK)
     return;  // one thing at a time; the progress panel shows the install
   const AppInfo *info = static_cast<size_t>(index) < this->app_info_.size() ? &this->app_info_[index] : nullptr;
   switch (action) {
