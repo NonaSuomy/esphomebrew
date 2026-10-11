@@ -156,7 +156,7 @@ if(typeof document!=='undefined' && document.getElementById('store-connection'))
   $('close-app').addEventListener('click',async()=>{if(!serial){status('Connect USB serial first, or close the app on your device.');return;}try{status((await serial.rpc(0x75)).message);}catch(error){status(error.message);}});
   document.querySelectorAll('.install-app').forEach(button=>button.addEventListener('click',async()=>{
     if(busy)return;
-    if(!serial){try{const url=PaxStore.deviceURL($('device-address').value,button.dataset.app);window.open(url,'_blank','noopener');status('Continue on the device page to confirm the Wi-Fi installation.');}catch(error){status(error.message);}return;}
+    if(!serial){try{const url=PaxStore.deviceURL($('device-address').value,button.dataset.app);status('Opening the device page to confirm the Wi-Fi installation.');window.location.assign(url);}catch(error){status(error.message);}return;}
     if(!$('install-replace').checked){status('Confirm replacement of matching SD files before installing.');return;}
     lock(true);$('install-progress').value=0;
     try {
