@@ -3,6 +3,7 @@
 Run: python3 -m unittest discover -s tests
 """
 
+import argparse
 import base64
 import hashlib
 import io
@@ -67,7 +68,7 @@ class DataTests(unittest.TestCase):
                 (dist / item["file"]).write_bytes(payload)
             (dist / "build.json").write_text(json.dumps({"apps": items}))
             subprocess.run([sys.executable, str(Path(mc.__file__)), "--repo", REPO,
-                            "--dist", str(dist), "--out", str(out)], check=True, capture_output=True)
+                            "--dist", str(dist), "--out", str(out), "--built-at", "2026-10-08T12:34:56Z"], check=True, capture_output=True)
             page = (out / "index.html").read_text()
             self.assertIn("PAX Store", page); self.assertNotIn(".papp", page)
             self.assertIn('data-pax-title-url="Doom"', page)
@@ -76,12 +77,22 @@ class DataTests(unittest.TestCase):
                 entry = next(a for a in entries if a["name"] == item["name"])
                 name = item["name"] + "-0.1.0.pax"
                 self.assertIn(f'href="{name}"', page)
+                self.assertIn(f'data-pax-size="{item["size"]}"', page)
+                self.assertIn(f'data-pax-mtime="{mc.build_timestamp("2026-10-08T12:34:56Z")}"', page)
+                self.assertEqual(entry["built_at"], mc.build_timestamp("2026-10-08T12:34:56Z"))
                 self.assertEqual((out / name).read_bytes(), (dist / item["file"]).read_bytes())
                 self.assertEqual(sha((out / name).read_bytes()), entry["sha256"])
                 self.assertEqual(entry["file"], name)
                 self.assertTrue(entry["url"].endswith(name))
                 self.assertEqual(json.loads((out / name.replace(".pax", ".json")).read_text()), entry)
                 self.assertTrue(entry["release_url"].endswith(".papp" if item["name"] == "legacy" else ".pax"))
+
+    def test_store_details_do_not_invent_unknown_build_dates(self):
+        page = mc.render(REPO, [app(data=False)])
+        self.assertIn('data-pax-size="40" data-pax-mtime="0"', page)
+        self.assertEqual(mc.build_timestamp("2026-10-08T12:34:56Z"), mc.build_timestamp("2026-10-08T08:34:56-04:00"))
+        for invalid in ("not a date", "2026-10-08T12:34:56", "1970-01-01T00:00:00Z"):
+            with self.assertRaises(argparse.ArgumentTypeError): mc.build_timestamp(invalid)
 
     def test_store_sidecar_keeps_installation_recipe(self):
         item = app(data=False)

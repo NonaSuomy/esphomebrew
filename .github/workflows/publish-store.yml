@@ -61,6 +61,7 @@ jobs:
           fi
           echo "id=$id" >> "$GITHUB_OUTPUT"
           echo "sha=$(gh run view "$id" -R "$REPO" --json headSha --jq .headSha)" >> "$GITHUB_OUTPUT"
+          echo "built_at=$(gh run view "$id" -R "$REPO" --json startedAt --jq .startedAt)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@v4
         with:
@@ -105,7 +106,7 @@ jobs:
           restore-keys: papp-data-
 
       - name: Write catalog and app data
-        run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache
+        run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache --built-at "${{ steps.run.outputs.built_at }}"
 
       - name: Validate PAX catalog downloads and JSON sidecars
         run: |
@@ -121,6 +122,9 @@ jobs:
           for app in apps:
               name = app["file"]
               assert name.endswith(".pax") and name in links, name
+              assert app["built_at"] > 0, name
+              assert f'data-pax-size="{app["size"]}"' in page, name
+              assert f'data-pax-mtime="{app["built_at"]}"' in page, name
               package = site / name
               assert package.stat().st_size == app["size"], name
               assert hashlib.sha256(package.read_bytes()).hexdigest() == app["sha256"], name
