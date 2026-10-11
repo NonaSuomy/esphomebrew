@@ -21,3 +21,5 @@ Active recipe adapters and copied cores are in `apps/`. `legacy/` contains prese
 ## Browser firmware installer
 
 `web-installer/` is published to https://nonasuomy.github.io/esphomebrew/install/ by the existing Publish store workflow. Device cards are grouped by manufacturer in `boards.json`; NANO and Touch-LCD-7B are both Waveshare. Keep exact display and silicon-revision choices visible. Firmware is compiled locally from the patched PAX workspace, checked by `pax-tools/stage-web-installer.py`, then verified again by `tools/check_web_installer.py` during Pages deployment. Factory images and flash kits are public credential-free builds; never copy `firmware-local` into this folder. Hardware status must only be changed after actual device tests.
+
+After Wi-Fi provisioning, the browser installer links to the device's `/pax` setup page. Users can install the verified SD starter directly from GitHub or upload local files and folders over Wi-Fi. NANO uses the same page over Ethernet. The SD card stays inserted in the device.
