@@ -44,6 +44,27 @@ int main(){char out[256];
             path=Path(td);(path/'test.c').write_text(code)
             subprocess.run(['cc','-std=gnu11','-I'+str(self.sdk()),str(path/'test.c'),'-o',str(path/'test')],check=True)
             subprocess.run([str(path/'test')],check=True)
+    def test_radio_status_summary_and_missing_details(self):
+        source=(ROOT/'apps/launcher_ui/main.c').read_text()
+        code=r"""
+#include <assert.h>
+#include <string.h>
+#include "pax_wifi_settings.h"
+"""+function(source,'append_text')+function(source,'append_uint')+function(source,'append_wifi_summary')+r"""
+int main(){
+ pax_wifi_status_t status={0};char out[256]="Wi-Fi | Connected | 192.168.0.241";
+ append_wifi_summary(out,sizeof(out),&status);assert(!strcmp(out,"Wi-Fi | Connected | 192.168.0.241"));
+ strcpy(status.ssid,"Test network");status.channel=6;status.frequency_mhz=2437;strcpy(status.security,"WPA2-PSK / AES-CCMP");
+ append_wifi_summary(out,sizeof(out),&status);assert(!strcmp(out,"Wi-Fi | Connected | 192.168.0.241 | Test network | 2.4 GHz (2437 MHz, ch 6) | WPA2-PSK / AES-CCMP"));
+ status.frequency_mhz=5180;status.channel=36;out[0]=0;append_wifi_summary(out,sizeof(out),&status);assert(strstr(out,"5 GHz (5180 MHz, ch 36)"));
+ struct {char text[10];char guard;} tiny={{0},'x'};append_wifi_summary(tiny.text,sizeof(tiny.text),&status);assert(tiny.guard=='x' && tiny.text[9]==0);
+ return 0;
+}
+"""
+        with tempfile.TemporaryDirectory() as td:
+            path=Path(td);(path/'test.c').write_text(code)
+            subprocess.run(['cc','-std=gnu11','-I'+str(self.sdk()),str(path/'test.c'),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True)
     def test_wifi_stream_validation_commit_and_rollback(self):
         stub=r"""
 #pragma once
@@ -59,6 +80,7 @@ inline WiFiComponent device;inline WiFiComponent *global_wifi_component=&device;
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <cstddef>
 #include <cstring>
 #define USE_WIFI
 #define portMUX_TYPE int
@@ -70,7 +92,10 @@ static int64_t now=0;static int64_t esp_timer_get_time(){return now;}
 static pax_wifi_status_t status(){pax_wifi_status_t s{};FILE *f=pax_wifi::open("rb");assert(f);assert(fread(&s,1,sizeof(s),f)==sizeof(s));assert(fgetc(f)==EOF);assert(!fclose(f));return s;}
 static int send(pax_wifi_request_t &r){FILE *f=pax_wifi::open("wb");assert(f);assert(fwrite(&r,1,sizeof(r),f)==sizeof(r));return fclose(f);}
 int main(){
- static_assert(sizeof(pax_wifi_request_t)==108);static_assert(sizeof(pax_wifi_status_t)==48);
+ static_assert(sizeof(pax_wifi_request_t)==108);static_assert(sizeof(pax_wifi_status_t)==104);static_assert(offsetof(pax_wifi_status_t,channel)==PAX_WIFI_STATUS_BASE_BYTES);
+ assert(pax_wifi_channel_mhz(1)==2412 && pax_wifi_channel_mhz(6)==2437 && pax_wifi_channel_mhz(14)==2484 && pax_wifi_channel_mhz(36)==5180 && !pax_wifi_channel_mhz(0));
+ assert(!strcmp(pax_wifi_auth_name(3),"WPA2-PSK") && !strcmp(pax_wifi_auth_name(0),"Open") && !strcmp(pax_wifi_cipher_name(4),"AES-CCMP"));
+ FILE *legacy=pax_wifi::open("rb");unsigned char old_status[PAX_WIFI_STATUS_BASE_BYTES];assert(fread(old_status,1,sizeof(old_status),legacy)==sizeof(old_status));assert(!fclose(legacy));
  auto &device=esphome::wifi::device;device.sta.set_ssid("Original");device.sta.set_password("original-password");pax_wifi::loop();
  auto s=status();assert(!strcmp(s.ssid,"Original") && s.password_set==1);
  pax_wifi_request_t r{};r.magic=PAX_WIFI_SETTINGS_MAGIC;r.replace_password=1;strcpy(r.ssid,"New network");strcpy(r.password,"test-password");assert(pax_wifi_request_valid(&r));

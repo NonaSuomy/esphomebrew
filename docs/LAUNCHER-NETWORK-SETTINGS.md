@@ -11,6 +11,10 @@ address or hostname; IPv6 literals are not supported by the current client.
 The computer and device need a working route to each other. The device's own
 IP address is not the development-server address.
 
+The Network status line also displays the connected SSID, band, primary-channel
+frequency and channel number, and security/authentication plus cipher when
+reported by the Wi-Fi radio. Unavailable radio details are omitted.
+
 WI-FI NAME and WI-FI PASSWORD stage credentials. CHANGE WI-FI applies them.
 An unchanged password keeps the current password. Editing the password to
 empty explicitly selects an open network. The displayed password is always

@@ -3831,7 +3831,7 @@ static void refresh_wifi_settings(bool load)
   if(g_svc->file_open && g_svc->file_read && g_svc->file_close){
     void *f=g_svc->file_open(PAX_WIFI_SETTINGS_FILE,"rb");
     if(f){pax_wifi_status_t status={0};size_t n=g_svc->file_read(&status,1,sizeof(status),f);g_svc->file_close(f);
-      if(n==sizeof(status) && status.magic==PAX_WIFI_SETTINGS_MAGIC && status.ssid[32]==0){g_wifi_status=status;g_wifi_available=true;}
+      if(n>=PAX_WIFI_STATUS_BASE_BYTES && status.magic==PAX_WIFI_SETTINGS_MAGIC && status.ssid[32]==0){status.security[sizeof(status.security)-1]=0;g_wifi_status=status;g_wifi_available=true;}
     }
   }
   if(load){copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),g_wifi_available ? g_wifi_status.ssid : "");secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=false;}
@@ -5317,6 +5317,17 @@ static void update_list_row_text(int row, int index, const char *name)
   lv_obj_align(label, LV_ALIGN_LEFT_MID, inset, 0);
 }
 
+static void append_wifi_summary(char *out, size_t capacity, const pax_wifi_status_t *status)
+{
+  if(status->ssid[0]){append_text(out,capacity," | ");append_text(out,capacity,status->ssid);}
+  if(status->frequency_mhz){
+    append_text(out,capacity,status->frequency_mhz<3000 ? " | 2.4 GHz (" : " | 5 GHz (");
+    append_uint(out,capacity,status->frequency_mhz);append_text(out,capacity," MHz, ch ");
+    append_uint(out,capacity,status->channel);append_text(out,capacity,")");
+  }
+  if(status->security[0]){append_text(out,capacity," | ");append_text(out,capacity,status->security);}
+}
+
 static int update_selection_on_host(void *arg)
 {
   (void)arg;
@@ -5507,11 +5518,14 @@ static int update_selection_on_host(void *arg)
     lv_label_set_text(g_network_dhcp_label, g_network_config.dhcp_enabled ? "ON" : "OFF");
   if (g_network_status_label != NULL) {
     char address[20];
-    char network_summary[96];
+    char network_summary[256];
     ipv4_to_text(g_network_live.ipv4, address, sizeof(address));
     copy_text(network_summary, sizeof(network_summary), network_type_name(g_network_live.network_type));
     append_text(network_summary, sizeof(network_summary), g_network_live.connected ? " | Connected | " : " | No link | ");
     append_text(network_summary, sizeof(network_summary), g_network_live.ipv4 != 0 ? address : "No IPv4 address");
+    if(g_network_live.network_type==PAX_NETWORK_WIFI && g_network_live.connected && g_wifi_available){
+      append_wifi_summary(network_summary,sizeof(network_summary),&g_wifi_status);
+    }
     lv_label_set_text(g_network_status_label, network_summary);
   }
   uint32_t network_values[4] = {g_network_config.ipv4, g_network_config.netmask,
@@ -6391,7 +6405,7 @@ static int build_ui_on_host(void *arg)
     lv_obj_set_style_text_color(network_heading, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
     lv_obj_set_style_text_font(network_heading, font, LV_PART_MAIN);
     lv_obj_set_pos(network_heading, label_x, row_y[12]);
-    g_network_status_label = settings_text(panel, "", control_x, row_y[13], control_w, &lv_font_montserrat_14, true);
+    g_network_status_label = settings_text(panel, "", label_x, row_y[13], content_w-label_x-ui_px(8), &lv_font_montserrat_14, true);
 
     settings_text(panel, "DHCP", label_x, row_y[14], control_x - label_x - ui_px(6), font, false);
     g_network_dhcp_button = settings_button(panel, 12, control_x, row_y[14], control_w, ui_px(18), -34);

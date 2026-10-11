@@ -5,11 +5,14 @@
 #include <cstring>
 #ifdef USE_WIFI
 #include "esphome/components/wifi/wifi_component.h"
+#ifdef ESP_PLATFORM
+#include "esp_wifi.h"
+#endif
 namespace pax_wifi {
 static portMUX_TYPE lock=portMUX_INITIALIZER_UNLOCKED;
 static pax_wifi_request_t pending{};
 static bool queued=false;
-static pax_wifi_status_t snapshot{PAX_WIFI_SETTINGS_MAGIC,0,0,{0}};
+static pax_wifi_status_t snapshot{PAX_WIFI_SETTINGS_MAGIC,0,0,{0},0,0,{0}};
 struct Stream { bool writing; size_t offset; pax_wifi_request_t request; pax_wifi_status_t response; };
 static ssize_t read(void *cookie,char *out,size_t count){auto *s=static_cast<Stream *>(cookie);size_t n=std::min(static_cast<size_t>(count),sizeof(s->response)-s->offset);std::memcpy(out,reinterpret_cast<char *>(&s->response)+s->offset,n);s->offset+=n;return n;}
 static ssize_t write(void *cookie,const char *in,size_t count){auto *s=static_cast<Stream *>(cookie);if(static_cast<size_t>(count)>sizeof(s->request)-s->offset)return -1;std::memcpy(reinterpret_cast<char *>(&s->request)+s->offset,in,count);s->offset+=count;return count;}
@@ -47,8 +50,22 @@ static void loop(){
   if(wifi->is_connected() && target.get_ssid()==ssid){wifi->save_wifi_sta(target.get_ssid(),target.get_password());changing=false;status=2;}
   else if(esp_timer_get_time()>=deadline){wifi->disable();wifi->set_sta(previous);wifi->enable();changing=false;status=-1;}
  }
+ static int64_t last_refresh=-1000000;
+ const int64_t now=esp_timer_get_time();
+ if(!status && now-last_refresh<1000000)return;
+ last_refresh=now;
  auto current=wifi->get_sta();
- portENTER_CRITICAL(&lock);snapshot.magic=PAX_WIFI_SETTINGS_MAGIC;std::strncpy(snapshot.ssid,current.get_ssid().c_str(),32);snapshot.ssid[32]=0;snapshot.password_set=!current.get_password().empty();if(status)snapshot.status=status;portEXIT_CRITICAL(&lock);
+ uint32_t channel=0,frequency=0;char security[48]={0},connected_ssid[33]={0};
+#ifdef ESP_PLATFORM
+ wifi_ap_record_t ap{};
+ if(wifi->is_connected() && esp_wifi_sta_get_ap_info(&ap)==ESP_OK){
+  std::memcpy(connected_ssid,ap.ssid,32);connected_ssid[32]=0;
+  channel=ap.primary;frequency=pax_wifi_channel_mhz(channel);
+  const char *auth=pax_wifi_auth_name(ap.authmode),*cipher=pax_wifi_cipher_name(ap.pairwise_cipher);
+  std::snprintf(security,sizeof(security),"%s%s%s",auth,*cipher ? " / " : "",cipher);
+ }
+#endif
+ portENTER_CRITICAL(&lock);snapshot.magic=PAX_WIFI_SETTINGS_MAGIC;std::strncpy(snapshot.ssid,connected_ssid[0] ? connected_ssid : current.get_ssid().c_str(),32);snapshot.ssid[32]=0;snapshot.password_set=!current.get_password().empty();snapshot.channel=channel;snapshot.frequency_mhz=frequency;std::memcpy(snapshot.security,security,sizeof(security));if(status)snapshot.status=status;portEXIT_CRITICAL(&lock);
  if(!changing){previous.set_password("");target.set_password("");}
 }
 }
