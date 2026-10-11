@@ -1,5 +1,8 @@
 #include "pax_web.h"
 #include "esp_random.h"
+#ifdef USE_IMPROV_SERIAL
+#include "esphome/components/improv_serial/improv_serial_component.h"
+#endif
 #include "esphome/components/network/util.h"
 #include "esphome/core/application.h"
 #include "esphome/core/log.h"
@@ -55,6 +58,7 @@ void PaxWeb::setup() {
   const Route routes[] = {{"/", HTTP_GET},
                           {"/pax", HTTP_GET},
                           {"/pax.js", HTTP_GET},
+                          {"/pax-store.js", HTTP_GET},
                           {"/pax/status", HTTP_GET},
                           {"/pax/starter", HTTP_POST},
                           {"/pax/upload", HTTP_POST},
@@ -72,12 +76,22 @@ void PaxWeb::setup() {
       return;
     }
   }
+#ifdef USE_IMPROV_SERIAL
+  serial_queue_ = xQueueCreate(4, sizeof(SerialChunk));
+#endif
   ESP_LOGI(TAG, "SD setup and file upload available at http://<device-ip>:8080/pax");
 }
 void PaxWeb::dump_config() {
   ESP_LOGCONFIG(TAG, "PAX SD setup: port %u, path /pax", port_);
 }
 void PaxWeb::loop() {
+#ifdef USE_IMPROV_SERIAL
+  if (!serial_bound_ && serial_queue_ != nullptr && improv_serial::global_improv_serial_component != nullptr) {
+    improv_serial::global_improv_serial_component->set_vendor_handler(
+        [this](uint8_t cmd, std::span<const uint8_t> payload) { return serial_command_(cmd, payload); });
+    serial_bound_ = true;
+  }
+#endif
   if (close_requested_.exchange(false))
     loader_->request_close();
   if (transfer_.load() == 1) {
@@ -170,6 +184,10 @@ esp_err_t PaxWeb::serve_(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "X-Frame-Options", "DENY");
   httpd_resp_set_hdr(req, "Referrer-Policy", "no-referrer");
   if (req->method == HTTP_GET) {
+    if (std::strcmp(req->uri, "/pax-store.js") == 0) {
+      httpd_resp_set_type(req, "text/javascript; charset=utf-8");
+      return httpd_resp_send(req, STORE_JS, sizeof(STORE_JS) - 1);
+    }
     if (std::strcmp(req->uri, "/pax.js") == 0) {
       httpd_resp_set_type(req, "text/javascript; charset=utf-8");
       return httpd_resp_send(req, WEB_JS, sizeof(WEB_JS) - 1);
@@ -279,6 +297,94 @@ void PaxWeb::starter_task_(void *context) {
   self->report_(message);
   self->transfer_ = 4;
   self->starter_task_handle_ = nullptr;
+  vTaskDeleteWithCaps(nullptr);
+}
+// Executed on the main loop via Improv, so storage ownership changes here.
+std::vector<uint8_t> PaxWeb::serial_command_(uint8_t command, std::span<const uint8_t> payload) {
+  auto reply = [command](uint8_t status, const char *text) {
+    std::vector<uint8_t> out{command, status};
+    out.insert(out.end(), text, text + std::min<size_t>(std::strlen(text), 180));
+    return out;
+  };
+  if (command == 0x74) return reply(0, "PAXSD1");
+  if (command == 0x75) { close_requested_ = true; return reply(0, "Closing app"); }
+  if (command == 0x73) { serial_abort_ = true; return reply(0, "Cancelling transfer"); }
+  if (command == 0x72) {
+    const int result = serial_result_.load();
+    if (result == 1 || transfer_.load() == 4) return reply(2, "Receiving or saving file");
+    return reply(result == 2 ? 0 : 1, result == 2 ? "Saved and verified" : "Transfer failed; previous file kept");
+  }
+  if (command == 0x70) {
+    if (payload.size() < 37 || payload.size() > 240) return reply(1, "Invalid file header");
+    uint32_t size = 0;
+    for (size_t i = 0; i < 4; i++) size |= uint32_t(payload[i]) << (8 * i);
+    std::string path(reinterpret_cast<const char *>(payload.data() + 36), payload.size() - 36);
+    if (size > pax_loader::data::MAX_FILE_SIZE || path.rfind("/sd/", 0) != 0 ||
+        !pax_loader::data::safe_target(path.substr(4))) return reply(1, "Invalid SD path or file size");
+    int expected = 0;
+    if (!transfer_.compare_exchange_strong(expected, 2)) return reply(1, "Another transfer is busy");
+    if (!loader_->begin_web_transfer()) { transfer_ = 0; return reply(1, "Close the running app before installing"); }
+    serial_path_ = path;
+    serial_size_ = size;
+    serial_received_ = serial_sequence_ = serial_offset_ = 0;
+    serial_chunk_.length = 0;
+    serial_sha_.clear();
+    for (size_t i = 4; i < 36; i++) { char hex[3]; std::snprintf(hex, 3, "%02x", payload[i]); serial_sha_ += hex; }
+    xQueueReset(serial_queue_);
+    serial_abort_ = false;
+    serial_result_ = 1;
+    if (xTaskCreatePinnedToCoreWithCaps(serial_task_, "pax_serial", 12288, this, 4, nullptr,
+                                      0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
+      serial_result_ = 3; transfer_ = 4; return reply(1, "Could not start transfer");
+    }
+    return reply(0, "Ready");
+  }
+  if (command == 0x71) {
+    if (payload.size() <= 4 || payload.size() > 244)
+      return reply(1, "Invalid chunk");
+    uint32_t sequence = 0;
+    for (size_t i = 0; i < 4; i++) sequence |= uint32_t(payload[i]) << (8 * i);
+    const std::string accepted = "Accepted " + std::to_string(sequence);
+    if (!serial_abort_.load() && serial_sequence_ > 0 && sequence == serial_sequence_ - 1 &&
+        (serial_result_.load() == 1 || serial_result_.load() == 2)) return reply(0, accepted.c_str());
+    if (serial_result_.load() != 1) return reply(1, "No active transfer");
+    if (sequence != serial_sequence_ || payload.size() - 4 > serial_size_ - serial_received_)
+      return reply(1, "Out of sequence or oversized chunk");
+    SerialChunk chunk{};
+    chunk.length = payload.size() - 4;
+    std::memcpy(chunk.data, payload.data() + 4, chunk.length);
+    if (xQueueSend(serial_queue_, &chunk, 0) != pdTRUE) {
+      const std::string retry = "Retry " + std::to_string(sequence);
+      return reply(2, retry.c_str());
+    }
+    serial_received_ += chunk.length;
+    serial_sequence_++;
+    return reply(0, accepted.c_str());
+  }
+  return reply(1, "Unknown command");
+}
+int PaxWeb::serial_read_(void *context, uint8_t *buffer, size_t size) {
+  auto *self = static_cast<PaxWeb *>(context);
+  if (self->serial_abort_.load()) return -1;
+  if (self->serial_offset_ == self->serial_chunk_.length) {
+    unsigned waits = 0;
+    while (xQueueReceive(self->serial_queue_, &self->serial_chunk_, pdMS_TO_TICKS(250)) != pdTRUE) {
+      if (self->serial_abort_.load() || ++waits >= 120) return -1;
+    }
+    self->serial_offset_ = 0;
+  }
+  const size_t count = std::min<size_t>(size, self->serial_chunk_.length - self->serial_offset_);
+  std::memcpy(buffer, self->serial_chunk_.data + self->serial_offset_, count);
+  self->serial_offset_ += count;
+  return count;
+}
+void PaxWeb::serial_task_(void *context) {
+  auto *self = static_cast<PaxWeb *>(context);
+  const esp_err_t result = self->loader_->receive_web_file(self->serial_path_, self->serial_size_,
+                                                          self->serial_sha_, serial_read_, self);
+  self->report_(result == ESP_OK ? "Serial file saved and verified" : "Serial transfer failed; previous file kept");
+  self->serial_result_ = result == ESP_OK ? 2 : 3;
+  self->transfer_ = 4;
   vTaskDeleteWithCaps(nullptr);
 }
 } // namespace esphome::pax_web

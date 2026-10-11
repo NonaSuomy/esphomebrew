@@ -12,7 +12,7 @@ if(typeof document!=="undefined"){
 const $=id=>document.getElementById(id),token=document.querySelector('meta[name="pax-token"]').content;
 let busy=false,chosen=[],queue=[];
 const message=text=>$("status").textContent=text;
-function lock(value){busy=value;["starter","upload","close","files","folder","destination","replace"].forEach(id=>$(id).disabled=value);}
+function lock(value){busy=value;["starter","upload","close","files","folder","destination","replace","store-install"].forEach(id=>$(id).disabled=value);}
 function preview(){queue=[];$("preview").replaceChildren();try{for(const file of chosen){if(file.size>1073741824)throw Error("File exceeds 1 GiB: "+file.name);const path=paxTarget($("destination").value,file.webkitRelativePath||file.name);queue.push({file,path});const li=document.createElement("li");li.textContent=path.slice(3)+" ("+file.size.toLocaleString()+" bytes)";$("preview").append(li);}const seen=new Set();for(const item of queue){const key=item.path.toLowerCase();if(seen.has(key))throw Error("Duplicate SD path: "+item.path);seen.add(key);}}catch(error){queue=[];message(error.message);}}
 $("files").addEventListener("change",()=>{chosen=Array.from($("files").files);$("folder").value="";preview();});$("folder").addEventListener("change",()=>{chosen=Array.from($("folder").files);$("files").value="";preview();});$("destination").addEventListener("input",preview);
 async function command(path){const response=await fetch(path,{method:"POST",headers:{"X-PAX-Token":token}});const text=await response.text();if(!response.ok)throw Error(text);return text;}
@@ -20,5 +20,41 @@ $("close").addEventListener("click",async()=>{try{message(await command("/pax/cl
 $("starter").addEventListener("click",async()=>{lock(true);$("progress").removeAttribute("value");try{message(await command("/pax/starter"));for(;;){await new Promise(resolve=>setTimeout(resolve,1000));const response=await fetch("/pax/status");if(!response.ok)throw Error("Device disconnected. Reopen its setup page.");const text=await response.text();message(text);const progress=response.headers.get("X-PAX-Progress");if(progress!==null)$("progress").value=Number(progress);if(!text.startsWith("Downloading"))break;}}catch(error){message(error.message);}finally{lock(false);$("progress").value=100;}});
 async function digest(file,index){const hash=new PaxSha256();for(let offset=0;offset<file.size;offset+=262144){hash.update(new Uint8Array(await file.slice(offset,offset+262144).arrayBuffer()));message(`Checking ${index+1}/${queue.length}: ${file.name}`);await new Promise(resolve=>setTimeout(resolve,0));}return hash.hex();}
 function send(item,sha,index){return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST","/pax/upload");xhr.timeout=1800000;xhr.setRequestHeader("Content-Type","application/octet-stream");xhr.setRequestHeader("X-PAX-Token",token);xhr.setRequestHeader("X-PAX-Path",item.path);xhr.setRequestHeader("X-PAX-SHA256",sha);xhr.upload.onprogress=event=>{if(event.lengthComputable)$("progress").value=event.loaded/event.total*100;message(`Uploading ${index+1}/${queue.length}: ${item.path.slice(3)} (${event.loaded.toLocaleString()} bytes)`);};xhr.onload=()=>xhr.status===200?resolve(xhr.responseText):reject(Error(xhr.responseText||"Upload failed"));xhr.onerror=()=>reject(Error("Connection lost. The previous file is kept; retry the upload."));xhr.ontimeout=()=>reject(Error("Upload timed out. Retry when the device is available."));xhr.send(item.file);});}
+let selectedApp=null,selectedFiles=[];
+async function selectStoreApp(){
+  const name=new URLSearchParams(location.hash.slice(1)).get('app');
+  if(!name)return;
+  $('store-app').hidden=false;
+  try{
+    if(!/^[A-Za-z0-9_-]+$/.test(name))throw Error('Invalid app selection');
+    message('Loading selected app details');
+    selectedApp=(await PaxStore.catalog()).find(app=>app.name===name);
+    if(!selectedApp)throw Error('This app is no longer in the PAX Store');
+    selectedFiles=await PaxStore.files(selectedApp);
+    $('store-title').textContent='Install '+selectedApp.title;
+    $('store-description').textContent=selectedApp.description.replace(/PAPP/g,'PAX').replace(/papp/g,'pax');
+    for(const file of selectedFiles){const li=document.createElement('li');li.textContent=file.path.slice(3)+' ('+file.size.toLocaleString()+' bytes)';$('store-files').append(li);}
+    const needed=(selectedApp.requires||[]).filter(item=>!item.download&&!item.optional).map(item=>item.path);
+    $('store-requires').textContent=needed.length?'Additional files may be required: '+needed.join(', '):'Included downloadable data is installed with this app. Supply your own ROMs or game files where the description requires them.';
+    message('Ready to install '+selectedApp.title);
+  }catch(error){selectedApp=null;selectedFiles=[];message(error.message);$('store-install').disabled=true;}
+}
+$('store-install').addEventListener('click',async()=>{
+  if(busy||!selectedApp)return;
+  if(!$('store-replace').checked){message('Confirm replacement of matching SD files before installing.');return;}
+  lock(true);$('progress').value=0;
+  try{
+    for(let i=0;i<selectedFiles.length;i++){
+      const entry=selectedFiles[i];message('Downloading and checking '+entry.path);
+      const {data,digest:sha}=await PaxStore.bytes(entry,async bytes=>{const hash=new PaxSha256();hash.update(bytes);return hash.hex();});
+      queue=selectedFiles.map(file=>({path:file.path}));
+      const item={path:entry.path,file:new Blob([data])};
+      message(await send(item,sha,i));
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    $('progress').value=100;message(selectedApp.title+' installed and verified. Choose STORAGE on the device. Check the app description for any additional game files.');
+  }catch(error){message(error.message);}finally{lock(false);queue=[];}
+});
+selectStoreApp();
 $("upload").addEventListener("click",async()=>{preview();if(queue.length===0){message("Choose valid files or a folder first.");return;}if(!$("replace").checked){message("Confirm replacement of existing paths before uploading.");return;}lock(true);try{for(let i=0;i<queue.length;i++){const sha=await digest(queue[i].file,i);message(await send(queue[i],sha,i));await new Promise(resolve=>setTimeout(resolve,100));}message(`Saved and verified ${queue.length} file(s). Choose STORAGE on the device.`);$("progress").value=100;}catch(error){message(error.message);}finally{lock(false);}});
 }

@@ -3,6 +3,9 @@
 #include "esphome/components/pax_loader/pax_loader.h"
 #include "esphome/core/component.h"
 #include "freertos/semphr.h"
+#include "freertos/queue.h"
+#include <span>
+#include <vector>
 #include <atomic>
 #include <string>
 namespace esphome::pax_web {
@@ -22,6 +25,18 @@ protected:
   esp_err_t serve_(httpd_req_t *req);
   static int read_(void *context, uint8_t *buffer, size_t size);
   static void starter_task_(void *context);
+  static void serial_task_(void *context);
+  static int serial_read_(void *context, uint8_t *buffer, size_t size);
+  std::vector<uint8_t> serial_command_(uint8_t command, std::span<const uint8_t> payload);
+  struct SerialChunk { uint16_t length; uint8_t data[240]; };
+  bool serial_bound_{false};
+  QueueHandle_t serial_queue_{nullptr};
+  SerialChunk serial_chunk_{};
+  size_t serial_offset_{0};
+  uint32_t serial_sequence_{0}, serial_received_{0}, serial_size_{0};
+  std::string serial_path_, serial_sha_;
+  std::atomic<int> serial_result_{0};  // 0 idle, 1 receiving, 2 saved, 3 failed
+  std::atomic<bool> serial_abort_{false};
   bool reserve_();
   bool allowed_host_(httpd_req_t *req);
   bool authorized_(httpd_req_t *req);

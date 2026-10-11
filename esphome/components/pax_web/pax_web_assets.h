@@ -3,9 +3,10 @@
 namespace esphome::pax_web {
 inline constexpr char WEB_HTML[] = R"PAXWEB(<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="pax-token" content="PAX_SESSION_TOKEN"><title>PAX device setup</title><style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#061425;color:#dcecf4}*{box-sizing:border-box}body{max-width:880px;margin:auto;padding:24px}header{color:#60d9f8;font-weight:750;letter-spacing:.08em}h1{font-size:clamp(32px,6vw,48px);margin-bottom:12px}h2{font-size:22px}p{line-height:1.6;color:#adc3cf}section{background:#0b2031;border:1px solid #254557;border-radius:14px;padding:24px;margin:24px 0}button,a.button{background:#59d9fa;color:#062033;border:0;border-radius:7px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:wait}input{font:inherit;background:#102c40;color:#dcecf4;padding:12px;border:1px solid #466174;border-radius:7px;width:100%;margin:8px 0 16px}label{display:block;margin-top:16px}a{color:#60d9f8}code{color:#b7eaf6;overflow-wrap:anywhere}#status{white-space:pre-wrap;overflow-wrap:anywhere;min-height:1.6em}progress{width:100%;height:16px}ul{padding-left:22px;line-height:1.7}.row{display:flex;flex-wrap:wrap;gap:12px}.muted{background:#173349;color:#dcecf4}.ack{display:flex;align-items:center;gap:10px}.ack input{width:auto;margin:0}.note{font-size:14px}</style><script defer src="/pax.js"></script></head>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#061425;color:#dcecf4}*{box-sizing:border-box}body{max-width:880px;margin:auto;padding:24px}header{color:#60d9f8;font-weight:750;letter-spacing:.08em}h1{font-size:clamp(32px,6vw,48px);margin-bottom:12px}h2{font-size:22px}p{line-height:1.6;color:#adc3cf}section{background:#0b2031;border:1px solid #254557;border-radius:14px;padding:24px;margin:24px 0}button,a.button{background:#59d9fa;color:#062033;border:0;border-radius:7px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:wait}input{font:inherit;background:#102c40;color:#dcecf4;padding:12px;border:1px solid #466174;border-radius:7px;width:100%;margin:8px 0 16px}label{display:block;margin-top:16px}a{color:#60d9f8}code{color:#b7eaf6;overflow-wrap:anywhere}#status{white-space:pre-wrap;overflow-wrap:anywhere;min-height:1.6em}progress{width:100%;height:16px}ul{padding-left:22px;line-height:1.7}.row{display:flex;flex-wrap:wrap;gap:12px}.muted{background:#173349;color:#dcecf4}.ack{display:flex;align-items:center;gap:10px}.ack input{width:auto;margin:0}.note{font-size:14px}</style><script defer src="/pax-store.js"></script><script defer src="/pax.js"></script></head>
 <body><header>PAX / DEVICE SETUP</header><h1>Your SD card, over Wi-Fi.</h1><p>Install the starter apps or send files directly from this computer. Keep the SD card inserted and return the device to its three-button screen before transferring.</p><div class="row"><button id="close" class="muted">Close running app</button><a href="https://nonasuomy.github.io/esphomebrew/install/">Firmware installer</a></div>
 <section><h2>Install the SD starter</h2><p>The device downloads Launcher and Recipe, including their app details, directly from GitHub. Each file is checked before it replaces the installed copy.</p><button id="starter">Install SD starter</button></section>
+<section id="store-app" hidden><h2 id="store-title">Install selected app</h2><p id="store-description"></p><ul id="store-files"></ul><p id="store-requires" class="note"></p><label class="ack"><input id="store-replace" type="checkbox">Replace matching files on the SD card</label><button id="store-install">Install selected app</button><p><a href="https://nonasuomy.github.io/esphomebrew/">Choose another app in the PAX Store</a></p></section>
 <section><h2>Send your files</h2><p>Choose apps, ROMs, artwork or a folder. Folder uploads keep their directory structure under the destination you choose.</p><label for="destination">Destination on the SD card</label><input id="destination" value="/roms/pax" autocomplete="off" spellcheck="false"><p class="note">Examples: <code>/roms/pax</code> for apps, <code>/roms/nes</code> for NES games, or <code>/backgrounds</code> for artwork.</p><label for="files">Files</label><input id="files" type="file" multiple><label for="folder">Or choose a folder</label><input id="folder" type="file" webkitdirectory multiple><p class="note">Paths use letters, numbers, dots, underscores and hyphens. Each file can be up to 1 GiB. Rename files with spaces or other characters before sending them.</p><ul id="preview"></ul><label class="ack"><input id="replace" type="checkbox">Replace existing files with the same path</label><button id="upload">Upload to SD card</button></section>
 <section aria-live="polite"><h2>Transfer status</h2><progress id="progress" max="100" value="0"></progress><p id="status">Ready</p></section><p class="note">Transfers stay on your local network. Files are staged, checked using SHA-256, then saved. A failed transfer keeps the previous file. Refresh this page if the device has restarted.</p></body></html>
 )PAXWEB";
@@ -23,7 +24,7 @@ if(typeof document!=="undefined"){
 const $=id=>document.getElementById(id),token=document.querySelector('meta[name="pax-token"]').content;
 let busy=false,chosen=[],queue=[];
 const message=text=>$("status").textContent=text;
-function lock(value){busy=value;["starter","upload","close","files","folder","destination","replace"].forEach(id=>$(id).disabled=value);}
+function lock(value){busy=value;["starter","upload","close","files","folder","destination","replace","store-install"].forEach(id=>$(id).disabled=value);}
 function preview(){queue=[];$("preview").replaceChildren();try{for(const file of chosen){if(file.size>1073741824)throw Error("File exceeds 1 GiB: "+file.name);const path=paxTarget($("destination").value,file.webkitRelativePath||file.name);queue.push({file,path});const li=document.createElement("li");li.textContent=path.slice(3)+" ("+file.size.toLocaleString()+" bytes)";$("preview").append(li);}const seen=new Set();for(const item of queue){const key=item.path.toLowerCase();if(seen.has(key))throw Error("Duplicate SD path: "+item.path);seen.add(key);}}catch(error){queue=[];message(error.message);}}
 $("files").addEventListener("change",()=>{chosen=Array.from($("files").files);$("folder").value="";preview();});$("folder").addEventListener("change",()=>{chosen=Array.from($("folder").files);$("files").value="";preview();});$("destination").addEventListener("input",preview);
 async function command(path){const response=await fetch(path,{method:"POST",headers:{"X-PAX-Token":token}});const text=await response.text();if(!response.ok)throw Error(text);return text;}
@@ -31,7 +32,217 @@ $("close").addEventListener("click",async()=>{try{message(await command("/pax/cl
 $("starter").addEventListener("click",async()=>{lock(true);$("progress").removeAttribute("value");try{message(await command("/pax/starter"));for(;;){await new Promise(resolve=>setTimeout(resolve,1000));const response=await fetch("/pax/status");if(!response.ok)throw Error("Device disconnected. Reopen its setup page.");const text=await response.text();message(text);const progress=response.headers.get("X-PAX-Progress");if(progress!==null)$("progress").value=Number(progress);if(!text.startsWith("Downloading"))break;}}catch(error){message(error.message);}finally{lock(false);$("progress").value=100;}});
 async function digest(file,index){const hash=new PaxSha256();for(let offset=0;offset<file.size;offset+=262144){hash.update(new Uint8Array(await file.slice(offset,offset+262144).arrayBuffer()));message(`Checking ${index+1}/${queue.length}: ${file.name}`);await new Promise(resolve=>setTimeout(resolve,0));}return hash.hex();}
 function send(item,sha,index){return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST","/pax/upload");xhr.timeout=1800000;xhr.setRequestHeader("Content-Type","application/octet-stream");xhr.setRequestHeader("X-PAX-Token",token);xhr.setRequestHeader("X-PAX-Path",item.path);xhr.setRequestHeader("X-PAX-SHA256",sha);xhr.upload.onprogress=event=>{if(event.lengthComputable)$("progress").value=event.loaded/event.total*100;message(`Uploading ${index+1}/${queue.length}: ${item.path.slice(3)} (${event.loaded.toLocaleString()} bytes)`);};xhr.onload=()=>xhr.status===200?resolve(xhr.responseText):reject(Error(xhr.responseText||"Upload failed"));xhr.onerror=()=>reject(Error("Connection lost. The previous file is kept; retry the upload."));xhr.ontimeout=()=>reject(Error("Upload timed out. Retry when the device is available."));xhr.send(item.file);});}
+let selectedApp=null,selectedFiles=[];
+async function selectStoreApp(){
+  const name=new URLSearchParams(location.hash.slice(1)).get('app');
+  if(!name)return;
+  $('store-app').hidden=false;
+  try{
+    if(!/^[A-Za-z0-9_-]+$/.test(name))throw Error('Invalid app selection');
+    message('Loading selected app details');
+    selectedApp=(await PaxStore.catalog()).find(app=>app.name===name);
+    if(!selectedApp)throw Error('This app is no longer in the PAX Store');
+    selectedFiles=await PaxStore.files(selectedApp);
+    $('store-title').textContent='Install '+selectedApp.title;
+    $('store-description').textContent=selectedApp.description.replace(/PAPP/g,'PAX').replace(/papp/g,'pax');
+    for(const file of selectedFiles){const li=document.createElement('li');li.textContent=file.path.slice(3)+' ('+file.size.toLocaleString()+' bytes)';$('store-files').append(li);}
+    const needed=(selectedApp.requires||[]).filter(item=>!item.download&&!item.optional).map(item=>item.path);
+    $('store-requires').textContent=needed.length?'Additional files may be required: '+needed.join(', '):'Included downloadable data is installed with this app. Supply your own ROMs or game files where the description requires them.';
+    message('Ready to install '+selectedApp.title);
+  }catch(error){selectedApp=null;selectedFiles=[];message(error.message);$('store-install').disabled=true;}
+}
+$('store-install').addEventListener('click',async()=>{
+  if(busy||!selectedApp)return;
+  if(!$('store-replace').checked){message('Confirm replacement of matching SD files before installing.');return;}
+  lock(true);$('progress').value=0;
+  try{
+    for(let i=0;i<selectedFiles.length;i++){
+      const entry=selectedFiles[i];message('Downloading and checking '+entry.path);
+      const {data,digest:sha}=await PaxStore.bytes(entry,async bytes=>{const hash=new PaxSha256();hash.update(bytes);return hash.hex();});
+      queue=selectedFiles.map(file=>({path:file.path}));
+      const item={path:entry.path,file:new Blob([data])};
+      message(await send(item,sha,i));
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    $('progress').value=100;message(selectedApp.title+' installed and verified. Choose STORAGE on the device. Check the app description for any additional game files.');
+  }catch(error){message(error.message);}finally{lock(false);queue=[];}
+});
+selectStoreApp();
 $("upload").addEventListener("click",async()=>{preview();if(queue.length===0){message("Choose valid files or a folder first.");return;}if(!$("replace").checked){message("Confirm replacement of existing paths before uploading.");return;}lock(true);try{for(let i=0;i<queue.length;i++){const sha=await digest(queue[i].file,i);message(await send(queue[i],sha,i));await new Promise(resolve=>setTimeout(resolve,100));}message(`Saved and verified ${queue.length} file(s). Choose STORAGE on the device.`);$("progress").value=100;}catch(error){message(error.message);}finally{lock(false);}});
+}
+)PAXWEB";
+inline constexpr char STORE_JS[] = R"PAXWEB("use strict";
+// Shared by the public store and the device page. URLs are fixed to our public catalog.
+const PaxStore = (() => {
+  const base = "https://nonasuomy.github.io/esphomebrew/";
+  const encoder = new TextEncoder();
+  function target(value) {
+    if (!/^\/sd\/(?:[A-Za-z0-9._-]+\/)*[A-Za-z0-9._-]+$/.test(value) || value.length > 204 || value.split('/').some(p=>p==='.'||p==='..')) throw Error('Invalid SD path');
+    return value;
+  }
+  function publicURL(value) {
+    const url = new URL(value, base);
+    if (url.origin !== new URL(base).origin || !url.pathname.startsWith('/esphomebrew/') || url.search || url.hash) throw Error('Invalid catalog download URL');
+    return url.href;
+  }
+  async function catalog() {
+    const response = await fetch(base + 'store.json', {cache:'no-cache'});
+    if (!response.ok) throw Error('Could not load the app catalog');
+    const data = await response.json();
+    if (!Array.isArray(data.apps)) throw Error('Invalid app catalog');
+    return data.apps;
+  }
+  async function files(app) {
+    if (!/^[A-Za-z0-9_-]+$/.test(app.name) || !/^[a-f0-9]{64}$/.test(app.sha256)) throw Error('Invalid app metadata');
+    const response = await fetch(publicURL(app.info_url), {cache:'no-cache'});
+    if (!response.ok) throw Error('Could not load app details');
+    const info = await response.json();
+    if (info.name !== app.name || info.sha256 !== app.sha256 || info.size !== app.size || info.version !== app.version) throw Error('App details changed. Reload the store.');
+    const sidecar = encoder.encode(JSON.stringify(info));
+    return [
+      ...(app.data?.files || []).map(file=>({path:target('/sd/'+file.target),url:publicURL(file.url),size:file.size,sha256:file.sha256})),
+      {path:target('/sd/roms/pax/'+app.name+'.pax'),url:publicURL(app.url),size:app.size,sha256:app.sha256},
+      // Details follow the binary so a failed binary transfer keeps the old listing.
+      {path:target('/sd/roms/pax/'+app.name+'.json'),bytes:sidecar,size:sidecar.length}
+    ];
+  }
+  async function bytes(file, hash) {
+    let data = file.bytes;
+    if (!data) {
+      if (!Number.isInteger(file.size) || file.size < 0 || file.size > 1073741824 || !/^[a-f0-9]{64}$/.test(file.sha256)) throw Error('Invalid file metadata');
+      const response = await fetch(file.url);
+      if (!response.ok) throw Error('Download failed: '+file.path);
+      const chunks = []; let size = 0;
+      const reader = response.body.getReader();
+      for (;;) {
+        const {done,value} = await reader.read(); if (done) break;
+        size += value.length;
+        if (size > file.size) {await reader.cancel(); throw Error('Download exceeds expected size');}
+        chunks.push(value);
+      }
+      if (size !== file.size) throw Error('Incomplete download: '+file.path);
+      data = new Uint8Array(size); let offset=0;
+      for (const chunk of chunks) {data.set(chunk,offset); offset+=chunk.length;}
+    }
+    const digest = await hash(data);
+    if (file.sha256 && digest !== file.sha256) throw Error('SHA-256 check failed: '+file.path);
+    return {data,digest};
+  }
+  function frame(command, payload=new Uint8Array()) {
+    if (payload.length>254) throw Error('Serial payload too large');
+    const out=new Uint8Array(11+payload.length);
+    out.set(encoder.encode('IMPROV')); out[6]=1; out[7]=3; out[8]=payload.length+1; out[9]=command; out.set(payload,10);
+    out[out.length-1]=out.subarray(0,-1).reduce((sum,v)=>(sum+v)&255,0);
+    return out;
+  }
+  // Logs and split frames may share the serial stream. Only valid vendor replies are accepted.
+  class Decoder {
+    constructor(){this.buffer=[];}
+    push(bytes) {
+      this.buffer.push(...bytes); const replies=[];
+      while(this.buffer.length>=10) {
+        if (!encoder.encode('IMPROV').every((v,i)=>this.buffer[i]===v) || this.buffer[6]!==1 || this.buffer[7]!==4) {this.buffer.shift();continue;}
+        const length=this.buffer[8],total=10+length;
+        if (this.buffer.length<total) break;
+        const packet=this.buffer.slice(0,total);
+        if (length>=2 && packet.slice(0,-1).reduce((sum,v)=>(sum+v)&255,0)===packet.at(-1)) {
+          replies.push({command:packet[9],status:packet[10],message:new TextDecoder().decode(new Uint8Array(packet.slice(11,-1)))});
+          this.buffer.splice(0,total);
+        } else this.buffer.shift();
+      }
+      return replies;
+    }
+  }
+  class Serial {
+    async connect() {
+      if (!navigator.serial) throw Error('Use desktop Chrome or Edge for USB serial installation.');
+      this.port=await navigator.serial.requestPort();
+      try {
+        await this.port.open({baudRate:115200});
+        await this.port.setSignals({dataTerminalReady:false,requestToSend:false});
+        this.writer=this.port.writable.getWriter(); this.reader=this.port.readable.getReader();
+        this.decoder=new Decoder(); this.running=true; this.reading=this.readLoop();
+        // Some USB bridges reset the board when the port opens. Let setup finish.
+        const deadline=Date.now()+45000;let reply;
+        while(Date.now()<deadline){
+          try{reply=await this.rpc(0x74);if(reply.message==='PAXSD1')break;}catch{}
+          await new Promise(resolve=>setTimeout(resolve,500));
+        }
+        if(reply?.message!=='PAXSD1') throw Error('No PAX serial SD response. Update PAX firmware and use the programming USB port.');
+      } catch(error) {await this.disconnect();throw error;}
+    }
+    async readLoop() {
+      try {while(this.running){const {value,done}=await this.reader.read();if(done)break;for(const reply of this.decoder.push(value)){if(this.pending&&reply.command===this.pending.command&&this.pending.match(reply)){this.pending.resolve(reply);this.pending=null;}}}}
+      catch(error){if(this.pending)this.pending.reject(error);}
+      finally {if(this.pending){this.pending.reject(Error('Serial device disconnected'));this.pending=null;}}
+    }
+    async rpc(command,payload=new Uint8Array(),match=()=>true) {
+      if(this.pending) throw Error('Serial command already in progress');
+      let timer;
+      const response=new Promise((resolve,reject)=>{this.pending={command,resolve,reject,match};timer=setTimeout(()=>{this.pending=null;reject(Error('Serial response timed out. Update PAX firmware or reconnect the device.'));},5000);});
+      try {await this.writer.write(frame(command,payload));return await response;}
+      finally {clearTimeout(timer);this.pending=null;}
+    }
+    async send(path,data,digest,progress=()=>{}) {
+      target(path);const name=encoder.encode(path),header=new Uint8Array(36+name.length);
+      new DataView(header.buffer).setUint32(0,data.length,true);
+      header.set(digest.match(/../g).map(v=>parseInt(v,16)),4);header.set(name,36);
+      let reply=await this.rpc(0x70,header);if(reply.status!==0)throw Error(reply.message);
+      try {
+        let sequence=0;
+        for(let offset=0;offset<data.length;offset+=240){
+          const chunk=data.subarray(offset,offset+240),payload=new Uint8Array(4+chunk.length);
+          new DataView(payload.buffer).setUint32(0,sequence,true);payload.set(chunk,4);
+          let attempts=0;
+          let retries=0;
+          do {
+            try {reply=await this.rpc(0x71,payload,r=>r.status===1||r.message===`Accepted ${sequence}`||r.message===`Retry ${sequence}`);}
+            catch(error){if(++retries>3)throw error;reply={status:2};}
+            if(reply.status===2){if(++attempts>100)throw Error('Device storage stayed busy');await new Promise(r=>setTimeout(r,20));}
+          } while(reply.status===2);
+          if(reply.status!==0)throw Error(reply.message);
+          sequence++;progress(Math.min(offset+chunk.length,data.length),data.length);
+        }
+        for(let attempt=0;attempt<120;attempt++){
+          reply=await this.rpc(0x72);if(reply.status!==2)break;
+          await new Promise(r=>setTimeout(r,250));
+        }
+        if(reply.status!==0)throw Error(reply.message);
+      } catch(error){try{await this.rpc(0x73);}catch{}throw error;}
+    }
+    async disconnect(){this.running=false;try{await this.reader?.cancel();await this.reading;}catch{}try{this.reader?.releaseLock();this.writer?.releaseLock();await this.port?.close();}catch{}this.port=null;}
+  }
+  function deviceURL(value,app) {
+    const url=new URL(value.includes('://')?value:'http://'+value);
+    if(url.protocol!=='http:' || url.username || url.password || !(url.hostname.endsWith('.local') || /^192\.168\.\d+\.\d+$/.test(url.hostname) || /^10\.\d+\.\d+\.\d+$/.test(url.hostname) || /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(url.hostname))) throw Error('Enter the device local IP address or .local name.');
+    if(!url.port)url.port='8080';url.pathname='/pax';url.search='';url.hash='app='+encodeURIComponent(app);return url.href;
+  }
+  return {catalog,files,bytes,frame,Decoder,Serial,deviceURL};
+})();
+if(typeof module!=='undefined')module.exports=PaxStore;
+if(typeof document!=='undefined' && document.getElementById('store-connection')) {
+  const $=id=>document.getElementById(id),status=text=>$('install-status').textContent=text;
+  let serial=null,busy=false,apps;
+  function lock(value){busy=value;document.querySelectorAll('.install-app,#serial-connect,#serial-disconnect,#close-app').forEach(button=>button.disabled=value);}
+  $('serial-connect').addEventListener('click',async()=>{lock(true);try{serial=new PaxStore.Serial();await serial.connect();$('serial-disconnect').hidden=false;status('USB serial connected. Select Install on device beside an app.');}catch(error){serial=null;status(error.message);}finally{lock(false);}});
+  $('serial-disconnect').addEventListener('click',async()=>{if(busy)return;await serial?.disconnect();serial=null;$('serial-disconnect').hidden=true;status('Serial disconnected');});
+  $('close-app').addEventListener('click',async()=>{if(!serial){status('Connect USB serial first, or close the app on your device.');return;}try{status((await serial.rpc(0x75)).message);}catch(error){status(error.message);}});
+  document.querySelectorAll('.install-app').forEach(button=>button.addEventListener('click',async()=>{
+    if(busy)return;
+    if(!serial){try{const url=PaxStore.deviceURL($('device-address').value,button.dataset.app);window.open(url,'_blank','noopener');status('Continue on the device page to confirm the Wi-Fi installation.');}catch(error){status(error.message);}return;}
+    if(!$('install-replace').checked){status('Confirm replacement of matching SD files before installing.');return;}
+    lock(true);$('install-progress').value=0;
+    try {
+      apps=await PaxStore.catalog();const app=apps.find(a=>a.name===button.dataset.app);if(!app)throw Error('App is no longer in the catalog');
+      const files=await PaxStore.files(app);
+      for(let i=0;i<files.length;i++){
+        const file=files[i];status('Downloading and checking '+file.path);
+        const {data,digest}=await PaxStore.bytes(file,async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),v=>v.toString(16).padStart(2,'0')).join(''));
+        await serial.send(file.path,data,digest,(done,total)=>{$('install-progress').value=((i+(total?done/total:1))/files.length)*100;status('USB transfer '+file.path+' ('+done.toLocaleString()+' / '+total.toLocaleString()+' bytes)');});
+      }
+      $('install-progress').value=100;status(app.title+' installed and verified. Choose STORAGE on the device.');
+    }catch(error){status(error.message);}finally{lock(false);}
+  }));
 }
 )PAXWEB";
 }
