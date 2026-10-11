@@ -1,5 +1,6 @@
 from pathlib import Path
 import importlib.util
+import http.client
 import os
 import subprocess
 import tempfile
@@ -11,6 +12,40 @@ from http.server import ThreadingHTTPServer
 ROOT=Path(__file__).resolve().parents[1]
 
 class NetworkDetailsTests(unittest.TestCase):
+    def test_interrupted_downloads_do_not_hide_server_errors(self):
+        spec=importlib.util.spec_from_file_location('serve_dev',ROOT/'tools/serve_dev.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+        for failure in (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, RuntimeError):
+            with self.subTest(failure=failure.__name__), tempfile.TemporaryDirectory() as td:
+                path=Path(td);(path/'demo.pax').write_bytes(b'fixture')
+                messages=[];errors=[]
+                class Handler(mod.PaxRequestHandler):
+                    def copyfile(self, source, outputfile):
+                        if self.server.fail_once:
+                            self.server.fail_once=False
+                            raise failure('interrupted transfer')
+                        super().copyfile(source,outputfile)
+                    def log_message(self, format, *args):
+                        messages.append(format % args)
+                class Server(ThreadingHTTPServer):
+                    fail_once=True
+                    def handle_error(self, request, client_address):
+                        import sys
+                        errors.append(sys.exc_info()[0])
+                server=Server(('127.0.0.1',0),partial(Handler,directory=str(path)))
+                thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+                try:
+                    url=f'http://127.0.0.1:{server.server_port}/demo.pax'
+                    with urllib.request.urlopen(url,timeout=3) as response:
+                        with self.assertRaises(http.client.IncompleteRead):response.read()
+                    with urllib.request.urlopen(url,timeout=3) as response:self.assertEqual(response.read(),b'fixture')
+                    if failure is RuntimeError:
+                        self.assertEqual(errors,[RuntimeError])
+                        self.assertFalse(any('Client disconnected' in m for m in messages))
+                    else:
+                        self.assertEqual(errors,[])
+                        self.assertEqual(sum('Client disconnected' in m for m in messages),1)
+                finally:server.shutdown();thread.join();server.server_close()
+
     def test_server_live_metadata_and_launcher_parser(self):
         spec=importlib.util.spec_from_file_location('serve_dev',ROOT/'tools/serve_dev.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
         with tempfile.TemporaryDirectory() as td:

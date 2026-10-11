@@ -10,6 +10,15 @@ from pathlib import Path
 import urllib.parse
 
 class PaxRequestHandler(SimpleHTTPRequestHandler):
+    def handle(self):
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # A browser/device may stop a download or leave before headers arrive.
+            # Keep other server errors visible instead of suppressing all OSErrors.
+            self.close_connection = True
+            self.log_message('Client disconnected; request cancelled')
+
     def list_directory(self, path):
         try:
             names=sorted(os.listdir(path),key=str.casefold)
