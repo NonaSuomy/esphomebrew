@@ -19,13 +19,13 @@ To validate or build without starting the window:
 ./pax-tools/build-firmware.sh compile desktop
 ```
 
-After `compile`, the program is staged at `pax-dev/desktop/pax-desktop/program`. It can be started directly from the terminal. Native binaries are local build outputs and are excluded from Git; share the YAML/source instead. Superseded native builds are preserved under `backups/desktop/` when staging replaces them.
+After `compile`, the program is staged at `pax-dev/desktop/pax-desktop/program`. It can be started directly from the terminal. Staging replaces the executable atomically, so a rebuild can finish while an older window is running; restart that window to load the new binary. Native binaries are local build outputs and are excluded from Git; share the YAML/source instead. Superseded native builds are preserved under `backups/desktop/` when staging replaces them.
 
 ## Controls and test scope
 
-Click STORAGE, NETWORK or GITHUB STORE with the mouse. Tab and arrow keys change focus; Enter or Space selects. WASD and F/Escape provide the shared gamepad-style navigation bindings. The footer and console show the selected path/URL.
+Click STORAGE, NETWORK or GITHUB STORE with the mouse. Tab and arrow keys change focus; Enter or Space selects. WASD and F/Escape provide the shared gamepad-style navigation bindings. The footer and console show the selected path/URL. Inside the PAX launcher Enter accepts the focused item; gamepad Start is F1, keeping the favourites shortcut separate.
 
-The buttons now open the actual `launcher_ui.pax` through the [desktop PAX service host](desktop-pax.md). The three-button window hides while the app runs and returns when it closes. Storage uses `pax-dev/desktop/sd/roms/pax/launcher_ui.pax`, copying the local development launcher there on first use. It preserves an existing desktop SD copy. Network downloads the launcher from `http://10.13.37.84:8000/launcher_ui.pax` and opens its LAN catalog using the same server. GitHub downloads the launcher from the shared GitHub URL and opens its store view.
+The buttons now open the actual `launcher_ui.pax` through the [desktop PAX service host](desktop-pax.md). The three-button window hides while the app runs and returns when it closes. Storage uses `pax-dev/desktop/sd/roms/pax/launcher_ui.pax`, copying the local development launcher there on first use. It preserves an existing desktop SD copy. On first use it also seeds a missing development-server preference from the Network button URL; a saved preference is preserved. Network downloads the launcher from `http://10.13.37.84:8000/launcher_ui.pax` and opens its LAN catalog using the same server. GitHub downloads the launcher from the shared GitHub URL and opens its store view.
 
 Downloads validate the ABI-1 header and any size/SHA-256 declared by the JSON sidecar. Cached binaries are under `pax-dev/desktop/downloads/`; changed cached binaries and metadata are preserved under `backups/desktop/downloads/`. Failures appear in the footer and terminal. This does not emulate SD hardware, USB host, OTA or the MIPI/HDMI bridge. Desktop app service limits are documented separately.
 

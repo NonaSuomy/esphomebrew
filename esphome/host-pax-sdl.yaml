@@ -29,6 +29,7 @@ esphome:
           for (auto *key : {id(launcher_key_tab), id(launcher_key_enter), id(launcher_key_space), id(launcher_key_left), id(launcher_key_right), id(launcher_key_up), id(launcher_key_down), id(pax_dpad_left), id(pax_dpad_right), id(pax_dpad_up), id(pax_dpad_down), id(pax_a), id(pax_b)}) {
             key->publish_initial_state(false);
           }
+          id(pax_runtime)->set_network_url("${launcher_network_url}");
           id(pax_runtime)->bind(id(desktop_status), id(storage_button), id(network_button), id(github_button));
           ESP_LOGI("pax_desktop", "Desktop ready. Select a source to open launcher_ui through desktop PAX services.");
 

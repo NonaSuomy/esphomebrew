@@ -45,11 +45,11 @@ Local `.pax` app hand-off works in either mode. The child executes in the emulat
 
 ## Controls
 
-Mouse clicks act as touchscreen input. Arrow keys and Enter are delivered as the launcher's USB keyboard events. WASD supplies gamepad directions, J/K supplies A/B, U/I supplies X/Y, Q/E supplies L/R, Tab supplies Select and Enter supplies Start. Escape or window close requests exit through L3 and X. Wheel input is also available.
+Mouse clicks act as touchscreen input. Arrow keys and Enter are delivered as the launcher's USB keyboard events. WASD supplies gamepad directions, J/K supplies A/B, U/I supplies X/Y, Q/E supplies L/R, Tab supplies Select and F1 supplies Start. Escape or window close requests exit through L3 and X. Wheel input is also available.
 
 The host supports RGB565 framebuffer access, dirty rectangles, software scaling, touch, keyboard/gamepad input, memory allocation, time/delay, local file operations and directory/stat services, launcher status, local app launch/return, DNS, TCP and HTTPS. TLS uses the computer's trusted certificates and verifies the requested hostname. Network listings and JSON sidecars use the app's existing HTTP parser through these services. Connect/handshake currently blocks the single desktop service thread for up to five seconds.
 
-Desktop brightness, volume and auto-brightness values are session simulations. The launcher can save its own theme, list and other file-backed preferences. Device Wi-Fi provisioning, IP configuration changes and SD/USB mounting controls do not configure the computer.
+Desktop brightness, volume and auto-brightness values are session simulations. The launcher can save its own theme, list and other file-backed preferences. The network icon and IPv4/DHCP fields now read the computer's current default interface through Linux `ip` (iproute2). Network configuration is read-only: DHCP and IP changes in the launcher do not configure Linux. Device Wi-Fi provisioning and SD/USB mounting controls also do not configure the computer.
 
 ## Limits and checks
 
@@ -61,6 +61,7 @@ Audio, FreeRTOS task creation, MIDI, PNG decoding, UDP multiplayer, PPA accelera
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_services.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_launchers.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py --keyboard
 ./pax-tools/run-desktop.sh emulated --headless --seconds 5 --report /tmp/pax-run.json --screenshot /tmp/pax-screen.ppm
 ```
 
