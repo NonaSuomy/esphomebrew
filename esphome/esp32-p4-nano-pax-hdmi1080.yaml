@@ -14,5 +14,5 @@ substitutions:
 
 packages:
   pax_base: !include packages/pax-base.yaml
-  pax_audio: !include packages/pax-audio.yaml
   hardware: !include boards/waveshare/nano-hdmi1080.yaml
+  pax_audio: !include packages/pax-audio.yaml

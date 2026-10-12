@@ -20,8 +20,8 @@ substitutions:
 
 packages:
   pax_base: !include packages/pax-base.yaml
-  pax_audio: !include packages/pax-audio.yaml
   hardware: !include boards/espressif/function-ev-7inch.yaml
+  pax_audio: !include packages/pax-audio.yaml
   pax_backlight: !include packages/pax-backlight.yaml
 
 esphome:

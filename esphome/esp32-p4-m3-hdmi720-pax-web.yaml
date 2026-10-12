@@ -20,8 +20,8 @@ substitutions:
 
 packages:
   pax_base: !include packages/pax-base.yaml
-  pax_audio: !include packages/pax-audio.yaml
   hardware: !include boards/guition/m3-hdmi720.yaml
+  pax_audio: !include packages/pax-audio.yaml
 
 esphome:
   name_add_mac_suffix: true
