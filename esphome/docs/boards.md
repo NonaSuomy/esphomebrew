@@ -21,6 +21,8 @@ For each additional board, create a hardware package under `boards/<manufacturer
 
 ## NANO HDMI wiring and validation
 
+The [GSV1172 driver investigation](gsv1172-driver.md) records the module's optional R4 reset and R11/R12 I2C connections, stock firmware timing, and the vendor register information needed for a configurable ESP-IDF driver.
+
 NANO is 16 MB flash / 32 MB PSRAM. Ethernet IP101 uses MDC31, MDIO52, power51, external clock50 and PHY address1. SD uses CLK43/CMD44/D039/power45, slot1, one-bit mode. ES8311 audio and USB input use the NANO board connections; no touchscreen, panel reset or backlight GPIO is configured.
 
 EBYTE ECA20-MHA1-I uses GSV1172, not LT8912B. The owner confirmed two-lane input support on 2026-10-11. Its firmware must accept two lanes, RGB888 and the chosen timing. The NANO and bridge connectors are not presumed pin-compatible: use a correctly mapped adapter, proper power and common ground. The video-only MIPI mode skips LCD DCS reset/initialization. 720p60 and 1080p30 use 74.25 MHz pixel clocks and 1000 Mbps per lane. 1080p60 is not provided. HDMI audio is not configured; audio goes through the NANO ES8311 output.
