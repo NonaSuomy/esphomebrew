@@ -1,6 +1,6 @@
 # ESP bridge: let the team build, flash and read logs on your device
 
-`tools/esp_bridge/esp_bridge.py` runs on the machine the ESP32-P4 is plugged into. It joins the PAPP Conversions project on EhGI **as its own agent** (for example `@esp-bridge`). When someone in the project asks it to, it compiles, uploads or reads logs with your local ESPHome, then replies in the same thread with the result, the last 40 log lines and the full log as a file.
+`tools/esp_bridge/esp_bridge.py` runs on the machine the ESP32-P4 is plugged into. It joins the PAX Conversions project on EhGI **as its own agent** (for example `@esp-bridge`). When someone in the project asks it to, it compiles, uploads or reads logs with your local ESPHome, then replies in the same thread with the result, the last 40 log lines and the full log as a file.
 
 It connects **out** to EhGI, the same way coding agents do. EhGI can't reach into your network, so nothing on your machine has to accept incoming connections. "EhGI runs it" means the team posts a request and the bridge carries it out.
 
@@ -13,7 +13,7 @@ The [device bridge](device-bridge.md) (`tools/device_bridge`) is its sibling. It
 
 ## Setup (once)
 
-1. **Give the bridge a seat.** On ehgi.ai, open the project and click **+ Add agent**. It's on the **Agents** page, and in the Agents list of the chat's team panel. The page is `https://ehgi.ai/p/<project id>/agents/new`; for PAPP Conversions that's https://ehgi.ai/p/3IDv1Ayo2F2gAuIzMSGL/agents/new.
+1. **Give the bridge a seat.** On ehgi.ai, open the project and click **+ Add agent**. It's on the **Agents** page, and in the Agents list of the chat's team panel. The page is `https://ehgi.ai/p/<project id>/agents/new`; for PAX Conversions that's https://ehgi.ai/p/3IDv1Ayo2F2gAuIzMSGL/agents/new.
    - **Handle:** `esp-bridge`. **Client:** **Other** (the bridge isn't a coding agent).
    - Click **Reserve seat and get token**, then **Copy token** on the next screen. Skip the install snippets there; they are for coding agents.
    - Don't paste the token into chat. If you lose it, the agent's page can issue a new one.
@@ -71,11 +71,11 @@ Mention the bridge on one line: an action, a YAML file, then `key=value` options
 | `@esp-bridge upload esphome/device.yaml ref=main device=/dev/ttyUSB0` | Compile and flash |
 | `@esp-bridge run device.yaml source=local device=10.13.37.60 seconds=90` | Flash your local config over OTA, then capture 90 s of logs |
 | `@esp-bridge logs device.yaml source=local device=/dev/ttyUSB0 seconds=60` | Capture 60 s of logs |
-| `@esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.papp` | Stream and start that PAPP on the device |
+| `@esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.pax` | Stream and start that PAX on the device |
 | `@esp-bridge launch url=… seconds=30 serial=/dev/ttyUSB0` | Start it and return 30 s of device log plus the serial console (a crash's full panic dump and backtrace only go to serial). The port must be in `[esphome].devices` and not open elsewhere; the bridge opens it without resetting the board. If the device crashes, the reply ends with `=== crash decoded ===`: the app's addresses mapped through the dev build's `.sym` file, and the firmware's run through addr2line on the firmware ELF whose SHA256 matches the dump (see `firmware_elf`/`addr2line` in `config.example.toml`) |
-| `@esp-bridge close` | Close the running PAPP |
+| `@esp-bridge close` | Close the running PAX |
 | `@esp-bridge catalog` | Reload the store list on the device |
-| `@esp-bridge screenshot` | Post an 800×480 PNG of the running PAPP in the thread |
+| `@esp-bridge screenshot` | Post an 800×480 PNG of the running PAX in the thread |
 | `@esp-bridge readfile path=/sd/roms/redalert/DESYNCLOG.TXT` | Post a text file from the device's SD card; `path=/sd/roms/` lists a directory |
 | `@esp-bridge writefile path=/sd/roms/redalert/redalert.ini` + a code block | Replace a small text file on the SD card with the code block (`edit_requesters` only; not while an app runs) |
 | `@esp-bridge deletefile path=/sd/roms/redalert/sync001.txt` | Remove one text or leftover (`.bak`, `.log`) file from the SD card (`edit_requesters` only; not while an app runs) |
@@ -88,8 +88,8 @@ Mention the bridge on one line: an action, a YAML file, then `key=value` options
 - **Replies:** the bridge answers in the request's thread with ⏳ when it starts, then ✅/❌ with the last 40 log lines and the full log attached. It runs one job at a time; others wait their turn.
 - **In the bridge's terminal** every request is printed with who sent it and the result, e.g.
   ```
-  [14:02:11] @claude in #general: launch url=https://nonasuomy.github.io/esphomebrew/touchtest-0.1.0.papp
-  [14:02:13]   ok in 1.8s: ✅ `launch` `touchtest-0.1.0.papp` sent to 10.20.30.180.
+  [14:02:11] @claude in #general: launch url=https://nonasuomy.github.io/esphomebrew/touchtest-0.1.0.pax
+  [14:02:13]   ok in 1.8s: ✅ `launch` `touchtest-0.1.0.pax` sent to 10.20.30.180.
   ```
   Refusals are printed too. To turn it off, set `[console] show_requests = false` in `bridge.toml`.
 
@@ -110,13 +110,13 @@ Mention the bridge on one line: an action, a YAML file, then `key=value` options
 2. **The bridge** has a `[device_api]` section: the device's `host`, and the name of its API key in `secrets.yaml` (`encryption_key_secret`). Leave that out if the device's `api:` has no encryption key. Run the bridge with the ESPHome venv's python, which already has `aioesphomeapi`.
    - **Use the device's IP for `host`**, not `name.local`. On the first live test, `launch` worked through `esp32-p4-elecrow-papp.local`, but a later `close` timed out twice. With the IP, both worked, which points at the name lookup on the bridge machine. If an action times out, the message names the step that hung: resolving the name, connecting, listing actions or running the action.
 
-`launch` only accepts `https://` URLs to a `.papp` under `[device_api].allowed_url_prefixes` (by default this repo's release downloads and its Pages site). Combine it with `logs … seconds=60` to watch what the app does.
+`launch` only accepts `https://` URLs to a `.pax` under `[device_api].allowed_url_prefixes` (by default this repo's release downloads and its Pages site). Combine it with `logs … seconds=60` to watch what the app does.
 
 ## Screenshots
 
-`@esp-bridge screenshot` shows you what a running PAPP is drawing, which is useful while porting an app. The bridge calls `papp_screenshot`. The loader then sends one copy of the app's 800×480 canvas over its diagnostic stream on TCP port 3233 (`[device_api] screen_port`; not 3232, which ESPHome's OTA uses), and the bridge posts it as a PNG in the thread.
+`@esp-bridge screenshot` shows you what a running PAX is drawing, which is useful while porting an app. The bridge calls `papp_screenshot`. The loader then sends one copy of the app's 800×480 canvas over its diagnostic stream on TCP port 3233 (`[device_api] screen_port`; not 3232, which ESPHome's OTA uses), and the bridge posts it as a PNG in the thread.
 
-- It captures the PAPP canvas, the way the app drew it and the right way up. The loader's on-screen close button is not in it.
+- It captures the PAX canvas, the way the app drew it and the right way up. The loader's on-screen close button is not in it.
 - With no app running, the bridge says so. The ESPHome/LVGL menu can't be captured this way.
 - It needs a loader and `device_control.yaml` from after this was added, so rebuild the device once. The port only accepts a connection after an API request, and closes again when the bridge disconnects.
 - A typical porting loop: `launch`, `screenshot`, `logs … seconds=30`, `close`, then change the app and repeat.
@@ -146,7 +146,7 @@ Host=10.20.30.158
 The bridge reads the old file, calls `papp_write_file(path, data)`, then reads the file back and compares. The reply shows the change as a diff, or says the write didn't happen. Agents can send the same thing as message data: `{"esp_bridge": {"action": "writefile", "path": "/sd/…", "content": "…"}}`.
 
 - **Whole files.** The code block becomes the entire file, so start from a `readfile` of it and change what you need.
-- **Text only:** `.ini`, `.cfg`, `.conf`, `.txt`, `.json`, `.yaml`, `.yml`, `.csv`, under `/sd/`, without `..`, up to 16 KiB. The loader enforces the same rules. A `.papp` or firmware image would be code, so neither side will write one.
+- **Text only:** `.ini`, `.cfg`, `.conf`, `.txt`, `.json`, `.yaml`, `.yml`, `.csv`, under `/sd/`, without `..`, up to 16 KiB. The loader enforces the same rules. A `.pax` or firmware image would be code, so neither side will write one.
 - **Not while an app runs.** The loader refuses, because a running app may rewrite the file when it exits (Red Alert saves `redalert.ini`). Close the app first.
 - **Backups.** The loader keeps the previous file as `<name>.bak`, and restores it if the write fails.
 - **Who may write:** the same `[actions].edit_requesters` as `edit`. Lines with a hidden value (`***`) are refused, so a masked secret copied from a reply can't overwrite the real one.
@@ -156,7 +156,7 @@ The bridge reads the old file, calls `papp_write_file(path, data)`, then reads t
 
 `deletefile path=/sd/…` removes one file, for example a game's old debug reports. The bridge looks the file up in its folder's listing, calls `papp_delete_file(path)`, then lists the folder again to confirm the file is gone.
 
-- **Only text and leftover files:** the `writefile` types plus `.bak` and `.log`. Game data (`.mix`, …), apps (`.papp`) and folders can't be removed this way, so a typo can't wipe a game.
+- **Only text and leftover files:** the `writefile` types plus `.bak` and `.log`. Game data (`.mix`, …), apps (`.pax`) and folders can't be removed this way, so a typo can't wipe a game.
 - **Not while an app runs**, the same people as `writefile` (`[actions].edit_requesters`), and only under `/sd/` without `..`.
 - It needs a loader and `device_control.yaml` with `papp_delete_file`, and `deletefile` in `[actions].enabled`.
 

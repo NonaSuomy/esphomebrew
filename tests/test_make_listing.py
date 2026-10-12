@@ -1,4 +1,4 @@
-"""Tests for tools/make_listing.py: listings for a folder of .papp files.
+"""Tests for tools/make_listing.py: listings for a folder of .pax files.
 
 Run: python3 -m unittest discover -s tests
 """
@@ -68,12 +68,12 @@ class ListingTests(unittest.TestCase):
         self.assertIsNone(ml.store_match("azip", self.store))
 
     def test_store_app_gets_its_listing_but_this_files_size_and_hash(self):
-        papp = self.folder / "doom.papp"
+        papp = self.folder / "doom.pax"
         papp.write_bytes(b"P" * 50)
         listing, files = ml.build_listing(papp, self.store, "http://lan:8000/", False, False)
         self.assertEqual((listing["name"], listing["title"], listing["version"]), ("doom", "Doom", ""))
         self.assertEqual((listing["size"], listing["sha256"]), (50, sha(b"P" * 50)))
-        self.assertEqual(listing["url"], "http://lan:8000/doom.papp")
+        self.assertEqual(listing["url"], "http://lan:8000/doom.pax")
         self.assertEqual((listing["controls"], listing["upstream"]["project"]), (["A: fire"], "PrBoom"))
         self.assertIs(listing["canvas"], True)  # keeps the store's Screen setting
         self.assertEqual(listing["canvas_recommended"], "800x480")  # and its default
@@ -86,7 +86,7 @@ class ListingTests(unittest.TestCase):
         self.assertTrue(files.startswith("# pax-data 1\n# doom: shareware\n"))
 
     def test_other_apps_get_a_basic_listing_and_their_own_icon(self):
-        papp = self.folder / "azip-1.2.papp"
+        papp = self.folder / "azip-1.2.pax"
         papp.write_bytes(b"Z" * 10)
         (self.folder / "azip-1.2.png").write_bytes(png(64, 64))
         listing, files = ml.build_listing(papp, self.store, "", False, False)
@@ -104,7 +104,7 @@ class ListingTests(unittest.TestCase):
         self.assertEqual(ml.build_listing(papp, self.store, "", False, False, icons=icons)[0]["icon"]["width"], 32)
 
     def test_hand_edits_survive_a_rerun_unless_forced(self):
-        papp = self.folder / "azip.papp"
+        papp = self.folder / "azip.pax"
         papp.write_bytes(b"Z" * 10)
         (self.folder / "azip.json").write_text(json.dumps({"title": "A-Zip", "about": "Mine.", "size": 1}))
         listing, _ = ml.build_listing(papp, self.store, "", False, False)
@@ -114,7 +114,7 @@ class ListingTests(unittest.TestCase):
         self.assertNotIn("about", listing)
 
     def test_mirrored_data_is_downloaded_once_and_listed_on_the_lan(self):
-        papp = self.folder / "doom.papp"
+        papp = self.folder / "doom.pax"
         papp.write_bytes(b"P")
         opener = FakeOpener({PAGES + "data/psram_doom/roms/doom/doom1.wad": WAD})
         _, files = ml.build_listing(papp, self.store, "http://lan:8000/", True, False, opener)

@@ -26,14 +26,14 @@ class SelectTest(unittest.TestCase):
 
     def test_only_the_apps_a_branch_touches(self):
         self.assertEqual(dba.select(self.apps, ["ports/openlara/patches/0009-x.patch"]), ["openlara"])
-        self.assertEqual(dba.select(self.apps, ["apps/tulip/papp.json", "docs/building.md"]), ["tulip"])
+        self.assertEqual(dba.select(self.apps, ["apps/tulip/pax.json", "docs/building.md"]), ["tulip"])
 
     def test_a_shared_port_folder_rebuilds_every_app_using_it(self):
         self.assertEqual(dba.select(self.apps, ["ports/redalert/papp_cpp.ld"]), ["openlara"])
 
     def test_build_changes_or_no_base_rebuild_all(self):
         everything = ["netsurf", "openlara", "tulip"]
-        self.assertEqual(dba.select(self.apps, ["tools/build_papp.py"]), everything)
+        self.assertEqual(dba.select(self.apps, ["tools/build_pax.py"]), everything)
         self.assertEqual(dba.select(self.apps, None), everything)
 
     def test_nothing_for_unrelated_changes(self):
@@ -41,7 +41,7 @@ class SelectTest(unittest.TestCase):
         self.assertEqual(dba.select(self.apps, []), [])
 
     def test_folder_prefixes_do_not_match_longer_names(self):
-        self.assertEqual(dba.select({"tulip": TULIP}, ["ports/tulipx/a.c", "apps/tulip2/papp.json"]), [])
+        self.assertEqual(dba.select({"tulip": TULIP}, ["ports/tulipx/a.c", "apps/tulip2/pax.json"]), [])
 
 
 class WipAppsTest(unittest.TestCase):
@@ -49,7 +49,7 @@ class WipAppsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             for name, manifest in {"tulip": TULIP, "netsurf": NETSURF, "doom": DOOM}.items():
                 (Path(tmp) / name).mkdir()
-                (Path(tmp) / name / "papp.json").write_text(json.dumps(manifest), encoding="utf-8")
+                (Path(tmp) / name / "pax.json").write_text(json.dumps(manifest), encoding="utf-8")
             self.assertEqual(sorted(dba.wip_apps(Path(tmp))), ["netsurf", "tulip"])
 
 

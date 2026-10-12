@@ -2,12 +2,12 @@
 """Which work-in-progress apps a branch's dev build should build.
 
 Work-in-progress apps are those with "publish": false or "dev_build": true
-in apps/<name>/papp.json. Every branch uploads its dev builds to the same
+in apps/<name>/pax.json. Every branch uploads its dev builds to the same
 "dev-builds" release, so a branch that rebuilt all of them would replace
 another branch's test build of an app it never touched. A branch therefore
 builds only the apps whose files it changes: apps/<name>/ and the folders
 the manifest points at with "local:" paths (ports/<port>/...). Changes to
-the build itself (tools/build_papp.py, the workflow) rebuild them all, and
+the build itself (tools/build_pax.py, the workflow) rebuild them all, and
 so does a run with no main branch to compare against.
 
     python3 tools/dev_build_apps.py [--base origin/main]   # prints the names
@@ -23,13 +23,13 @@ import sys
 from pathlib import Path
 
 # Files every app build depends on: a change here rebuilds all of them.
-SHARED = ("tools/build_papp.py", ".github/workflows/dev-builds.yml", "tools/dev_build_apps.py")
+SHARED = ("tools/build_pax.py", ".github/workflows/dev-builds.yml", "tools/dev_build_apps.py")
 
 
 def wip_apps(apps_dir: Path) -> dict[str, dict]:
     """Work-in-progress apps by name, with their manifests."""
     found = {}
-    for manifest in sorted(apps_dir.glob("*/papp.json")):
+    for manifest in sorted(apps_dir.glob("*/pax.json")):
         data = json.loads(manifest.read_text(encoding="utf-8"))
         if data.get("publish", True) is False or data.get("dev_build"):
             found[manifest.parent.name] = data

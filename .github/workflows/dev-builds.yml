@@ -1,10 +1,10 @@
 name: Dev builds
 
-# Work-in-progress apps ("publish": false in papp.json) are not released or
+# Work-in-progress apps ("publish": false in pax.json) are not released or
 # listed in the store; store apps still being worked on set "dev_build": true.
 # For testing on a device, pushes to claude/* and nona/* branches upload both
 # to the "dev-builds" prerelease at stable URLs such as
-#   https://github.com/<owner>/<repo>/releases/download/dev-builds/redalert.papp
+#   https://github.com/<owner>/<repo>/releases/download/dev-builds/redalert.pax
 # The ESP bridge serves those to the device over the LAN (the device cannot
 # verify github.com's TLS chain): @esp-bridge launch url=<that URL>
 # A branch builds only the apps it changes (tools/dev_build_apps.py), so it
@@ -12,7 +12,7 @@ name: Dev builds
 on:
   push:
     branches: ["claude/**", "nona/**"]
-    paths: ["apps/**", "ports/**", "tools/build_papp.py", "tools/dev_build_apps.py", ".github/workflows/dev-builds.yml"]
+    paths: ["apps/**", "ports/**", "tools/build_pax.py", "tools/dev_build_apps.py", ".github/workflows/dev-builds.yml"]
   workflow_dispatch:
 
 permissions:
@@ -37,8 +37,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache
-          key: papp-dev-${{ hashFiles('apps/*/papp.json', 'tools/build_papp.py', 'ports/**') }}
-          restore-keys: papp-dev-
+          key: pax-dev-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py', 'ports/**') }}
+          restore-keys: pax-dev-
 
       - name: Build work-in-progress apps
         id: build
@@ -53,15 +53,15 @@ jobs:
           fi
           echo "apps=$apps" >> "$GITHUB_OUTPUT"
           if [ -z "$apps" ]; then echo "No work-in-progress app changed on this branch."; exit 0; fi
-          python3 tools/build_papp.py --out dist $apps
+          python3 tools/build_pax.py --out dist $apps
           # Symbol lists (address order) so a crash PC from the device log can
-          # be mapped to a function: tools/papp_symbolize.py.
+          # be mapped to a function: tools/pax_symbolize.py.
           for a in $apps; do riscv32-esp-elf-nm -n -C ".cache/build/$a/$a.elf" > "dist/$a.sym"; done
 
       - uses: actions/upload-artifact@v4
         if: steps.build.outputs.apps != ''
         with:
-          name: dev-papps
+          name: dev-paxs
           path: dist/
 
   upload:
@@ -74,7 +74,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: dev-papps
+          name: dev-paxs
           path: dist
 
       - name: Upload to the dev-builds prerelease
@@ -85,7 +85,7 @@ jobs:
               --title "Dev builds (work in progress, not for the store)" \
               --notes "Latest test builds of work-in-progress apps, replaced on every push. Not in the store."
           fi
-          gh release upload dev-builds -R "$REPO" --clobber dist/*.papp dist/*.json dist/*.sym
+          gh release upload dev-builds -R "$REPO" --clobber dist/*.pax dist/*.json dist/*.sym
           {
             echo "Latest test builds of work-in-progress apps, replaced on every push. Not in the store."
             echo

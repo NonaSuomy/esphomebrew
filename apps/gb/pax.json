@@ -1,28 +1,30 @@
 {
-  "name": "nesplus",
-  "title": "NES Plus",
+  "name": "gb",
+  "title": "Game Boy",
   "version": "0.1.0",
-  "description": "NoFrendo NES Plus emulator rebuilt as a current ESPHomeBrew PAPP.",
-  "author": "NoFrendo; P4 port by RetroESP32-P4",
+  "description": "Gnuboy Game Boy and Game Boy Color emulator rebuilt as a current ESPHomeBrew PAX.",
+  "author": "Gnuboy; P4 port by RetroESP32-P4",
   "category": "Emulator",
   "license": "GPL-2.0",
-  "about": "Nintendo Entertainment System emulator with broad mapper support. Put a .nes ROM or ZIP archive in /sd/roms/nesplus/.",
+  "about": "Runs .gb and .gbc ROMs, including ZIP archives, from /sd/roms/gb/.",
   "controls": [
-    "D-pad: directional input",
-    "A: NES A",
-    "B: NES B",
-    "Start / Select: NES controls",
+    "D-pad: move and menu navigation",
+    "A: Game Boy A",
+    "B: Game Boy B",
+    "Start: Start",
+    "Select: Select",
     "Menu: quit to launcher"
   ],
   "upstream": {
-    "project": "NoFrendo",
-    "url": "https://github.com/fhoedemakers/nofrendo"
+    "project": "Gnuboy",
+    "version": "1.0.3",
+    "url": "https://github.com/pdox/gnuboy"
   },
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/nesplus/",
-      "note": "Add a .nes ROM or ZIP archive"
+      "path": "/sd/roms/gb/",
+      "note": "Add a .gb or .gbc ROM, or a ZIP containing one"
     }
   ],
   "build": "custom",
@@ -32,18 +34,20 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_nesplus",
-    "local:ports/retroesp32/components/nofrendo_rg",
-    "local:ports/retroesp32/components/nofrendo_rg/nes",
-    "local:ports/retroesp32/components/nofrendo_rg/mappers",
+    "local:ports/retroesp32/apps/psram_gb",
     "local:ports/retroesp32/apps/papp_emulator_common",
     "local:ports/retroesp32/apps/papp_emulator_common/compat",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:ports/retroesp32/components/gnuboy/include",
+    "local:ports/retroesp32/components/gnuboy"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
-    "-DIRAM_ATTR=",
+    "-DPAPP_GB=1",
+    "-DGNUBOY_NO_MINIZIP=1",
+    "-DIS_LITTLE_ENDIAN=1",
+    "-Dvid_init=gnuboy_vid_init",
+    "-Dcpu=gnuboy_cpu",
+    "-Drom_load=gnuboy_rom_load",
     "-std=gnu99",
     "-O2",
     "-fno-common",
@@ -59,36 +63,36 @@
     "-Wno-int-conversion",
     "-Wno-incompatible-pointer-types",
     "-Wno-sign-compare",
-    "-Wno-missing-braces",
-    "-DNESPLUS_PAPP=1"
-  ],
-  "cxxflags": [
-    "-std=gnu++17",
-    "-D_Static_assert=static_assert",
-    "-fno-exceptions",
-    "-fno-rtti",
-    "-fno-threadsafe-statics",
-    "-fno-use-cxa-atexit",
-    "-fno-unwind-tables",
-    "-fno-asynchronous-unwind-tables",
-    "-Wno-write-strings",
-    "-Wno-narrowing",
-    "-Wno-overloaded-virtual"
+    "-Wno-missing-braces"
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/nofrendo_rg",
+      "dir": "local:ports/retroesp32/components/gnuboy",
       "files": [
-        "**/*.c"
-      ],
-      "prefix": "core_"
+        "cpu.c",
+        "debug.c",
+        "emu.c",
+        "fastmem.c",
+        "hw.c",
+        "inflate.c",
+        "lcd.c",
+        "lcdc.c",
+        "loader.c",
+        "main.c",
+        "mem.c",
+        "newsound.c",
+        "palette.c",
+        "refresh.c",
+        "rtc.c",
+        "save.c",
+        "sound.c"
+      ]
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_nesplus",
+      "dir": "local:ports/retroesp32/apps/psram_gb",
       "files": [
         "papp_main.c"
-      ],
-      "prefix": "app_"
+      ]
     },
     {
       "dir": "local:ports/retroesp32/apps/papp_emulator_common",
@@ -106,7 +110,6 @@
     }
   ],
   "ldflags": [
-    "-Wl,--allow-multiple-definition",
     "-Wl,--wrap=fopen",
     "-Wl,--wrap=fclose",
     "-Wl,--wrap=fread",

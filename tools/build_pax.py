@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Build every app under apps/ into a .papp.
+"""Build every app under apps/ into a .pax.
 
-Each app is described by apps/<name>/papp.json. Sources are fetched from their
+Each app is described by apps/<name>/pax.json. Sources are fetched from their
 upstream repositories at the pinned commit rather than copied into this repo.
 The compile and link steps mirror RetroESP32-P4's PowerShell build scripts
 (tools/build_lvgl_papp.ps1 for "lvgl", tools/build_psram_app.ps1 for "plain",
-and tools/build_<game>_papp.ps1 for "custom" recipes), so a .papp built here
+and tools/build_<game>_papp.ps1 for "custom" recipes), so a .pax built here
 matches one built with those scripts.
 
 Needs the ESP-IDF RISC-V toolchain (riscv32-esp-elf-*) on PATH and git.
 
-    python3 tools/build_papp.py                 # all apps -> dist/
-    python3 tools/build_papp.py lvgl             # one app
+    python3 tools/build_pax.py                 # all apps -> dist/
+    python3 tools/build_pax.py lvgl             # one app
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 APPS = ROOT / "apps"
 
-# The PAPP SDK (ABI header, linker script, packer) is taken from the app's own
+# The PAX SDK (ABI header, linker script, packer) is taken from the app's own
 # source repository at the same commit, so an app always builds against the
 # loader ABI it was written for.
 SDK_INCLUDE = "components/psram_app_loader/include"
@@ -58,9 +58,9 @@ def get_loader_sdk() -> Path:
     return LOADER_SDK_DIR
 
 
-PAPP_MAGIC = 0x50415050
-PAPP_ABI_VERSION = 1
-PAPP_HEADER = struct.Struct("<IIIIIIII")
+PAX_MAGIC = 0x50415050
+PAX_ABI_VERSION = 1
+PAX_HEADER = struct.Struct("<IIIIIIII")
 LINK_BASE = 0x4A000000
 
 CC = "riscv32-esp-elf-gcc"
@@ -279,14 +279,14 @@ def check_data(name: str, data: dict | None) -> dict | None:
 
 
 def parse_header(data: bytes) -> dict:
-    if len(data) < PAPP_HEADER.size:
-        raise ValueError("file is shorter than the 32-byte PAPP header")
-    magic, version, entry, text, data_size, bss, flags, _ = PAPP_HEADER.unpack_from(data)
-    if magic != PAPP_MAGIC:
+    if len(data) < PAX_HEADER.size:
+        raise ValueError("file is shorter than the 32-byte PAX ABI-1 header")
+    magic, version, entry, text, data_size, bss, flags, _ = PAX_HEADER.unpack_from(data)
+    if magic != PAX_MAGIC:
         raise ValueError(f"bad magic 0x{magic:08x}")
-    if version != PAPP_ABI_VERSION:
-        raise ValueError(f"ABI version {version}, expected {PAPP_ABI_VERSION}")
-    if PAPP_HEADER.size + text + data_size != len(data):
+    if version != PAX_ABI_VERSION:
+        raise ValueError(f"ABI version {version}, expected {PAX_ABI_VERSION}")
+    if PAX_HEADER.size + text + data_size != len(data):
         raise ValueError("header sizes do not match the file length")
     return {"entry_offset": entry, "text_size": text, "data_size": data_size, "bss_size": bss, "flags": flags}
 
@@ -379,11 +379,11 @@ def apply_patches(src_root: Path, patches: list[str], submodules: list[str] = ()
     return applied
 
 
-def pack_papp(binary: bytes, bss_size: int) -> bytes:
-    """[32-byte PAPP header][flat .text+.rodata+.data], as RetroESP32-P4's pack_papp.py writes it."""
+def pack_pax(binary: bytes, bss_size: int) -> bytes:
+    """[32-byte PAX ABI-1 header][flat .text+.rodata+.data], as RetroESP32-P4's pack_papp.py writes it."""
     if not binary:
         raise RuntimeError("empty binary")
-    return PAPP_HEADER.pack(PAPP_MAGIC, PAPP_ABI_VERSION, 0, len(binary), 0, bss_size, 0, 0) + binary
+    return PAX_HEADER.pack(PAX_MAGIC, PAX_ABI_VERSION, 0, len(binary), 0, bss_size, 0, 0) + binary
 
 
 def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[Unit], list[str]]:
@@ -396,7 +396,7 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     # Custom ports are compiled through this separate flag path, so keep the
     # current loader ABI header ahead of the pinned upstream SDK header here as
     # well.  Otherwise callbacks appended by the ESPHome loader (such as ZIP
-    # extraction) are read at the wrong offsets by the PAPP.
+    # extraction) are read at the wrong offsets by the PAX.
     loader_sdk = get_loader_sdk()
     includes = [f"-I{loader_sdk}"] + [f"-I{source_file(src_root, inc)}" for inc in manifest.get("includes", [])]
     base = ARCH_FLAGS + ["-mcmodel=medany"]
@@ -545,7 +545,7 @@ def canvas_info(name: str, canvas: object) -> bool | list[str]:
 
 
 def canvas_listing(name: str, canvas: object) -> dict:
-    """The listing fields for papp.json's "canvas".
+    """The listing fields for pax.json's "canvas".
 
     Besides true and a list of sizes, "canvas" may be an object that also
     names the size the store should use when the user has not chosen one:
@@ -611,7 +611,7 @@ def requires_info(name: str, requires: object) -> list[dict]:
 
 
 def store_info(name: str, manifest: dict, app_dir: Path) -> dict:
-    """The store listing extras from papp.json: author, category, license, about,
+    """The store listing extras from pax.json: author, category, license, about,
     changelog, controls, upstream, canvas (and canvas_recommended), requires,
     icon and screenshots.
 
@@ -680,7 +680,7 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     # Build against the header shipped with this loader.  The upstream SDK
     # checkout can lag behind the ESPHome loader's append-only service table;
     # putting the local header first keeps callback offsets (including the ZIP
-    # ROM helper) ABI-compatible with the firmware that runs the PAPP.
+    # ROM helper) ABI-compatible with the firmware that runs the PAX.
     loader_sdk = get_loader_sdk()
     cflags = CFLAGS + [f"-I{loader_sdk}", f"-I{sdk / SDK_INCLUDE}", f"-I{app_dir}"]
     build_dir = cache / "build" / name
@@ -772,8 +772,8 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     bss_size = max(0, bss_end - (LINK_BASE + bin_size))
 
     out.mkdir(parents=True, exist_ok=True)
-    papp = out / f"{name}.papp"
-    papp.write_bytes(pack_papp(binary.read_bytes(), bss_size))
+    papp = out / f"{name}.pax"
+    papp.write_bytes(pack_pax(binary.read_bytes(), bss_size))
 
     data = papp.read_bytes()
     header = parse_header(data)
@@ -785,7 +785,7 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
         "file": papp.name,
         "size": len(data),
         "sha256": hashlib.sha256(data).hexdigest(),
-        "abi": PAPP_ABI_VERSION,
+        "abi": PAX_ABI_VERSION,
         **header,
         "source": {"repo": source["repo"], "ref": source["ref"], "path": source["path"]},
         "sdk": {"repo": source["repo"], "ref": source["ref"]},
@@ -810,13 +810,13 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("apps", nargs="*", help="app names (default: every apps/*/papp.json)")
+    parser.add_argument("apps", nargs="*", help="app names (default: every apps/*/pax.json)")
     parser.add_argument("--out", type=Path, default=ROOT / "dist")
     parser.add_argument("--cache", type=Path, default=ROOT / ".cache")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 2)
     args = parser.parse_args()
 
-    manifests = [APPS / n / "papp.json" for n in args.apps] if args.apps else sorted(APPS.glob("*/papp.json"))
+    manifests = [APPS / n / "pax.json" for n in args.apps] if args.apps else sorted(APPS.glob("*/pax.json"))
     if not manifests:
         print("no apps found under apps/", file=sys.stderr)
         return 1

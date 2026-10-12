@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Code generation for the Tulip PAPP (the "prebuild" step of apps/psram_tulip).
+"""Code generation for the Tulip PAX (the "prebuild" step of apps/psram_tulip).
 
 MicroPython ports build with make rules (py/mkrules.mk) that generate headers
-before compiling; tools/build_papp.py compiles the sources itself, so this
+before compiling; tools/build_pax.py compiles the sources itself, so this
 script does the same generation from the list of compile units it is given:
 
   genhdr/mpversion.h         py/makeversionhdr.py

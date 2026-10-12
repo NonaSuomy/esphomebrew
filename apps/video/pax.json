@@ -3,7 +3,7 @@
   "title": "Video Player",
   "version": "0.1.0",
   "description": "Plays videos and music from the SD card or the web (http and https) with FFmpeg: MP4, MKV/WebM, AVI, MPEG-TS, MP3, Ogg and WAV; H.264, MPEG-4, MJPEG and VP8 video with AAC, MP3, Opus, Vorbis or PCM sound. Work in progress.",
-  "author": "The FFmpeg developers; PAPP port",
+  "author": "The FFmpeg developers; PAX port",
   "category": "Tool",
   "license": "LGPL-2.1 (FFmpeg, LGPL configuration)",
   "about": "A small video player built on FFmpeg 7.1 (libavformat, libavcodec, libswresample; LGPL configuration, no GPL parts). Pick a file from /sd/videos/ or /sd/, type an http:// or https:// address on a USB keyboard, or let another app hand one over (NetSurf opens video and sound links here and gets its page back when you quit). Decoding is plain software on the ESP32-P4's two cores, so keep to about 480p: H.264 up to 640x360 or 854x480 plays best; bigger files are shown at half size and drop frames. Sound is the clock: pictures that fall behind are skipped, and the decoder takes shortcuts until it catches up. Streams over https:// use the loader's TLS, which checks certificates against the firmware's bundle; seeking in them uses HTTP Range requests, with a 4 MB read-ahead buffer.",

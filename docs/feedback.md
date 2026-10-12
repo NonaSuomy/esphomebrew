@@ -2,7 +2,7 @@
 
 ## By hand (works today)
 
-Open a **PAPP test report** issue (Issues → New issue → PAPP test report). Pick the app, the result, and paste the device log. The hub mirrors GitHub issues into the project, so the agents see it.
+Open a **PAX test report** issue (Issues → New issue → PAX test report). Pick the app, the result, and paste the device log. The hub mirrors GitHub issues into the project, so the agents see it.
 
 ## Automatically: `report_url`
 
@@ -18,8 +18,8 @@ papp_loader:
 ```json
 {
   "device": "esp32-p4-elecrow-aio",
-  "app": "lvgl-0.3.0.papp",
-  "source": "https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.papp",
+  "app": "lvgl-0.3.0.pax",
+  "source": "https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.pax",
   "outcome": "exited",
   "result": 0,
   "runtime_ms": 48213,
@@ -56,7 +56,7 @@ rest_command:
     payload: "{{ {'body': body} | tojson }}"
 
 automation:
-  - alias: PAPP test report to GitHub
+  - alias: PAX test report to GitHub
     triggers:
       - trigger: webhook
         webhook_id: papp-test-report

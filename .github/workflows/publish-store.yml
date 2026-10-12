@@ -1,7 +1,7 @@
 name: Publish store
 
-# After "Build PAPPs" succeeds on main: one GitHub Release per app version
-# (tag <name>-v<version>, asset <name>-<version>.papp), then the Pages catalog
+# After "Build PAXs" succeeds on main: one GitHub Release per app version
+# (tag <name>-v<version>, asset <name>-<version>.pax), then the Pages catalog
 # the device's pax_loader catalog_url points at.
 on:
   # Website-only repairs can reuse the latest successful build on main.
@@ -9,13 +9,13 @@ on:
     branches: [main]
     paths: ["tools/make_catalog.py", "tests/test_make_catalog.py", ".github/workflows/publish-store.yml", "web-installer/**", "tools/check_web_installer.py", "web-store/**", "tests/test_store_install.cjs"]
   workflow_run:
-    workflows: [Build PAPPs]
+    workflows: [Build PAXs]
     types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
       run_id:
-        description: "Build PAPPs run to publish (default: the newest successful build on main)"
+        description: "Build PAXs run to publish (default: the newest successful build on main)"
         required: false
 
 permissions:
@@ -53,19 +53,20 @@ jobs:
         run: |
           id="${{ inputs.run_id }}"
           if [ -z "$id" ]; then
-            id=$(gh run list -R "$REPO" --workflow build-papps.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+            id=$(gh run list -R "$REPO" --branch main --event push --status success --limit 100 --json databaseId,workflowName --jq '[.[] | select(.workflowName == "Build PAXs" or .workflowName == "Build PAPPs")][0].databaseId')
           fi
           trigger="${{ github.event.workflow_run.id }}"
           if [ -n "$trigger" ] && [ "$trigger" != "$id" ]; then
             echo "Build run $trigger finished, but $id is a newer successful build on main: publishing that one."
           fi
+          echo "artifact=$(gh api "repos/$REPO/actions/runs/$id/artifacts" --jq '.artifacts[] | select(.name == "paxs" or .name == "papps") | .name' | head -1)" >> "$GITHUB_OUTPUT"
           echo "id=$id" >> "$GITHUB_OUTPUT"
           echo "sha=$(gh run view "$id" -R "$REPO" --json headSha --jq .headSha)" >> "$GITHUB_OUTPUT"
           echo "built_at=$(gh run view "$id" -R "$REPO" --json startedAt --jq .startedAt)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/download-artifact@v4
         with:
-          name: papps
+          name: ${{ steps.run.outputs.artifact }}
           path: dist
           run-id: ${{ steps.run.outputs.id }}
           github-token: ${{ github.token }}
@@ -78,23 +79,26 @@ jobs:
           for a in json.load(open("dist/build.json"))["apps"]:
               if not a.get("publish", True):
                   continue  # work in progress, not released
-              print(f"{a['name']}\t{a['version']}\t{a['sha256']}\t{a['title']}")
+              print(f"{a['name']}\t{a['version']}\t{a['sha256']}\t{a['title']}\t{a['file']}")
           EOF
-          while IFS=$'\t' read -r name version sha title; do
-            tag="$name-v$version"; asset="$name-$version.papp"
-            cp "dist/$name.papp" "$asset"
+          while IFS=$'\t' read -r name version sha title source_file; do
+            tag="$name-v$version"; asset="$name-$version.pax"
+            cp "dist/$source_file" "$asset"
             if gh release view "$tag" -R "$REPO" > /dev/null 2>&1; then
               published=$(gh release view "$tag" -R "$REPO" --json body --jq .body | sed -n 's/^sha256: //p' | head -1)
               if [ "$published" = "$sha" ]; then
-                echo "$tag already published with the same binary"
+                if ! gh release view "$tag" -R "$REPO" --json assets --jq '.assets[].name' | grep -Fxq "$asset"; then
+                  gh release upload "$tag" "$asset" -R "$REPO"
+                fi
+                echo "$tag already published with the same binary; PAX asset available"
                 continue
               fi
-              echo "::error::$tag is already published with a different binary ($published). Bump \"version\" in apps/$name/papp.json."
+              echo "::error::$tag is already published with a different binary ($published). Bump \"version\" in apps/$name/pax.json."
               exit 1
             fi
             gh release create "$tag" "$asset" -R "$REPO" --target "${{ steps.run.outputs.sha }}" \
               --title "$title $version" \
-              --notes "$(printf 'PAPP `%s` %s, built by CI from %s.\n\nsha256: %s\n' "$name" "$version" "${{ steps.run.outputs.sha }}" "$sha")"
+              --notes "$(printf 'PAX `%s` %s, built by CI from %s.\n\nsha256: %s\n' "$name" "$version" "${{ steps.run.outputs.sha }}" "$sha")"
           done < releases.tsv
 
       # App data (game WADs/PAKs) is pinned by sha256, so cached copies are
@@ -102,8 +106,8 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .data-cache
-          key: papp-data-${{ hashFiles('apps/*/papp.json') }}
-          restore-keys: papp-data-
+          key: pax-data-${{ hashFiles('apps/*/pax.json') }}
+          restore-keys: pax-data-
 
       - name: Write catalog and app data
         run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache --built-at "${{ steps.run.outputs.built_at }}"

@@ -22,7 +22,7 @@ Request format (reply in any channel, mention the bridge):
     @esp-bridge upload esphome/device.yaml ref=claude/fix device=/dev/ttyUSB0
     @esp-bridge run device.yaml source=local device=10.13.37.60 seconds=90
     @esp-bridge logs device.yaml source=local device=/dev/ttyUSB0 seconds=60
-    @esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/…/app.papp
+    @esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/…/app.pax
     @esp-bridge close
     @esp-bridge catalog
     @esp-bridge status
@@ -81,11 +81,11 @@ DEVICE_API_ACTIONS = {"launch": "papp_launch", "close": "papp_close", "catalog":
                       "writefile": "papp_write_file", "deletefile": "papp_delete_file"}
 NEEDS_YAML = {"config", "compile", "upload", "logs", "run", "view", "edit"}
 EDIT_TEXT_MAX = 4000  # characters in `find` / `replace`
-# writefile: small text files only (a written .papp or firmware image would be
+# writefile: small text files only (a written .pax or firmware image would be
 # code); the loader checks the same list.
 WRITEFILE_MAX_BYTES = 16 * 1024
 WRITEFILE_EXTENSIONS = (".ini", ".cfg", ".conf", ".txt", ".json", ".yaml", ".yml", ".csv")
-# deletefile also takes leftovers, but never game data (.mix) or apps (.papp).
+# deletefile also takes leftovers, but never game data (.mix) or apps (.pax).
 DELETEFILE_EXTENSIONS = (*WRITEFILE_EXTENSIONS, ".bak", ".log")
 CODE_FENCE = re.compile(r"```[^\n`]*\n(.*?)```", re.S)
 MASKED_VALUE = re.compile(r"(?m)[:=]\s*\*\*\*\s*$")
@@ -467,11 +467,11 @@ def validate(req: Request, cfg: Config) -> Path | None:
             raise BridgeError("This bridge has no [device_api] host configured.")
         if req.action == "launch":
             if not req.url or not req.url.startswith("https://"):
-                raise BridgeError("`launch` needs `url=https://…/app.papp`.")
+                raise BridgeError("`launch` needs `url=https://…/app.pax`.")
             if not any(req.url.startswith(p) for p in cfg.allowed_url_prefixes):
                 raise BridgeError(f"That URL is not in the allowed prefixes ({', '.join(cfg.allowed_url_prefixes)}).")
-            if not req.url.lower().endswith(".papp") or ".." in req.url or any(c.isspace() for c in req.url):
-                raise BridgeError("`url` must point at a .papp file.")
+            if not req.url.lower().endswith(".pax") or ".." in req.url or any(c.isspace() for c in req.url):
+                raise BridgeError("`url` must point at a .pax file.")
         if req.action == "readfile":
             path = req.path or ""
             if (not path.startswith("/sd/") or ".." in path or len(path) >= READFILE_PATH_MAX
@@ -787,7 +787,7 @@ class SerialCapture:
 # A panic dump is only addresses. Firmware addresses are looked up in the
 # firmware ELF this machine built (the dump's "ELF file SHA256" picks the
 # right one); PAPP addresses (linked at 0x4A000000) in the app's symbol list,
-# which dev builds publish next to the .papp.
+# which dev builds publish next to the .pax.
 
 # A live panic dump (serial), or the report ESPHome's esp32 crash handler logs
 # after the reboot ("[E][esp32.crash:...]:   BT0: 0x4FF0A146 (backtrace)").
@@ -859,11 +859,11 @@ def find_addr2line(cfg: Config, elf: Path) -> str | None:
 
 
 def load_papp_symbols(url: str | None, cfg: Config, opener=urllib.request.urlopen) -> list[tuple[int, str, bool]]:
-    """(address, name, is_code) from the .sym published next to a dev-build .papp."""
-    if not url or not url.endswith(".papp") or not url.startswith(tuple(cfg.allowed_url_prefixes)):
+    """(address, name, is_code) from the .sym published next to a dev-build .pax."""
+    if not url or not url.endswith(".pax") or not url.startswith(tuple(cfg.allowed_url_prefixes)):
         return []
     try:
-        with opener(url[: -len(".papp")] + ".sym", timeout=60) as response:
+        with opener(url[: -len(".pax")] + ".sym", timeout=60) as response:
             text = response.read(16 * 1024 * 1024).decode("utf-8", "replace")
     except (urllib.error.URLError, TimeoutError, OSError):
         return []
@@ -950,7 +950,7 @@ def rgb565_to_png(raw: bytes, width: int, height: int) -> bytes:
 
 
 def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
-    """Read stream packets until the PAPPSS01 screenshot; thumbnails and audio are skipped."""
+    """Read stream packets until the PAXSS01 screenshot; thumbnails and audio are skipped."""
     def exact(size: int) -> bytes:
         data = bytearray()
         while len(data) < size:
@@ -979,7 +979,7 @@ def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
 
 
 def read_stream_file(sock: socket.socket) -> bytes:
-    """Read stream packets until the PAPPFL01 file packet; other packets are skipped."""
+    """Read stream packets until the PAXFL01 file packet; other packets are skipped."""
     def exact(size: int) -> bytes:
         data = bytearray()
         while len(data) < size:
@@ -1121,7 +1121,7 @@ def proxy_url(cfg: Config, url: str, opener=urllib.request.urlopen) -> str:
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         raise BridgeError(f"Could not download {url}: {error}.") from error
     if len(body) > 64 * 1024 * 1024 or len(body) < 32 or struct.unpack_from("<I", body)[0] != 0x50415050:
-        raise BridgeError(f"{url} is not a .papp file.")
+        raise BridgeError(f"{url} is not a .pax file.")
     if _proxy is None:
         try:
             _proxy = _ProxyServer(cfg.proxy_port)

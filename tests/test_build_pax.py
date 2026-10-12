@@ -1,4 +1,4 @@
-"""Tests for tools/build_papp.py: manifests, custom recipes and the PAPP header.
+"""Tests for tools/build_pax.py: manifests, custom recipes and the PAX ABI-1 header.
 
 Run: python3 -m unittest discover -s tests
 """
@@ -13,14 +13,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
 
-import build_papp as bp  # noqa: E402
+import build_pax as bp  # noqa: E402
 
 APPS = Path(__file__).resolve().parent.parent / "apps"
 
 
 class ManifestTests(unittest.TestCase):
     def test_every_manifest_is_valid(self):
-        manifests = sorted(APPS.glob("*/papp.json"))
+        manifests = sorted(APPS.glob("*/pax.json"))
         self.assertTrue(manifests)
         for path in manifests:
             with self.subTest(app=path.parent.name):
@@ -237,17 +237,17 @@ class PortRecipeTests(unittest.TestCase):
         self.assertEqual(sorted(u.obj.name for u in units), ["lv_core_obj.o", "lv_draw_obj.o"])
 
     def test_local_paths_resolve_inside_this_repository(self):
-        self.assertEqual(bp.source_file(self.root, "local:tools/build_papp.py"), (bp.ROOT / "tools/build_papp.py").resolve())
+        self.assertEqual(bp.source_file(self.root, "local:tools/build_pax.py"), (bp.ROOT / "tools/build_pax.py").resolve())
         with self.assertRaises(ValueError):
             bp.source_file(self.root, "local:../outside")
         with self.assertRaises(ValueError):
             bp.source_file(self.root, "../outside")
 
     def test_pack_matches_the_upstream_format(self):
-        packed = bp.pack_papp(b"\x01\x02\x03\x04", 64)
+        packed = bp.pack_pax(b"\x01\x02\x03\x04", 64)
         self.assertEqual(bp.parse_header(packed)["bss_size"], 64)
         self.assertEqual(bp.parse_header(packed)["text_size"], 4)
-        self.assertEqual(packed[:8], struct.pack("<II", bp.PAPP_MAGIC, 1))
+        self.assertEqual(packed[:8], struct.pack("<II", bp.PAX_MAGIC, 1))
         self.assertEqual(len(packed), 36)
 
     def test_patches_apply_to_a_clean_checkout_every_time(self):
@@ -378,7 +378,7 @@ class SubmoduleAndPrebuildTests(unittest.TestCase):
 class HeaderTests(unittest.TestCase):
     def test_parse_header(self):
         body = b"\x00" * 24
-        data = bp.PAPP_HEADER.pack(bp.PAPP_MAGIC, 1, 0, 20, 4, 100, 0, 0) + body
+        data = bp.PAX_HEADER.pack(bp.PAX_MAGIC, 1, 0, 20, 4, 100, 0, 0) + body
         self.assertEqual(bp.parse_header(data)["bss_size"], 100)
         with self.assertRaises(ValueError):
             bp.parse_header(data[:-1])

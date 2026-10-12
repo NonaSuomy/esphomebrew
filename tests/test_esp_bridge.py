@@ -84,8 +84,8 @@ class ParseTests(unittest.TestCase):
                 self.assertIsNone(eb.parse_request(text, None, "esp-bridge"))
         req = eb.parse_request("It took `@esp-bridge listening …` as a command. Now:\n\n@esp-bridge status", None, "esp-bridge")
         self.assertEqual(req.action, "status")
-        req = eb.parse_request("> @ESP-Bridge launch url=https://x.invalid/a.papp", None, "esp-bridge")
-        self.assertEqual((req.action, req.url), ("launch", "https://x.invalid/a.papp"))
+        req = eb.parse_request("> @ESP-Bridge launch url=https://x.invalid/a.pax", None, "esp-bridge")
+        self.assertEqual((req.action, req.url), ("launch", "https://x.invalid/a.pax"))
         self.assertEqual(eb.parse_request("@esp-bridge status.", None, "esp-bridge").action, "status")
 
     def test_a_lone_request_line_with_a_typo_gets_help(self):
@@ -193,8 +193,8 @@ class CommandTests(unittest.TestCase):
         self.assertEqual((code, len(out), truncated), (0, 100, True))
 
 
-STORE = "https://nonasuomy.github.io/esphomebrew/lvgl-0.3.0.papp"
-RELEASE = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.papp"
+STORE = "https://nonasuomy.github.io/esphomebrew/lvgl-0.3.0.pax"
+RELEASE = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.pax"
 
 
 def make_api_config(tmp: Path) -> eb.Config:
@@ -222,10 +222,10 @@ class DeviceApiTests(unittest.TestCase):
 
     def test_launch_urls_must_be_store_papps(self):
         eb.validate(self.req(f"launch url={STORE}"), self.cfg)
-        for url in ["http://github.com/NonaSuomy/papp-conversions/releases/download/a/b.papp",
-                    "https://evil.example/x.papp",
+        for url in ["http://github.com/NonaSuomy/papp-conversions/releases/download/a/b.pax",
+                    "https://evil.example/x.pax",
                     "https://github.com/NonaSuomy/esphomebrew/releases/download/a/readme.txt",
-                    "https://github.com/NonaSuomy/esphomebrew/releases/download/../../other/x.papp",
+                    "https://github.com/NonaSuomy/esphomebrew/releases/download/../../other/x.pax",
                     ""]:
             with self.subTest(url=url), self.assertRaises(eb.BridgeError):
                 eb.validate(self.req(f"launch url={url}"), self.cfg)
@@ -521,7 +521,7 @@ class CrashDecodeTests(unittest.TestCase):
             return eb.subprocess.CompletedProcess(argv, 0, out, "")
 
         self.cfg.addr2line = "riscv32-esp-elf-addr2line"
-        url = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.papp"
+        url = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.pax"
         with mock.patch.object(eb.subprocess, "run", fake_run):
             text = eb.decode_crash(self.cfg, PANIC.format(sha=self.sha), url, opener=opener)
         self.assertIn("0x4a0bbede  _fclose_r + 0x76", text)
@@ -563,7 +563,7 @@ class ProxyTests(unittest.TestCase):
             cfg.api_host, cfg.proxy_port = "127.0.0.1", 0  # any free port
             url = eb.proxy_url(cfg, RELEASE, opener=lambda u, timeout=None: io.BytesIO(papp))
             self.assertTrue(url.startswith("http://127.0.0.1:"), url)
-            self.assertTrue(url.endswith("-redalert.papp"), url)
+            self.assertTrue(url.endswith("-redalert.pax"), url)
             with urllib.request.urlopen(url, timeout=5) as response:
                 self.assertEqual(response.read(), papp)
             with self.assertRaises(urllib.error.HTTPError):  # only the exact file, no listing
@@ -807,7 +807,7 @@ class WriteFileTests(unittest.TestCase):
 
     def test_writefile_is_limited(self):
         eb.validate(self.req(), self.cfg)
-        refused = [self.req(requester="someone"), self.req(path="/sd/app.papp"), self.req(path="/sd/roms/"),
+        refused = [self.req(requester="someone"), self.req(path="/sd/app.pax"), self.req(path="/sd/roms/"),
                    self.req(path="/sd/../boot.ini"), self.req(path="/etc/x.ini"),
                    self.req(content="Password=***\n"), self.req(content="x" * (eb.WRITEFILE_MAX_BYTES + 1))]
         for req in refused:
@@ -861,7 +861,7 @@ class DeleteFileTests(unittest.TestCase):
     def test_deletefile_is_limited(self):
         for path in ["/sd/roms/redalert/SYNC001.TXT", "/sd/roms/redalert/redalert.ini.bak", "/sd/x/crash.log"]:
             eb.validate(self.req(path), self.cfg)
-        refused = [self.req(requester="someone"), self.req("/sd/roms/redalert/MAIN.MIX"), self.req("/sd/apps/doom.papp"),
+        refused = [self.req(requester="someone"), self.req("/sd/roms/redalert/MAIN.MIX"), self.req("/sd/apps/doom.pax"),
                    self.req("/sd/roms/"), self.req("/sd/../x.txt"), self.req("/boot/x.txt")]
         for req in refused:
             with self.subTest(path=req.path, requester=req.requester), self.assertRaises(eb.BridgeError):

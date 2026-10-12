@@ -3,9 +3,9 @@ name: Python tools
 on:
   push:
     branches: [main]
-    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_papp.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
+    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_pax.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
   pull_request:
-    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_papp.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
+    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_pax.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
   workflow_dispatch:
 
 permissions:
@@ -22,31 +22,31 @@ jobs:
       - run: python -m unittest discover -s tests -v
 
       # The loader's data-list parser and SHA-256 are plain C++; test them on the host.
-      - name: papp_data.h host tests
+      - name: PAX data host tests
         run: |
           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_data.cpp -o "$RUNNER_TEMP/test_papp_data"
           "$RUNNER_TEMP/test_papp_data"
 
       # Canvas geometry (where an app's canvas and the close control go, sizes, per-app keys).
-      - name: papp_canvas.h host tests
+      - name: PAX canvas host tests
         run: |
           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_canvas.cpp -o "$RUNNER_TEMP/test_papp_canvas"
           "$RUNNER_TEMP/test_papp_canvas"
 
       # App hand-off (app_open): target names, catalog matches, the return stack.
-      - name: papp_handoff.h host tests
+      - name: PAX handoff host tests
         run: |
           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_handoff.cpp -o "$RUNNER_TEMP/test_papp_handoff"
           "$RUNNER_TEMP/test_papp_handoff"
 
       # File services and the store's file checks: allowed paths, patterns, required files.
-      - name: papp_files.h host tests
+      - name: PAX files host tests
         run: |
           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_files.cpp -o "$RUNNER_TEMP/test_papp_files"
           "$RUNNER_TEMP/test_papp_files"
 
       # Where an app's heap goes: PSRAM, and internal RAM only above the drivers' reserve.
-      - name: papp_memory.h host tests
+      - name: PAX memory host tests
         run: |
           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_memory.cpp -o "$RUNNER_TEMP/test_papp_memory"
           "$RUNNER_TEMP/test_papp_memory"
@@ -58,10 +58,10 @@ jobs:
         run: |
           import json, pathlib, sys, tempfile
           sys.path.insert(0, "tools")
-          import build_papp, make_catalog
-          for path in sorted(pathlib.Path("apps").glob("*/papp.json")):
+          import build_pax, make_catalog
+          for path in sorted(pathlib.Path("apps").glob("*/pax.json")):
               app = json.loads(path.read_text())
-              data = build_papp.check_data(app["name"], app.get("data"))
+              data = build_pax.check_data(app["name"], app.get("data"))
               if data:
                   with tempfile.TemporaryDirectory() as tmp:
                       make_catalog.publish_data("o/r", {**app, "data": data}, pathlib.Path(tmp), None)

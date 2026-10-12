@@ -2,7 +2,7 @@
   "name": "c64",
   "title": "Commodore 64",
   "version": "0.1.0",
-  "description": "Frodo C64 emulator rebuilt as a current ESPHomeBrew PAPP.",
+  "description": "Frodo C64 emulator rebuilt as a current ESPHomeBrew PAX.",
   "author": "Frodo; P4 port by RetroESP32-P4",
   "category": "Emulator",
   "license": "GPL-2.0",

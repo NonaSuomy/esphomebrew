@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""Write store listings for a folder of .papp files, such as a LAN server or an SD card folder.
+"""Write store listings for a folder of .pax files, such as a LAN server or an SD card folder.
 
 The ESPHOMEBREW store view (papp_loader `library_style: grid`) reads an app's
-listing from the .json next to its .papp, and its data list from the .files
-next to it (psram_doom-0.1.1.papp -> psram_doom-0.1.1.json, .files). The
+listing from the .json next to its .pax, and its data list from the .files
+next to it (psram_doom-0.1.1.pax -> psram_doom-0.1.1.json, .files). The
 GitHub store publishes both; this writes them for any other folder:
 
     python3 tools/make_listing.py /srv/papp --base-url http://10.20.30.158:8000/
 
-For every .papp in the folder:
+For every .pax in the folder:
 
 - The size and sha256 always come from the file itself, so Install can check
   the download.
 - When the app is also in the store (same name, with or without the psram_
-  prefix, e.g. doom.papp and psram_doom), its title, icon, about, controls,
+  prefix, e.g. doom.pax and psram_doom), its title, icon, about, controls,
   licence, upstream project, canvas sizes (and recommended size), required
   files and data list are copied from the store listing.
-- A <stem>.png next to the .papp (at most 256x256, 64 KB) becomes the icon.
+- A <stem>.png next to the .pax (at most 256x256, 64 KB) becomes the icon.
 - Fields already in an existing <stem>.json are kept, so it can be edited by
   hand and the tool run again. --force starts from scratch.
 - Data files listed by the store are fetched from GitHub Pages by default.
@@ -24,7 +24,7 @@ For every .papp in the folder:
   against their sha256, and listed at --base-url instead, so the device gets
   its game data from the LAN too.
 
-The .papp files themselves are never changed.
+The .pax files themselves are never changed.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ import make_catalog as mc  # noqa: E402
 
 DEFAULT_STORE = "https://nonasuomy.github.io/esphomebrew/"
 # What describes the app rather than one build of it: the store build's source
-# commit, changelog and version are left out, since this .papp may differ.
+# commit, changelog and version are left out, since this .pax may differ.
 COPIED_FIELDS = ("title", "description", "author", "category", "license", "about", "controls", "upstream", "canvas",
                  "canvas_recommended", "requires")
 MAX_ICON_BYTES = 64 * 1024
@@ -87,7 +87,7 @@ def store_match(name: str, store: dict[str, dict]) -> dict | None:
 
 
 def local_icon(folder: Path, stem: str, name: str, icons: Path | None = None) -> dict | None:
-    """The first usable icon: <icons>/<stem>.png, then <stem>.png or <name>.png next to the .papp.
+    """The first usable icon: <icons>/<stem>.png, then <stem>.png or <name>.png next to the .pax.
 
     Pictures that are too large for an icon (launcher art, say) are skipped with a
     note rather than failing the run."""
@@ -115,7 +115,7 @@ def data_list(name: str, version: str, files: list[dict], license_text: str) -> 
 
 def build_listing(papp: Path, store: dict[str, dict], base_url: str, mirror: bool, force: bool,
                   opener=urllib.request.urlopen, icons: Path | None = None) -> tuple[dict, str | None]:
-    """The listing for one .papp, and its data list text (None when it needs no data)."""
+    """The listing for one .pax, and its data list text (None when it needs no data)."""
     folder, stem = papp.parent, papp.stem
     name, version = split_stem(stem)
     existing_path = folder / f"{stem}.json"
@@ -157,7 +157,7 @@ def build_listing(papp: Path, store: dict[str, dict], base_url: str, mirror: boo
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("folder", type=Path, help="folder with the .papp files")
+    parser.add_argument("folder", type=Path, help="folder with the .pax files")
     parser.add_argument("--base-url", default="", help="the folder's URL on the network, e.g. http://10.20.30.158:8000/")
     parser.add_argument("--store", default=DEFAULT_STORE,
                         help="store to copy listings and data lists from (URL or store.json); '' for none")
@@ -170,9 +170,9 @@ def main() -> int:
         parser.error("--mirror-data needs --base-url, the folder's http(s) address")
     if args.base_url and not args.base_url.endswith("/"):
         args.base_url += "/"
-    papps = sorted(args.folder.glob("*.papp"))
+    papps = sorted(args.folder.glob("*.pax"))
     if not papps:
-        print(f"no .papp files in {args.folder}", file=sys.stderr)
+        print(f"no .pax files in {args.folder}", file=sys.stderr)
         return 1
     store = load_store(args.store)
     for papp in papps:

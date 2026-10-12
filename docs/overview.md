@@ -1,11 +1,11 @@
-# PAPP Conversions
+# PAX Conversions
 
-**Goal (Nona, #plan seq 24-25):** a GitHub-hosted **PSRAM app store**. PAPPs are `<name>.papp` files: RISC-V (RV32IMAFC) programs an ESP32-P4 streams into PSRAM and runs. Built from this repo by GitHub Actions and browsed and launched from an **LVGL page in ESPHome**. Devices report back whether an app worked, with a log.
+**Goal (Nona, #plan seq 24-25):** a GitHub-hosted **PSRAM app store**. PAPPs are `<name>.pax` files: RISC-V (RV32IMAFC) programs an ESP32-P4 streams into PSRAM and runs. Built from this repo by GitHub Actions and browsed and launched from an **LVGL page in ESPHome**. Devices report back whether an app worked, with a log.
 
 **Order of work** (board tasks):
-1. #2 CI builds `apps/lvgl` into a `.papp`.
+1. #2 CI builds `apps/lvgl` into a `.pax`.
 2. #3 Publish the store (GitHub Pages catalog + release assets).
-3. #4 PAPP Store LVGL page in `esp32-p4-elecrow-aio.yaml`.
+3. #4 PAX Store LVGL page in `esp32-p4-elecrow-aio.yaml`.
 4. #5 Feedback path (device result + log).
 5. #6 Acceptance on device.
 6. #7 OpenRA port: **on hold until Nona says go**.
@@ -15,8 +15,8 @@
 **Target device:** Elecrow ESP32-P4 All-In-One (800x480, GT911 touch), ESPHome on ESP-IDF, Nona's YAML `esp32-p4-elecrow-aio.yaml` (attachment in #plan seq 25).
 
 **Key facts:**
-- `.papp` = 32-byte header (magic `0x50415050`, ABI 1, entry/text/data/bss) + raw image. ABI table in upstream `components/psram_app_loader/include/psram_app.h`; new services are append-only, so null-check them.
-- The ESPHome `papp_loader` component (Nona's, not yet on GitHub; source attached in #plan seq 29) already has `launch_url` (HTTPS via cert bundle, 5 redirects, 15 s timeout) and a **catalog**: `catalog_url` HTML (max 64 KB), every href ending `.papp` becomes an LVGL list button.
+- `.pax` = 32-byte header (magic `0x50415050`, ABI 1, entry/text/data/bss) + raw image. ABI table in upstream `components/psram_app_loader/include/psram_app.h`; new services are append-only, so null-check them.
+- The ESPHome `papp_loader` component (Nona's, not yet on GitHub; source attached in #plan seq 29) already has `launch_url` (HTTPS via cert bundle, 5 redirects, 15 s timeout) and a **catalog**: `catalog_url` HTML (max 64 KB), every href ending `.pax` becomes an LVGL list button.
 - Upstream RetroESP32-P4 has **no license file**, so CI fetches it at a pinned commit instead of copying code here.
 
-**State (2026-09-22):** store builds now use short app identities such as `lvgl-0.3.0.papp`; the upstream source folders may still retain their `psram_` names. #2-#4 merged; #5 test reports in PR #4 (compiles for P4); #6 on-device test waiting on Nona; #7 on hold.
+**State (2026-09-22):** store builds now use short app identities such as `lvgl-0.3.0.pax`; the upstream source folders may still retain their `psram_` names. #2-#4 merged; #5 test reports in PR #4 (compiles for P4); #6 on-device test waiting on Nona; #7 on hold.
