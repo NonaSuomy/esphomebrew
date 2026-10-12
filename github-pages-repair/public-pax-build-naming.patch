@@ -1,0 +1,1703 @@
+From 02811469165cb6e90fee85dce0381a8cb3a1635d Mon Sep 17 00:00:00 2001
+From: NonaSuomy <nonasuomy@live.com>
+Date: Mon, 12 Oct 2026 10:11:49 -0400
+Subject: [PATCH] Rename public builds, manifests and release downloads to PAX
+
+---
+ .../{build-papps.yml => build-paxs.yml}       | 14 +++--
+ .github/workflows/dev-builds.yml              | 20 +++----
+ .github/workflows/publish-store.yml           | 34 ++++++-----
+ .github/workflows/python-tools.yml            | 20 +++----
+ README.md                                     |  6 +-
+ apps/atari800/{papp.json => pax.json}         |  0
+ apps/c64/{papp.json => pax.json}              |  2 +-
+ apps/doom/{papp.json => pax.json}             |  0
+ apps/duke3d/{papp.json => pax.json}           |  0
+ apps/gb/{papp.json => pax.json}               |  2 +-
+ apps/genesis/{papp.json => pax.json}          |  0
+ apps/gw/{papp.json => pax.json}               |  0
+ apps/gx4000/{papp.json => pax.json}           |  0
+ apps/handy/{papp.json => pax.json}            |  0
+ apps/lvgl/{papp.json => pax.json}             |  2 +-
+ apps/msx/{papp.json => pax.json}              |  0
+ apps/neogeo/{papp.json => pax.json}           |  0
+ apps/nes/{papp.json => pax.json}              |  4 +-
+ apps/nesplus/{papp.json => pax.json}          |  2 +-
+ apps/netsurf/{papp.json => pax.json}          |  4 +-
+ apps/ngp/{papp.json => pax.json}              |  0
+ apps/openlara/{papp.json => pax.json}         |  2 +-
+ apps/pce/{papp.json => pax.json}              |  0
+ apps/prosystem/{papp.json => pax.json}        |  0
+ apps/quake/{papp.json => pax.json}            |  0
+ apps/redalert/{papp.json => pax.json}         |  2 +-
+ apps/sms/{papp.json => pax.json}              |  0
+ apps/snes/{papp.json => pax.json}             |  0
+ apps/spectrum/{papp.json => pax.json}         |  0
+ apps/stella/{papp.json => pax.json}           |  0
+ apps/tiberiandawn/{papp.json => pax.json}     |  2 +-
+ apps/touchtest/{papp.json => pax.json}        |  0
+ apps/tulip/{papp.json => pax.json}            |  4 +-
+ apps/video/{papp.json => pax.json}            |  2 +-
+ apps/ws/{papp.json => pax.json}               |  0
+ docs/building.md                              | 26 ++++-----
+ docs/esp-bridge.md                            | 24 ++++----
+ docs/esphome-store.md                         | 30 +++++-----
+ docs/feedback.md                              |  8 +--
+ docs/local-papp-dev.md                        | 10 ++--
+ docs/overview.md                              | 14 ++---
+ docs/store.md                                 | 10 ++--
+ ports/tulip/gen_tulip.py                      |  4 +-
+ .../{test_build_papp.py => test_build_pax.py} | 14 ++---
+ tests/test_dev_build_apps.py                  |  8 +--
+ tests/test_esp_bridge.py                      | 22 ++++----
+ tests/test_make_listing.py                    | 12 ++--
+ tools/{build_papp.py => build_pax.py}         | 56 +++++++++----------
+ tools/dev_build_apps.py                       |  8 +--
+ tools/esp_bridge/esp_bridge.py                | 26 ++++-----
+ tools/make_listing.py                         | 26 ++++-----
+ tools/{papp_symbolize.py => pax_symbolize.py} |  6 +-
+ 52 files changed, 216 insertions(+), 210 deletions(-)
+ rename .github/workflows/{build-papps.yml => build-paxs.yml} (89%)
+ rename apps/atari800/{papp.json => pax.json} (100%)
+ rename apps/c64/{papp.json => pax.json} (99%)
+ rename apps/doom/{papp.json => pax.json} (100%)
+ rename apps/duke3d/{papp.json => pax.json} (100%)
+ rename apps/gb/{papp.json => pax.json} (98%)
+ rename apps/genesis/{papp.json => pax.json} (100%)
+ rename apps/gw/{papp.json => pax.json} (100%)
+ rename apps/gx4000/{papp.json => pax.json} (100%)
+ rename apps/handy/{papp.json => pax.json} (100%)
+ rename apps/lvgl/{papp.json => pax.json} (95%)
+ rename apps/msx/{papp.json => pax.json} (100%)
+ rename apps/neogeo/{papp.json => pax.json} (100%)
+ rename apps/nes/{papp.json => pax.json} (96%)
+ rename apps/nesplus/{papp.json => pax.json} (99%)
+ rename apps/netsurf/{papp.json => pax.json} (98%)
+ rename apps/ngp/{papp.json => pax.json} (100%)
+ rename apps/openlara/{papp.json => pax.json} (94%)
+ rename apps/pce/{papp.json => pax.json} (100%)
+ rename apps/prosystem/{papp.json => pax.json} (100%)
+ rename apps/quake/{papp.json => pax.json} (100%)
+ rename apps/redalert/{papp.json => pax.json} (95%)
+ rename apps/sms/{papp.json => pax.json} (100%)
+ rename apps/snes/{papp.json => pax.json} (100%)
+ rename apps/spectrum/{papp.json => pax.json} (100%)
+ rename apps/stella/{papp.json => pax.json} (100%)
+ rename apps/tiberiandawn/{papp.json => pax.json} (95%)
+ rename apps/touchtest/{papp.json => pax.json} (100%)
+ rename apps/tulip/{papp.json => pax.json} (97%)
+ rename apps/video/{papp.json => pax.json} (99%)
+ rename apps/ws/{papp.json => pax.json} (100%)
+ rename tests/{test_build_papp.py => test_build_pax.py} (97%)
+ rename tools/{build_papp.py => build_pax.py} (95%)
+ rename tools/{papp_symbolize.py => pax_symbolize.py} (91%)
+
+diff --git a/.github/workflows/build-papps.yml b/.github/workflows/build-paxs.yml
+similarity index 89%
+rename from .github/workflows/build-papps.yml
+rename to .github/workflows/build-paxs.yml
+index 3b192ca..e099aed 100644
+--- a/.github/workflows/build-papps.yml
++++ b/.github/workflows/build-paxs.yml
+@@ -1,4 +1,4 @@
+-name: Build PAPPs
++name: Build PAXs
+ 
+ on:
+   push:
+@@ -21,8 +21,10 @@ jobs:
+         uses: actions/cache@v4
+         with:
+           path: .cache
+-          key: papp-sources-${{ hashFiles('apps/*/papp.json', 'tools/build_papp.py') }}
+-          restore-keys: papp-sources-
++          key: pax-sources-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py') }}
++          restore-keys: |
++            pax-sources-
++            papp-sources-
+ 
+       - name: Build every app
+         shell: bash
+@@ -30,7 +32,7 @@ jobs:
+           git config --global --add safe.directory '*'
+           . "$IDF_PATH/export.sh" > /dev/null
+           riscv32-esp-elf-gcc --version | head -1
+-          python3 tools/build_papp.py --out dist
++          python3 tools/build_pax.py --out dist
+ 
+       - name: Verify Tulip freezing order
+         run: python3 tests/test_tulip_freezing.py
+@@ -66,12 +68,12 @@ jobs:
+               if old and old != a["sha256"]:
+                   bad.append(f"{a['name']} {a['version']}: published {old[:12]}, built {a['sha256'][:12]}")
+           for line in bad:
+-              print(f"::error::{line}. Bump \"version\" in apps/{line.split()[0]}/papp.json.")
++              print(f"::error::{line}. Bump \"version\" in apps/{line.split()[0]}/pax.json.")
+           sys.exit(1 if bad else 0)
+           EOF
+ 
+       - uses: actions/upload-artifact@v4
+         with:
+-          name: papps
++          name: paxs
+           path: dist/
+           if-no-files-found: error
+diff --git a/.github/workflows/dev-builds.yml b/.github/workflows/dev-builds.yml
+index 52e017f..23ac928 100644
+--- a/.github/workflows/dev-builds.yml
++++ b/.github/workflows/dev-builds.yml
+@@ -1,10 +1,10 @@
+ name: Dev builds
+ 
+-# Work-in-progress apps ("publish": false in papp.json) are not released or
++# Work-in-progress apps ("publish": false in pax.json) are not released or
+ # listed in the store; store apps still being worked on set "dev_build": true.
+ # For testing on a device, pushes to claude/* and nona/* branches upload both
+ # to the "dev-builds" prerelease at stable URLs such as
+-#   https://github.com/<owner>/<repo>/releases/download/dev-builds/redalert.papp
++#   https://github.com/<owner>/<repo>/releases/download/dev-builds/redalert.pax
+ # The ESP bridge serves those to the device over the LAN (the device cannot
+ # verify github.com's TLS chain): @esp-bridge launch url=<that URL>
+ # A branch builds only the apps it changes (tools/dev_build_apps.py), so it
+@@ -12,7 +12,7 @@ name: Dev builds
+ on:
+   push:
+     branches: ["claude/**", "nona/**"]
+-    paths: ["apps/**", "ports/**", "tools/build_papp.py", "tools/dev_build_apps.py", ".github/workflows/dev-builds.yml"]
++    paths: ["apps/**", "ports/**", "tools/build_pax.py", "tools/dev_build_apps.py", ".github/workflows/dev-builds.yml"]
+   workflow_dispatch:
+ 
+ permissions:
+@@ -37,8 +37,8 @@ jobs:
+         uses: actions/cache@v4
+         with:
+           path: .cache
+-          key: papp-dev-${{ hashFiles('apps/*/papp.json', 'tools/build_papp.py', 'ports/**') }}
+-          restore-keys: papp-dev-
++          key: pax-dev-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py', 'ports/**') }}
++          restore-keys: pax-dev-
+ 
+       - name: Build work-in-progress apps
+         id: build
+@@ -53,15 +53,15 @@ jobs:
+           fi
+           echo "apps=$apps" >> "$GITHUB_OUTPUT"
+           if [ -z "$apps" ]; then echo "No work-in-progress app changed on this branch."; exit 0; fi
+-          python3 tools/build_papp.py --out dist $apps
++          python3 tools/build_pax.py --out dist $apps
+           # Symbol lists (address order) so a crash PC from the device log can
+-          # be mapped to a function: tools/papp_symbolize.py.
++          # be mapped to a function: tools/pax_symbolize.py.
+           for a in $apps; do riscv32-esp-elf-nm -n -C ".cache/build/$a/$a.elf" > "dist/$a.sym"; done
+ 
+       - uses: actions/upload-artifact@v4
+         if: steps.build.outputs.apps != ''
+         with:
+-          name: dev-papps
++          name: dev-paxs
+           path: dist/
+ 
+   upload:
+@@ -74,7 +74,7 @@ jobs:
+     steps:
+       - uses: actions/download-artifact@v4
+         with:
+-          name: dev-papps
++          name: dev-paxs
+           path: dist
+ 
+       - name: Upload to the dev-builds prerelease
+@@ -85,7 +85,7 @@ jobs:
+               --title "Dev builds (work in progress, not for the store)" \
+               --notes "Latest test builds of work-in-progress apps, replaced on every push. Not in the store."
+           fi
+-          gh release upload dev-builds -R "$REPO" --clobber dist/*.papp dist/*.json dist/*.sym
++          gh release upload dev-builds -R "$REPO" --clobber dist/*.pax dist/*.json dist/*.sym
+           {
+             echo "Latest test builds of work-in-progress apps, replaced on every push. Not in the store."
+             echo
+diff --git a/.github/workflows/publish-store.yml b/.github/workflows/publish-store.yml
+index b9b0ab3..9755537 100644
+--- a/.github/workflows/publish-store.yml
++++ b/.github/workflows/publish-store.yml
+@@ -1,7 +1,7 @@
+ name: Publish store
+ 
+-# After "Build PAPPs" succeeds on main: one GitHub Release per app version
+-# (tag <name>-v<version>, asset <name>-<version>.papp), then the Pages catalog
++# After "Build PAXs" succeeds on main: one GitHub Release per app version
++# (tag <name>-v<version>, asset <name>-<version>.pax), then the Pages catalog
+ # the device's pax_loader catalog_url points at.
+ on:
+   # Website-only repairs can reuse the latest successful build on main.
+@@ -9,13 +9,13 @@ on:
+     branches: [main]
+     paths: ["tools/make_catalog.py", "tests/test_make_catalog.py", ".github/workflows/publish-store.yml", "web-installer/**", "tools/check_web_installer.py", "web-store/**", "tests/test_store_install.cjs"]
+   workflow_run:
+-    workflows: [Build PAPPs]
++    workflows: [Build PAXs]
+     types: [completed]
+     branches: [main]
+   workflow_dispatch:
+     inputs:
+       run_id:
+-        description: "Build PAPPs run to publish (default: the newest successful build on main)"
++        description: "Build PAXs run to publish (default: the newest successful build on main)"
+         required: false
+ 
+ permissions:
+@@ -53,19 +53,20 @@ jobs:
+         run: |
+           id="${{ inputs.run_id }}"
+           if [ -z "$id" ]; then
+-            id=$(gh run list -R "$REPO" --workflow build-papps.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId')
++            id=$(gh run list -R "$REPO" --branch main --event push --status success --limit 100 --json databaseId,workflowName --jq '[.[] | select(.workflowName == "Build PAXs" or .workflowName == "Build PAPPs")][0].databaseId')
+           fi
+           trigger="${{ github.event.workflow_run.id }}"
+           if [ -n "$trigger" ] && [ "$trigger" != "$id" ]; then
+             echo "Build run $trigger finished, but $id is a newer successful build on main: publishing that one."
+           fi
++          echo "artifact=$(gh api "repos/$REPO/actions/runs/$id/artifacts" --jq '.artifacts[] | select(.name == "paxs" or .name == "papps") | .name' | head -1)" >> "$GITHUB_OUTPUT"
+           echo "id=$id" >> "$GITHUB_OUTPUT"
+           echo "sha=$(gh run view "$id" -R "$REPO" --json headSha --jq .headSha)" >> "$GITHUB_OUTPUT"
+           echo "built_at=$(gh run view "$id" -R "$REPO" --json startedAt --jq .startedAt)" >> "$GITHUB_OUTPUT"
+ 
+       - uses: actions/download-artifact@v4
+         with:
+-          name: papps
++          name: ${{ steps.run.outputs.artifact }}
+           path: dist
+           run-id: ${{ steps.run.outputs.id }}
+           github-token: ${{ github.token }}
+@@ -78,23 +79,26 @@ jobs:
+           for a in json.load(open("dist/build.json"))["apps"]:
+               if not a.get("publish", True):
+                   continue  # work in progress, not released
+-              print(f"{a['name']}\t{a['version']}\t{a['sha256']}\t{a['title']}")
++              print(f"{a['name']}\t{a['version']}\t{a['sha256']}\t{a['title']}\t{a['file']}")
+           EOF
+-          while IFS=$'\t' read -r name version sha title; do
+-            tag="$name-v$version"; asset="$name-$version.papp"
+-            cp "dist/$name.papp" "$asset"
++          while IFS=$'\t' read -r name version sha title source_file; do
++            tag="$name-v$version"; asset="$name-$version.pax"
++            cp "dist/$source_file" "$asset"
+             if gh release view "$tag" -R "$REPO" > /dev/null 2>&1; then
+               published=$(gh release view "$tag" -R "$REPO" --json body --jq .body | sed -n 's/^sha256: //p' | head -1)
+               if [ "$published" = "$sha" ]; then
+-                echo "$tag already published with the same binary"
++                if ! gh release view "$tag" -R "$REPO" --json assets --jq '.assets[].name' | grep -Fxq "$asset"; then
++                  gh release upload "$tag" "$asset" -R "$REPO"
++                fi
++                echo "$tag already published with the same binary; PAX asset available"
+                 continue
+               fi
+-              echo "::error::$tag is already published with a different binary ($published). Bump \"version\" in apps/$name/papp.json."
++              echo "::error::$tag is already published with a different binary ($published). Bump \"version\" in apps/$name/pax.json."
+               exit 1
+             fi
+             gh release create "$tag" "$asset" -R "$REPO" --target "${{ steps.run.outputs.sha }}" \
+               --title "$title $version" \
+-              --notes "$(printf 'PAPP `%s` %s, built by CI from %s.\n\nsha256: %s\n' "$name" "$version" "${{ steps.run.outputs.sha }}" "$sha")"
++              --notes "$(printf 'PAX `%s` %s, built by CI from %s.\n\nsha256: %s\n' "$name" "$version" "${{ steps.run.outputs.sha }}" "$sha")"
+           done < releases.tsv
+ 
+       # App data (game WADs/PAKs) is pinned by sha256, so cached copies are
+@@ -102,8 +106,8 @@ jobs:
+       - uses: actions/cache@v4
+         with:
+           path: .data-cache
+-          key: papp-data-${{ hashFiles('apps/*/papp.json') }}
+-          restore-keys: papp-data-
++          key: pax-data-${{ hashFiles('apps/*/pax.json') }}
++          restore-keys: pax-data-
+ 
+       - name: Write catalog and app data
+         run: python3 tools/make_catalog.py --repo "$REPO" --dist dist --out site --data-cache .data-cache --built-at "${{ steps.run.outputs.built_at }}"
+diff --git a/.github/workflows/python-tools.yml b/.github/workflows/python-tools.yml
+index 7e33fbb..8f8fdc8 100644
+--- a/.github/workflows/python-tools.yml
++++ b/.github/workflows/python-tools.yml
+@@ -3,9 +3,9 @@ name: Python tools
+ on:
+   push:
+     branches: [main]
+-    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_papp.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
++    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_pax.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
+   pull_request:
+-    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_papp.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
++    paths: ["tools/esp_bridge/**", "tools/device_bridge/**", "tools/build_pax.py", "tools/make_catalog.py", "apps/**", "esphome/components/papp_loader/papp_data.h", "esphome/components/papp_loader/papp_canvas.h", "esphome/components/papp_loader/papp_handoff.h", "esphome/components/papp_loader/papp_files.h", "esphome/components/papp_loader/papp_memory.h", "tools/make_listing.py", "tests/**", ".github/workflows/python-tools.yml"]
+   workflow_dispatch:
+ 
+ permissions:
+@@ -22,31 +22,31 @@ jobs:
+       - run: python -m unittest discover -s tests -v
+ 
+       # The loader's data-list parser and SHA-256 are plain C++; test them on the host.
+-      - name: papp_data.h host tests
++      - name: PAX data host tests
+         run: |
+           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_data.cpp -o "$RUNNER_TEMP/test_papp_data"
+           "$RUNNER_TEMP/test_papp_data"
+ 
+       # Canvas geometry (where an app's canvas and the close control go, sizes, per-app keys).
+-      - name: papp_canvas.h host tests
++      - name: PAX canvas host tests
+         run: |
+           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_canvas.cpp -o "$RUNNER_TEMP/test_papp_canvas"
+           "$RUNNER_TEMP/test_papp_canvas"
+ 
+       # App hand-off (app_open): target names, catalog matches, the return stack.
+-      - name: papp_handoff.h host tests
++      - name: PAX handoff host tests
+         run: |
+           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_handoff.cpp -o "$RUNNER_TEMP/test_papp_handoff"
+           "$RUNNER_TEMP/test_papp_handoff"
+ 
+       # File services and the store's file checks: allowed paths, patterns, required files.
+-      - name: papp_files.h host tests
++      - name: PAX files host tests
+         run: |
+           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_files.cpp -o "$RUNNER_TEMP/test_papp_files"
+           "$RUNNER_TEMP/test_papp_files"
+ 
+       # Where an app's heap goes: PSRAM, and internal RAM only above the drivers' reserve.
+-      - name: papp_memory.h host tests
++      - name: PAX memory host tests
+         run: |
+           g++ -std=gnu++17 -Wall -Wextra -Werror -O2 -I esphome/components/papp_loader tests/cpp/test_papp_memory.cpp -o "$RUNNER_TEMP/test_papp_memory"
+           "$RUNNER_TEMP/test_papp_memory"
+@@ -58,10 +58,10 @@ jobs:
+         run: |
+           import json, pathlib, sys, tempfile
+           sys.path.insert(0, "tools")
+-          import build_papp, make_catalog
+-          for path in sorted(pathlib.Path("apps").glob("*/papp.json")):
++          import build_pax, make_catalog
++          for path in sorted(pathlib.Path("apps").glob("*/pax.json")):
+               app = json.loads(path.read_text())
+-              data = build_papp.check_data(app["name"], app.get("data"))
++              data = build_pax.check_data(app["name"], app.get("data"))
+               if data:
+                   with tempfile.TemporaryDirectory() as tmp:
+                       make_catalog.publish_data("o/r", {**app, "data": data}, pathlib.Path(tmp), None)
+diff --git a/README.md b/README.md
+index ced8b95..0d23958 100644
+--- a/README.md
++++ b/README.md
+@@ -1,8 +1,8 @@
+ # ESPHomeBrew
+-ESPHomeBrew is a GitHub-hosted store of PSRAM apps (`.papp`) for the ESP32-P4.
++ESPHomeBrew is a GitHub-hosted store of PSRAM apps (`.pax`) for the ESP32-P4.
+ 
+-- `apps/<name>/papp.json` describes each app; GitHub Actions builds them into `.papp` files. See [docs/building.md](docs/building.md).
+-- ESP32-P4 devices running ESPHome with the `papp_loader` component browse the store from an LVGL page and stream apps into PSRAM.
++- `apps/<name>/pax.json` describes each app; GitHub Actions builds them into `.pax` files. See [docs/building.md](docs/building.md).
++- ESP32-P4 devices running ESPHome with the `papp_loader` (legacy ABI-compatible component name) component browse the store from an LVGL page and stream apps into PSRAM.
+ 
+ ## 💖 Support the Project
+ 
+diff --git a/apps/atari800/papp.json b/apps/atari800/pax.json
+similarity index 100%
+rename from apps/atari800/papp.json
+rename to apps/atari800/pax.json
+diff --git a/apps/c64/papp.json b/apps/c64/pax.json
+similarity index 99%
+rename from apps/c64/papp.json
+rename to apps/c64/pax.json
+index 89f17a1..7472e6b 100644
+--- a/apps/c64/papp.json
++++ b/apps/c64/pax.json
+@@ -2,7 +2,7 @@
+   "name": "c64",
+   "title": "Commodore 64",
+   "version": "0.1.0",
+-  "description": "Frodo C64 emulator rebuilt as a current ESPHomeBrew PAPP.",
++  "description": "Frodo C64 emulator rebuilt as a current ESPHomeBrew PAX.",
+   "author": "Frodo; P4 port by RetroESP32-P4",
+   "category": "Emulator",
+   "license": "GPL-2.0",
+diff --git a/apps/doom/papp.json b/apps/doom/pax.json
+similarity index 100%
+rename from apps/doom/papp.json
+rename to apps/doom/pax.json
+diff --git a/apps/duke3d/papp.json b/apps/duke3d/pax.json
+similarity index 100%
+rename from apps/duke3d/papp.json
+rename to apps/duke3d/pax.json
+diff --git a/apps/gb/papp.json b/apps/gb/pax.json
+similarity index 98%
+rename from apps/gb/papp.json
+rename to apps/gb/pax.json
+index e64a805..69bfbea 100644
+--- a/apps/gb/papp.json
++++ b/apps/gb/pax.json
+@@ -2,7 +2,7 @@
+   "name": "gb",
+   "title": "Game Boy",
+   "version": "0.1.0",
+-  "description": "Gnuboy Game Boy and Game Boy Color emulator rebuilt as a current ESPHomeBrew PAPP.",
++  "description": "Gnuboy Game Boy and Game Boy Color emulator rebuilt as a current ESPHomeBrew PAX.",
+   "author": "Gnuboy; P4 port by RetroESP32-P4",
+   "category": "Emulator",
+   "license": "GPL-2.0",
+diff --git a/apps/genesis/papp.json b/apps/genesis/pax.json
+similarity index 100%
+rename from apps/genesis/papp.json
+rename to apps/genesis/pax.json
+diff --git a/apps/gw/papp.json b/apps/gw/pax.json
+similarity index 100%
+rename from apps/gw/papp.json
+rename to apps/gw/pax.json
+diff --git a/apps/gx4000/papp.json b/apps/gx4000/pax.json
+similarity index 100%
+rename from apps/gx4000/papp.json
+rename to apps/gx4000/pax.json
+diff --git a/apps/handy/papp.json b/apps/handy/pax.json
+similarity index 100%
+rename from apps/handy/papp.json
+rename to apps/handy/pax.json
+diff --git a/apps/lvgl/papp.json b/apps/lvgl/pax.json
+similarity index 95%
+rename from apps/lvgl/papp.json
+rename to apps/lvgl/pax.json
+index 77585eb..bb90722 100644
+--- a/apps/lvgl/papp.json
++++ b/apps/lvgl/pax.json
+@@ -6,7 +6,7 @@
+   "author": "LVGL; P4 port by giltal",
+   "category": "Demo",
+   "license": "MIT (LVGL)",
+-  "about": "A small LVGL 9.5 app with touch widgets, drawn at half the canvas size and scaled 2x: 512x300 on the whole 1024x600 panel, or 400x240 on the classic 800x480 canvas (Screen setting). A quick way to check that the display, touch and the PAPP loader work.",
++  "about": "A small LVGL 9.5 app with touch widgets, drawn at half the canvas size and scaled 2x: 512x300 on the whole 1024x600 panel, or 400x240 on the classic 800x480 canvas (Screen setting). A quick way to check that the display, touch and the PAX loader work.",
+   "changelog": "0.3.0: rebuilt for LVGL 9.5 with host-safe teardown and dedicated L3 exit\n0.2.0: uses the canvas size from the store's Screen setting (whole panel by default); the layout grows with it\n0.1.1: rebuilt with the IDF 6.1 toolchain",
+   "controls": [
+     "Touch: tap and drag the widgets",
+diff --git a/apps/msx/papp.json b/apps/msx/pax.json
+similarity index 100%
+rename from apps/msx/papp.json
+rename to apps/msx/pax.json
+diff --git a/apps/neogeo/papp.json b/apps/neogeo/pax.json
+similarity index 100%
+rename from apps/neogeo/papp.json
+rename to apps/neogeo/pax.json
+diff --git a/apps/nes/papp.json b/apps/nes/pax.json
+similarity index 96%
+rename from apps/nes/papp.json
+rename to apps/nes/pax.json
+index 1aff52c..68947b7 100644
+--- a/apps/nes/papp.json
++++ b/apps/nes/pax.json
+@@ -3,11 +3,11 @@
+   "title": "NES (nofrendo)",
+   "version": "0.1.4",
+   "description": "Nintendo Entertainment System emulator as a PSRAM app. Add .nes ROMs under /sd/roms/nes/ or /usb0/roms/nes/.",
+-  "author": "nofrendo; P4 PAPP port by NonaSuomy",
++  "author": "nofrendo; P4 PAX port by NonaSuomy",
+   "category": "Emulator",
+   "license": "LGPL-2.0",
+   "icon": "icon_nes_platform.png",
+-  "about": "The classic nofrendo 2.0 NES core running as an ESP32-P4 PAPP. The launcher selects a .nes ROM from the configured storage; no ROMs are bundled.",
++  "about": "The classic nofrendo 2.0 NES core running as an ESP32-P4 PAX. The launcher selects a .nes ROM from the configured storage; no ROMs are bundled.",
+   "changelog": "0.1.3 fixes ZIP ROM extraction (build against correct loader ABI header); 0.1.1 fixes a heap-corruption crash when closing the NES app.",
+   "controls": [
+     "D-pad: D-pad",
+diff --git a/apps/nesplus/papp.json b/apps/nesplus/pax.json
+similarity index 99%
+rename from apps/nesplus/papp.json
+rename to apps/nesplus/pax.json
+index 2e2f2db..cd2ca8a 100644
+--- a/apps/nesplus/papp.json
++++ b/apps/nesplus/pax.json
+@@ -2,7 +2,7 @@
+   "name": "nesplus",
+   "title": "NES Plus",
+   "version": "0.1.0",
+-  "description": "NoFrendo NES Plus emulator rebuilt as a current ESPHomeBrew PAPP.",
++  "description": "NoFrendo NES Plus emulator rebuilt as a current ESPHomeBrew PAX.",
+   "author": "NoFrendo; P4 port by RetroESP32-P4",
+   "category": "Emulator",
+   "license": "GPL-2.0",
+diff --git a/apps/netsurf/papp.json b/apps/netsurf/pax.json
+similarity index 98%
+rename from apps/netsurf/papp.json
+rename to apps/netsurf/pax.json
+index 4ebf02e..da32dc5 100644
+--- a/apps/netsurf/papp.json
++++ b/apps/netsurf/pax.json
+@@ -3,8 +3,8 @@
+   "title": "NetSurf",
+   "version": "0.3.2",
+   "changelog": "0.3.2: rebuilt after the PAPP build/toolchain updates.",
+-  "description": "The NetSurf web browser (framebuffer frontend) as a PAPP on the whole panel: http:// and https:// pages over the loader's network and TLS, files on the card and NetSurf's about: pages, with FreeType text in the DejaVu fonts, WebP and SVG images, bookmarks and history, touch, USB keyboard and mouse. Work in progress.",
+-  "author": "The NetSurf Developers; PAPP port",
++  "description": "The NetSurf web browser (framebuffer frontend) as a PAX on the whole panel: http:// and https:// pages over the loader's network and TLS, files on the card and NetSurf's about: pages, with FreeType text in the DejaVu fonts, WebP and SVG images, bookmarks and history, touch, USB keyboard and mouse. Work in progress.",
++  "author": "The NetSurf Developers; PAX port",
+   "category": "Tool",
+   "license": "GPL-2.0; MIT, BSD, zlib, libpng, IJG, FTL, Bitstream Vera",
+   "about": "NetSurf is a small, fast web browser with its own HTML and CSS engine. This port runs its framebuffer frontend on the whole panel (the store's Screen setting can pick 800x480) and draws text with FreeType in the DejaVu fonts (sans-serif, serif and monospace; built in for Latin, Greek and Cyrillic, with italics slanted). It shows HTML 4 and CSS 2 (partly CSS 3) pages, PNG, JPEG, GIF, BMP, ICO, WebP and SVG images, forms and cookies, but no JavaScript and no web fonts. It loads http:// pages over the loader's TCP services and https:// pages over its TLS service, which checks every certificate against the firmware's certificate bundle (sites it cannot verify do not open; there is no way to skip the check). Local files open as file:///sd/..., and NetSurf's about: pages work. The star in the toolbar bookmarks the page; the button next to it lists the bookmarks (about:hotlist), and about:history lists the pages visited. Tapping a text field opens the on-screen keyboard. Its files live in /sd/roms/netsurf/: Choices (options), Cookies, Hotlist (bookmarks), URLs (history), and optionally Messages, the full DejaVu fonts in fonts/ (more characters and real italics) or your own copies of default.css, welcome.html and the other built-in resources, which then replace the built-in ones. There is no disk cache. The folder is optional: without it NetSurf runs with its built-in defaults and keeps no cookies, bookmarks or files once it quits. Video and sound links (.mp4, .webm, .mkv, .mov, .avi, .ts, .mp3, .ogg, .opus, .m4a, or a video/audio answer) open in the Video Player (video) when it is installed or in a library source; quitting it comes back to the page.",
+diff --git a/apps/ngp/papp.json b/apps/ngp/pax.json
+similarity index 100%
+rename from apps/ngp/papp.json
+rename to apps/ngp/pax.json
+diff --git a/apps/openlara/papp.json b/apps/openlara/pax.json
+similarity index 94%
+rename from apps/openlara/papp.json
+rename to apps/openlara/pax.json
+index 0446f8f..1c69c61 100644
+--- a/apps/openlara/papp.json
++++ b/apps/openlara/pax.json
+@@ -2,7 +2,7 @@
+   "name": "openlara",
+   "title": "OpenLara",
+   "version": "0.2.1",
+-  "description": "OpenLara, the open Tomb Raider 1 engine, as a PAPP: software renderer at 320x240 (shown 2x or 2.5x) or 320x200 on the 640x400 canvas, sound, gamepad and USB keyboard. Work in progress. Needs your own Tomb Raider 1 PC data (the DATA folder with the .PHD levels) in /sd/roms/openlara/.",
++  "description": "OpenLara, the open Tomb Raider 1 engine, as a PAX: software renderer at 320x240 (shown 2x or 2.5x) or 320x200 on the 640x400 canvas, sound, gamepad and USB keyboard. Work in progress. Needs your own Tomb Raider 1 PC data (the DATA folder with the .PHD levels) in /sd/roms/openlara/.",
+   "author": "XProger (OpenLara); ESP32-P4 port by alexkid77",
+   "category": "Game",
+   "license": "BSD-2-Clause (OpenLara); P4 port has no licence yet",
+diff --git a/apps/pce/papp.json b/apps/pce/pax.json
+similarity index 100%
+rename from apps/pce/papp.json
+rename to apps/pce/pax.json
+diff --git a/apps/prosystem/papp.json b/apps/prosystem/pax.json
+similarity index 100%
+rename from apps/prosystem/papp.json
+rename to apps/prosystem/pax.json
+diff --git a/apps/quake/papp.json b/apps/quake/pax.json
+similarity index 100%
+rename from apps/quake/papp.json
+rename to apps/quake/pax.json
+diff --git a/apps/redalert/papp.json b/apps/redalert/pax.json
+similarity index 95%
+rename from apps/redalert/papp.json
+rename to apps/redalert/pax.json
+index f123d83..dfa4e94 100644
+--- a/apps/redalert/papp.json
++++ b/apps/redalert/pax.json
+@@ -2,7 +2,7 @@
+   "name": "redalert",
+   "title": "Red Alert",
+   "version": "0.2.3",
+-  "description": "Command & Conquer: Red Alert (Vanilla Conquer) as a PAPP, with movies, music, touch, keyboard and mouse, and network multiplayer against PCs running Vanilla Conquer. LAN play works out of the box; for other networks or the internet, set [Network] Protocol=tcp and Host=<the host's IP> in /sd/roms/redalert/redalert.ini (the host needs Protocol=tcp and TCP port 1234 open). Needs your own REDALERT.MIX and MAIN.MIX (from the freeware release or your CDs) in /sd/roms/redalert/. Optional Allied, Soviet, Counterstrike, and Aftermath data can be kept in their matching subfolders.",
++  "description": "Command & Conquer: Red Alert (Vanilla Conquer) as a PAX, with movies, music, touch, keyboard and mouse, and network multiplayer against PCs running Vanilla Conquer. LAN play works out of the box; for other networks or the internet, set [Network] Protocol=tcp and Host=<the host's IP> in /sd/roms/redalert/redalert.ini (the host needs Protocol=tcp and TCP port 1234 open). Needs your own REDALERT.MIX and MAIN.MIX (from the freeware release or your CDs) in /sd/roms/redalert/. Optional Allied, Soviet, Counterstrike, and Aftermath data can be kept in their matching subfolders.",
+   "author": "Westwood / Electronic Arts; Vanilla Conquer port",
+   "category": "Game",
+   "license": "GPL-3.0 (Vanilla Conquer)",
+diff --git a/apps/sms/papp.json b/apps/sms/pax.json
+similarity index 100%
+rename from apps/sms/papp.json
+rename to apps/sms/pax.json
+diff --git a/apps/snes/papp.json b/apps/snes/pax.json
+similarity index 100%
+rename from apps/snes/papp.json
+rename to apps/snes/pax.json
+diff --git a/apps/spectrum/papp.json b/apps/spectrum/pax.json
+similarity index 100%
+rename from apps/spectrum/papp.json
+rename to apps/spectrum/pax.json
+diff --git a/apps/stella/papp.json b/apps/stella/pax.json
+similarity index 100%
+rename from apps/stella/papp.json
+rename to apps/stella/pax.json
+diff --git a/apps/tiberiandawn/papp.json b/apps/tiberiandawn/pax.json
+similarity index 95%
+rename from apps/tiberiandawn/papp.json
+rename to apps/tiberiandawn/pax.json
+index 5256b70..515063f 100644
+--- a/apps/tiberiandawn/papp.json
++++ b/apps/tiberiandawn/pax.json
+@@ -2,7 +2,7 @@
+   "name": "tiberiandawn",
+   "title": "Tiberian Dawn",
+   "version": "0.1.4",
+-  "description": "Command & Conquer: Tiberian Dawn (Vanilla Conquer) as a PAPP, with movies, music, touch, keyboard and mouse, and network multiplayer against PCs running Vanilla Conquer. Needs CONQUER.MIX and CCLOCAL.MIX in /sd/roms/tiberiandawn/, plus GENERAL.MIX in both the gdi/ and nod/ folders. Optional Covert Ops and CD media files are checked in their original folders.",
++  "description": "Command & Conquer: Tiberian Dawn (Vanilla Conquer) as a PAX, with movies, music, touch, keyboard and mouse, and network multiplayer against PCs running Vanilla Conquer. Needs CONQUER.MIX and CCLOCAL.MIX in /sd/roms/tiberiandawn/, plus GENERAL.MIX in both the gdi/ and nod/ folders. Optional Covert Ops and CD media files are checked in their original folders.",
+   "author": "Westwood / Electronic Arts; Vanilla Conquer port",
+   "category": "Game",
+   "license": "GPL-3.0 (Vanilla Conquer)",
+diff --git a/apps/touchtest/papp.json b/apps/touchtest/pax.json
+similarity index 100%
+rename from apps/touchtest/papp.json
+rename to apps/touchtest/pax.json
+diff --git a/apps/tulip/papp.json b/apps/tulip/pax.json
+similarity index 97%
+rename from apps/tulip/papp.json
+rename to apps/tulip/pax.json
+index 8ba3ab3..e4892f4 100644
+--- a/apps/tulip/papp.json
++++ b/apps/tulip/pax.json
+@@ -2,8 +2,8 @@
+   "name": "tulip",
+   "title": "Tulip CC",
+   "version": "0.1.6",
+-  "description": "Tulip Creative Computer (MicroPython, the AMY synthesizer, Tulip's graphics, editor and LVGL UI) as a PAPP, at its full 1024x600 with USB keyboard, touch and the loader's speaker. Work in progress.",
+-  "author": "shorepine (Tulip, AMY); PAPP port",
++  "description": "Tulip Creative Computer (MicroPython, the AMY synthesizer, Tulip's graphics, editor and LVGL UI) as a PAX, at its full 1024x600 with USB keyboard, touch and the loader's speaker. Work in progress.",
++  "author": "shorepine (Tulip, AMY); PAX port",
+   "category": "Tool",
+   "license": "MIT (Tulip, MicroPython, AMY, LVGL)",
+   "about": "Tulip is a self-contained computer for music, graphics and code: a MicroPython REPL and editor, the AMY synthesizer, sprites, a background layer and an LVGL user interface. This port runs Tulip Desktop's code on the ESP32-P4 loader: Tulip's display at its own 1024x600 shown 1:1 (scaled to 800x480 on loaders without canvas sizes), AMY at 44.1 kHz on the loader's speaker, USB keyboard to the REPL and editor, touch as Tulip's touch and LVGL pointer. Tulip's files live in a 16 MiB filesystem image, /sd/roms/tulip/tulip.lfs, made on first start (create the folder /sd/roms/tulip first); the card itself is at /sd for opening files by name. MIDI in and out through a USB-MIDI cable or keyboard on loaders with usb_midi (tulip.midi_callback, the synths). Network through the device's own connection (Ethernet or Wi-Fi from its firmware): socket and network, and HTTPS through the loader's TLS, which checks certificates (needs a loader with TLS). Tulip World (world.ls(), world.download()), tulip.url_get() and tuliprequests work; tulip.ip() gives the device's address and tulip.wifi() only reports it. webdrop (import webdrop; webdrop.start()) serves a page on port 8080 for running code and dropping files onto Tulip from another computer. No native C modules yet.",
+diff --git a/apps/video/papp.json b/apps/video/pax.json
+similarity index 99%
+rename from apps/video/papp.json
+rename to apps/video/pax.json
+index eb518bd..6d626e8 100644
+--- a/apps/video/papp.json
++++ b/apps/video/pax.json
+@@ -3,7 +3,7 @@
+   "title": "Video Player",
+   "version": "0.1.0",
+   "description": "Plays videos and music from the SD card or the web (http and https) with FFmpeg: MP4, MKV/WebM, AVI, MPEG-TS, MP3, Ogg and WAV; H.264, MPEG-4, MJPEG and VP8 video with AAC, MP3, Opus, Vorbis or PCM sound. Work in progress.",
+-  "author": "The FFmpeg developers; PAPP port",
++  "author": "The FFmpeg developers; PAX port",
+   "category": "Tool",
+   "license": "LGPL-2.1 (FFmpeg, LGPL configuration)",
+   "about": "A small video player built on FFmpeg 7.1 (libavformat, libavcodec, libswresample; LGPL configuration, no GPL parts). Pick a file from /sd/videos/ or /sd/, type an http:// or https:// address on a USB keyboard, or let another app hand one over (NetSurf opens video and sound links here and gets its page back when you quit). Decoding is plain software on the ESP32-P4's two cores, so keep to about 480p: H.264 up to 640x360 or 854x480 plays best; bigger files are shown at half size and drop frames. Sound is the clock: pictures that fall behind are skipped, and the decoder takes shortcuts until it catches up. Streams over https:// use the loader's TLS, which checks certificates against the firmware's bundle; seeking in them uses HTTP Range requests, with a 4 MB read-ahead buffer.",
+diff --git a/apps/ws/papp.json b/apps/ws/pax.json
+similarity index 100%
+rename from apps/ws/papp.json
+rename to apps/ws/pax.json
+diff --git a/docs/building.md b/docs/building.md
+index a0cddae..86835a8 100644
+--- a/docs/building.md
++++ b/docs/building.md
+@@ -1,6 +1,6 @@
+ # Building PAPPs
+ 
+-Every app in this store lives in `apps/<name>/papp.json`. GitHub Actions (`.github/workflows/build-papps.yml`) builds all of them on every push and pull request, and uploads the `.papp` files as the `papps` artifact.
++Every app in this store lives in `apps/<name>/pax.json`. GitHub Actions (`.github/workflows/build-papps.yml`) builds all of them on every push and pull request, and uploads the `.pax` files as the `papps` artifact.
+ 
+ ## App manifest
+ 
+@@ -16,7 +16,7 @@ Every app in this store lives in `apps/<name>/papp.json`. GitHub Actions (`.gith
+ }
+ ```
+ 
+-- `name` must match the folder name. It becomes `<name>.papp`, and the file name is what the device's store list shows.
++- `name` must match the folder name. It becomes `<name>.pax`, and the file name is what the device's store list shows.
+ - `source` is fetched at the exact commit. Pin a full SHA, not a branch, so a build can be reproduced.
+ - `build` is one of:
+   - `lvgl`: compiles LVGL's `src/` except `src/drivers`, plus the app's `*.c`, and links `libgcc`.
+@@ -60,9 +60,9 @@ What a store screen shows before an app is downloaded:
+   - Up to 24 entries. The loader looks for each one under every data root (`data_root`, then `data_search`, such as `/sd` and `/usb0`), only when the app's page opens.
+   - The files under `data` (below), which the store downloads, count as required too: Publish store adds each one to the listing's `requires` as `{"path": "/sd/<target>", "download": true}`.
+ - `icon` is a PNG in the app's folder, at most 256×256 and 64 KB; `screenshots` lists up to three PNGs of at most 1024×600 and 300 KB. Use your own or freely licensed art, not official game logos.
+-- Publish store puts all of it, with the icon as base64, the `.papp` size and the data size, into `store.json` and into a sidecar next to each app (`doom-0.2.1.json`, found by swapping `.papp` for `.json`). The icon is also published as `doom-0.2.1.png`, which the web page shows, and screenshots as `doom-0.2.1-screen1.png`, … (listed by URL only, to keep the JSON small). A LAN server or SD folder can carry the same sidecar next to its `.papp` files.
++- Publish store puts all of it, with the icon as base64, the `.pax` size and the data size, into `store.json` and into a sidecar next to each app (`doom-0.2.1.json`, found by swapping `.pax` for `.json`). The icon is also published as `doom-0.2.1.png`, which the web page shows, and screenshots as `doom-0.2.1-screen1.png`, … (listed by URL only, to keep the JSON small). A LAN server or SD folder can carry the same sidecar next to its `.pax` files.
+ 
+-Sources come from the `source` repository at a pinned commit, and so does the PAPP SDK (`psram_app.h`, `psram_app.ld`, `pack_papp.py`), so an app always builds against the loader ABI of its own tree. They are fetched at build time rather than copied here, because upstream has no license file. Today the apps come from [NonaSuomy/RetroESP32-P4](https://github.com/NonaSuomy/RetroESP32-P4) (`papp-serial-upload`) and [giltal/RetroESP32-P4](https://github.com/giltal/RetroESP32-P4).
++Sources come from the `source` repository at a pinned commit, and so does the PAX SDK (`psram_app.h`, `psram_app.ld`, `pack_papp.py`), so an app always builds against the loader ABI of its own tree. They are fetched at build time rather than copied here, because upstream has no license file. Today the apps come from [NonaSuomy/RetroESP32-P4](https://github.com/NonaSuomy/RetroESP32-P4) (`papp-serial-upload`) and [giltal/RetroESP32-P4](https://github.com/giltal/RetroESP32-P4).
+ 
+ ### Canvas size (for app authors)
+ 
+@@ -82,7 +82,7 @@ uint16_t *fb = svc->display_get_framebuffer();   // w x h RGB565, stride w
+ 
+ - Call `display_set_canvas` once, before drawing, from the task that draws. Sizes are even, at least 320×240 and at most the panel; `display_get_size`'s answer always qualifies. A switch clears the framebuffer and the panel to black.
+ - Everything on the display side then uses the new size: the framebuffer and `display_flush`, `display_clear`, `display_write_frame_rgb565` (one full canvas), `display_write_rect`, `display_write_frame_custom` and `display_emu_flush` (the scaled frame centred in the canvas), `touch_read` (canvas coordinates) and screenshots.
+-- An app with fixed sizes (a build-time resolution, say) picks the largest of its own sizes that fits in what `display_get_size` returns, or simply asks for the one size it has, and lists them under `canvas` in `papp.json`. An app built only for 1024×600 can call `display_set_canvas(1024, 600)` directly and draw scaled down (for example with `display_write_frame_custom`) if that fails.
++- An app with fixed sizes (a build-time resolution, say) picks the largest of its own sizes that fits in what `display_get_size` returns, or simply asks for the one size it has, and lists them under `canvas` in `pax.json`. An app built only for 1024×600 can call `display_set_canvas(1024, 600)` directly and draw scaled down (for example with `display_write_frame_custom`) if that fails.
+ - On a canvas as wide as the panel the loader's close button is not drawn: taps in the canvas's top-right 58×58 pixels (plus a small margin) reach the app, and only a touch held there for 2 s closes it. Offer your own way out too.
+ - Apps in this repository's `ports/` include `esphome/components/papp_loader/psram_app.h` and get the services from it. An app built against an older SDK header (such as RetroESP32-P4's) needs the two fields added after `net_resolve`, in the same order, or a newer header. For apps built from RetroESP32-P4, `ports/retroesp32/patches/0001-sdk-canvas-services.patch` adds them to its SDK header; list it in the manifest's `"patches"` before the app's own patches, as the touch test, the LVGL demo and Doom do (`"patches": ["local:ports/retroesp32/patches/*.patch", "local:ports/touchtest/patches/*.patch"]`). Patches apply in that order to the pinned checkout, for any `build` type.
+ 
+@@ -155,7 +155,7 @@ char arg[PAPP_APP_ARG_MAX];
+ int len = svc->app_get_arg ? svc->app_get_arg(arg, sizeof arg) : 0;   // 0: none
+ ```
+ 
+-- `app_open(target, arg, return_after)`: `target` is an app's name (`"video"`), the `http(s)://` URL of a `.papp`, or a `/sd/...` path of one. A name is looked up the way the store and library do: the installed copy (`<install_dir>/<name>.papp`), then each library source in the order the YAML lists them, a folder (its `.papp` files under every data search root) or an HTTP catalog page (fetched, which can take a few seconds). A source's `name-<version>.papp` counts too; with several versions the highest wins. It returns 0 when the request is accepted and -1 when the app is unknown, the device is offline (for a URL), `arg` is longer than `PAPP_APP_ARG_MAX - 1` (2047) bytes, the app is already closing or has a hand-off waiting, or `return_after` would make more than two apps wait.
++- `app_open(target, arg, return_after)`: `target` is an app's name (`"video"`), the `http(s)://` URL of a `.pax`, or a `/sd/...` path of one. A name is looked up the way the store and library do: the installed copy (`<install_dir>/<name>.pax`), then each library source in the order the YAML lists them, a folder (its `.pax` files under every data search root) or an HTTP catalog page (fetched, which can take a few seconds). A source's `name-<version>.pax` counts too; with several versions the highest wins. It returns 0 when the request is accepted and -1 when the app is unknown, the device is offline (for a URL), `arg` is longer than `PAPP_APP_ARG_MAX - 1` (2047) bytes, the app is already closing or has a hand-off waiting, or `return_after` would make more than two apps wait.
+ - After 0, the loader closes the caller exactly as its close control does (the app sees the usual quit buttons), so an app that already quits on those needs nothing more; it may also return from `app_entry` at once. Then the target starts, and `app_get_arg` gives it `arg`.
+ - With `return_after`, the loader starts the caller again when the target quits, however it quits (its own exit, Menu held, the loader's close control), and also when the target fails to load. The caller then gets its resume argument from `app_get_arg`: what it last passed to `app_set_resume_arg`, else its own launch argument. Without `return_after` the target replaces the caller; if another app opened the caller with `return_after`, that app still comes back after the target.
+ - At most two apps wait to be returned to. Opening an app without coming back always works (it replaces the running one). A launch from the menu, a button or a remote command gets an empty argument and forgets any apps waiting.
+@@ -200,7 +200,7 @@ if (svc->file_mkdir && svc->file_stat && svc->file_rename && svc->file_remove) {
+ 
+ ### Custom recipes
+ 
+-`custom` mirrors the upstream `tools/build_<game>_papp.ps1` scripts. Every path is relative to the source checkout, and none may leave it. Example (trimmed from our `apps/quake/papp.json`; its `source` paths point into the upstream checkout):
++`custom` mirrors the upstream `tools/build_<game>_papp.ps1` scripts. Every path is relative to the source checkout, and none may leave it. Example (trimmed from our `apps/quake/pax.json`; its `source` paths point into the upstream checkout):
+ 
+ ```json
+ {
+@@ -266,13 +266,13 @@ An app that needs files on the card lists them under `data`. Publish store puts
+ 
+ ## What the build does
+ 
+-`tools/build_papp.py` mirrors upstream `tools/build_lvgl_papp.ps1` (and, for `custom`, the game scripts):
++`tools/build_pax.py` mirrors upstream `tools/build_lvgl_papp.ps1` (and, for `custom`, the game scripts):
+ 
+ 1. Compile with `riscv32-esp-elf-gcc -march=rv32imafc_zicsr_zifencei -mabi=ilp32f -mcmodel=medany -ffreestanding -fno-tree-loop-distribute-patterns -Os -DPAPP_APP_SIDE=1` (for `custom`, with the manifest's flags instead).
+-   Builds are reproducible: `SOURCE_DATE_EPOCH` is the source commit's time (WinQuake, PrBoom and Duke3D embed `__DATE__`/`__TIME__`), and `-ffile-prefix-map` hides the checkout path. The same commit always gives the same `.papp`, which Publish store relies on.
++   Builds are reproducible: `SOURCE_DATE_EPOCH` is the source commit's time (WinQuake, PrBoom and Duke3D embed `__DATE__`/`__TIME__`), and `-ffile-prefix-map` hides the checkout path. The same commit always gives the same `.pax`, which Publish store relies on.
+ 2. Link with `psram_app.ld` at `0x4A000000`, entry `app_entry`, `--gc-sections --no-relax`.
+ 3. `objcopy -O binary`, then work out `.bss` from the `_bss_end` symbol. The build refuses to pack without it, because a wrong `.bss` size corrupts the device heap.
+-4. Pack with `pack_papp.py` (32-byte header: magic `PAPP`, ABI 1, entry/text/data/bss sizes).
++4. Pack with `pack_papp.py` (32-byte header: magic `PAX`, ABI 1, entry/text/data/bss sizes).
+ 5. Check the header, and write `<name>.json` (size, sha256, sizes, pinned sources, checked `data` list) plus `dist/build.json`.
+ 
+ ## Building locally
+@@ -281,12 +281,12 @@ With ESP-IDF installed (it provides `riscv32-esp-elf-gcc`):
+ 
+ ```sh
+ . $IDF_PATH/export.sh
+-python3 tools/build_papp.py              # all apps -> dist/
+-python3 tools/build_papp.py lvgl         # one app
++python3 tools/build_pax.py              # all apps -> dist/
++python3 tools/build_pax.py lvgl         # one app
+ ```
+ 
+ Or use the same container CI uses:
+ 
+ ```sh
+-docker run --rm -v "$PWD:/work" -w /work espressif/idf:v6.1 python3 tools/build_papp.py
++docker run --rm -v "$PWD:/work" -w /work espressif/idf:v6.1 python3 tools/build_pax.py
+ ```
+diff --git a/docs/esp-bridge.md b/docs/esp-bridge.md
+index d7ba348..d283bd5 100644
+--- a/docs/esp-bridge.md
++++ b/docs/esp-bridge.md
+@@ -1,6 +1,6 @@
+ # ESP bridge: let the team build, flash and read logs on your device
+ 
+-`tools/esp_bridge/esp_bridge.py` runs on the machine the ESP32-P4 is plugged into. It joins the PAPP Conversions project on EhGI **as its own agent** (for example `@esp-bridge`). When someone in the project asks it to, it compiles, uploads or reads logs with your local ESPHome, then replies in the same thread with the result, the last 40 log lines and the full log as a file.
++`tools/esp_bridge/esp_bridge.py` runs on the machine the ESP32-P4 is plugged into. It joins the PAX Conversions project on EhGI **as its own agent** (for example `@esp-bridge`). When someone in the project asks it to, it compiles, uploads or reads logs with your local ESPHome, then replies in the same thread with the result, the last 40 log lines and the full log as a file.
+ 
+ It connects **out** to EhGI, the same way coding agents do. EhGI can't reach into your network, so nothing on your machine has to accept incoming connections. "EhGI runs it" means the team posts a request and the bridge carries it out.
+ 
+@@ -13,7 +13,7 @@ The [device bridge](device-bridge.md) (`tools/device_bridge`) is its sibling. It
+ 
+ ## Setup (once)
+ 
+-1. **Give the bridge a seat.** On ehgi.ai, open the project and click **+ Add agent**. It's on the **Agents** page, and in the Agents list of the chat's team panel. The page is `https://ehgi.ai/p/<project id>/agents/new`; for PAPP Conversions that's https://ehgi.ai/p/3IDv1Ayo2F2gAuIzMSGL/agents/new.
++1. **Give the bridge a seat.** On ehgi.ai, open the project and click **+ Add agent**. It's on the **Agents** page, and in the Agents list of the chat's team panel. The page is `https://ehgi.ai/p/<project id>/agents/new`; for PAX Conversions that's https://ehgi.ai/p/3IDv1Ayo2F2gAuIzMSGL/agents/new.
+    - **Handle:** `esp-bridge`. **Client:** **Other** (the bridge isn't a coding agent).
+    - Click **Reserve seat and get token**, then **Copy token** on the next screen. Skip the install snippets there; they are for coding agents.
+    - Don't paste the token into chat. If you lose it, the agent's page can issue a new one.
+@@ -71,11 +71,11 @@ Mention the bridge on one line: an action, a YAML file, then `key=value` options
+ | `@esp-bridge upload esphome/device.yaml ref=main device=/dev/ttyUSB0` | Compile and flash |
+ | `@esp-bridge run device.yaml source=local device=10.13.37.60 seconds=90` | Flash your local config over OTA, then capture 90 s of logs |
+ | `@esp-bridge logs device.yaml source=local device=/dev/ttyUSB0 seconds=60` | Capture 60 s of logs |
+-| `@esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.papp` | Stream and start that PAPP on the device |
++| `@esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.pax` | Stream and start that PAX on the device |
+ | `@esp-bridge launch url=… seconds=30 serial=/dev/ttyUSB0` | Start it and return 30 s of device log plus the serial console (a crash's full panic dump and backtrace only go to serial). The port must be in `[esphome].devices` and not open elsewhere; the bridge opens it without resetting the board. If the device crashes, the reply ends with `=== crash decoded ===`: the app's addresses mapped through the dev build's `.sym` file, and the firmware's run through addr2line on the firmware ELF whose SHA256 matches the dump (see `firmware_elf`/`addr2line` in `config.example.toml`) |
+-| `@esp-bridge close` | Close the running PAPP |
++| `@esp-bridge close` | Close the running PAX |
+ | `@esp-bridge catalog` | Reload the store list on the device |
+-| `@esp-bridge screenshot` | Post an 800×480 PNG of the running PAPP in the thread |
++| `@esp-bridge screenshot` | Post an 800×480 PNG of the running PAX in the thread |
+ | `@esp-bridge readfile path=/sd/roms/redalert/DESYNCLOG.TXT` | Post a text file from the device's SD card; `path=/sd/roms/` lists a directory |
+ | `@esp-bridge writefile path=/sd/roms/redalert/redalert.ini` + a code block | Replace a small text file on the SD card with the code block (`edit_requesters` only; not while an app runs) |
+ | `@esp-bridge deletefile path=/sd/roms/redalert/sync001.txt` | Remove one text or leftover (`.bak`, `.log`) file from the SD card (`edit_requesters` only; not while an app runs) |
+@@ -88,8 +88,8 @@ Mention the bridge on one line: an action, a YAML file, then `key=value` options
+ - **Replies:** the bridge answers in the request's thread with ⏳ when it starts, then ✅/❌ with the last 40 log lines and the full log attached. It runs one job at a time; others wait their turn.
+ - **In the bridge's terminal** every request is printed with who sent it and the result, e.g.
+   ```
+-  [14:02:11] @claude in #general: launch url=https://nonasuomy.github.io/esphomebrew/touchtest-0.1.0.papp
+-  [14:02:13]   ok in 1.8s: ✅ `launch` `touchtest-0.1.0.papp` sent to 10.20.30.180.
++  [14:02:11] @claude in #general: launch url=https://nonasuomy.github.io/esphomebrew/touchtest-0.1.0.pax
++  [14:02:13]   ok in 1.8s: ✅ `launch` `touchtest-0.1.0.pax` sent to 10.20.30.180.
+   ```
+   Refusals are printed too. To turn it off, set `[console] show_requests = false` in `bridge.toml`.
+ 
+@@ -110,13 +110,13 @@ Mention the bridge on one line: an action, a YAML file, then `key=value` options
+ 2. **The bridge** has a `[device_api]` section: the device's `host`, and the name of its API key in `secrets.yaml` (`encryption_key_secret`). Leave that out if the device's `api:` has no encryption key. Run the bridge with the ESPHome venv's python, which already has `aioesphomeapi`.
+    - **Use the device's IP for `host`**, not `name.local`. On the first live test, `launch` worked through `esp32-p4-elecrow-papp.local`, but a later `close` timed out twice. With the IP, both worked, which points at the name lookup on the bridge machine. If an action times out, the message names the step that hung: resolving the name, connecting, listing actions or running the action.
+ 
+-`launch` only accepts `https://` URLs to a `.papp` under `[device_api].allowed_url_prefixes` (by default this repo's release downloads and its Pages site). Combine it with `logs … seconds=60` to watch what the app does.
++`launch` only accepts `https://` URLs to a `.pax` under `[device_api].allowed_url_prefixes` (by default this repo's release downloads and its Pages site). Combine it with `logs … seconds=60` to watch what the app does.
+ 
+ ## Screenshots
+ 
+-`@esp-bridge screenshot` shows you what a running PAPP is drawing, which is useful while porting an app. The bridge calls `papp_screenshot`. The loader then sends one copy of the app's 800×480 canvas over its diagnostic stream on TCP port 3233 (`[device_api] screen_port`; not 3232, which ESPHome's OTA uses), and the bridge posts it as a PNG in the thread.
++`@esp-bridge screenshot` shows you what a running PAX is drawing, which is useful while porting an app. The bridge calls `papp_screenshot`. The loader then sends one copy of the app's 800×480 canvas over its diagnostic stream on TCP port 3233 (`[device_api] screen_port`; not 3232, which ESPHome's OTA uses), and the bridge posts it as a PNG in the thread.
+ 
+-- It captures the PAPP canvas, the way the app drew it and the right way up. The loader's on-screen close button is not in it.
++- It captures the PAX canvas, the way the app drew it and the right way up. The loader's on-screen close button is not in it.
+ - With no app running, the bridge says so. The ESPHome/LVGL menu can't be captured this way.
+ - It needs a loader and `device_control.yaml` from after this was added, so rebuild the device once. The port only accepts a connection after an API request, and closes again when the bridge disconnects.
+ - A typical porting loop: `launch`, `screenshot`, `logs … seconds=30`, `close`, then change the app and repeat.
+@@ -146,7 +146,7 @@ Host=10.20.30.158
+ The bridge reads the old file, calls `papp_write_file(path, data)`, then reads the file back and compares. The reply shows the change as a diff, or says the write didn't happen. Agents can send the same thing as message data: `{"esp_bridge": {"action": "writefile", "path": "/sd/…", "content": "…"}}`.
+ 
+ - **Whole files.** The code block becomes the entire file, so start from a `readfile` of it and change what you need.
+-- **Text only:** `.ini`, `.cfg`, `.conf`, `.txt`, `.json`, `.yaml`, `.yml`, `.csv`, under `/sd/`, without `..`, up to 16 KiB. The loader enforces the same rules. A `.papp` or firmware image would be code, so neither side will write one.
++- **Text only:** `.ini`, `.cfg`, `.conf`, `.txt`, `.json`, `.yaml`, `.yml`, `.csv`, under `/sd/`, without `..`, up to 16 KiB. The loader enforces the same rules. A `.pax` or firmware image would be code, so neither side will write one.
+ - **Not while an app runs.** The loader refuses, because a running app may rewrite the file when it exits (Red Alert saves `redalert.ini`). Close the app first.
+ - **Backups.** The loader keeps the previous file as `<name>.bak`, and restores it if the write fails.
+ - **Who may write:** the same `[actions].edit_requesters` as `edit`. Lines with a hidden value (`***`) are refused, so a masked secret copied from a reply can't overwrite the real one.
+@@ -156,7 +156,7 @@ The bridge reads the old file, calls `papp_write_file(path, data)`, then reads t
+ 
+ `deletefile path=/sd/…` removes one file, for example a game's old debug reports. The bridge looks the file up in its folder's listing, calls `papp_delete_file(path)`, then lists the folder again to confirm the file is gone.
+ 
+-- **Only text and leftover files:** the `writefile` types plus `.bak` and `.log`. Game data (`.mix`, …), apps (`.papp`) and folders can't be removed this way, so a typo can't wipe a game.
++- **Only text and leftover files:** the `writefile` types plus `.bak` and `.log`. Game data (`.mix`, …), apps (`.pax`) and folders can't be removed this way, so a typo can't wipe a game.
+ - **Not while an app runs**, the same people as `writefile` (`[actions].edit_requesters`), and only under `/sd/` without `..`.
+ - It needs a loader and `device_control.yaml` with `papp_delete_file`, and `deletefile` in `[actions].enabled`.
+ 
+diff --git a/docs/esphome-store.md b/docs/esphome-store.md
+index 1106ed8..c7f36cc 100644
+--- a/docs/esphome-store.md
++++ b/docs/esphome-store.md
+@@ -1,6 +1,6 @@
+-# Adding the PAPP Store page to an ESPHome device
++# Adding the PAX Store page to an ESPHome device
+ 
+-`esphome/store_page.yaml` is a drop-in [package](https://esphome.io/components/packages.html). It adds an LVGL page, **PAPP STORE**, that lists every app in the store and launches the one you tap.
++`esphome/store_page.yaml` is a drop-in [package](https://esphome.io/components/packages.html). It adds an LVGL page, **PAX STORE**, that lists every app in the store and launches the one you tap.
+ 
+ ## 1. Load the loader from this repo
+ 
+@@ -27,13 +27,13 @@ papp_loader:
+ 
+ ### Several library sources
+ 
+-Instead of one `catalog_url`, list up to eight named sources. Each is an HTTP(S) catalog page or a folder of `.papp` files:
++Instead of one `catalog_url`, list up to eight named sources. Each is an HTTP(S) catalog page or a folder of `.pax` files:
+ 
+ ```yaml
+ papp_loader:
+   catalogs:
+     - name: SD / USB
+-      url: /sd/roms/papp/          # a folder: the .papp files there on every data_search root
++      url: /sd/roms/papp/          # a folder: the .pax files there on every data_search root
+     - name: Network
+       url: http://192.168.1.10:8000/
+     - name: Store
+@@ -57,11 +57,11 @@ papp_loader:
+ 
+ With `library_style: grid` the library becomes an app store, like the Switch Homebrew App Store:
+ 
+-- **Grid.** Each app is a tile with its icon, title, version and download size (the PAPP plus its data). A green tick marks an installed app; an amber arrow marks one with a newer version in the store. Apps without a listing get a coloured tile with their initials.
+-- **Detail page.** Tap a tile, or press **A**, to open it: a large icon, the author, version, category and licence, the PAPP size and data size, the about text, the controls, the original project the port is based on (e.g. PrBoom 2.5.0), and the repo and commit it is built from.
+-- **Buttons.** **Stream** runs the app straight from the network, as the list does. **Install** downloads the `.papp` (checked against its sha256) and its data into `install_dir` and saves its listing next to it, so the app appears in a folder source such as `SD / USB` and runs offline. An installed app shows **Launch**, plus **Update to vX** when the store has a newer version, and **Uninstall**. **Back** closes the page.
++- **Grid.** Each app is a tile with its icon, title, version and download size (the PAX plus its data). A green tick marks an installed app; an amber arrow marks one with a newer version in the store. Apps without a listing get a coloured tile with their initials.
++- **Detail page.** Tap a tile, or press **A**, to open it: a large icon, the author, version, category and licence, the PAX size and data size, the about text, the controls, the original project the port is based on (e.g. PrBoom 2.5.0), and the repo and commit it is built from.
++- **Buttons.** **Stream** runs the app straight from the network, as the list does. **Install** downloads the `.pax` (checked against its sha256) and its data into `install_dir` and saves its listing next to it, so the app appears in a folder source such as `SD / USB` and runs offline. An installed app shows **Launch**, plus **Update to vX** when the store has a newer version, and **Uninstall**. **Back** closes the page.
+ - **Files on the card.** An app whose listing has `requires` ([building.md](building.md#store-listing-optional)), or data the store downloads, lists those files and folders on its page: a green tick when the loader finds one under any data root (with the root, as in "(on usb0)", when it is not the card), a red cross when a required one is missing, amber for optional ones and for data the store will download at Install or first launch. The check is a `stat` (or one folder listing for a pattern) per data root, done each time the page opens, never for the whole catalog.
+-- **Uninstall** asks first, in a dialog over the page. It removes `<install_dir>/<app>.papp` and its listing (`<app>.json`), so the app shows as not installed again. When the store has downloaded data for the app, a check box (off by default) also deletes that data. Only files the store itself downloaded are deleted: the loader records each one, with its size, in `<install_dir>/<app>.installed.json` as it downloads it (for Install and for Stream), and deletes a file only if it is still that size. Saves, settings (`settings.json`, including the Screen setting), files you copied yourself and the `requires` files stay. Folders the deleted files leave empty go too, except top-level ones such as `/sd/roms`. Uninstall is refused while an app is loading or running, or during an install. From lambdas: `id(papp_runtime)->uninstall_app("doom", true)`.
++- **Uninstall** asks first, in a dialog over the page. It removes `<install_dir>/<app>.pax` and its listing (`<app>.json`), so the app shows as not installed again. When the store has downloaded data for the app, a check box (off by default) also deletes that data. Only files the store itself downloaded are deleted: the loader records each one, with its size, in `<install_dir>/<app>.installed.json` as it downloads it (for Install and for Stream), and deletes a file only if it is still that size. Saves, settings (`settings.json`, including the Screen setting), files you copied yourself and the `requires` files stay. Folders the deleted files leave empty go too, except top-level ones such as `/sd/roms`. Uninstall is refused while an app is loading or running, or during an install. From lambdas: `id(papp_runtime)->uninstall_app("doom", true)`.
+ - **Controls.** The d-pad moves between tiles and buttons, **A** opens or presses, **B** goes back, **L/R** switch sources and **Select** opens the side menu. Touch works on everything.
+ - **Side menu.** A tab on the right edge of the library page slides out a menu for the source on screen: its name, where it reads from, how many apps it has, **Refresh**, and any buttons you give that source:
+ 
+@@ -81,7 +81,7 @@ With `library_style: grid` the library becomes an app store, like the Switch Hom
+   ```
+ 
+   Up to six buttons per source, each running any ESPHome actions. The menu starts parked, so the grid can use the whole page width: give the list (`set_catalog_container`) the full width and leave the right edge free for the tab (34 px).
+-- **Listings** come from the `.json` file next to each `.papp` (`doom-0.2.1.json`; see [building.md](building.md#store-listing-optional)). The GitHub store publishes them. They load in the background after the list: tiles appear at once and their icons fill in.
++- **Listings** come from the `.json` file next to each `.pax` (`doom-0.2.1.json`; see [building.md](building.md#store-listing-optional)). The GitHub store publishes them. They load in the background after the list: tiles appear at once and their icons fill in.
+ - **A LAN server or SD folder** gets its listings from `tools/make_listing.py`:
+ 
+   ```sh
+@@ -89,7 +89,7 @@ With `library_style: grid` the library becomes an app store, like the Switch Hom
+   python3 tools/make_listing.py /srv/papp --base-url http://10.20.30.158:8000/ --mirror-data
+   ```
+ 
+-  It writes `<app>.json` next to every `.papp`, with that file's size and sha256 (checked by Install). Apps that are also in the store (`doom.papp` matches `doom`) get the store's title, icon, about, controls, licence and upstream project, plus an `<app>.files` data list, so their game data downloads like it does from the store. With `--mirror-data` the data files are downloaded into `data/` on the server and listed from there. Other apps get a basic listing; put a `<app>.png` (up to 256×256) next to one for its icon. Edit a `.json` by hand if you like: rerunning keeps your changes (`--force` starts over).
++  It writes `<app>.json` next to every `.pax`, with that file's size and sha256 (checked by Install). Apps that are also in the store (`doom.pax` matches `doom`) get the store's title, icon, about, controls, licence and upstream project, plus an `<app>.files` data list, so their game data downloads like it does from the store. With `--mirror-data` the data files are downloaded into `data/` on the server and listed from there. Other apps get a basic listing; put a `<app>.png` (up to 256×256) next to one for its icon. Edit a `.json` by hand if you like: rerunning keeps your changes (`--force` starts over).
+ - The icons are drawn as plain LVGL objects, so no extra LVGL widgets are needed. Larger title text and smaller detail text are used when the config has those Montserrat sizes (e.g. `montserrat_28` and `montserrat_16`); otherwise everything uses the default font.
+ - **Screen.** Apps that can choose their canvas size (see [Canvas size](#canvas-size)) also get a **Screen** button on their detail page.
+ 
+@@ -116,7 +116,7 @@ papp_loader:
+ 
+ When the listing recommends a size (`canvas_recommended`) that fits the panel, that size replaces **Default**: the button marks it with an asterisk, an app with no saved setting is offered it instead of `canvas_width`/`canvas_height`, and choosing it again clears the saved setting.
+ 
+-The settings live in `<install_dir>/settings.json` (by default `/sd/roms/papp/settings.json`), by app name — the `.papp` file name without its `-version` suffix, so a streamed and an installed copy share one:
++The settings live in `<install_dir>/settings.json` (by default `/sd/roms/papp/settings.json`), by app name — the `.pax` file name without its `-version` suffix, so a streamed and an installed copy share one:
+ 
+ ```json
+ {
+@@ -161,10 +161,10 @@ substitutions:
+ ## How it behaves
+ 
+ - **On opening the page:** the loader is handed the list (`set_catalog_container`) and the catalog reloads (`refresh_catalog`).
+-- **REFRESH** reloads it on demand. It also reloads every `papp_store_refresh`, but only while the store page is on screen and no app is running (LVGL is paused while a PAPP runs).
+-- Each button is labelled with the file name, e.g. `lvgl-0.3.0.papp`, so a new version appears as a new label after a refresh. Tapping streams the app from GitHub Pages into PSRAM. The app itself is not cached on the SD card.
+-- **App data.** Before a game starts, the loader reads its data list (`doom-0.2.1.files`, next to the `.papp`). It first looks for each file under `data_root` and every `data_search` root (`/sd/roms/doom/doom1.wad`, `/usb0/roms/doom/doom1.wad`, ...). Only files found nowhere are downloaded, into `data_root`. Each download goes to `<file>.part`, is checked against its sha256, and is only then renamed, so an interrupted download never leaves a broken file. A file that is already on any of those storages is **never replaced or downloaded again**, whatever its size, so your own full `duke3d.grp` stays. An app without a list starts straight away. If a download fails, the app does not start; the status line says why, and the test report (if `report_url` is set) says `data_failed`. A close request (the `papp_close` API action, or a tap on the loader's close area) cancels a data download.
+-- **Progress.** While the data and then the `.papp` download, a bar and a status line (`1/2 doom1.wad  1.2 / 4.1 MB`, then `Loading doom-0.2.1.papp  120 / 513 KB`) appear under the header. The bar hides again when the app starts; the status line stays after a failure until the next launch.
++- **REFRESH** reloads it on demand. It also reloads every `papp_store_refresh`, but only while the store page is on screen and no app is running (LVGL is paused while a PAX runs).
++- Each button is labelled with the file name, e.g. `lvgl-0.3.0.pax`, so a new version appears as a new label after a refresh. Tapping streams the app from GitHub Pages into PSRAM. The app itself is not cached on the SD card.
++- **App data.** Before a game starts, the loader reads its data list (`doom-0.2.1.files`, next to the `.pax`). It first looks for each file under `data_root` and every `data_search` root (`/sd/roms/doom/doom1.wad`, `/usb0/roms/doom/doom1.wad`, ...). Only files found nowhere are downloaded, into `data_root`. Each download goes to `<file>.part`, is checked against its sha256, and is only then renamed, so an interrupted download never leaves a broken file. A file that is already on any of those storages is **never replaced or downloaded again**, whatever its size, so your own full `duke3d.grp` stays. An app without a list starts straight away. If a download fails, the app does not start; the status line says why, and the test report (if `report_url` is set) says `data_failed`. A close request (the `papp_close` API action, or a tap on the loader's close area) cancels a data download.
++- **Progress.** While the data and then the `.pax` download, a bar and a status line (`1/2 doom1.wad  1.2 / 4.1 MB`, then `Loading doom-0.2.1.pax  120 / 513 KB`) appear under the header. The bar hides again when the app starts; the status line stays after a failure until the next launch.
+ - **Files on other storage.** Apps open their files at fixed `/sd/...` paths. When an app opens a file for reading and it is not on the SD card, the loader tries the same path under `data_root` and the `data_search` roots, for example `/usb0/roms/quake/id1/pak0.pak`. Data kept on a USB drive, or downloaded there with `data_root: /usb0`, works without changing the apps. Writes (save games, configs) always go where the app asked, normally the SD card. A root that isn't mounted is simply skipped.
+ - The status line shows `Refreshing...`, then `N apps - tap to launch` about 4 s later. The loader has no "catalog loaded" callback, so on a slow link the count can lag. Tap REFRESH again.
+ 
+diff --git a/docs/feedback.md b/docs/feedback.md
+index 93a173b..f935b94 100644
+--- a/docs/feedback.md
++++ b/docs/feedback.md
+@@ -2,7 +2,7 @@
+ 
+ ## By hand (works today)
+ 
+-Open a **PAPP test report** issue (Issues → New issue → PAPP test report). Pick the app, the result, and paste the device log. The hub mirrors GitHub issues into the project, so the agents see it.
++Open a **PAX test report** issue (Issues → New issue → PAX test report). Pick the app, the result, and paste the device log. The hub mirrors GitHub issues into the project, so the agents see it.
+ 
+ ## Automatically: `report_url`
+ 
+@@ -18,8 +18,8 @@ papp_loader:
+ ```json
+ {
+   "device": "esp32-p4-elecrow-aio",
+-  "app": "lvgl-0.3.0.papp",
+-  "source": "https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.papp",
++  "app": "lvgl-0.3.0.pax",
++  "source": "https://github.com/NonaSuomy/esphomebrew/releases/download/lvgl-v0.3.0/lvgl-0.3.0.pax",
+   "outcome": "exited",
+   "result": 0,
+   "runtime_ms": 48213,
+@@ -56,7 +56,7 @@ rest_command:
+     payload: "{{ {'body': body} | tojson }}"
+ 
+ automation:
+-  - alias: PAPP test report to GitHub
++  - alias: PAX test report to GitHub
+     triggers:
+       - trigger: webhook
+         webhook_id: papp-test-report
+diff --git a/docs/local-papp-dev.md b/docs/local-papp-dev.md
+index e929237..4c91ddd 100644
+--- a/docs/local-papp-dev.md
++++ b/docs/local-papp-dev.md
+@@ -1,6 +1,6 @@
+-# Local PAPP development
++# Local PAX development
+ 
+-`dev-papps/` is an intentionally gitignored folder for local PAPP builds. It
++`dev-papps/` is an intentionally gitignored folder for local PAX builds. It
+ is useful for testing an app over the LAN without uploading it to the SD card
+ or waiting for GitHub Actions and Pages.
+ 
+@@ -9,19 +9,19 @@ From the repository root:
+ ```sh
+ mkdir -p dev-papps
+ source /home/nonasuomy/esp/esp-idf/export.sh
+-python3 tools/build_papp.py --out dev-papps lvgl
++python3 tools/build_pax.py --out dev-papps lvgl
+ python3 -m http.server 8000 --bind 10.20.30.158 \
+   --directory /home/nonasuomy/code/esphomebrew/dev-papps
+ ```
+ 
+ Build another app by replacing `lvgl` with its manifest name, or omit
+-the app name to build every app. `build_papp.py` writes the `.papp` and its
++the app name to build every app. `build_pax.py` writes the `.pax` and its
+ sidecar JSON into `dev-papps/`; the JSON contains the app version, listing
+ metadata, and embedded icon.
+ 
+ The Elecrow YAML already points its LAN source at
+ `http://10.20.30.158:8000/`. On the device, refresh the LAN/library source,
+-open the app, and choose **Stream**. The PAPP is downloaded into PSRAM and
++open the app, and choose **Stream**. The PAX is downloaded into PSRAM and
+ run directly; it is not written to the SD card.
+ 
+ Keep the server terminal open while the device loads the app. Stop it with
+diff --git a/docs/overview.md b/docs/overview.md
+index f19121d..4f6a8f0 100644
+--- a/docs/overview.md
++++ b/docs/overview.md
+@@ -1,11 +1,11 @@
+-# PAPP Conversions
++# PAX Conversions
+ 
+-**Goal (Nona, #plan seq 24-25):** a GitHub-hosted **PSRAM app store**. PAPPs are `<name>.papp` files: RISC-V (RV32IMAFC) programs an ESP32-P4 streams into PSRAM and runs. Built from this repo by GitHub Actions and browsed and launched from an **LVGL page in ESPHome**. Devices report back whether an app worked, with a log.
++**Goal (Nona, #plan seq 24-25):** a GitHub-hosted **PSRAM app store**. PAPPs are `<name>.pax` files: RISC-V (RV32IMAFC) programs an ESP32-P4 streams into PSRAM and runs. Built from this repo by GitHub Actions and browsed and launched from an **LVGL page in ESPHome**. Devices report back whether an app worked, with a log.
+ 
+ **Order of work** (board tasks):
+-1. #2 CI builds `apps/lvgl` into a `.papp`.
++1. #2 CI builds `apps/lvgl` into a `.pax`.
+ 2. #3 Publish the store (GitHub Pages catalog + release assets).
+-3. #4 PAPP Store LVGL page in `esp32-p4-elecrow-aio.yaml`.
++3. #4 PAX Store LVGL page in `esp32-p4-elecrow-aio.yaml`.
+ 4. #5 Feedback path (device result + log).
+ 5. #6 Acceptance on device.
+ 6. #7 OpenRA port: **on hold until Nona says go**.
+@@ -15,8 +15,8 @@
+ **Target device:** Elecrow ESP32-P4 All-In-One (800x480, GT911 touch), ESPHome on ESP-IDF, Nona's YAML `esp32-p4-elecrow-aio.yaml` (attachment in #plan seq 25).
+ 
+ **Key facts:**
+-- `.papp` = 32-byte header (magic `0x50415050`, ABI 1, entry/text/data/bss) + raw image. ABI table in upstream `components/psram_app_loader/include/psram_app.h`; new services are append-only, so null-check them.
+-- The ESPHome `papp_loader` component (Nona's, not yet on GitHub; source attached in #plan seq 29) already has `launch_url` (HTTPS via cert bundle, 5 redirects, 15 s timeout) and a **catalog**: `catalog_url` HTML (max 64 KB), every href ending `.papp` becomes an LVGL list button.
++- `.pax` = 32-byte header (magic `0x50415050`, ABI 1, entry/text/data/bss) + raw image. ABI table in upstream `components/psram_app_loader/include/psram_app.h`; new services are append-only, so null-check them.
++- The ESPHome `papp_loader` component (Nona's, not yet on GitHub; source attached in #plan seq 29) already has `launch_url` (HTTPS via cert bundle, 5 redirects, 15 s timeout) and a **catalog**: `catalog_url` HTML (max 64 KB), every href ending `.pax` becomes an LVGL list button.
+ - Upstream RetroESP32-P4 has **no license file**, so CI fetches it at a pinned commit instead of copying code here.
+ 
+-**State (2026-09-22):** store builds now use short app identities such as `lvgl-0.3.0.papp`; the upstream source folders may still retain their `psram_` names. #2-#4 merged; #5 test reports in PR #4 (compiles for P4); #6 on-device test waiting on Nona; #7 on hold.
++**State (2026-09-22):** store builds now use short app identities such as `lvgl-0.3.0.pax`; the upstream source folders may still retain their `psram_` names. #2-#4 merged; #5 test reports in PR #4 (compiles for P4); #6 on-device test waiting on Nona; #7 on hold.
+diff --git a/docs/store.md b/docs/store.md
+index 81317c5..756d0a6 100644
+--- a/docs/store.md
++++ b/docs/store.md
+@@ -2,13 +2,13 @@
+ 
+ When **Build PAPPs** succeeds on `main`, **Publish store** (`.github/workflows/publish-store.yml`) does two things:
+ 
+-1. **Releases.** Each app version gets one GitHub Release: tag `<name>-v<version>`, asset `<name>-<version>.papp`, with its sha256 in the release notes. A version already published with the same binary is skipped. If the binary changed but the version didn't, the job fails. Bump `version` in `apps/<name>/papp.json` to publish a new build.
++1. **Releases.** Each app version gets one GitHub Release: tag `<name>-v<version>`, asset `<name>-<version>.pax`, with its sha256 in the release notes. A version already published with the same binary is skipped. If the binary changed but the version didn't, the job fails. Bump `version` in `apps/<name>/pax.json` to publish a new build.
+ 2. **Catalog.** `tools/make_catalog.py` writes `index.html` and `store.json` and deploys them to GitHub Pages: **https://nonasuomy.github.io/esphomebrew/**
+-   Each `.papp` is also copied into the Pages site, and the catalog links to that copy. Devices download from GitHub Pages (Let's Encrypt, ISRG Root X1), which the ESP-IDF certificate bundle verifies. `github.com` release downloads chain to Sectigo's newer ECC root and fail verification on-device (`esp-x509-crt-bundle: Failed to verify certificate`, seen with ESP-IDF 6.1). The Release stays the versioned archive (`release_url` in `store.json`).
++   Each `.pax` is also copied into the Pages site, and the catalog links to that copy. Devices download from GitHub Pages (Let's Encrypt, ISRG Root X1), which the ESP-IDF certificate bundle verifies. `github.com` release downloads chain to Sectigo's newer ECC root and fail verification on-device (`esp-x509-crt-bundle: Failed to verify certificate`, seen with ESP-IDF 6.1). The Release stays the versioned archive (`release_url` in `store.json`).
+ 
+ ## How the device reads it
+ 
+-The ESPHome `papp_loader` fetches `catalog_url` (HTTPS, up to 5 redirects, at most 64 KB). Every `href` ending in `.papp` becomes a button in the LVGL list, labelled with the file name, for example `lvgl-0.3.0.papp`. The version is in the name, so a new release shows up as a new label after a refresh. Tapping a button streams the copy on GitHub Pages into PSRAM. Nothing is cached on the device.
++The ESPHome `papp_loader` fetches `catalog_url` (HTTPS, up to 5 redirects, at most 64 KB). Every `href` ending in `.pax` becomes a button in the LVGL list, labelled with the file name, for example `lvgl-0.3.0.pax`. The version is in the name, so a new release shows up as a new label after a refresh. Tapping a button streams the copy on GitHub Pages into PSRAM. Nothing is cached on the device.
+ 
+ ```yaml
+ papp_loader:
+@@ -19,11 +19,11 @@ papp_loader:
+ 
+ ## App data (game files)
+ 
+-Some apps need files on the card before they run: Doom needs an IWAD, Quake needs `id1/pak0.pak`. Such an app lists them under `data` in its `papp.json` (see [building.md](building.md#app-data)). Only files that may be redistributed are listed. Today that means the shareware `doom1.wad`, PrBoom's `prboom.wad`, the Quake shareware `pak0.pak` and the Duke Nukem 3D shareware `duke3d.grp`. Commercial game data and save files are never published.
++Some apps need files on the card before they run: Doom needs an IWAD, Quake needs `id1/pak0.pak`. Such an app lists them under `data` in its `pax.json` (see [building.md](building.md#app-data)). Only files that may be redistributed are listed. Today that means the shareware `doom1.wad`, PrBoom's `prboom.wad`, the Quake shareware `pak0.pak` and the Duke Nukem 3D shareware `duke3d.grp`. Commercial game data and save files are never published.
+ 
+ Publish store downloads each file from its source repository at the pinned commit. It checks the size and sha256 (and fails on any mismatch), then publishes the file on Pages under `data/<app>/<target>`. The Python tools CI does the same download and check on every pull request that touches `apps/`.
+ 
+-Each app with data also gets a plain-text list next to its `.papp`: `doom-0.2.1.papp` gets `doom-0.2.1.files`.
++Each app with data also gets a plain-text list next to its `.pax`: `doom-0.2.1.pax` gets `doom-0.2.1.files`.
+ 
+ ```
+ # papp-data 1
+diff --git a/ports/tulip/gen_tulip.py b/ports/tulip/gen_tulip.py
+index af44edb..20d5cff 100644
+--- a/ports/tulip/gen_tulip.py
++++ b/ports/tulip/gen_tulip.py
+@@ -1,8 +1,8 @@
+ #!/usr/bin/env python3
+-"""Code generation for the Tulip PAPP (the "prebuild" step of apps/psram_tulip).
++"""Code generation for the Tulip PAX (the "prebuild" step of apps/psram_tulip).
+ 
+ MicroPython ports build with make rules (py/mkrules.mk) that generate headers
+-before compiling; tools/build_papp.py compiles the sources itself, so this
++before compiling; tools/build_pax.py compiles the sources itself, so this
+ script does the same generation from the list of compile units it is given:
+ 
+   genhdr/mpversion.h         py/makeversionhdr.py
+diff --git a/tests/test_build_papp.py b/tests/test_build_pax.py
+similarity index 97%
+rename from tests/test_build_papp.py
+rename to tests/test_build_pax.py
+index b26f3dc..6ea6b2a 100644
+--- a/tests/test_build_papp.py
++++ b/tests/test_build_pax.py
+@@ -1,4 +1,4 @@
+-"""Tests for tools/build_papp.py: manifests, custom recipes and the PAPP header.
++"""Tests for tools/build_pax.py: manifests, custom recipes and the PAX ABI-1 header.
+ 
+ Run: python3 -m unittest discover -s tests
+ """
+@@ -13,14 +13,14 @@ from pathlib import Path
+ 
+ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+ 
+-import build_papp as bp  # noqa: E402
++import build_pax as bp  # noqa: E402
+ 
+ APPS = Path(__file__).resolve().parent.parent / "apps"
+ 
+ 
+ class ManifestTests(unittest.TestCase):
+     def test_every_manifest_is_valid(self):
+-        manifests = sorted(APPS.glob("*/papp.json"))
++        manifests = sorted(APPS.glob("*/pax.json"))
+         self.assertTrue(manifests)
+         for path in manifests:
+             with self.subTest(app=path.parent.name):
+@@ -237,17 +237,17 @@ class PortRecipeTests(unittest.TestCase):
+         self.assertEqual(sorted(u.obj.name for u in units), ["lv_core_obj.o", "lv_draw_obj.o"])
+ 
+     def test_local_paths_resolve_inside_this_repository(self):
+-        self.assertEqual(bp.source_file(self.root, "local:tools/build_papp.py"), (bp.ROOT / "tools/build_papp.py").resolve())
++        self.assertEqual(bp.source_file(self.root, "local:tools/build_pax.py"), (bp.ROOT / "tools/build_pax.py").resolve())
+         with self.assertRaises(ValueError):
+             bp.source_file(self.root, "local:../outside")
+         with self.assertRaises(ValueError):
+             bp.source_file(self.root, "../outside")
+ 
+     def test_pack_matches_the_upstream_format(self):
+-        packed = bp.pack_papp(b"\x01\x02\x03\x04", 64)
++        packed = bp.pack_pax(b"\x01\x02\x03\x04", 64)
+         self.assertEqual(bp.parse_header(packed)["bss_size"], 64)
+         self.assertEqual(bp.parse_header(packed)["text_size"], 4)
+-        self.assertEqual(packed[:8], struct.pack("<II", bp.PAPP_MAGIC, 1))
++        self.assertEqual(packed[:8], struct.pack("<II", bp.PAX_MAGIC, 1))
+         self.assertEqual(len(packed), 36)
+ 
+     def test_patches_apply_to_a_clean_checkout_every_time(self):
+@@ -378,7 +378,7 @@ class SubmoduleAndPrebuildTests(unittest.TestCase):
+ class HeaderTests(unittest.TestCase):
+     def test_parse_header(self):
+         body = b"\x00" * 24
+-        data = bp.PAPP_HEADER.pack(bp.PAPP_MAGIC, 1, 0, 20, 4, 100, 0, 0) + body
++        data = bp.PAX_HEADER.pack(bp.PAX_MAGIC, 1, 0, 20, 4, 100, 0, 0) + body
+         self.assertEqual(bp.parse_header(data)["bss_size"], 100)
+         with self.assertRaises(ValueError):
+             bp.parse_header(data[:-1])
+diff --git a/tests/test_dev_build_apps.py b/tests/test_dev_build_apps.py
+index abc437f..ae92f66 100644
+--- a/tests/test_dev_build_apps.py
++++ b/tests/test_dev_build_apps.py
+@@ -26,14 +26,14 @@ class SelectTest(unittest.TestCase):
+ 
+     def test_only_the_apps_a_branch_touches(self):
+         self.assertEqual(dba.select(self.apps, ["ports/openlara/patches/0009-x.patch"]), ["openlara"])
+-        self.assertEqual(dba.select(self.apps, ["apps/tulip/papp.json", "docs/building.md"]), ["tulip"])
++        self.assertEqual(dba.select(self.apps, ["apps/tulip/pax.json", "docs/building.md"]), ["tulip"])
+ 
+     def test_a_shared_port_folder_rebuilds_every_app_using_it(self):
+         self.assertEqual(dba.select(self.apps, ["ports/redalert/papp_cpp.ld"]), ["openlara"])
+ 
+     def test_build_changes_or_no_base_rebuild_all(self):
+         everything = ["netsurf", "openlara", "tulip"]
+-        self.assertEqual(dba.select(self.apps, ["tools/build_papp.py"]), everything)
++        self.assertEqual(dba.select(self.apps, ["tools/build_pax.py"]), everything)
+         self.assertEqual(dba.select(self.apps, None), everything)
+ 
+     def test_nothing_for_unrelated_changes(self):
+@@ -41,7 +41,7 @@ class SelectTest(unittest.TestCase):
+         self.assertEqual(dba.select(self.apps, []), [])
+ 
+     def test_folder_prefixes_do_not_match_longer_names(self):
+-        self.assertEqual(dba.select({"tulip": TULIP}, ["ports/tulipx/a.c", "apps/tulip2/papp.json"]), [])
++        self.assertEqual(dba.select({"tulip": TULIP}, ["ports/tulipx/a.c", "apps/tulip2/pax.json"]), [])
+ 
+ 
+ class WipAppsTest(unittest.TestCase):
+@@ -49,7 +49,7 @@ class WipAppsTest(unittest.TestCase):
+         with tempfile.TemporaryDirectory() as tmp:
+             for name, manifest in {"tulip": TULIP, "netsurf": NETSURF, "doom": DOOM}.items():
+                 (Path(tmp) / name).mkdir()
+-                (Path(tmp) / name / "papp.json").write_text(json.dumps(manifest), encoding="utf-8")
++                (Path(tmp) / name / "pax.json").write_text(json.dumps(manifest), encoding="utf-8")
+             self.assertEqual(sorted(dba.wip_apps(Path(tmp))), ["netsurf", "tulip"])
+ 
+ 
+diff --git a/tests/test_esp_bridge.py b/tests/test_esp_bridge.py
+index 0b2ba3d..43d760a 100644
+--- a/tests/test_esp_bridge.py
++++ b/tests/test_esp_bridge.py
+@@ -84,8 +84,8 @@ class ParseTests(unittest.TestCase):
+                 self.assertIsNone(eb.parse_request(text, None, "esp-bridge"))
+         req = eb.parse_request("It took `@esp-bridge listening …` as a command. Now:\n\n@esp-bridge status", None, "esp-bridge")
+         self.assertEqual(req.action, "status")
+-        req = eb.parse_request("> @ESP-Bridge launch url=https://x.invalid/a.papp", None, "esp-bridge")
+-        self.assertEqual((req.action, req.url), ("launch", "https://x.invalid/a.papp"))
++        req = eb.parse_request("> @ESP-Bridge launch url=https://x.invalid/a.pax", None, "esp-bridge")
++        self.assertEqual((req.action, req.url), ("launch", "https://x.invalid/a.pax"))
+         self.assertEqual(eb.parse_request("@esp-bridge status.", None, "esp-bridge").action, "status")
+ 
+     def test_a_lone_request_line_with_a_typo_gets_help(self):
+@@ -193,8 +193,8 @@ class CommandTests(unittest.TestCase):
+         self.assertEqual((code, len(out), truncated), (0, 100, True))
+ 
+ 
+-STORE = "https://nonasuomy.github.io/esphomebrew/lvgl-0.3.0.papp"
+-RELEASE = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.papp"
++STORE = "https://nonasuomy.github.io/esphomebrew/lvgl-0.3.0.pax"
++RELEASE = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.pax"
+ 
+ 
+ def make_api_config(tmp: Path) -> eb.Config:
+@@ -222,10 +222,10 @@ class DeviceApiTests(unittest.TestCase):
+ 
+     def test_launch_urls_must_be_store_papps(self):
+         eb.validate(self.req(f"launch url={STORE}"), self.cfg)
+-        for url in ["http://github.com/NonaSuomy/papp-conversions/releases/download/a/b.papp",
+-                    "https://evil.example/x.papp",
++        for url in ["http://github.com/NonaSuomy/papp-conversions/releases/download/a/b.pax",
++                    "https://evil.example/x.pax",
+                     "https://github.com/NonaSuomy/esphomebrew/releases/download/a/readme.txt",
+-                    "https://github.com/NonaSuomy/esphomebrew/releases/download/../../other/x.papp",
++                    "https://github.com/NonaSuomy/esphomebrew/releases/download/../../other/x.pax",
+                     ""]:
+             with self.subTest(url=url), self.assertRaises(eb.BridgeError):
+                 eb.validate(self.req(f"launch url={url}"), self.cfg)
+@@ -521,7 +521,7 @@ class CrashDecodeTests(unittest.TestCase):
+             return eb.subprocess.CompletedProcess(argv, 0, out, "")
+ 
+         self.cfg.addr2line = "riscv32-esp-elf-addr2line"
+-        url = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.papp"
++        url = "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/redalert.pax"
+         with mock.patch.object(eb.subprocess, "run", fake_run):
+             text = eb.decode_crash(self.cfg, PANIC.format(sha=self.sha), url, opener=opener)
+         self.assertIn("0x4a0bbede  _fclose_r + 0x76", text)
+@@ -563,7 +563,7 @@ class ProxyTests(unittest.TestCase):
+             cfg.api_host, cfg.proxy_port = "127.0.0.1", 0  # any free port
+             url = eb.proxy_url(cfg, RELEASE, opener=lambda u, timeout=None: io.BytesIO(papp))
+             self.assertTrue(url.startswith("http://127.0.0.1:"), url)
+-            self.assertTrue(url.endswith("-redalert.papp"), url)
++            self.assertTrue(url.endswith("-redalert.pax"), url)
+             with urllib.request.urlopen(url, timeout=5) as response:
+                 self.assertEqual(response.read(), papp)
+             with self.assertRaises(urllib.error.HTTPError):  # only the exact file, no listing
+@@ -807,7 +807,7 @@ class WriteFileTests(unittest.TestCase):
+ 
+     def test_writefile_is_limited(self):
+         eb.validate(self.req(), self.cfg)
+-        refused = [self.req(requester="someone"), self.req(path="/sd/app.papp"), self.req(path="/sd/roms/"),
++        refused = [self.req(requester="someone"), self.req(path="/sd/app.pax"), self.req(path="/sd/roms/"),
+                    self.req(path="/sd/../boot.ini"), self.req(path="/etc/x.ini"),
+                    self.req(content="Password=***\n"), self.req(content="x" * (eb.WRITEFILE_MAX_BYTES + 1))]
+         for req in refused:
+@@ -861,7 +861,7 @@ class DeleteFileTests(unittest.TestCase):
+     def test_deletefile_is_limited(self):
+         for path in ["/sd/roms/redalert/SYNC001.TXT", "/sd/roms/redalert/redalert.ini.bak", "/sd/x/crash.log"]:
+             eb.validate(self.req(path), self.cfg)
+-        refused = [self.req(requester="someone"), self.req("/sd/roms/redalert/MAIN.MIX"), self.req("/sd/apps/doom.papp"),
++        refused = [self.req(requester="someone"), self.req("/sd/roms/redalert/MAIN.MIX"), self.req("/sd/apps/doom.pax"),
+                    self.req("/sd/roms/"), self.req("/sd/../x.txt"), self.req("/boot/x.txt")]
+         for req in refused:
+             with self.subTest(path=req.path, requester=req.requester), self.assertRaises(eb.BridgeError):
+diff --git a/tests/test_make_listing.py b/tests/test_make_listing.py
+index f6a3edd..f36b1ff 100644
+--- a/tests/test_make_listing.py
++++ b/tests/test_make_listing.py
+@@ -1,4 +1,4 @@
+-"""Tests for tools/make_listing.py: listings for a folder of .papp files.
++"""Tests for tools/make_listing.py: listings for a folder of .pax files.
+ 
+ Run: python3 -m unittest discover -s tests
+ """
+@@ -68,12 +68,12 @@ class ListingTests(unittest.TestCase):
+         self.assertIsNone(ml.store_match("azip", self.store))
+ 
+     def test_store_app_gets_its_listing_but_this_files_size_and_hash(self):
+-        papp = self.folder / "doom.papp"
++        papp = self.folder / "doom.pax"
+         papp.write_bytes(b"P" * 50)
+         listing, files = ml.build_listing(papp, self.store, "http://lan:8000/", False, False)
+         self.assertEqual((listing["name"], listing["title"], listing["version"]), ("doom", "Doom", ""))
+         self.assertEqual((listing["size"], listing["sha256"]), (50, sha(b"P" * 50)))
+-        self.assertEqual(listing["url"], "http://lan:8000/doom.papp")
++        self.assertEqual(listing["url"], "http://lan:8000/doom.pax")
+         self.assertEqual((listing["controls"], listing["upstream"]["project"]), (["A: fire"], "PrBoom"))
+         self.assertIs(listing["canvas"], True)  # keeps the store's Screen setting
+         self.assertEqual(listing["canvas_recommended"], "800x480")  # and its default
+@@ -86,7 +86,7 @@ class ListingTests(unittest.TestCase):
+         self.assertTrue(files.startswith("# pax-data 1\n# doom: shareware\n"))
+ 
+     def test_other_apps_get_a_basic_listing_and_their_own_icon(self):
+-        papp = self.folder / "azip-1.2.papp"
++        papp = self.folder / "azip-1.2.pax"
+         papp.write_bytes(b"Z" * 10)
+         (self.folder / "azip-1.2.png").write_bytes(png(64, 64))
+         listing, files = ml.build_listing(papp, self.store, "", False, False)
+@@ -104,7 +104,7 @@ class ListingTests(unittest.TestCase):
+         self.assertEqual(ml.build_listing(papp, self.store, "", False, False, icons=icons)[0]["icon"]["width"], 32)
+ 
+     def test_hand_edits_survive_a_rerun_unless_forced(self):
+-        papp = self.folder / "azip.papp"
++        papp = self.folder / "azip.pax"
+         papp.write_bytes(b"Z" * 10)
+         (self.folder / "azip.json").write_text(json.dumps({"title": "A-Zip", "about": "Mine.", "size": 1}))
+         listing, _ = ml.build_listing(papp, self.store, "", False, False)
+@@ -114,7 +114,7 @@ class ListingTests(unittest.TestCase):
+         self.assertNotIn("about", listing)
+ 
+     def test_mirrored_data_is_downloaded_once_and_listed_on_the_lan(self):
+-        papp = self.folder / "doom.papp"
++        papp = self.folder / "doom.pax"
+         papp.write_bytes(b"P")
+         opener = FakeOpener({PAGES + "data/psram_doom/roms/doom/doom1.wad": WAD})
+         _, files = ml.build_listing(papp, self.store, "http://lan:8000/", True, False, opener)
+diff --git a/tools/build_papp.py b/tools/build_pax.py
+similarity index 95%
+rename from tools/build_papp.py
+rename to tools/build_pax.py
+index c9a86ac..68677be 100644
+--- a/tools/build_papp.py
++++ b/tools/build_pax.py
+@@ -1,17 +1,17 @@
+ #!/usr/bin/env python3
+-"""Build every app under apps/ into a .papp.
++"""Build every app under apps/ into a .pax.
+ 
+-Each app is described by apps/<name>/papp.json. Sources are fetched from their
++Each app is described by apps/<name>/pax.json. Sources are fetched from their
+ upstream repositories at the pinned commit rather than copied into this repo.
+ The compile and link steps mirror RetroESP32-P4's PowerShell build scripts
+ (tools/build_lvgl_papp.ps1 for "lvgl", tools/build_psram_app.ps1 for "plain",
+-and tools/build_<game>_papp.ps1 for "custom" recipes), so a .papp built here
++and tools/build_<game>_papp.ps1 for "custom" recipes), so a .pax built here
+ matches one built with those scripts.
+ 
+ Needs the ESP-IDF RISC-V toolchain (riscv32-esp-elf-*) on PATH and git.
+ 
+-    python3 tools/build_papp.py                 # all apps -> dist/
+-    python3 tools/build_papp.py lvgl             # one app
++    python3 tools/build_pax.py                 # all apps -> dist/
++    python3 tools/build_pax.py lvgl             # one app
+ """
+ 
+ from __future__ import annotations
+@@ -32,7 +32,7 @@ from pathlib import Path
+ ROOT = Path(__file__).resolve().parent.parent
+ APPS = ROOT / "apps"
+ 
+-# The PAPP SDK (ABI header, linker script, packer) is taken from the app's own
++# The PAX SDK (ABI header, linker script, packer) is taken from the app's own
+ # source repository at the same commit, so an app always builds against the
+ # loader ABI it was written for.
+ SDK_INCLUDE = "components/psram_app_loader/include"
+@@ -58,9 +58,9 @@ def get_loader_sdk() -> Path:
+     return LOADER_SDK_DIR
+ 
+ 
+-PAPP_MAGIC = 0x50415050
+-PAPP_ABI_VERSION = 1
+-PAPP_HEADER = struct.Struct("<IIIIIIII")
++PAX_MAGIC = 0x50415050
++PAX_ABI_VERSION = 1
++PAX_HEADER = struct.Struct("<IIIIIIII")
+ LINK_BASE = 0x4A000000
+ 
+ CC = "riscv32-esp-elf-gcc"
+@@ -279,14 +279,14 @@ def check_data(name: str, data: dict | None) -> dict | None:
+ 
+ 
+ def parse_header(data: bytes) -> dict:
+-    if len(data) < PAPP_HEADER.size:
+-        raise ValueError("file is shorter than the 32-byte PAPP header")
+-    magic, version, entry, text, data_size, bss, flags, _ = PAPP_HEADER.unpack_from(data)
+-    if magic != PAPP_MAGIC:
++    if len(data) < PAX_HEADER.size:
++        raise ValueError("file is shorter than the 32-byte PAX ABI-1 header")
++    magic, version, entry, text, data_size, bss, flags, _ = PAX_HEADER.unpack_from(data)
++    if magic != PAX_MAGIC:
+         raise ValueError(f"bad magic 0x{magic:08x}")
+-    if version != PAPP_ABI_VERSION:
+-        raise ValueError(f"ABI version {version}, expected {PAPP_ABI_VERSION}")
+-    if PAPP_HEADER.size + text + data_size != len(data):
++    if version != PAX_ABI_VERSION:
++        raise ValueError(f"ABI version {version}, expected {PAX_ABI_VERSION}")
++    if PAX_HEADER.size + text + data_size != len(data):
+         raise ValueError("header sizes do not match the file length")
+     return {"entry_offset": entry, "text_size": text, "data_size": data_size, "bss_size": bss, "flags": flags}
+ 
+@@ -379,11 +379,11 @@ def apply_patches(src_root: Path, patches: list[str], submodules: list[str] = ()
+     return applied
+ 
+ 
+-def pack_papp(binary: bytes, bss_size: int) -> bytes:
+-    """[32-byte PAPP header][flat .text+.rodata+.data], as RetroESP32-P4's pack_papp.py writes it."""
++def pack_pax(binary: bytes, bss_size: int) -> bytes:
++    """[32-byte PAX ABI-1 header][flat .text+.rodata+.data], as RetroESP32-P4's pack_papp.py writes it."""
+     if not binary:
+         raise RuntimeError("empty binary")
+-    return PAPP_HEADER.pack(PAPP_MAGIC, PAPP_ABI_VERSION, 0, len(binary), 0, bss_size, 0, 0) + binary
++    return PAX_HEADER.pack(PAX_MAGIC, PAX_ABI_VERSION, 0, len(binary), 0, bss_size, 0, 0) + binary
+ 
+ 
+ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[Unit], list[str]]:
+@@ -396,7 +396,7 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
+     # Custom ports are compiled through this separate flag path, so keep the
+     # current loader ABI header ahead of the pinned upstream SDK header here as
+     # well.  Otherwise callbacks appended by the ESPHome loader (such as ZIP
+-    # extraction) are read at the wrong offsets by the PAPP.
++    # extraction) are read at the wrong offsets by the PAX.
+     loader_sdk = get_loader_sdk()
+     includes = [f"-I{loader_sdk}"] + [f"-I{source_file(src_root, inc)}" for inc in manifest.get("includes", [])]
+     base = ARCH_FLAGS + ["-mcmodel=medany"]
+@@ -545,7 +545,7 @@ def canvas_info(name: str, canvas: object) -> bool | list[str]:
+ 
+ 
+ def canvas_listing(name: str, canvas: object) -> dict:
+-    """The listing fields for papp.json's "canvas".
++    """The listing fields for pax.json's "canvas".
+ 
+     Besides true and a list of sizes, "canvas" may be an object that also
+     names the size the store should use when the user has not chosen one:
+@@ -611,7 +611,7 @@ def requires_info(name: str, requires: object) -> list[dict]:
+ 
+ 
+ def store_info(name: str, manifest: dict, app_dir: Path) -> dict:
+-    """The store listing extras from papp.json: author, category, license, about,
++    """The store listing extras from pax.json: author, category, license, about,
+     changelog, controls, upstream, canvas (and canvas_recommended), requires,
+     icon and screenshots.
+ 
+@@ -680,7 +680,7 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
+     # Build against the header shipped with this loader.  The upstream SDK
+     # checkout can lag behind the ESPHome loader's append-only service table;
+     # putting the local header first keeps callback offsets (including the ZIP
+-    # ROM helper) ABI-compatible with the firmware that runs the PAPP.
++    # ROM helper) ABI-compatible with the firmware that runs the PAX.
+     loader_sdk = get_loader_sdk()
+     cflags = CFLAGS + [f"-I{loader_sdk}", f"-I{sdk / SDK_INCLUDE}", f"-I{app_dir}"]
+     build_dir = cache / "build" / name
+@@ -772,8 +772,8 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
+     bss_size = max(0, bss_end - (LINK_BASE + bin_size))
+ 
+     out.mkdir(parents=True, exist_ok=True)
+-    papp = out / f"{name}.papp"
+-    papp.write_bytes(pack_papp(binary.read_bytes(), bss_size))
++    papp = out / f"{name}.pax"
++    papp.write_bytes(pack_pax(binary.read_bytes(), bss_size))
+ 
+     data = papp.read_bytes()
+     header = parse_header(data)
+@@ -785,7 +785,7 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
+         "file": papp.name,
+         "size": len(data),
+         "sha256": hashlib.sha256(data).hexdigest(),
+-        "abi": PAPP_ABI_VERSION,
++        "abi": PAX_ABI_VERSION,
+         **header,
+         "source": {"repo": source["repo"], "ref": source["ref"], "path": source["path"]},
+         "sdk": {"repo": source["repo"], "ref": source["ref"]},
+@@ -810,13 +810,13 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
+ 
+ def main() -> int:
+     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+-    parser.add_argument("apps", nargs="*", help="app names (default: every apps/*/papp.json)")
++    parser.add_argument("apps", nargs="*", help="app names (default: every apps/*/pax.json)")
+     parser.add_argument("--out", type=Path, default=ROOT / "dist")
+     parser.add_argument("--cache", type=Path, default=ROOT / ".cache")
+     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 2)
+     args = parser.parse_args()
+ 
+-    manifests = [APPS / n / "papp.json" for n in args.apps] if args.apps else sorted(APPS.glob("*/papp.json"))
++    manifests = [APPS / n / "pax.json" for n in args.apps] if args.apps else sorted(APPS.glob("*/pax.json"))
+     if not manifests:
+         print("no apps found under apps/", file=sys.stderr)
+         return 1
+diff --git a/tools/dev_build_apps.py b/tools/dev_build_apps.py
+index 6a9c434..e9427c1 100644
+--- a/tools/dev_build_apps.py
++++ b/tools/dev_build_apps.py
+@@ -2,12 +2,12 @@
+ """Which work-in-progress apps a branch's dev build should build.
+ 
+ Work-in-progress apps are those with "publish": false or "dev_build": true
+-in apps/<name>/papp.json. Every branch uploads its dev builds to the same
++in apps/<name>/pax.json. Every branch uploads its dev builds to the same
+ "dev-builds" release, so a branch that rebuilt all of them would replace
+ another branch's test build of an app it never touched. A branch therefore
+ builds only the apps whose files it changes: apps/<name>/ and the folders
+ the manifest points at with "local:" paths (ports/<port>/...). Changes to
+-the build itself (tools/build_papp.py, the workflow) rebuild them all, and
++the build itself (tools/build_pax.py, the workflow) rebuild them all, and
+ so does a run with no main branch to compare against.
+ 
+     python3 tools/dev_build_apps.py [--base origin/main]   # prints the names
+@@ -23,13 +23,13 @@ import sys
+ from pathlib import Path
+ 
+ # Files every app build depends on: a change here rebuilds all of them.
+-SHARED = ("tools/build_papp.py", ".github/workflows/dev-builds.yml", "tools/dev_build_apps.py")
++SHARED = ("tools/build_pax.py", ".github/workflows/dev-builds.yml", "tools/dev_build_apps.py")
+ 
+ 
+ def wip_apps(apps_dir: Path) -> dict[str, dict]:
+     """Work-in-progress apps by name, with their manifests."""
+     found = {}
+-    for manifest in sorted(apps_dir.glob("*/papp.json")):
++    for manifest in sorted(apps_dir.glob("*/pax.json")):
+         data = json.loads(manifest.read_text(encoding="utf-8"))
+         if data.get("publish", True) is False or data.get("dev_build"):
+             found[manifest.parent.name] = data
+diff --git a/tools/esp_bridge/esp_bridge.py b/tools/esp_bridge/esp_bridge.py
+index c310433..c28b941 100644
+--- a/tools/esp_bridge/esp_bridge.py
++++ b/tools/esp_bridge/esp_bridge.py
+@@ -22,7 +22,7 @@ Request format (reply in any channel, mention the bridge):
+     @esp-bridge upload esphome/device.yaml ref=claude/fix device=/dev/ttyUSB0
+     @esp-bridge run device.yaml source=local device=10.13.37.60 seconds=90
+     @esp-bridge logs device.yaml source=local device=/dev/ttyUSB0 seconds=60
+-    @esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/…/app.papp
++    @esp-bridge launch url=https://github.com/NonaSuomy/esphomebrew/releases/download/…/app.pax
+     @esp-bridge close
+     @esp-bridge catalog
+     @esp-bridge status
+@@ -81,11 +81,11 @@ DEVICE_API_ACTIONS = {"launch": "papp_launch", "close": "papp_close", "catalog":
+                       "writefile": "papp_write_file", "deletefile": "papp_delete_file"}
+ NEEDS_YAML = {"config", "compile", "upload", "logs", "run", "view", "edit"}
+ EDIT_TEXT_MAX = 4000  # characters in `find` / `replace`
+-# writefile: small text files only (a written .papp or firmware image would be
++# writefile: small text files only (a written .pax or firmware image would be
+ # code); the loader checks the same list.
+ WRITEFILE_MAX_BYTES = 16 * 1024
+ WRITEFILE_EXTENSIONS = (".ini", ".cfg", ".conf", ".txt", ".json", ".yaml", ".yml", ".csv")
+-# deletefile also takes leftovers, but never game data (.mix) or apps (.papp).
++# deletefile also takes leftovers, but never game data (.mix) or apps (.pax).
+ DELETEFILE_EXTENSIONS = (*WRITEFILE_EXTENSIONS, ".bak", ".log")
+ CODE_FENCE = re.compile(r"```[^\n`]*\n(.*?)```", re.S)
+ MASKED_VALUE = re.compile(r"(?m)[:=]\s*\*\*\*\s*$")
+@@ -467,11 +467,11 @@ def validate(req: Request, cfg: Config) -> Path | None:
+             raise BridgeError("This bridge has no [device_api] host configured.")
+         if req.action == "launch":
+             if not req.url or not req.url.startswith("https://"):
+-                raise BridgeError("`launch` needs `url=https://…/app.papp`.")
++                raise BridgeError("`launch` needs `url=https://…/app.pax`.")
+             if not any(req.url.startswith(p) for p in cfg.allowed_url_prefixes):
+                 raise BridgeError(f"That URL is not in the allowed prefixes ({', '.join(cfg.allowed_url_prefixes)}).")
+-            if not req.url.lower().endswith(".papp") or ".." in req.url or any(c.isspace() for c in req.url):
+-                raise BridgeError("`url` must point at a .papp file.")
++            if not req.url.lower().endswith(".pax") or ".." in req.url or any(c.isspace() for c in req.url):
++                raise BridgeError("`url` must point at a .pax file.")
+         if req.action == "readfile":
+             path = req.path or ""
+             if (not path.startswith("/sd/") or ".." in path or len(path) >= READFILE_PATH_MAX
+@@ -787,7 +787,7 @@ class SerialCapture:
+ # A panic dump is only addresses. Firmware addresses are looked up in the
+ # firmware ELF this machine built (the dump's "ELF file SHA256" picks the
+ # right one); PAPP addresses (linked at 0x4A000000) in the app's symbol list,
+-# which dev builds publish next to the .papp.
++# which dev builds publish next to the .pax.
+ 
+ # A live panic dump (serial), or the report ESPHome's esp32 crash handler logs
+ # after the reboot ("[E][esp32.crash:...]:   BT0: 0x4FF0A146 (backtrace)").
+@@ -859,11 +859,11 @@ def find_addr2line(cfg: Config, elf: Path) -> str | None:
+ 
+ 
+ def load_papp_symbols(url: str | None, cfg: Config, opener=urllib.request.urlopen) -> list[tuple[int, str, bool]]:
+-    """(address, name, is_code) from the .sym published next to a dev-build .papp."""
+-    if not url or not url.endswith(".papp") or not url.startswith(tuple(cfg.allowed_url_prefixes)):
++    """(address, name, is_code) from the .sym published next to a dev-build .pax."""
++    if not url or not url.endswith(".pax") or not url.startswith(tuple(cfg.allowed_url_prefixes)):
+         return []
+     try:
+-        with opener(url[: -len(".papp")] + ".sym", timeout=60) as response:
++        with opener(url[: -len(".pax")] + ".sym", timeout=60) as response:
+             text = response.read(16 * 1024 * 1024).decode("utf-8", "replace")
+     except (urllib.error.URLError, TimeoutError, OSError):
+         return []
+@@ -950,7 +950,7 @@ def rgb565_to_png(raw: bytes, width: int, height: int) -> bytes:
+ 
+ 
+ def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
+-    """Read stream packets until the PAPPSS01 screenshot; thumbnails and audio are skipped."""
++    """Read stream packets until the PAXSS01 screenshot; thumbnails and audio are skipped."""
+     def exact(size: int) -> bytes:
+         data = bytearray()
+         while len(data) < size:
+@@ -979,7 +979,7 @@ def read_screenshot(sock: socket.socket) -> tuple[int, int, bytes]:
+ 
+ 
+ def read_stream_file(sock: socket.socket) -> bytes:
+-    """Read stream packets until the PAPPFL01 file packet; other packets are skipped."""
++    """Read stream packets until the PAXFL01 file packet; other packets are skipped."""
+     def exact(size: int) -> bytes:
+         data = bytearray()
+         while len(data) < size:
+@@ -1121,7 +1121,7 @@ def proxy_url(cfg: Config, url: str, opener=urllib.request.urlopen) -> str:
+     except (urllib.error.URLError, TimeoutError, OSError) as error:
+         raise BridgeError(f"Could not download {url}: {error}.") from error
+     if len(body) > 64 * 1024 * 1024 or len(body) < 32 or struct.unpack_from("<I", body)[0] != 0x50415050:
+-        raise BridgeError(f"{url} is not a .papp file.")
++        raise BridgeError(f"{url} is not a .pax file.")
+     if _proxy is None:
+         try:
+             _proxy = _ProxyServer(cfg.proxy_port)
+diff --git a/tools/make_listing.py b/tools/make_listing.py
+index 5ecbcd8..fd54223 100644
+--- a/tools/make_listing.py
++++ b/tools/make_listing.py
+@@ -1,22 +1,22 @@
+ #!/usr/bin/env python3
+-"""Write store listings for a folder of .papp files, such as a LAN server or an SD card folder.
++"""Write store listings for a folder of .pax files, such as a LAN server or an SD card folder.
+ 
+ The ESPHOMEBREW store view (papp_loader `library_style: grid`) reads an app's
+-listing from the .json next to its .papp, and its data list from the .files
+-next to it (psram_doom-0.1.1.papp -> psram_doom-0.1.1.json, .files). The
++listing from the .json next to its .pax, and its data list from the .files
++next to it (psram_doom-0.1.1.pax -> psram_doom-0.1.1.json, .files). The
+ GitHub store publishes both; this writes them for any other folder:
+ 
+     python3 tools/make_listing.py /srv/papp --base-url http://10.20.30.158:8000/
+ 
+-For every .papp in the folder:
++For every .pax in the folder:
+ 
+ - The size and sha256 always come from the file itself, so Install can check
+   the download.
+ - When the app is also in the store (same name, with or without the psram_
+-  prefix, e.g. doom.papp and psram_doom), its title, icon, about, controls,
++  prefix, e.g. doom.pax and psram_doom), its title, icon, about, controls,
+   licence, upstream project, canvas sizes (and recommended size), required
+   files and data list are copied from the store listing.
+-- A <stem>.png next to the .papp (at most 256x256, 64 KB) becomes the icon.
++- A <stem>.png next to the .pax (at most 256x256, 64 KB) becomes the icon.
+ - Fields already in an existing <stem>.json are kept, so it can be edited by
+   hand and the tool run again. --force starts from scratch.
+ - Data files listed by the store are fetched from GitHub Pages by default.
+@@ -24,7 +24,7 @@ For every .papp in the folder:
+   against their sha256, and listed at --base-url instead, so the device gets
+   its game data from the LAN too.
+ 
+-The .papp files themselves are never changed.
++The .pax files themselves are never changed.
+ """
+ 
+ from __future__ import annotations
+@@ -45,7 +45,7 @@ import make_catalog as mc  # noqa: E402
+ 
+ DEFAULT_STORE = "https://nonasuomy.github.io/esphomebrew/"
+ # What describes the app rather than one build of it: the store build's source
+-# commit, changelog and version are left out, since this .papp may differ.
++# commit, changelog and version are left out, since this .pax may differ.
+ COPIED_FIELDS = ("title", "description", "author", "category", "license", "about", "controls", "upstream", "canvas",
+                  "canvas_recommended", "requires")
+ MAX_ICON_BYTES = 64 * 1024
+@@ -87,7 +87,7 @@ def store_match(name: str, store: dict[str, dict]) -> dict | None:
+ 
+ 
+ def local_icon(folder: Path, stem: str, name: str, icons: Path | None = None) -> dict | None:
+-    """The first usable icon: <icons>/<stem>.png, then <stem>.png or <name>.png next to the .papp.
++    """The first usable icon: <icons>/<stem>.png, then <stem>.png or <name>.png next to the .pax.
+ 
+     Pictures that are too large for an icon (launcher art, say) are skipped with a
+     note rather than failing the run."""
+@@ -115,7 +115,7 @@ def data_list(name: str, version: str, files: list[dict], license_text: str) ->
+ 
+ def build_listing(papp: Path, store: dict[str, dict], base_url: str, mirror: bool, force: bool,
+                   opener=urllib.request.urlopen, icons: Path | None = None) -> tuple[dict, str | None]:
+-    """The listing for one .papp, and its data list text (None when it needs no data)."""
++    """The listing for one .pax, and its data list text (None when it needs no data)."""
+     folder, stem = papp.parent, papp.stem
+     name, version = split_stem(stem)
+     existing_path = folder / f"{stem}.json"
+@@ -157,7 +157,7 @@ def build_listing(papp: Path, store: dict[str, dict], base_url: str, mirror: boo
+ 
+ def main() -> int:
+     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+-    parser.add_argument("folder", type=Path, help="folder with the .papp files")
++    parser.add_argument("folder", type=Path, help="folder with the .pax files")
+     parser.add_argument("--base-url", default="", help="the folder's URL on the network, e.g. http://10.20.30.158:8000/")
+     parser.add_argument("--store", default=DEFAULT_STORE,
+                         help="store to copy listings and data lists from (URL or store.json); '' for none")
+@@ -170,9 +170,9 @@ def main() -> int:
+         parser.error("--mirror-data needs --base-url, the folder's http(s) address")
+     if args.base_url and not args.base_url.endswith("/"):
+         args.base_url += "/"
+-    papps = sorted(args.folder.glob("*.papp"))
++    papps = sorted(args.folder.glob("*.pax"))
+     if not papps:
+-        print(f"no .papp files in {args.folder}", file=sys.stderr)
++        print(f"no .pax files in {args.folder}", file=sys.stderr)
+         return 1
+     store = load_store(args.store)
+     for papp in papps:
+diff --git a/tools/papp_symbolize.py b/tools/pax_symbolize.py
+similarity index 91%
+rename from tools/papp_symbolize.py
+rename to tools/pax_symbolize.py
+index 708c89d..f27a330 100644
+--- a/tools/papp_symbolize.py
++++ b/tools/pax_symbolize.py
+@@ -3,10 +3,10 @@
+ 
+ A PAPP is linked at 0x4A000000, so PC/backtrace addresses 0x4A...... in an
+ ESP-IDF crash report are inside the app. The dev builds publish a symbol list
+-(`nm -n -C`) next to each work-in-progress .papp.
++(`nm -n -C`) next to each work-in-progress .pax.
+ 
+-    python3 tools/papp_symbolize.py redalert.sym 0x4A01234C 0x4A00ABCD
+-    python3 tools/papp_symbolize.py --release redalert 0x4A01234C   # fetch the dev-builds list
++    python3 tools/pax_symbolize.py redalert.sym 0x4A01234C 0x4A00ABCD
++    python3 tools/pax_symbolize.py --release redalert 0x4A01234C   # fetch the dev-builds list
+ 
+ Addresses outside the app (0x40..., 0x4FF...) are loader/ESP-IDF code: look
+ those up in the firmware ELF with addr2line.
+-- 
+2.56.0
+

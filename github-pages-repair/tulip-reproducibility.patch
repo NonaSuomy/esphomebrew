@@ -1,0 +1,177 @@
+From d5000f3b2ad6a4f1483f8b222aa322f2cc065dac Mon Sep 17 00:00:00 2001
+From: NonaSuomy <nonasuomy@live.com>
+Date: Mon, 12 Oct 2026 10:00:15 -0400
+Subject: [PATCH] Fix nondeterministic Tulip freezing and release 0.1.6
+
+---
+ .github/workflows/build-papps.yml             |  3 ++
+ apps/tulip/papp.json                          |  2 +-
+ ports/tulip/gen_tulip.py                      | 31 +++---------
+ .../0004-reproducible-frozen-order.patch      | 11 +++++
+ tests/test_tulip_freezing.py                  | 48 +++++++++++++++++++
+ 5 files changed, 70 insertions(+), 25 deletions(-)
+ create mode 100644 ports/tulip/patches/0004-reproducible-frozen-order.patch
+ create mode 100644 tests/test_tulip_freezing.py
+
+diff --git a/.github/workflows/build-papps.yml b/.github/workflows/build-papps.yml
+index 7ff4fc1..3b192ca 100644
+--- a/.github/workflows/build-papps.yml
++++ b/.github/workflows/build-papps.yml
+@@ -32,6 +32,9 @@ jobs:
+           riscv32-esp-elf-gcc --version | head -1
+           python3 tools/build_papp.py --out dist
+ 
++      - name: Verify Tulip freezing order
++        run: python3 tests/test_tulip_freezing.py
++
+       - name: Summary
+         shell: bash
+         run: |
+diff --git a/apps/tulip/papp.json b/apps/tulip/papp.json
+index 7fafd79..8ba3ab3 100644
+--- a/apps/tulip/papp.json
++++ b/apps/tulip/papp.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "tulip",
+   "title": "Tulip CC",
+-  "version": "0.1.5",
++  "version": "0.1.6",
+   "description": "Tulip Creative Computer (MicroPython, the AMY synthesizer, Tulip's graphics, editor and LVGL UI) as a PAPP, at its full 1024x600 with USB keyboard, touch and the loader's speaker. Work in progress.",
+   "author": "shorepine (Tulip, AMY); PAPP port",
+   "category": "Tool",
+diff --git a/ports/tulip/gen_tulip.py b/ports/tulip/gen_tulip.py
+index 1fbac78..af44edb 100644
+--- a/ports/tulip/gen_tulip.py
++++ b/ports/tulip/gen_tulip.py
+@@ -14,9 +14,8 @@ script does the same generation from the list of compile units it is given:
+                              makemoduledefs.py and make_root_pointers.py
+   frozen_content.c           Tulip's Python (tulip/shared/py), AMY's Python
+                              package, asyncio and this port's py/ folder, via
+-                             tools/makemanifest.py: as bytecode when mpy-cross
+-                             can be built with a host compiler, else as source
+-                             (compiled on import).
++                             tools/makemanifest.py: sorted source modules
++                             (compiled on import), independent of the host compiler.
+   sys_tar.c                  Tulip's /sys files (tulip/fs/tulip: examples,
+                              images) as a tar that _boot.py unpacks.
+ 
+@@ -152,22 +151,6 @@ def gen_qstr(units: list[dict], mp: Path, gen: Path, jobs: int) -> None:
+     log(f"qstr: {count} qstrs")
+ 
+ 
+-def build_mpy_cross(mp: Path, jobs: int) -> Path | None:
+-    """mpy-cross needs a compiler for the build machine; without one, freeze as source."""
+-    host_cc = shutil.which("cc") or shutil.which("gcc")
+-    if host_cc is None:
+-        log("mpy-cross: no host C compiler, freezing Python as source")
+-        return None
+-    try:
+-        run(["make", "-C", str(mp / "mpy-cross"), f"-j{jobs}", "CC=" + host_cc, "V=0"],
+-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+-    except (subprocess.CalledProcessError, OSError) as error:
+-        detail = getattr(error, "stderr", b"") or b""
+-        log(f"mpy-cross: build failed ({detail.decode(errors='replace')[-400:]}); freezing Python as source")
+-        return None
+-    return mp / "mpy-cross/build/mpy-cross"
+-
+-
+ def gen_frozen(src: Path, mp: Path, gen: Path, jobs: int) -> None:
+     frozen = gen / "frozen"
+     frozen.mkdir()
+@@ -181,16 +164,16 @@ def gen_frozen(src: Path, mp: Path, gen: Path, jobs: int) -> None:
+         (frozen / package).mkdir()
+         for py in sorted(base.glob("*.py")):
+             shutil.copy(py, frozen / package / py.name)
+-    mpy_cross = build_mpy_cross(mp, jobs)
+     manifest = gen / "manifest.py"
+-    kind = "freeze" if mpy_cross else "freeze_as_str"
+-    manifest.write_text(f"{kind}({str(frozen)!r})\n")
+-    env = {**os.environ, "MICROPY_MPYCROSS": str(mpy_cross or sys.executable)}
++    # Keep release contents independent of host compiler availability and version.
++    # The pinned manifestfile patch sorts modules before generating frozen data.
++    manifest.write_text(f"freeze_as_str({str(frozen)!r})\n")
++    env = {**os.environ, "MICROPY_MPYCROSS": sys.executable}
+     run([sys.executable, str(mp / "tools/makemanifest.py"), "-o", str(gen / "frozen_content.c"), "-b", str(gen),
+          "-v", f"MPY_DIR={mp}", "-v", f"PORT_DIR={PORT}", "-v", "MPY_LIB_DIR=", "-v", f"BOARD_DIR={PORT}",
+          str(manifest)], env=env, stdout=subprocess.DEVNULL)
+     files = sum(1 for _ in frozen.rglob("*.py"))
+-    log(f"frozen: {files} modules as {'bytecode' if mpy_cross else 'source'}, "
++    log(f"frozen: {files} modules as source, "
+         f"frozen_content.c {(gen / 'frozen_content.c').stat().st_size // 1024} KiB")
+ 
+ 
+diff --git a/ports/tulip/patches/0004-reproducible-frozen-order.patch b/ports/tulip/patches/0004-reproducible-frozen-order.patch
+new file mode 100644
+index 0000000..7bd2dce
+--- /dev/null
++++ b/ports/tulip/patches/0004-reproducible-frozen-order.patch
+@@ -0,0 +1,11 @@
++--- a/micropython/tools/manifestfile.py
+++++ b/micropython/tools/manifestfile.py
++@@ -239,7 +239,7 @@
++         return g
++ 
++     def files(self):
++-        return self._manifest_files
+++        return sorted(self._manifest_files, key=lambda item: item.target_path)
++ 
++     def pypi_dependencies(self):
++         # In MODE_PYPROJECT, this will return a list suitable for requirements.txt.
+diff --git a/tests/test_tulip_freezing.py b/tests/test_tulip_freezing.py
+new file mode 100644
+index 0000000..b18a2cb
+--- /dev/null
++++ b/tests/test_tulip_freezing.py
+@@ -0,0 +1,48 @@
++"""Check actual pinned MicroPython freezing against reversed directory enumeration."""
++import contextlib
++import importlib.util
++import io
++import json
++import sys
++import tempfile
++from pathlib import Path
++from unittest.mock import patch
++
++
++def main():
++    root = Path(__file__).resolve().parent.parent
++    manifest_path = root / 'apps/tulip/pax.json'
++    if not manifest_path.exists():
++        manifest_path = root / 'apps/tulip/papp.json'
++    ref = json.loads(manifest_path.read_text())['source']['ref']
++    tools = root / '.cache' / ('src-tulip-' + ref[:12]) / 'micropython/tools'
++    sys.path.insert(0, str(tools))
++    import manifestfile
++    import makemanifest
++    with tempfile.TemporaryDirectory() as folder:
++        home = Path(folder)
++        for name in ('z.py', 'a.py', 'pkg/z.py', 'pkg/a.py', 'other/m.py'):
++            p = home / name
++            p.parent.mkdir(exist_ok=True)
++            p.write_text('value = ' + repr(name) + '\n')
++        original_walk = manifestfile.os.walk
++        def reversed_walk(*args, **kwargs):
++            for directory, dirs, files in original_walk(*args, **kwargs):
++                dirs.sort(reverse=True)
++                yield directory, dirs, sorted(files, reverse=True)
++        outputs = []
++        for walker in (original_walk, reversed_walk):
++            m = manifestfile.ManifestFile(manifestfile.MODE_FREEZE, {'MPY_LIB_DIR': ''})
++            with patch.object(manifestfile.os, 'walk', walker):
++                m.freeze_as_str(str(home))
++            files = m.files()
++            assert [f.target_path for f in files] == sorted(f.target_path for f in files)
++            assert all(f.kind == manifestfile.KIND_FREEZE_AS_STR for f in files)
++            with contextlib.redirect_stdout(io.StringIO()):
++                outputs.append(makemanifest.generate_frozen_str_content([(f.full_path, f.target_path) for f in files]))
++        assert outputs[0] == outputs[1], 'Filesystem ordering changed frozen C output'
++    print('Tulip freezing is identical with reversed directory and file enumeration')
++
++
++if __name__ == '__main__':
++    main()
+-- 
+2.56.0
+

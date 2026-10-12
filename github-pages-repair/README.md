@@ -14,3 +14,9 @@ Website: https://nonasuomy.github.io/esphomebrew/
 Follow-up commit `92d56f2` adds `data-pax-size` and `data-pax-mtime` to each download link. The date is the start timestamp of the successful CI build that produced the package, passed by the publication workflow as `--built-at`. The JSON sidecar also records `built_at`. An unknown date stays zero; the publisher never substitutes the artifact extraction or Pages deployment time.
 
 Preserved patch: `store-file-details.patch`. Deployment: https://github.com/NonaSuomy/esphomebrew/actions/runs/38143098831
+
+## Public build naming and Tulip reproducibility
+
+Commit `d5000f3` sorts MicroPython frozen modules and pins source freezing for Tulip 0.1.6. The full remote app build and version guard passed: https://github.com/NonaSuomy/esphomebrew/actions/runs/38259725763. Repeated local full builds are byte-identical, and the active PAX port is staged in pax-dev with its previous binary preserved. Patch: `tulip-reproducibility.patch`.
+
+Commit `0281146` renames the public workflow to Build PAXs, manifests to pax.json, the build command to build_pax.py, build artifacts to paxs and new release downloads to .pax. Existing immutable releases retain their original files; matching .pax aliases are added only after their SHA-256 is checked. Native legacy SDK/compiler identifiers retain ABI compatibility. The renamed tools passed 221 Python tests and the Tulip binary is unchanged by the naming migration. Patch: `public-pax-build-naming.patch`.
