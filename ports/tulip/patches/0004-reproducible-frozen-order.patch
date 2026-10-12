@@ -1,0 +1,11 @@
+--- a/micropython/tools/manifestfile.py
++++ b/micropython/tools/manifestfile.py
+@@ -239,7 +239,7 @@
+         return g
+ 
+     def files(self):
+-        return self._manifest_files
++        return sorted(self._manifest_files, key=lambda item: item.target_path)
+ 
+     def pypi_dependencies(self):
+         # In MODE_PYPROJECT, this will return a list suitable for requirements.txt.
