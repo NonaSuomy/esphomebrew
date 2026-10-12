@@ -34,11 +34,11 @@
   {
     "id": "nano",
     "title": "ESP32-P4-NANO",
-    "subtitle": "HDMI monitor or TV \u00b7 Ethernet",
+    "subtitle": "HDMI monitor or TV, Ethernet or C6 Wi-Fi",
     "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-NANO-details-intro-23027e78f7ed1654d68fc7e5bdc4362a.webp",
     "status": "HDMI hardware test pending",
     "experimental": true,
-    "note": "Requires the EBYTE ECA20-MHA1-I (GSV1172), configured for two-lane DSI input, and a correctly wired adapter. Use Ethernet and a USB keyboard or gamepad. Audio uses the board codec; HDMI audio is not configured. Chip revision: 0/1; production rev3 needs a separate build.",
+    "note": "Requires the EBYTE ECA20-MHA1-I (GSV1172), configured for two-lane DSI input, and a correctly wired adapter. The 720p/1080p profiles use Ethernet; the extra Wi-Fi profile requires the C6 interface on your exact PCB. Use a USB keyboard or gamepad. Audio uses the board codec; HDMI audio is not configured. Chip revision: 0/1; production rev3 needs a separate build.",
     "profiles": [
       [
         "nano720",
@@ -47,6 +47,10 @@
       [
         "nano1080",
         "1080p \u00b7 30 Hz"
+      ],
+      [
+        "nano-wifi",
+        "720p60 with onboard C6 Wi-Fi (experimental)"
       ]
     ],
     "manufacturer": "Waveshare"
@@ -66,5 +70,165 @@
       ]
     ],
     "manufacturer": "Waveshare"
+  },
+  {
+    "id": "eth-hdmi720",
+    "manufacturer": "Waveshare",
+    "title": "ESP32-P4-ETH",
+    "subtitle": "HDMI monitor or TV, Ethernet",
+    "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-ETH-details-intro-402fab4daa72e915685e55a81b4e1cbe.webp",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "32MB flash, IP101 Ethernet and ECA20-MHA1-I bridge. Correct adapter wiring and two-lane bridge input required. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "eth-hdmi720",
+        "HDMI 720p60"
+      ]
+    ]
+  },
+  {
+    "id": "waveshare4b",
+    "manufacturer": "Waveshare",
+    "title": "ESP32-P4-WIFI6-Touch-LCD-4B",
+    "subtitle": "4-inch touchscreen, Wi-Fi",
+    "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-WIFI6-Touch-LCD-4B-PCB-299beb56aac590c5e42c759b4d3275a3.webp",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "720x720 ST7703 and GT911. Confirm the hosted C6 wiring against the exact PCB schematic: the supplied example and vendor signal summary differ. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "waveshare4b",
+        "4B, 720 x 720"
+      ]
+    ]
+  },
+  {
+    "id": "tab5",
+    "manufacturer": "M5Stack",
+    "title": "Tab5 (original screen revision)",
+    "subtitle": "5-inch touchscreen, Wi-Fi",
+    "photo": "https://m5stack-doc.oss-cn-shenzhen.aliyuncs.com/1132/C145_01.webp",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "Original ILI9881C display and GT911 touch only. ST7123/ST7121 revisions need another profile. Programming uses USB Serial/JTAG. Chip revision: 0/1; production rev3 needs a separate build. To enter download mode, hold RESET for about two seconds until the green LED flashes, then release it.",
+    "profiles": [
+      [
+        "tab5",
+        "Original Tab5, 720 x 1280"
+      ]
+    ]
+  },
+  {
+    "id": "jc1060",
+    "manufacturer": "Guition",
+    "title": "JC1060P470",
+    "subtitle": "7-inch touchscreen, Wi-Fi",
+    "photo": "https://raw.githubusercontent.com/jtenniswood/esphome-lvgl/66977d45b8882f5ebe321d1f010292e397db83f1/images/guition-esp32-p4-jc1060p470.jpg",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "1024x600 panel, GT911 and ES8311 audio. SD power uses LDO4 passthrough. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "jc1060",
+        "JC1060, 1024 x 600"
+      ]
+    ]
+  },
+  {
+    "id": "jc4880",
+    "manufacturer": "Guition",
+    "title": "JC4880P443C_I_W",
+    "subtitle": "4.3-inch touchscreen, Wi-Fi",
+    "photo": "images/jc4880.svg",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "480x800 ST7701 with GT911. Touch reset GPIO3 and SD LDO4 follow the board BSP. Fixed-size apps need individual testing on the smaller canvas. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "jc4880",
+        "JC4880, 480 x 800"
+      ]
+    ]
+  },
+  {
+    "id": "jc8012",
+    "manufacturer": "Guition",
+    "title": "JC8012P4A1",
+    "subtitle": "10.1-inch touchscreen, Wi-Fi",
+    "photo": "images/jc8012.svg",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "800x1280 JD9365 with the pinned GSL3680 touch driver. Touch orientation and all peripherals need hardware validation. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "jc8012",
+        "JC8012, 800 x 1280"
+      ]
+    ]
+  },
+  {
+    "id": "m3-hdmi720",
+    "manufacturer": "Guition",
+    "title": "ESP32-P4-M3-Dev",
+    "subtitle": "HDMI monitor or TV, Wi-Fi",
+    "photo": "https://devices.esphome.io/_astro/guition_jc_esp32_p4_m3_dev.D0zgi97b_Z2hNAYu.webp",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "Bare M3 board with the ECA20-MHA1-I bridge, not an unspecified DSI panel. Requires a correctly wired adapter. USB Serial/JTAG programming. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "m3-hdmi720",
+        "HDMI 720p60"
+      ]
+    ]
+  },
+  {
+    "id": "espressif-ev",
+    "manufacturer": "Espressif",
+    "title": "ESP32-P4-Function-EV-Board",
+    "subtitle": "7-inch touchscreen, Wi-Fi",
+    "photo": "https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/_images/esp32-p4-function-ev-board-isometric_v1.5.2.png",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "v1.5.2 with supplied 7-inch EK79007 and GT911. LCD adapter reset/PWM jumpers go to GPIO27/26. This is not the P4X rev3 board. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "espressif-ev",
+        "7-inch 1024 x 600"
+      ]
+    ]
+  },
+  {
+    "id": "olimex",
+    "manufacturer": "Olimex",
+    "title": "ESP32-P4-DevKit",
+    "subtitle": "HDMI monitor or TV, Ethernet",
+    "photo": "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-DevKit/images/thumbs/310x230/ESP32-P4-DevKit-1.jpg",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "PCB rev D1 with IP101 Ethernet. Requires ECA20-MHA1-I HDMI bridge and a correctly wired adapter. The Olimex LT8912 MIPI-HDMI adapter needs its own driver configuration. USB host wiring is on the expansion header. No onboard Wi-Fi or speaker. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "olimex",
+        "ECA20 HDMI 720p60"
+      ]
+    ]
+  },
+  {
+    "id": "firebeetle2",
+    "manufacturer": "DFRobot",
+    "title": "FireBeetle 2 ESP32-P4 (DFR1172)",
+    "subtitle": "HDMI monitor or TV, Wi-Fi",
+    "photo": "https://dfimg.dfrobot.com/enshop/image/data/DFR1172/DFR1172_Main_01_360x240.jpg.webp",
+    "status": "Compile verified; hardware test pending",
+    "experimental": true,
+    "note": "DFR1172 ESP32-P4 model only. Requires ECA20-MHA1-I bridge and a correctly wired adapter. C6 Wi-Fi and SD are configured. Its PDM microphone is not speaker hardware, so audio output is omitted. Use a powered USB hub for USB inputs. Chip revision: 0/1; production rev3 needs a separate build.",
+    "profiles": [
+      [
+        "firebeetle2",
+        "ECA20 HDMI 720p60"
+      ]
+    ]
   }
 ]

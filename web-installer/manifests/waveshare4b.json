@@ -1,0 +1,17 @@
+{
+  "name": "PAX waveshare4b",
+  "version": "2026.10.11",
+  "new_install_prompt_erase": true,
+  "new_install_improv_wait_time": 60,
+  "builds": [
+    {
+      "chipFamily": "ESP32-P4",
+      "parts": [
+        {
+          "path": "../firmware/pax-waveshare4b.factory.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
