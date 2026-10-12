@@ -43,3 +43,7 @@ python3 pax-esphome/tests/check_desktop_sdl.py
 The test uses SDL's dummy video driver and injected SDL events, with a temporary preferences directory. It checks mouse selection of all three choices and keyboard Right+Enter selection of Network. The program's `PAX_SDL_SMOKE_TEST` environment flag is used only by this check; normal desktop runs do not inject input or stop automatically.
 
 LVGL's ESP32 memory allocation stays unchanged. The local fork now guards its ESP-IDF heap header, uses its host allocator for host rotation buffers, and selects the no-OS LVGL backend for host builds instead of FreeRTOS. The desktop adapter is host-only, so it is never included in device firmware.
+
+## Actual launcher and PAX app tests
+
+The separate [desktop PAX host](desktop-pax.md) now provides native launcher builds and execution of existing RISC-V `.pax` binaries through a service bridge. Use `./pax-tools/run-desktop.sh native` or `emulated` after desktop setup. The ESPHome YAML preview above continues to test the shared three-button firmware screen.
