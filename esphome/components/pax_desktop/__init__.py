@@ -1,4 +1,4 @@
-"""Desktop-only adapter for shared PAX LVGL preview callbacks."""
+"""Desktop-only adapter for shared PAX LVGL launch callbacks."""
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID

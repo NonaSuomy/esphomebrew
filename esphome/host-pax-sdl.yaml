@@ -12,7 +12,7 @@ substitutions:
   storage_y: "225"
   network_y: "225"
   github_y: "225"
-  launcher_network_url: "http://127.0.0.1:8000/launcher_ui.pax"
+  launcher_network_url: "http://10.13.37.84:8000/launcher_ui.pax"
   launcher_github_url: "https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax"
 
 packages:
@@ -30,7 +30,7 @@ esphome:
             key->publish_initial_state(false);
           }
           id(pax_runtime)->bind(id(desktop_status), id(storage_button), id(network_button), id(github_button));
-          ESP_LOGI("pax_desktop", "Desktop UI ready. Mouse or Tab/arrows and Enter/Space. PAX app execution requires ESP32-P4.");
+          ESP_LOGI("pax_desktop", "Desktop ready. Select a source to open launcher_ui through desktop PAX services.");
 
 host:
 
@@ -47,7 +47,7 @@ external_components:
 logger:
   level: INFO
 
-# Desktop-only adapter: reports selections without running RISC-V code.
+# Desktop adapter: launches the selected image through the desktop PAX service host.
 pax_desktop:
   id: pax_runtime
 
@@ -78,7 +78,7 @@ lvgl:
     widgets:
       - label:
           id: desktop_status
-          text: "Desktop UI preview | mouse / Tab / arrows / Enter / Space | close window to exit"
+          text: "PAX Desktop | Storage opens local SD | Network downloads launcher | mouse / arrows / Enter"
           align: BOTTOM_MID
           y: -16
           width: 990

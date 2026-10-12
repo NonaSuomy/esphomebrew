@@ -1,6 +1,6 @@
 # Desktop PAX apps and ABI services
 
-There are now two app test paths, in addition to the [ESPHome three-button SDL preview](desktop-sdl.md). Both render through SDL2 and use the current loader service header without changing the device's ABI-1 wire format.
+There are now two app test paths, alongside the [ESPHome three-button SDL launcher](desktop-sdl.md). Both render through SDL2 and use the current loader service header without changing the device's ABI-1 wire format.
 
 | Mode | App code | Purpose |
 | --- | --- | --- |
@@ -41,7 +41,7 @@ cp pax-dev/apps/touchtest.pax pax-dev/apps/touchtest.json pax-dev/desktop/sd/rom
 
 Use `--sd-root /path/to/test-sd` for a different directory. Preferences written by the launcher remain in that test directory. USB storage is unavailable. File management rejects paths outside the chosen SD root, traversal components and symlinks that resolve outside it. Native app execution itself is a normal desktop process, not a security sandbox.
 
-Local `.pax` app hand-off works in either mode. The child executes in the emulator. HTTP app hand-off and store installation are not implemented; first place the desired binary in the desktop SD folder. App return is limited to two waiting callers, matching the loader's return-stack limit.
+Local `.pax` app hand-off works in either mode. The child executes in the emulator. HTTP app-to-app hand-off and store installation are not implemented; first place the desired child binary in the desktop SD folder. The SDL three-button screen can separately download and start the launcher over HTTP/HTTPS through `pax-tools/desktop/launch.py`. App return is limited to two waiting callers, matching the loader's return-stack limit.
 
 ## Controls
 
