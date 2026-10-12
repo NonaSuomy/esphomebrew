@@ -1,4 +1,7 @@
+# LEGACY full launcher reference. Active profiles use packages/pax-base.yaml.
 substitutions:
+  idf_source: !env_var PAX_IDF_SOURCE
+  idf_compat_script: !env_var PAX_IDF_COMPAT
   device_name: esp32-p4-elecrow-pax
   friendly_name: "ESP32-P4 Elecrow PAX Library"
   # PAX catalogs: your LAN library and the GitHub store.
@@ -18,7 +21,7 @@ esphome:
   friendly_name: ${friendly_name}
   platformio_options:
     extra_scripts:
-      - pre:/home/nonasuomy/code/esphome006/config/idf61_compat.py
+      - ${idf_compat_script}
     build_flags:
       # ESPHome's ADC component still refers to the pre-IDF-6.1 name.
       # ESP-IDF 6.1 exposes the equivalent 12 dB setting as ADC_ATTEN_DB_12.
@@ -47,6 +50,7 @@ esphome:
             ESP_LOGI("sdcard", "  %s", file.c_str());
 
 esp32:
+  toolchain: platformio
   variant: esp32p4
   flash_size: 16MB
   engineering_sample: true
@@ -56,11 +60,11 @@ esp32:
     version: 6.1.0
     # Reuse the complete local IDF 6.1 checkout without copying its large
     # submodule tree into PlatformIO's package cache.
-    source: symlink:///home/nonasuomy/.cache/esphome/idf/frameworks/6.1.0
+    source: ${idf_source}
     # The USB-HID tester that is already working on this board uses the
     # develop branch; it also has the ESP-IDF 6.1 source-group fix needed for
     # ESP32-P4's duplicate-named eFuse sources.
-    platform_version: https://github.com/pioarduino/platform-espressif32.git#develop
+    platform_version: https://github.com/pioarduino/platform-espressif32.git#6432eb84bf5be32d536bcb37ed437322abefdee3
     advanced:
       enable_idf_experimental_features: true
       disable_vfs_support_dir: false
@@ -103,7 +107,7 @@ esp_ldo:
 external_components:
   - source:
       type: local
-      path: /home/nonasuomy/code/esphome006/config/components
+      path: dependencies/esphome/config/components
     components: [lvgl, sd_mmc_card, usb_hidx, ethernet, i2s_audio, ledc, mipi_dsi, sha256]
   - source:
       type: git
@@ -114,7 +118,7 @@ external_components:
   # Keep the app-grid layout fix in the checked-out latest source used here.
   - source:
       type: local
-      path: /home/nonasuomy/code/pax-conversions/esphome/components
+      path: components
     components: [pax_loader]
 
 define_fixup:

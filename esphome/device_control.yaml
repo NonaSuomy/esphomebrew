@@ -24,18 +24,15 @@
 #   pax_delete_file(path) remove one of those files, or a leftover .bak/.log,
 #                          under /sd/; refused while an app runs (bridge `deletefile`)
 #
-# Include it from the device YAML (the device must already have `api:`; this
-# package only adds actions to it). The long form with refresh: 0s picks up new
-# actions at once; the short github:// form is re-downloaded only once a day.
+# The central packages/pax-base.yaml includes this local package. To use the
+# same actions from another entry point in this directory:
 #
-#   packages:
-#     pax_control:
-#       url: https://github.com/NonaSuomy/esphomebrew
-#       ref: main
-#       files: [esphome/device_control.yaml]
-#       refresh: 0s
-
+# packages:
+#   pax_control: !include device_control.yaml
+#
 substitutions:
+  idf_source: !env_var PAX_IDF_SOURCE
+  idf_compat_script: !env_var PAX_IDF_COMPAT
   pax_loader_id: pax_runtime
 
 api:
@@ -99,3 +96,8 @@ api:
         path: string
       then:
         - lambda: id(${pax_loader_id})->delete_file(path);
+
+# Local browser setup and SD transfers share the loader used by the debug API.
+pax_web:
+  pax_loader_id: ${pax_loader_id}
+  port: 8080

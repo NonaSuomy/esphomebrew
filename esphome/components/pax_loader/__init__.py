@@ -214,8 +214,8 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_MIPI_DSI_ID): cv.use_id(MIPI_DSI),
         # The panel's size; by default the display's own (1024x600 on the Elecrow).
         # The frame buffers are sized for a canvas this large.
-        cv.Optional(CONF_PANEL_WIDTH): cv.int_range(min=LEGACY_CANVAS[0], max=MAX_SIDE),
-        cv.Optional(CONF_PANEL_HEIGHT): cv.int_range(min=LEGACY_CANVAS[1], max=MAX_SIDE),
+        cv.Optional(CONF_PANEL_WIDTH): even_pixels(CANVAS_MIN_WIDTH),
+        cv.Optional(CONF_PANEL_HEIGHT): even_pixels(CANVAS_MIN_HEIGHT),
         # The canvas offered to apps that choose their size (and have no per-app
         # Screen setting); by default the whole panel. Apps that never ask keep
         # 800x480. See docs/esphome-store.md "Canvas size".

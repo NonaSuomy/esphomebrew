@@ -4,13 +4,13 @@
 # launches the one you tap. Include it from your device YAML:
 #
 #   packages:
-#     pax_store: github://NonaSuomy/esphomebrew/esphome/store_page.yaml@main
+#     pax_store: github://NonaSuomy/papp-conversions/esphome/store_page.yaml@main
 #
 # and set the catalog on your pax_loader:
 #
 #   pax_loader:
 #     id: pax_runtime
-#     catalog_url: https://nonasuomy.github.io/esphomebrew/
+#     catalog_url: https://nonasuomy.github.io/papp-conversions/
 #     lvgl_id: lvgl_component
 #     ...
 #
@@ -21,13 +21,15 @@
 #
 # How it works: pax_loader fetches catalog_url, turns every link ending in
 # .pax into a button in the list container, and streams the app into PSRAM
-# when tapped. The file name (e.g. lvgl-0.3.0.pax) is the label, so a
+# when tapped. The file name (e.g. psram_lvgl-0.1.0.pax) is the label, so a
 # new version shows up after a refresh. The catalog reloads when the page opens,
 # on REFRESH, and every ${pax_store_refresh} while the page is on screen and no
 # app is running. While an app and its data files download, a progress bar and
 # a status line appear under the header (the loader drives them).
 
 substitutions:
+  idf_source: !env_var PAX_IDF_SOURCE
+  idf_compat_script: !env_var PAX_IDF_COMPAT
   pax_loader_id: pax_runtime
   pax_lvgl_id: lvgl_component
   pax_font_small: roboto10

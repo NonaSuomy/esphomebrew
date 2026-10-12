@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/kvj/esphome",
+  "ref": "jd9365_gsl3680",
+  "commit": "dca6f3eed895ee03b894a7d172855c919ee7eda1",
+  "path": "esphome/components/gsl3680",
+  "local_fixes": "pax-esphome branch pax/workspace-20261008",
+  "patches": [
+    "Use LOG_STR for Component::mark_failed on current ESPHome"
+  ]
+}

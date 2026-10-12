@@ -1,0 +1,96 @@
+# Experimental hardware profile. See docs/boards.md and board-sources.json.
+sd_mmc_card:
+  id: sd_card
+  clk_pin: GPIO43
+  cmd_pin: GPIO44
+  data0_pin: GPIO39
+  mode_1bit: true
+  slot: 0
+i2c:
+- id: bsp2_bus
+  sda: GPIO07
+  scl: GPIO08
+  frequency: 400kHz
+i2s_audio:
+- id: i2s_output
+  i2s_lrclk_pin: GPIO10
+  i2s_bclk_pin: GPIO12
+  i2s_mclk_pin: GPIO13
+audio_dac:
+- platform: es8311
+  id: speaker_codec
+  i2c_id: bsp2_bus
+  address: 24
+  sample_rate: 48000
+  bits_per_sample: 16bit
+  use_mclk: true
+speaker:
+- platform: i2s_audio
+  id: speaker_output
+  i2s_audio_id: i2s_output
+  dac_type: external
+  i2s_dout_pin: GPIO9
+  audio_dac: speaker_codec
+  channel: stereo
+  buffer_duration: 100ms
+  timeout: 5s
+  bits_per_sample: 16bit
+  sample_rate: 48000
+switch:
+- platform: gpio
+  pin:
+    number: GPIO11
+    inverted: false
+  name: Speaker Enable
+  id: speaker_enable
+  internal: true
+  restore_mode: ALWAYS_ON
+esp32_hosted:
+  variant: ESP32C6
+  type: sdio
+  use_psram: true
+  active_high: true
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  slot: 1
+esp32:
+  flash_size: 16MB
+  engineering_sample: true
+esp_ldo:
+- channel: 3
+  voltage: 2.5V
+- channel: 4
+  voltage: passthrough
+output:
+- platform: ledc
+  pin: GPIO23
+  id: backlight_pwm
+  frequency: 1000Hz
+light:
+- platform: monochromatic
+  output: backlight_pwm
+  id: display_backlight
+  internal: true
+  restore_mode: ALWAYS_ON
+display:
+- platform: mipi_dsi
+  id: main_display
+  transform: disabled
+  model: JC4880P443
+  reset_pin: GPIO5
+  update_interval: never
+  auto_clear_enabled: false
+  show_test_card: false
+touchscreen:
+- platform: gt911
+  id: touch_panel
+  i2c_id: bsp2_bus
+  display: main_display
+  reset_pin: GPIO3
+pax_loader:
+  touchscreen_id: touch_panel

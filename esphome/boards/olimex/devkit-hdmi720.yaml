@@ -1,0 +1,32 @@
+# Experimental hardware profile. See docs/pinouts.md.
+packages:
+  panel: !include ../../displays/hdmi720.yaml
+esp_ldo:
+- channel: 3
+  voltage: 2.5V
+- channel: 4
+  voltage: passthrough
+sd_mmc_card:
+  id: sd_card
+  clk_pin: GPIO43
+  cmd_pin: GPIO44
+  data0_pin: GPIO39
+  mode_1bit: true
+  slot: 1
+  power_ctrl_pin:
+    number: GPIO45
+    inverted: true
+esp32:
+  flash_size: 16MB
+  engineering_sample: true
+ethernet:
+  type: IP101
+  mdc_pin: GPIO31
+  mdio_pin: GPIO52
+  power_pin: GPIO51
+  clk:
+    mode: CLK_EXT_IN
+    pin: GPIO50
+  phy_addr: 1
+logger:
+  hardware_uart: USB_SERIAL_JTAG

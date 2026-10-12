@@ -1,0 +1,146 @@
+# Experimental hardware profile. See docs/boards.md and board-sources.json.
+esp32_hosted:
+  variant: esp32c6
+  active_high: true
+  clk_pin: GPIO12
+  cmd_pin: GPIO13
+  d0_pin: GPIO11
+  d1_pin: GPIO10
+  d2_pin: GPIO9
+  d3_pin: GPIO8
+  reset_pin: GPIO15
+  slot: 1
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+i2c:
+- id: bsp2_bus
+  sda: GPIO31
+  scl: GPIO32
+  frequency: 400kHz
+pi4ioe5v6408:
+- id: pi4ioe1
+  address: 67
+- id: pi4ioe2
+  address: 68
+i2s_audio:
+- id: i2s_output
+  i2s_lrclk_pin: GPIO29
+  i2s_bclk_pin: GPIO27
+  i2s_mclk_pin: GPIO30
+audio_dac:
+- platform: es8388
+  id: speaker_codec
+  i2c_id: bsp2_bus
+display:
+- platform: mipi_dsi
+  dimensions:
+    height: 1280
+    width: 720
+  transform: disabled
+  model: M5Stack-Tab5
+  reset_pin:
+    pi4ioe5v6408: pi4ioe1
+    number: 4
+  show_test_card: false
+  id: main_display
+  update_interval: never
+  auto_clear_enabled: false
+touchscreen:
+- platform: gt911
+  interrupt_pin: GPIO23
+  update_interval: never
+  reset_pin:
+    pi4ioe5v6408: pi4ioe1
+    number: 5
+  calibration:
+    x_min: 0
+    x_max: 720
+    y_min: 0
+    y_max: 1280
+  id: touch_panel
+  i2c_id: bsp2_bus
+  display: main_display
+output:
+- platform: ledc
+  pin: GPIO22
+  id: backlight_pwm
+  frequency: 1000Hz
+esp32:
+  flash_size: 16MB
+  engineering_sample: true
+esp_ldo:
+- channel: 3
+  voltage: 2.5V
+- channel: 4
+  voltage: passthrough
+sd_mmc_card:
+  id: sd_card
+  clk_pin: GPIO43
+  cmd_pin: GPIO44
+  data0_pin: GPIO39
+  mode_1bit: true
+  slot: 0
+speaker:
+- platform: i2s_audio
+  id: speaker_output
+  i2s_audio_id: i2s_output
+  audio_dac: speaker_codec
+  i2s_dout_pin: GPIO26
+  dac_type: external
+  channel: stereo
+  sample_rate: 48000
+  bits_per_sample: 16bit
+  buffer_duration: 100ms
+switch:
+- platform: gpio
+  id: wifi_power
+  name: WiFi Power
+  pin:
+    pi4ioe5v6408: pi4ioe2
+    number: 0
+  restore_mode: ALWAYS_ON
+  internal: true
+- platform: gpio
+  id: usb_5v_power
+  name: USB Power
+  pin:
+    pi4ioe5v6408: pi4ioe2
+    number: 3
+  internal: true
+  restore_mode: ALWAYS_ON
+- platform: gpio
+  id: wifi_antenna_int_ext
+  pin:
+    pi4ioe5v6408: pi4ioe1
+    number: 0
+  internal: true
+  restore_mode: ALWAYS_OFF
+- platform: gpio
+  id: speaker_enable
+  name: Speaker Enable
+  pin:
+    pi4ioe5v6408: pi4ioe1
+    number: 1
+  restore_mode: ALWAYS_ON
+  internal: true
+light:
+- platform: monochromatic
+  output: backlight_pwm
+  id: display_backlight
+  internal: true
+  restore_mode: ALWAYS_ON
+select:
+- platform: es8388
+  es8388_id: speaker_codec
+  dac_output:
+    id: speaker_dac_output
+    internal: true
+esphome:
+  on_boot:
+  - priority: -200
+    then:
+    - select.set:
+        id: speaker_dac_output
+        option: LINE1
+pax_loader:
+  touchscreen_id: touch_panel
