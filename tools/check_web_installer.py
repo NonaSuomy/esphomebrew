@@ -3,7 +3,7 @@
 from pathlib import Path
 import hashlib,json,sys,zipfile
 root=Path(sys.argv[1]);info=json.loads((root/'build-info.json').read_text());boards=json.loads((root/'boards.json').read_text());keys={p[0] for b in boards for p in b['profiles']};assert keys=={x['board'] for x in info['firmware']}
-assert {b['manufacturer'] for b in boards} == {'Elecrow','Waveshare'}
+assert {b['manufacturer'] for b in boards} == {'Elecrow','Waveshare','M5Stack','Guition','Espressif','Olimex','DFRobot'}
 assert len({b['id'] for b in boards}) == len(boards)
 assert all(b['manufacturer'] == 'Waveshare' for b in boards if b['id'] in ('nano','waveshare7b','waveshare'))
 for entry in info['firmware']:
