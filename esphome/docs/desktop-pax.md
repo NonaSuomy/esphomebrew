@@ -41,7 +41,7 @@ cp pax-dev/apps/touchtest.pax pax-dev/apps/touchtest.json pax-dev/desktop/sd/rom
 
 Use `--sd-root /path/to/test-sd` for a different directory. Preferences written by the launcher remain in that test directory. USB storage is unavailable. File management rejects paths outside the chosen SD root, traversal components and symlinks that resolve outside it. Native app execution itself is a normal desktop process, not a security sandbox.
 
-Local `.pax` app hand-off works in either mode. The child executes in the emulator. HTTP app-to-app hand-off and store installation are not implemented; first place the desired child binary in the desktop SD folder. The SDL three-button screen can separately download and start the launcher over HTTP/HTTPS through `pax-tools/desktop/launch.py`. App return is limited to two waiting callers, matching the loader's return-stack limit.
+Local `.pax` app hand-off works in either mode. The child executes in the emulator. HTTP/HTTPS app-to-app hand-off now downloads the selected `.pax`, validates its ABI header and any JSON size/SHA-256, then starts it in the emulator. Downloads are cached under `pax-dev/desktop/downloads/` using the actual app filename. A child execution failure returns to its waiting caller and logs the failure. Verified store installation and automatic game-data installation remain unavailable; place required WADs, ROMs and other data in the desktop SD folder. The SDL three-button screen uses the same downloader for the launcher. App return is limited to two waiting callers, matching the loader's return-stack limit.
 
 ## Controls
 
@@ -62,9 +62,13 @@ pax-tools/python-desktop/bin/python pax-tools/desktop/test_services.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_launchers.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py --keyboard
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py --network --keyboard
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py --network --keyboard --bad-child
 ./pax-tools/run-desktop.sh emulated --headless --seconds 5 --report /tmp/pax-run.json --screenshot /tmp/pax-screen.ppm
 ```
 
 The contract tests use temporary storage and a loopback server. Launcher tests check actual frame colors, local files, TCP catalog reads, JSON friendly names and injected touch/key events. The hand-off test starts the unchanged touch test and verifies the launcher returns. `--input-script` accepts a JSON array of timed touch/key events for repeatable tests. Screenshots are RGB PPM images; the final exit-clear frame is excluded from the captured app view.
 
 Dependencies: Linux, Python 3, the pinned `unicorn==2.1.4` package in an isolated environment, SDL2 runtime, Git, a C compiler and system development headers for native builds. No RISC-V compiler is required to run an existing `.pax`. See the [Unicorn project](https://www.unicorn-engine.org/) for its CPU-emulation backend. Desktop performance and timing do not predict device performance.
+
+Doom URL hand-off has been checked against the development server: the binary downloads and reaches its startup/canvas selection, then calls the currently unavailable `task_create` service. Doom gameplay is not supported by this desktop emulator yet. No dummy task success is returned.
