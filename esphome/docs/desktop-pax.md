@@ -45,7 +45,7 @@ Local `.pax` app hand-off works in either mode. The child executes in the emulat
 
 ## Controls
 
-Mouse clicks act as touchscreen input. Arrow keys and Enter are delivered as the launcher's USB keyboard events. WASD supplies gamepad directions, J/K supplies A/B, U/I supplies X/Y, Q/E supplies L/R, Tab supplies Select and F1 supplies Start. Escape or window close requests exit through L3 and X. Wheel input is also available.
+The app window starts at 1024x600. Each selected canvas sets SDL's logical rendering size explicitly, preserving aspect ratio if the compositor or window size differs. SDL transforms mouse clicks into canvas coordinates, including high-DPI output and resized windows. Mouse clicks act as touchscreen input. Arrow keys and Enter are delivered as the launcher's USB keyboard events. WASD supplies gamepad directions, J/K supplies A/B, U/I supplies X/Y, Q/E supplies L/R, Tab supplies Select and F1 supplies Start. Escape or window close requests exit through L3 and X. Wheel input is also available.
 
 The host supports RGB565 framebuffer access, dirty rectangles, software scaling, touch, keyboard/gamepad input, memory allocation, time/delay, local file operations and directory/stat services, launcher status, local app launch/return, DNS, TCP and HTTPS. TLS uses the computer's trusted certificates and verifies the requested hostname. Network listings and JSON sidecars use the app's existing HTTP parser through these services. Connect/handshake currently blocks the single desktop service thread for up to five seconds.
 
@@ -59,6 +59,7 @@ Audio, FreeRTOS task creation, MIDI, PNG decoding, UDP multiplayer, PPA accelera
 
 ```sh
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_services.py
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_window_geometry.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_launchers.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py --keyboard
@@ -67,7 +68,7 @@ pax-tools/python-desktop/bin/python pax-tools/desktop/test_handoff.py --network 
 ./pax-tools/run-desktop.sh emulated --headless --seconds 5 --report /tmp/pax-run.json --screenshot /tmp/pax-screen.ppm
 ```
 
-The contract tests use temporary storage and a loopback server. Launcher tests check actual frame colors, local files, TCP catalog reads, JSON friendly names and injected touch/key events. The hand-off test starts the unchanged touch test and verifies the launcher returns. `--input-script` accepts a JSON array of timed touch/key events for repeatable tests. Screenshots are RGB PPM images; the final exit-clear frame is excluded from the captured app view.
+The contract tests use temporary storage and a loopback server. Launcher tests check actual frame colors, local files, TCP catalog reads, JSON friendly names and injected touch/key events. The hand-off test starts the unchanged touch test and verifies the launcher returns. `--input-script` accepts a JSON array of timed touch/key events for repeatable tests. The `display_geometry` run-report field records the canvas, logical, window and renderer output dimensions to diagnose desktop scaling. The SDL geometry test verifies real click events at opposite corners after resizing. Screenshots are RGB PPM images; the final exit-clear frame is excluded from the captured app view.
 
 Dependencies: Linux, Python 3, the pinned `unicorn==2.1.4` package in an isolated environment, SDL2 runtime, Git, a C compiler and system development headers for native builds. No RISC-V compiler is required to run an existing `.pax`. See the [Unicorn project](https://www.unicorn-engine.org/) for its CPU-emulation backend. Desktop performance and timing do not predict device performance.
 
