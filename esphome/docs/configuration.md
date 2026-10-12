@@ -48,3 +48,7 @@ Run configuration validation, full compilation and `tests/check_board_profiles.p
 Pinout examples are adapted from the supplied device pages and the pinned jtenniswood repository revision recorded in `board-sources.json`. Upstream UI automations, voice assistant features, credentials and unrelated peripherals are omitted. To update a base, compare its pinned revision against upstream, apply hardware differences only to `boards/`, then validate and compile affected profiles. Fixes remain on the owning repository's `pax/workspace-20261008` branch.
 
 The JC8012 touch component is vendored from `kvj/esphome` at the revision in `components/gsl3680/UPSTREAM.json`, with its license. Review upstream diffs before refreshing those files and keep local compatibility fixes in the PAX branch. This makes builds reproducible and keeps the source installer independent of a moving remote branch.
+
+## Desktop preview
+
+The [SDL2 desktop profile](desktop-sdl.md) is built with `./pax-tools/build-firmware.sh run desktop`. Its screen comes from `packages/pax-three-button-ui.yaml`, also included by `pax-base.yaml`. It previews shared LVGL controls on the computer; ESP32-P4 PAX app binaries still need the device runtime.
