@@ -14,9 +14,8 @@ script does the same generation from the list of compile units it is given:
                              makemoduledefs.py and make_root_pointers.py
   frozen_content.c           Tulip's Python (tulip/shared/py), AMY's Python
                              package, asyncio and this port's py/ folder, via
-                             tools/makemanifest.py: as bytecode when mpy-cross
-                             can be built with a host compiler, else as source
-                             (compiled on import).
+                             tools/makemanifest.py: sorted source modules
+                             (compiled on import), independent of the host compiler.
   sys_tar.c                  Tulip's /sys files (tulip/fs/tulip: examples,
                              images) as a tar that _boot.py unpacks.
 
@@ -152,22 +151,6 @@ def gen_qstr(units: list[dict], mp: Path, gen: Path, jobs: int) -> None:
     log(f"qstr: {count} qstrs")
 
 
-def build_mpy_cross(mp: Path, jobs: int) -> Path | None:
-    """mpy-cross needs a compiler for the build machine; without one, freeze as source."""
-    host_cc = shutil.which("cc") or shutil.which("gcc")
-    if host_cc is None:
-        log("mpy-cross: no host C compiler, freezing Python as source")
-        return None
-    try:
-        run(["make", "-C", str(mp / "mpy-cross"), f"-j{jobs}", "CC=" + host_cc, "V=0"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-    except (subprocess.CalledProcessError, OSError) as error:
-        detail = getattr(error, "stderr", b"") or b""
-        log(f"mpy-cross: build failed ({detail.decode(errors='replace')[-400:]}); freezing Python as source")
-        return None
-    return mp / "mpy-cross/build/mpy-cross"
-
-
 def gen_frozen(src: Path, mp: Path, gen: Path, jobs: int) -> None:
     frozen = gen / "frozen"
     frozen.mkdir()
@@ -181,16 +164,16 @@ def gen_frozen(src: Path, mp: Path, gen: Path, jobs: int) -> None:
         (frozen / package).mkdir()
         for py in sorted(base.glob("*.py")):
             shutil.copy(py, frozen / package / py.name)
-    mpy_cross = build_mpy_cross(mp, jobs)
     manifest = gen / "manifest.py"
-    kind = "freeze" if mpy_cross else "freeze_as_str"
-    manifest.write_text(f"{kind}({str(frozen)!r})\n")
-    env = {**os.environ, "MICROPY_MPYCROSS": str(mpy_cross or sys.executable)}
+    # Keep release contents independent of host compiler availability and version.
+    # The pinned manifestfile patch sorts modules before generating frozen data.
+    manifest.write_text(f"freeze_as_str({str(frozen)!r})\n")
+    env = {**os.environ, "MICROPY_MPYCROSS": sys.executable}
     run([sys.executable, str(mp / "tools/makemanifest.py"), "-o", str(gen / "frozen_content.c"), "-b", str(gen),
          "-v", f"MPY_DIR={mp}", "-v", f"PORT_DIR={PORT}", "-v", "MPY_LIB_DIR=", "-v", f"BOARD_DIR={PORT}",
          str(manifest)], env=env, stdout=subprocess.DEVNULL)
     files = sum(1 for _ in frozen.rglob("*.py"))
-    log(f"frozen: {files} modules as {'bytecode' if mpy_cross else 'source'}, "
+    log(f"frozen: {files} modules as source, "
         f"frozen_content.c {(gen / 'frozen_content.c').stat().st_size // 1024} KiB")
 
 
