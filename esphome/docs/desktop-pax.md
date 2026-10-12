@@ -53,9 +53,9 @@ Desktop brightness, volume and auto-brightness values are session simulations. T
 
 ## Limits and checks
 
-This is experimental app development support. Tested: the native launcher, the unchanged RISC-V launcher, its SD and local network catalog/JSON display, Settings touch and keyboard input, and unchanged `touchtest.pax` including launch/return. It does not establish compatibility with every module, vendor-specific CPU instruction or engine.
+This is experimental app development support. Tested: the native launcher, the unchanged RISC-V launcher, its SD and local network catalog/JSON display, Settings touch and keyboard input, unchanged `touchtest.pax` including launch/return, and unchanged Doom PAX boot, menu input, movement, audio generation and network launch/return. It does not establish compatibility with every module, vendor-specific CPU instruction or engine.
 
-Audio, FreeRTOS task creation, MIDI, PNG decoding, UDP multiplayer, PPA acceleration, ZIP extraction and verified store/download installation are not implemented here. Optional unsupported services remain NULL; PNG decode reports no image and procedural UI sound is silent. The run report lists unavailable services. Apps that require them need additional desktop implementations before they can run. The device loader remains unchanged.
+Stereo S16 audio is queued to SDL. The RV32 emulator now supports guest task creation, independent CPU/FP registers and stacks, delay scheduling and task deletion. Tasks share the app image and receive instruction-budget time slices on one emulated CPU; hardware core affinity and FreeRTOS priority scheduling are not reproduced. Native task creation remains unavailable. MIDI, PNG decoding, UDP multiplayer, PPA acceleration, ZIP extraction and verified store/download installation are not implemented here. Optional unsupported services remain NULL; PNG decode reports no image and procedural UI sound is silent. The run report lists unavailable services. Apps that require them need additional desktop implementations before they can run. The device loader remains unchanged.
 
 ```sh
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_services.py
@@ -72,4 +72,26 @@ The contract tests use temporary storage and a loopback server. Launcher tests c
 
 Dependencies: Linux, Python 3, the pinned `unicorn==2.1.4` package in an isolated environment, SDL2 runtime, Git, a C compiler and system development headers for native builds. No RISC-V compiler is required to run an existing `.pax`. See the [Unicorn project](https://www.unicorn-engine.org/) for its CPU-emulation backend. Desktop performance and timing do not predict device performance.
 
-Doom URL hand-off has been checked against the development server: the binary downloads and reaches its startup/canvas selection, then calls the currently unavailable `task_create` service. Doom gameplay is not supported by this desktop emulator yet. No dummy task success is returned.
+## Doom
+
+Doom now runs as an unchanged RISC-V PAX, including its watchdog and sound mixer tasks. The game was tested through SDL video and audio backends, New Game/difficulty selection, movement, and HTTP launcher hand-off followed by clean return. A 25-second gameplay check rendered 318 frames, about 12-13 frames/s; this remains slower than native Doom. Audio generation and queueing were checked with SDL's dummy audio backend, not by listening to physical speakers.
+
+```sh
+cd ~/code/pax
+pax-tools/python-desktop/bin/python pax-tools/desktop/setup_doom.py
+./pax-tools/run-desktop.sh emulated --pax pax-dev/apps/doom.pax
+```
+
+The setup helper uses cached or pinned public free shareware files, verifies the manifest size/SHA-256, and preserves existing files. It prepares `doom1.wad` and `prboom.wad` in `pax-dev/desktop/sd/roms/doom/`. This is `/sd/roms/doom/` inside the app. These data files and runtime preferences are excluded from Git. Use `--sd-root` with both the setup helper and runner to choose another storage directory. Your own `doom.wad` or `doom2.wad` can also be placed there.
+
+You can instead restart the three-button SDL screen and select Doom from Storage or Network. Both use the same desktop SD folder by default. The older Doom binary's directory stat implementation causes its save-directory check to fall back to `/sd/roms/doom/`, so configuration/save files may be written beside the WADs.
+
+Controls: J accepts Doom menus and fires; WASD moves/turns, Q/E strafes, K runs/backs out, I opens the map, M opens the game menu, F1 uses/opens, and Tab changes weapons. Escape or window close exits the app. Keyboard Enter remains reserved for the launcher's selection behavior; use J in Doom.
+
+```sh
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_guest_tasks.py
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_doom.py
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_doom.py --handoff
+```
+
+The Doom checks use temporary SD directories and verify actual guest tasks, colored frames, non-silent PCM blocks queued to an SDL audio device, deletion of both tasks, and optional URL launch/return. Software RGB565 scaling uses SDL's compiled blitter instead of per-pixel Python loops.
