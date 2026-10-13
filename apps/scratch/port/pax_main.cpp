@@ -26,8 +26,13 @@ void pax_choose_canvas() {
   int w = 800, h = 480;
   if (pax_svc->display_get_size && pax_svc->display_set_canvas) {
     pax_svc->display_get_size(&w, &h);
-    if (w < 800 || h < 480 || w > 1024 || h > 768 ||
-        pax_svc->display_set_canvas(w, h) != 0) {
+    // Old installed sidecars may still recommend 800x480. The user's full-
+    // screen request should work when replacing only the binary as well.
+    if (w == 800 && h == 480 && pax_svc->display_set_canvas(1024, 600) == 0) {
+      w = 1024;
+      h = 600;
+    } else if (w < 800 || h < 480 || w > 1024 || h > 768 ||
+               pax_svc->display_set_canvas(w, h) != 0) {
       w = 800;
       h = 480;
     }

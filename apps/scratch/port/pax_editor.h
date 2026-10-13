@@ -135,6 +135,9 @@ public:
   explicit Editor(std::function<void(const std::string &)> player = {});
   Project &project() { return project_; }
   const std::vector<Hit> &hits() const { return hits_; }
+  const std::vector<std::pair<Rect, std::string>> &palette() const {
+    return palette_;
+  }
   const std::vector<Dock> &docks() const { return docks_; }
   bool load(const std::string &path);
   void render();

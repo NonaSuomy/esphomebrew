@@ -20,8 +20,13 @@ static const int colors[] = {0x4c97ff, 0x9966ff, 0xcf63cf, 0xffbf00, 0xffab19,
                              0x5cb1d6, 0x59c059, 0xff8c1a, 0x0fbd8c, 0x0f9f96};
 static int panelWidth() { return 177 + std::max(0, PAX_W - 800) / 3; }
 static int previewHeight() { return (panelWidth() - 17) * 3 / 4; }
+static int paletteWidth() {
+  return std::clamp(174 + (PAX_W - 800) / 4, 174, 220);
+}
+static int paletteRight() { return 75 + paletteWidth(); }
 static Rect workspace() {
-  return {254, 58, PAX_W - 259 - panelWidth(), PAX_H - 105};
+  int left = paletteRight() + 5;
+  return {left, 58, PAX_W - panelWidth() - 5 - left, PAX_H - 105};
 }
 // Extra panel pixels belong to the script workspace; stage and footer stay
 // anchored.
@@ -36,7 +41,6 @@ static Rect R(Rect r) {
     r.y += PAX_H - 480;
   return r;
 }
-static int paletteRows() { return std::max(6, (PAX_H - 166) / 46); }
 static int categoryStep() { return std::min(39, (PAX_H - 105) / 10); }
 static Rect categoryRect(int i) {
   return {4, 60 + i * categoryStep(), 65, categoryStep() - 4};
@@ -90,7 +94,7 @@ static void text(const std::string &s, int x, int y, int color = 0x575e75ff,
     x += (PAX_W - 800) / 2;
     y += (PAX_H - 480) / 2;
   }
-  int size = std::max(10, (int)(scale * 20));
+  int size = std::max(10, (int)std::lround(scale * 20));
   auto *g = font(size);
   if (!g) {
     pax_draw_text(s, x, y, color, scale, centered);
@@ -328,11 +332,28 @@ static std::vector<Piece> pieces(const std::string &label,
       out.push_back({" ", -1});
       out.push_back({"", (int)i});
     }
+  // Whitespace is layout, not part of a token's measured glyph string.
+  for (auto &piece : out)
+    if (piece.slot < 0) {
+      auto first = piece.text.find_first_not_of(' '),
+           last = piece.text.find_last_not_of(' ');
+      piece.text = first == std::string::npos
+                       ? ""
+                       : piece.text.substr(first, last - first + 1);
+    }
+  out.erase(std::remove_if(
+                out.begin(), out.end(),
+                [](const Piece &p) { return p.slot < 0 && p.text.empty(); }),
+            out.end());
   return out;
 }
 static std::string inputText(const Slot &s) {
   return s.value.empty() || s.value == "<>" ? (s.boolean ? "" : s.key)
                                             : s.value.substr(0, 24);
+}
+static int fieldColor(int color) {
+  return (((color >> 16) & 255) * 9 / 10 << 16) |
+         (((color >> 8) & 255) * 9 / 10 << 8) | ((color & 255) * 9 / 10);
 }
 // Reporters are drawn recursively inside sockets, so nested arithmetic remains
 // visible and editable.
@@ -352,7 +373,8 @@ Rect Editor::drawHeader(const std::string &id, int x, int y,
   int color = d ? colors[d->category] : 0x71849a;
   std::vector<Rect> cells(slots.size());
   std::vector<std::string> children(slots.size());
-  int width = (type == Boolean ? 16 : 12),
+  int padding = type == Boolean ? 18 : 16;
+  int width = padding * 2 + std::max(0, (int)ps.size() - 1) * 10,
       height = type == Reporter || type == Boolean ? 32 : 36;
   for (auto &part : ps) {
     if (part.slot < 0) {
@@ -375,20 +397,20 @@ Rect Editor::drawHeader(const std::string &id, int x, int y,
       }
     }
     cells[part.slot] = cell;
-    width += cell.w + 4;
+    width += cell.w;
     height = std::max(height, cell.h + 10);
   }
-  width = std::max(forcedWidth, std::clamp(width + 12, 56, 1200));
+  width = std::max(forcedWidth, std::clamp(width, 56, 1200));
   Rect head{x, y, width, height};
   if (paint) {
     if (background)
       contour(head, color, type, selected_ == id);
     hits_.push_back({head, id, {}, false});
-    int xx = x + (type == Boolean ? 16 : 12);
+    int xx = x + padding;
     for (auto &part : ps) {
       if (part.slot < 0) {
         text(part.text, xx, y + (height - 14) / 2, 0xffffffff, .7f);
-        xx += textWidth(part.text);
+        xx += textWidth(part.text) + 10;
         continue;
       }
       auto slot = slots[part.slot];
@@ -399,9 +421,8 @@ Rect Editor::drawHeader(const std::string &id, int x, int y,
         drawHeader(children[part.slot], cell.x, cell.y, ancestors, true);
       else {
         contour(cell,
-                slot.boolean
-                    ? 0x3e963e
-                    : (slot.field ? ((color & 0xfefefe) >> 1) : 0xffffff),
+                slot.boolean ? 0x3e963e
+                             : (slot.field ? fieldColor(color) : 0xffffff),
                 slot.boolean ? Boolean : (slot.field ? 8 : Reporter));
         text(inputText(slot), cell.x + cell.w / 2, cell.y + (cell.h - 14) / 2,
              slot.boolean || slot.field ? 0xffffffff : 0x575e75ff, .7f, true);
@@ -413,42 +434,123 @@ Rect Editor::drawHeader(const std::string &id, int x, int y,
                           slot.key,
                           true,
                           slot.boolean});
-      xx += cell.w + 4;
+      xx += cell.w + 10;
     }
   }
   ancestors.erase(id);
   return head;
 }
-static void paletteBlock(Rect r, const Definition &d, int color) {
-  // Palette uses the same inline vocabulary and socket shapes as scripts.
-  auto ps = pieces(d.label, d.slots);
-  int width = 24;
-  for (auto &part : ps)
-    width +=
-        part.slot < 0
-            ? textWidth(part.text, 12)
-            : std::max(24, textWidth(inputText(d.slots[part.slot]), 12) + 12);
-  // Keep palette labels legible: use compact 12px text and a scrolling/wide
-  // workspace for full blocks.
-  contour(r, color, d.shape);
-  int x = r.x + 8;
-  for (auto &part : ps) {
-    if (part.slot < 0) {
-      text(part.text, x, r.y + 12, 0xffffffff, .6f);
-      x += textWidth(part.text, 12);
-    } else {
-      auto &slot = d.slots[part.slot];
-      int w = std::max(24, textWidth(inputText(slot), 12) + 12);
-      if (x + w > r.x + r.w - 5)
-        break;
-      contour({x, r.y + 7, w, 24}, slot.boolean ? 0x3e963e : 0xffffff,
-              slot.boolean ? Boolean : Reporter);
-      text(inputText(slot), x + w / 2, r.y + 12, 0x575e75ff, .6f, true);
-      x += w;
+struct PalettePart {
+  Piece piece;
+  Rect rect;
+};
+struct PaletteLayout {
+  int width = 0, bodyHeight = 0, headerHeight = 0, top = 0, bottom = 0;
+  std::vector<PalettePart> parts;
+  int height() const { return top + bodyHeight + bottom + 2; }
+};
+static PaletteLayout paletteLayout(const Definition &d) {
+  PaletteLayout result;
+  int limit = paletteWidth() - 16;
+  int padding = d.shape == Boolean ? 16 : 12, x = padding, row = 0, right = 0;
+  auto parts = pieces(d.label, d.slots);
+  for (auto part : parts) {
+    // Long literal phrases wrap at words; inputs remain intact.
+    std::vector<Piece> segments{part};
+    if (part.slot < 0 && textWidth(part.text, 12) > limit - 2 * padding) {
+      segments.clear();
+      std::istringstream words(part.text);
+      std::string word, line;
+      while (words >> word) {
+        std::string next = line.empty() ? word : line + " " + word;
+        if (!line.empty() && textWidth(next, 12) > limit - 2 * padding) {
+          segments.push_back({line, -1});
+          line = word;
+        } else
+          line = next;
+      }
+      if (!line.empty())
+        segments.push_back({line, -1});
     }
-    if (x >= r.x + r.w - 12)
-      break;
+    for (auto segment : segments) {
+      int w =
+          segment.slot < 0
+              ? textWidth(segment.text, 12)
+              : std::max(28,
+                         textWidth(inputText(d.slots[segment.slot]), 12) + 18);
+      if (segment.slot >= 0 && d.slots[segment.slot].boolean)
+        w = 40;
+      w = std::min(w, limit - 2 * padding);
+      if (x > padding && x + w > limit - padding) {
+        row++;
+        x = padding;
+      }
+      result.parts.push_back({segment, {x, 5 + row * 28, w, 24}});
+      right = std::max(right, x + w);
+      x += w + 6;
+    }
   }
+  result.width = std::max(d.shape == Container ? 88 : 56, right + padding);
+  result.headerHeight = 34 + row * 28;
+  result.bodyHeight = result.headerHeight;
+  if (d.shape == Container)
+    result.bodyHeight +=
+        d.branches * 24 + std::max(0, d.branches - 1) * 24 + 16;
+  result.top = d.shape == Hat ? 9 : 0;
+  result.bottom =
+      d.shape == Hat || d.shape == Stack || d.shape == Container ? 5 : 0;
+  return result;
+}
+static std::vector<const Definition *> categoryDefinitions(int category) {
+  std::vector<const Definition *> defs;
+  for (auto &d : definitions())
+    if (d.category == category)
+      defs.push_back(&d);
+  return defs;
+}
+static std::vector<int> paletteStarts(int category) {
+  auto defs = categoryDefinitions(category);
+  std::vector<int> starts{0};
+  int y = 89;
+  for (size_t i = 0; i < defs.size(); i++) {
+    int height = paletteLayout(*defs[i]).height();
+    if (i && y + height > PAX_H - 106) {
+      starts.push_back(i);
+      y = 89;
+    }
+    y += height + 12;
+  }
+  return starts;
+}
+static void paletteBlock(Rect r, const Definition &d, int color,
+                         const PaletteLayout &layout) {
+  int y = r.y + layout.top;
+  std::vector<std::pair<int, int>> mouths;
+  int h = layout.headerHeight;
+  for (int i = 0; i < d.branches; i++) {
+    mouths.push_back({h, h + 24});
+    h += 24 + (i + 1 < d.branches ? 24 : 16);
+  }
+  contour({r.x, y, layout.width, layout.bodyHeight}, color, d.shape, false,
+          mouths, std::string(d.opcode) != "control_forever");
+  for (auto &part : layout.parts) {
+    auto cell = part.rect;
+    cell.x += r.x;
+    cell.y += y;
+    if (part.piece.slot < 0)
+      text(part.piece.text, cell.x, cell.y + 6, 0xffffffff, .6f);
+    else {
+      auto &slot = d.slots[part.piece.slot];
+      contour(cell,
+              slot.boolean ? 0x3e963e
+                           : (slot.field ? fieldColor(color) : 0xffffff),
+              slot.boolean ? Boolean : (slot.field ? 8 : Reporter));
+      text(inputText(slot), cell.x + cell.w / 2, cell.y + 6,
+           slot.boolean || slot.field ? 0xffffffff : 0x575e75ff, .6f, true);
+    }
+  }
+  for (size_t i = 1; i < mouths.size(); i++)
+    text("else", r.x + 12, y + mouths[i - 1].second + 6, 0xffffffff, .6f);
 }
 static std::vector<std::string> branchesOf(const Json &block) {
   auto *d = definition(block.value("opcode", ""));
@@ -659,19 +761,23 @@ void Editor::render() {
     contour({r.x + 23, r.y + 1, 18, 18}, colors[i], Reporter);
     text(categories[i], r.x + r.w / 2, r.y + 21, 0x575e75ff, .5f, true);
   }
-  box(R({75, 49, 174, PAX_H - 96}), 0xf0f3f8);
+  box({75, 49, paletteWidth(), PAX_H - 96}, 0xf0f3f8);
   text(categories[category_], 86, 60, 0x26374cff, .8f);
-  std::vector<const Definition *> defs;
-  for (const auto &d : definitions())
-    if (d.category == category_)
-      defs.push_back(&d);
-  int first = palettePage_ * paletteRows();
-  for (int i = first; i < (int)defs.size() && i < first + paletteRows(); i++) {
-    Rect r{84, 89 + (i - first) * 46, 157, 38};
-    pax_set_clip(r.x - 2, r.y - 9, r.w + 4, r.h + 16);
-    paletteBlock(r, *defs[i], colors[category_]);
+  auto defs = categoryDefinitions(category_);
+  auto starts = paletteStarts(category_);
+  palettePage_ = std::clamp(palettePage_, 0, (int)starts.size() - 1);
+  int first = starts[palettePage_], last = palettePage_ + 1 < (int)starts.size()
+                                               ? starts[palettePage_ + 1]
+                                               : defs.size();
+  int paletteY = 89;
+  for (int i = first; i < last; i++) {
+    auto layout = paletteLayout(*defs[i]);
+    Rect r{84, paletteY, layout.width, layout.height()};
+    pax_set_clip(75, 80, paletteWidth(), PAX_H - 181);
+    paletteBlock(r, *defs[i], colors[category_], layout);
     pax_set_clip(0, 0, PAX_W, PAX_H);
     palette_.push_back({r, defs[i]->opcode});
+    paletteY += r.h + 12;
   }
   button(R({84, 382, 70, 29}), "Prev");
   button(R({164, 382, 76, 29}), "Next");
@@ -679,7 +785,7 @@ void Editor::render() {
   pax_set_clip(workspace().x, workspace().y, workspace().w, workspace().h);
   for (int y = workspace().y + 10; y < workspace().y + workspace().h; y += 20)
     for (int x = workspace().x + 10; x < workspace().x + workspace().w; x += 20)
-      box(R({x, y, 1, 1}), 0xdbe3ed);
+      box({x, y, 1, 1}, 0xdbe3ed);
   std::set<std::string> visited;
   for (auto it = project_.blocks().begin(); it != project_.blocks().end(); ++it)
     if (it.value().is_object() && it.value().value("topLevel", false) &&
@@ -703,7 +809,7 @@ void Editor::render() {
             (!dock.boolean || d->shape == Boolean)) ||
            (!dock.input && d->shape != Reporter && d->shape != Boolean &&
             d->shape != Hat))) {
-        box(R({dock.rect.x, dock.rect.y, dock.rect.w, 3}), 0xff495f);
+        box({dock.rect.x, dock.rect.y, dock.rect.w, 3}, 0xff495f);
         break;
       }
   }
@@ -844,7 +950,7 @@ void Editor::pointer(int x, int y, bool down) {
     if (modal_ != None) {
       handleModal(x, y);
     } else if (dragging_) {
-      if (R({711, 443, 77, 28}).contains(x, y) || x < 249) {
+      if (R({711, 443, 77, 28}).contains(x, y) || x < paletteRight()) {
         project_.erase(selected_);
         selected_.clear();
         status_ = "Stack deleted (Undo restores it)";
@@ -898,11 +1004,7 @@ void Editor::pointer(int x, int y, bool down) {
       } else if (R({84, 382, 70, 29}).contains(x, y))
         palettePage_ = std::max(0, palettePage_ - 1);
       else if (R({164, 382, 76, 29}).contains(x, y)) {
-        int count = 0;
-        for (auto &d : definitions())
-          if (d.category == category_)
-            count++;
-        if ((palettePage_ + 1) * paletteRows() < count)
+        if (palettePage_ + 1 < (int)paletteStarts(category_).size())
           palettePage_++;
       } else if (R({140, 9, 62, 31}).contains(x, y)) {
         if (dirty_)
@@ -1004,8 +1106,9 @@ void Editor::pointer(int x, int y, bool down) {
 }
 void Editor::scroll(int amount, int x) {
   if (modal_ == None) {
-    if (x < 249)
-      palettePage_ = std::max(0, palettePage_ + (amount < 0 ? 1 : -1));
+    if (x < paletteRight())
+      palettePage_ = std::clamp(palettePage_ + (amount < 0 ? 1 : -1), 0,
+                                (int)paletteStarts(category_).size() - 1);
     else
       viewY_ += amount * 30;
   }
@@ -1016,7 +1119,7 @@ void Editor::drawModal() {
   box({69, 59, 662, 359}, 0xf2f6fc);
   if (modal_ == ConfirmBack || modal_ == ConfirmNew) {
     text("There are unsaved edits.", 400, 120, 0x26374cff, 1, true);
-    text("Save before leaving, or discard this workspace().", 400, 164,
+    text("Save before leaving, or discard this workspace.", 400, 164,
          0x26374cff, .75f, true);
     button({110, 245, 165, 45}, "Keep editing");
     button({313, 245, 165, 45}, "Save a copy", 0xbbe8d3);

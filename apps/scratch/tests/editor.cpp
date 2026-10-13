@@ -23,6 +23,8 @@ static void drag(Editor &e, int x, int y, int dx, int dy) {
   e.render();
 }
 void testEditor() {
+  for (auto &d : definitions())
+    assert(BlockExecutor::getHandlers().count(d.opcode));
   std::string dir = OS::getScratchFolderLocation();
   std::filesystem::remove(dir + "Editor Test.sb3");
   std::filesystem::remove(dir + "Editor Import.sb3");
@@ -204,6 +206,16 @@ void testEditor() {
     assert(w == 1024 && h == 600);
     return 0;
   };
+  mutableSvc->display_get_size = [](int *w, int *h) {
+    *w = 800;
+    *h = 480;
+  };
+  pax_choose_canvas();
+  assert(pax_editor_width == 1024 && pax_editor_height == 600);
+  mutableSvc->display_get_size = [](int *w, int *h) {
+    *w = 1024;
+    *h = 600;
+  };
   pax_choose_canvas();
   assert(pax_editor_width == 1024 && pax_editor_height == 600);
   assert(pax_resize_surface(1024, 600));
@@ -239,6 +251,39 @@ void testEditor() {
          orange);
   assert(pax_pixels[(changeHeader.rect.y + changeHeader.rect.h + 8) * PAX_W +
                     changeHeader.rect.x + 80] == orange);
+  // Palette hit bounds include hat rises and puzzle tabs, with 12px clear
+  // space.
+  for (size_t i = 1; i < full.palette().size(); i++)
+    assert(full.palette()[i].first.y >=
+           full.palette()[i - 1].first.y + full.palette()[i - 1].first.h + 12);
+  Hit ifHeader, booleanHeader;
+  std::vector<Hit> compareInputs;
+  for (auto &hit : full.hits()) {
+    if (hit.id == condition && !hit.input)
+      ifHeader = hit;
+    if (hit.id == gt && !hit.input)
+      booleanHeader = hit;
+    if (hit.id == gt && hit.input)
+      compareInputs.push_back(hit);
+  }
+  assert(booleanHeader.rect.x - ifHeader.rect.x >= 32);
+  assert(ifHeader.rect.x + ifHeader.rect.w -
+             (booleanHeader.rect.x + booleanHeader.rect.w) >=
+         40);
+  assert(compareInputs.size() == 2);
+  assert(compareInputs[1].rect.x -
+             (compareInputs[0].rect.x + compareInputs[0].rect.w) >=
+         18);
+  tap(full, 35, 230); // Control palette includes visibly taller C blocks.
+  for (size_t i = 1; i < full.palette().size(); i++)
+    assert(full.palette()[i].first.y >=
+           full.palette()[i - 1].first.y + full.palette()[i - 1].first.h + 12);
+  bool sawContainer = false;
+  for (auto &item : full.palette())
+    if (item.second == "control_repeat")
+      sawContainer = item.first.h > 70;
+  assert(sawContainer);
+  tap(full, 35, 195); // Restore Events for the reference preview.
   // Failed archive open keeps the previous project and makes Open/New
   // reachable.
   auto before = full.project().document();

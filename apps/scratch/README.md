@@ -30,7 +30,7 @@ uptime. Complex Scratch projects may exceed the device's memory/CPU budget.
 
 ## Block editor (0.3.0)
 
-The editor negotiates the PAX canvas and uses all 1024×600 pixels on Elecrow (800×480 fallback for older loaders). Extra width expands the workspace, and the stage, toolbar and footer stay anchored. Playback keeps its existing 480×360 stage surface. Choose a category in the left column, then drag or tap a palette block to add it. Drag a stack under another block, inside a loop/condition, or drag a round/green reporter into an input. A red line marks a compatible drop target. Dragging a middle block carries the blocks below it and any nested scripts.
+The editor negotiates the PAX canvas and uses all 1024×600 pixels on Elecrow (800×480 fallback for older loaders). Extra width expands the workspace, and the stage, toolbar and footer stay anchored. Playback keeps its existing 480×360 stage surface. Choose a category in the left column, then drag or tap a palette block to add it. Palette items size themselves to their contents, wrap long labels, and leave clear space around hat tops, tabs and C shapes. Inline script elements have explicit gaps and matching text measurements. Drag a stack under another block, inside a loop/condition, or drag a round/green reporter into an input. A red line marks a compatible drop target. Dragging a middle block carries the blocks below it and any nested scripts.
 
 Tap an input to change its value using the on-screen keyboard or USB keyboard. Connected reporters are drawn inline; tap their own sockets to edit their inputs. **Shift** supplies capital letters and symbols. Select sprites on the right; arrows page through larger projects. **Sprite +** adds a simple sprite with a built-in beep sound. **Var +** creates a sprite variable. Existing project costumes and sounds can be selected by their names in the relevant block inputs.
 
@@ -46,7 +46,7 @@ See the firmware workspace documentation in `pax-esphome/docs/scratch-hardware.m
 
 ## Source and builds
 
-`core` links to the independently versioned pinned checkout in `upstream/`.
+`core` links to the independently versioned pinned ScratchEverywhere checkout in `upstream/`. The official browser-editor reference is kept separately in `upstream/scratch-editor-reference`, pinned in `provenance.json`; it is not part of the native binary.
 `port/` owns the PAX adapters. `pax_editor_model.cpp` owns block graphs, history and SB3 export; `pax_editor_ui.cpp` owns the touch interface. `deps/` keeps exact dependency snapshots and their
 licenses; see `provenance.json`. The Plutovg patch replaces `unsigned int*` with
 `uint32_t*` in its fill/gradient buffers because ESP newlib uses `unsigned long`
