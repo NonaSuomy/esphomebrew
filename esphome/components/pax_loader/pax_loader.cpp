@@ -6699,6 +6699,7 @@ void PaxLoader::render_custom_(const uint16_t *buffer, uint16_t in_w, uint16_t i
   // The frame scaled, at most the canvas, centred in it. Recomputed under the
   // display lock by the direct path, so a canvas switch never mixes sizes.
   int canvas_w = 0, canvas_h = 0, out_w = 0, out_h = 0, x0 = 0, y0 = 0;
+  bool ppa_size_exact = false;
   auto fit = [&]() {
     canvas_w = this->geometry_.canvas_w;
     canvas_h = this->geometry_.canvas_h;
@@ -6706,14 +6707,16 @@ void PaxLoader::render_custom_(const uint16_t *buffer, uint16_t in_w, uint16_t i
     out_h = std::min(std::max(1, static_cast<int>(in_h * scale + 0.5f)), canvas_h);
     x0 = (canvas_w - out_w) / 2;
     y0 = (canvas_h - out_h) / 2;
+    ppa_size_exact = canvas::ppa_scale_exact(in_w, out_w) && canvas::ppa_scale_exact(in_h, out_h);
   };
+  fit();
 
   // Fast path: one PPA pass scales the frame, turns it 180 degrees for the
   // panel and writes only the visible rectangle into ppa_framebuffer_. The
   // panel then receives that rectangle instead of the old canvas-sized
   // 800x480 transfer. This avoids both the full-frame MIPI transfer and the
   // CPU clear/copy that used to be needed for the letterboxed border.
-  if (!byte_swap && !this->control_overlay_repaint_pending_ && this->ppa_srm_client_ != nullptr &&
+  if (ppa_size_exact && !byte_swap && !this->control_overlay_repaint_pending_ && this->ppa_srm_client_ != nullptr &&
       this->ppa_framebuffer_ != nullptr && this->rotated_framebuffer_ != nullptr) {
     if (this->display_mutex_ != nullptr)
       xSemaphoreTakeRecursive(this->display_mutex_, portMAX_DELAY);
@@ -6757,6 +6760,7 @@ void PaxLoader::render_custom_(const uint16_t *buffer, uint16_t in_w, uint16_t i
         .mode = PPA_TRANS_MODE_BLOCKING,
     };
     const bool sent =
+        ppa_size_exact &&
         ppa_do_scale_rotate_mirror(reinterpret_cast<ppa_client_handle_t>(this->ppa_srm_client_), &cfg) == ESP_OK;
     if (sent) {
       // The PPA wrote memory behind the CPU cache: invalidate so the remote
@@ -6788,7 +6792,7 @@ void PaxLoader::render_custom_(const uint16_t *buffer, uint16_t in_w, uint16_t i
   // P4 SRM unit do that copy/scale instead of touching 384,000 pixels on the
   // worker CPU. The old scaler remains below for arbitrary emulator sizes,
   // fractional scales, and byte-swapped input.
-  if (!byte_swap && this->ppa_srm_client_ != nullptr && this->ppa_framebuffer_ != nullptr &&
+  if (ppa_size_exact && !byte_swap && this->ppa_srm_client_ != nullptr && this->ppa_framebuffer_ != nullptr &&
       out_w == canvas_w && out_h == canvas_h && x0 == 0 && y0 == 0) {
     const size_t input_bytes = static_cast<size_t>(in_w) * in_h * sizeof(uint16_t);
     const size_t output_bytes =
@@ -6823,7 +6827,7 @@ void PaxLoader::render_custom_(const uint16_t *buffer, uint16_t in_w, uint16_t i
   // buffer, then only the visible rows are copied into the virtual canvas.
   // This avoids the much more expensive nearest-neighbour loop over the
   // entire scaled image while preserving the existing canvas contract.
-  if (!ppa_scaled && !byte_swap && this->ppa_srm_client_ != nullptr && this->ppa_framebuffer_ != nullptr &&
+  if (!ppa_scaled && ppa_size_exact && !byte_swap && this->ppa_srm_client_ != nullptr && this->ppa_framebuffer_ != nullptr &&
       out_w <= canvas_w && out_h <= canvas_h) {
     const size_t input_bytes = static_cast<size_t>(in_w) * in_h * sizeof(uint16_t);
     const size_t output_bytes = static_cast<size_t>(out_w) * out_h * sizeof(uint16_t);

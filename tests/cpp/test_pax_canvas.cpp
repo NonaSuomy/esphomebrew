@@ -204,12 +204,34 @@ static void test_recommended() {
   CHECK(next_screen_option({}, "800x480").empty());
 }
 
+// Scratch playback's 480x360 -> 800x600 request used to submit an
+// undersized 780x585 PPA block and transmit the untouched 20x15 border.
+static void test_ppa_scaling() {
+  CHECK(!ppa_scale_exact(480, 800));
+  CHECK(!ppa_scale_exact(360, 600));
+  CHECK(ppa_scale_exact(480, 780));
+  CHECK(ppa_scale_exact(360, 585));
+  CHECK(ppa_scale_exact(400, 800));
+  CHECK(ppa_scale_exact(240, 480));
+  CHECK(ppa_scale_exact(320, 640));
+  CHECK(ppa_scale_exact(1024, 1024));
+  CHECK(ppa_scale_exact(600, 600));
+  CHECK(!ppa_scale_exact(320, 640 + 1));
+  CHECK(!ppa_scale_exact(0, 800));
+  CHECK(!ppa_scale_exact(480, 0));
+  CHECK(!ppa_scale_exact(480, 29)); // below SRM minimum 1/16
+  CHECK(ppa_scale_exact(480, 30));
+  CHECK(!ppa_scale_exact(1, 256)); // SRM scale must be < 256
+  CHECK(ppa_scale_exact(16, 4095));
+}
+
 int main() {
   test_recommended();
   test_legacy_layout();
   test_full_panel_and_small_canvases();
   test_sizes();
   test_bytes();
+  test_ppa_scaling();
   test_app_keys();
   test_choices();
   if (failures != 0) {

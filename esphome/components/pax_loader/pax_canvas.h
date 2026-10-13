@@ -76,6 +76,16 @@ inline size_t frame_bytes(int width, int height) {
   return static_cast<size_t>(width) * static_cast<size_t>(height) * sizeof(uint16_t);
 }
 
+// ESP32-P4 SRM truncates scales to 1/16. Only accelerate exact ratios:
+// otherwise part of the requested output rectangle is never written (and
+// appears at the top/left after panel rotation). Software fills the full size.
+inline bool ppa_scale_exact(int input, int output) {
+  if (input <= 0 || output <= 0)
+    return false;
+  const int64_t ticks = static_cast<int64_t>(output) * 16;
+  return ticks >= input && ticks < static_cast<int64_t>(input) * 4096 && ticks % input == 0;
+}
+
 // A canvas an app may use on a panel whose largest canvas is max_w x max_h:
 // even sizes (the canvas is centred, and the panel turned 180 degrees), from
 // MIN_WIDTH x MIN_HEIGHT up.
