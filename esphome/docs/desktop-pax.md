@@ -55,7 +55,7 @@ Desktop brightness, volume and auto-brightness values are session simulations. T
 
 This is experimental app development support. Tested: the native launcher, the unchanged RISC-V launcher, its SD and local network catalog/JSON display, Settings touch and keyboard input, unchanged `touchtest.pax` including launch/return, and unchanged Doom PAX boot, menu input, movement, audio generation and network launch/return. It does not establish compatibility with every module, vendor-specific CPU instruction or engine.
 
-Stereo S16 audio is queued to SDL. The RV32 emulator now supports guest task creation, independent CPU/FP registers and stacks, delay scheduling and task deletion. Tasks share the app image and receive instruction-budget time slices on one emulated CPU; hardware core affinity and FreeRTOS priority scheduling are not reproduced. Native task creation remains unavailable. MIDI, PNG decoding, UDP multiplayer, PPA acceleration, ZIP extraction and verified store/download installation are not implemented here. Optional unsupported services remain NULL; PNG decode reports no image and procedural UI sound is silent. The run report lists unavailable services. Apps that require them need additional desktop implementations before they can run. The device loader remains unchanged.
+Stereo S16 audio is queued to SDL. The RV32 emulator now supports guest task creation, independent CPU/FP registers and stacks, delay scheduling and task deletion. Tasks share the app image and receive instruction-budget time slices on one emulated CPU; hardware core affinity and FreeRTOS priority scheduling are not reproduced. Native task creation remains unavailable. MIDI, PNG decoding, UDP multiplayer, PPA acceleration, ZIP extraction progress and verified store/download installation are not implemented here. Optional unsupported services remain NULL; PNG decode reports no image and procedural UI sound is silent. The run report lists unavailable services. Apps that require them need additional desktop implementations before they can run. The device loader remains unchanged.
 
 ```sh
 pax-tools/python-desktop/bin/python pax-tools/desktop/test_services.py
@@ -95,3 +95,19 @@ pax-tools/python-desktop/bin/python pax-tools/desktop/test_doom.py --handoff
 ```
 
 The Doom checks use temporary SD directories and verify actual guest tasks, colored frames, non-silent PCM blocks queued to an SDL audio device, deletion of both tasks, and optional URL launch/return. Software RGB565 scaling uses SDL's compiled blitter instead of per-pixel Python loops.
+
+## NES and ZIP ROMs
+
+Place NES `.nes` or `.zip` ROMs in `pax-dev/desktop/sd/roms/nes/`, then open NES and select a game. The desktop host implements first-match and named ZIP extraction for stored and deflated members. Nested paths and uppercase extensions work; matching ROMs are extracted into `/sd/roms/pax/.zipcache/`. Encrypted archives and members larger than 128 MiB are rejected. Progress extraction remains unavailable.
+
+NES 0.6.1 accepts ZIP paths from ROM settings and `nes.rom` sidecars. The launcher keeps Enter/A from activating the app list underneath its ROM picker. ROM settings survive app hand-off and are saved under the selected SD root in `.pax-desktop-rom-path`.
+
+```sh
+pax-tools/python-desktop/bin/python pax-tools/desktop/test_zip_rom.py --launcher
+```
+
+The check uses an original generated mapper-0 ROM and exercises ZIP selection, extraction, NES rendering and return to the launcher. It does not establish compatibility with every mapper or game.
+
+## Browser builds
+
+The source-compiled WebAssembly launcher and NetSurf are separate from desktop SDL execution. See `pax-tools/web/README.md` for build instructions. Browser SD storage uses IndexedDB, and browser HTTP access follows CORS and HTTPS restrictions. ESP32 `.pax` binaries do not run in that source build.

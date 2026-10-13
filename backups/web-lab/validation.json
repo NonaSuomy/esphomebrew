@@ -1,0 +1,35 @@
+{
+  "targets": {
+    "launcher": {
+      "bytes": 1774438,
+      "sha256": "d0c223062706108ceaa41a54b49503c305e88b1996dd5a80de8140a0a7bf7b58"
+    },
+    "netsurf": {
+      "bytes": 4781756,
+      "sha256": "ae7f178aa0cb13ac67f041f5bba977639566b5d22c52c48c0e6cfd650ff54d97"
+    }
+  },
+  "browser": "Codex in-app Chromium",
+  "checks": [
+    "Actual launcher framebuffer and Enter navigation",
+    "Scaled short-click launcher -> NetSurf hand-off",
+    "NetSurf built-in welcome page",
+    "NetSurf HTTP fixture fetched and rendered with HTTP 200",
+    "NetSurf exit -> waiting launcher return",
+    "IndexedDB bookmarks loaded across module/page restarts",
+    "Node HTTP transport contract tests",
+    "NES original mapper-0 ZIP -> active launcher picker -> NES rendering -> launcher return"
+  ],
+  "limits": [
+    "Source-compiled WebAssembly, not execution of ESP32 PAX binaries",
+    "NetSurf JavaScript remains disabled",
+    "CORS/mixed-content rules apply; browser credentials omitted",
+    "WebGPU and browser audio are not implemented"
+  ],
+  "logs": [
+    "/tmp/pax-web-build.log",
+    "/tmp/pax-web-netsurf-build.log",
+    "/tmp/pax-web-server.log",
+    "/tmp/pax-zip-final-validation.log"
+  ]
+}

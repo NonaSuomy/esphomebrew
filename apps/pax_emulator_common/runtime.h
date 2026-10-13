@@ -29,6 +29,15 @@ static int emu_extension_allowed(const char *path, const char *extensions)
     return strstr(extensions, token) != NULL;
 }
 
+/* ZIP is a candidate selection for any ROM emulator; its member format is
+ * checked by the extractor below. Do not discard it as a stale ROM first. */
+static int emu_selection_allowed(const char *path, const char *extensions)
+{
+    const char *ext = path ? strrchr(path, '.') : NULL;
+    return emu_extension_allowed(path, extensions) ||
+           (ext && strcasecmp(ext, ".zip") == 0);
+}
+
 /* Use a per-emulator sidecar for serial/network launches; otherwise retain
  * the ROM path chosen by the launcher. No ROMs are bundled in a PAX.  The
  * launcher selection is shared by all PAXs, so reject a path belonging to a
@@ -51,13 +60,13 @@ static int emu_rom_path(const char *id, const char *extensions, char *out, size_
          * SD write failed after the user selected a different game. */
         if ((!selected || !selected[0]) && selected_buf[0]) selected = selected_buf;
     }
-    if (selected && selected[0] && !emu_extension_allowed(selected, extensions)) {
+    if (selected && selected[0] && !emu_selection_allowed(selected, extensions)) {
         if (_pax_svc->log_printf) {
             _pax_svc->log_printf("EMU ROM: ignoring stale selection for %s: %s\n",
                 id ? id : "(none)", selected);
         }
         selected = NULL;
-        if (selected_buf[0] && emu_extension_allowed(selected_buf, extensions))
+        if (selected_buf[0] && emu_selection_allowed(selected_buf, extensions))
             selected = selected_buf;
     }
     if (_pax_svc->log_printf) {

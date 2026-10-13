@@ -7596,7 +7596,7 @@ static bool poll_controller(void)
   } else if (r && !g_pad_last[PAX_INPUT_R]) {
     select_source((g_source + 1) % SOURCE_COUNT);
   }
-  if (g_detail_index < 0) {
+  if (g_detail_index < 0 && !g_rom_picker_active) {
     if (!g_settings_mode && !g_keyboard_open && !toolbar_was_active && g_toolbar_focus < 0 &&
         a && !g_pad_last[PAX_INPUT_A]) {
       const int record = selected_record_index();

@@ -1,14 +1,14 @@
 {
   "name": "nes",
   "title": "NES (nofrendo)",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Nintendo Entertainment System emulator as a PSRAM app. Add .nes ROMs under /sd/roms/nes/ or /usb0/roms/nes/.",
   "author": "nofrendo; P4 PAX port by NonaSuomy",
   "category": "Emulator",
   "license": "LGPL-2.0",
   "icon": "icon_nes_platform.png",
   "about": "The classic nofrendo 2.0 NES core running as an ESP32-P4 PAX. The launcher selects a .nes ROM from the configured storage; no ROMs are bundled.",
-  "changelog": "0.6.0 swaps NES save/load and video pages inside the shared GAME MENU without closing the overlay, and fixes legacy menu rendering; 0.5.0 adds NES OPTIONS to GAME MENU; 0.3.0 adds per-ROM screenshots and video options; 0.2.0 adds ten SNSS save slots and previews.",
+  "changelog": "0.6.1 allows saved ZIP ROM selections to reach extraction instead of rejecting them as stale; 0.6.0 swaps NES save/load and video pages inside the shared GAME MENU without closing the overlay, and fixes legacy menu rendering; 0.5.0 adds NES OPTIONS to GAME MENU; 0.3.0 adds per-ROM screenshots and video options; 0.2.0 adds ten SNSS save slots and previews.",
   "controls": [
     "D-pad: D-pad",
     "A / B: A / B",
