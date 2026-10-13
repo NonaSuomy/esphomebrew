@@ -1,4 +1,6 @@
 #include "pax_port.h"
+#include "pax_icons.h"
+#include <lunasvg.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -59,6 +61,32 @@ void pax_blend(int x, int y, int r, int g, int b, int a) {
         b = (b * a + db * (255 - a)) / 255;
     }
     d = rgb565(r, g, b);
+}
+void pax_draw_icon(PaxIcon icon, int x, int y, int size) {
+    struct Raster {
+        PaxIcon icon;
+        int size, w, h;
+        std::vector<uint8_t> pixels;
+    };
+    static std::vector<Raster> cache;
+    auto it = std::find_if(cache.begin(), cache.end(), [&](const Raster &r) {
+        return r.icon == icon && r.size == size;
+    });
+    if (it == cache.end()) {
+        auto doc = lunasvg::Document::loadFromData(pax_icon_svg[static_cast<int>(icon)]);
+        if (!doc)
+            return;
+        auto bm = doc->renderToBitmap(size, size);
+        bm.convertToRGBA();
+        cache.push_back({icon, size, static_cast<int>(bm.width()), static_cast<int>(bm.height()),
+                         {bm.data(), bm.data() + bm.width() * bm.height() * 4}});
+        it = std::prev(cache.end());
+    }
+    for (int yy = 0; yy < it->h; yy++)
+        for (int xx = 0; xx < it->w; xx++) {
+            const auto *c = &it->pixels[(yy * it->w + xx) * 4];
+            pax_blend(x + xx, y + yy, c[0], c[1], c[2], c[3]);
+        }
 }
 void pax_draw_image(const ImageData &img, const ImageRenderParams &p) {
     if (!img.pixels || img.width <= 0 || img.height <= 0 || !std::isfinite(p.scale) || p.scale <= 0)
@@ -213,8 +241,8 @@ void Render::beginFrame(int, int r, int g, int b) {
 }
 void Render::endFrame(bool) {
     if (pax_editor_playing) {
-        drawBox(74, 30, PAX_W - 40, 17, 220, 55, 75);
-        pax_draw_text("STOP", PAX_W - 40, 10, 0xffffffff, .8f, true);
+        drawBox(74, 30, PAX_W - 40, 17, 233, 241, 252);
+        pax_draw_icon(PaxIcon::Stop, PAX_W - 52, 5, 24);
     }
     int cw = 800, ch = 480;
     if (pax_svc->display_get_size)

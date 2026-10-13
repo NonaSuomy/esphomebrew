@@ -1,7 +1,7 @@
 {
   "name": "scratch",
   "title": "Scratch Blocks",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",
@@ -14,7 +14,7 @@
     "Tap inputs to edit; on-screen or USB keyboard",
     "Pan/Home: navigate scripts; Copy/Trash: selected stack",
     "Save: export a new .sb3 copy; Undo/Redo: edit history",
-    "Run: preview; touch Stop or Select+B to return",
+    "Green flag: preview; red stop sign or Select+B returns",
     "Hold Menu (2 s): exit; unsaved editor work is recovered"
   ],
   "canvas": {

@@ -1,4 +1,5 @@
 #include "pax_editor.h"
+#include "pax_icons.h"
 #include <algorithm>
 #include <cmath>
 #include <filesystem.hpp>
@@ -258,6 +259,20 @@ static void button(Rect r, const std::string &s, int color = 0xe9f1fc) {
   }
   contour(draw, color, 8);
   text(s, r.x + r.w / 2, r.y + 7, 0x575e75ff, .70f, true);
+}
+static void toolbarButton(Rect r, PaxIcon icon, const std::string &label,
+                          int color = 0xe9f1fc) {
+  contour(r, color, 8);
+  if (label.empty()) {
+    pax_draw_icon(icon, r.x + (r.w - 24) / 2, r.y + (r.h - 24) / 2, 24);
+    return;
+  }
+  // Keep the label and icon together with a visible gap at both canvas sizes.
+  const int glyph = 15, gap = 5;
+  const int labelWidth = static_cast<int>(label.size()) * 6;
+  const int left = r.x + (r.w - glyph - gap - labelWidth) / 2;
+  pax_draw_icon(icon, left, r.y + (r.h - glyph) / 2, glyph);
+  text(label, left + glyph + gap, r.y + 7, 0x575e75ff, .70f);
 }
 static Shape shape(const Json &b) {
   const auto *d = definition(b.value("opcode", ""));
@@ -744,15 +759,15 @@ void Editor::render() {
   Render::beginFrame(0, 245, 248, 252);
   box(R({0, 0, PAX_W, 49}), 0x855cd6);
   text("Scratch PAX", 12, 15, 0xffffffff, .9f);
-  button(R({140, 9, 62, 31}), "New");
-  button(R({209, 9, 62, 31}), "Open");
-  button(R({278, 9, 62, 31}), "Save", 0xbbe8d3);
-  button(R({347, 9, 62, 31}), "Run", 0x72dfa3);
-  button(R({417, 9, 62, 31}), "Undo");
-  button(R({486, 9, 62, 31}), "Redo");
-  button(R({555, 9, 62, 31}), "Home");
-  button(R({624, 9, 75, 31}), panMode_ ? "Blocks" : "Pan");
-  button(R({713, 9, 74, 31}), "Back");
+  toolbarButton(R({140, 9, 62, 31}), PaxIcon::New, "New");
+  toolbarButton(R({209, 9, 62, 31}), PaxIcon::Open, "Open");
+  toolbarButton(R({278, 9, 62, 31}), PaxIcon::Save, "Save", 0xbbe8d3);
+  toolbarButton(R({347, 9, 62, 31}), PaxIcon::Flag, "", 0xe9f1fc);
+  toolbarButton(R({417, 9, 62, 31}), PaxIcon::Undo, "Undo");
+  toolbarButton(R({486, 9, 62, 31}), PaxIcon::Redo, "Redo");
+  toolbarButton(R({555, 9, 62, 31}), PaxIcon::Home, "Home");
+  toolbarButton(R({624, 9, 75, 31}), panMode_ ? PaxIcon::Blocks : PaxIcon::Pan, panMode_ ? "Blocks" : "Pan");
+  toolbarButton(R({713, 9, 74, 31}), PaxIcon::Back, "Back");
   box(R({0, 49, 72, PAX_H - 96}), 0xe6edf6);
   for (int i = 0; i < 10; i++) {
     Rect r = categoryRect(i);

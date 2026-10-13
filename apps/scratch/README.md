@@ -58,3 +58,5 @@ From the PAX workspace, `./pax-recipe/build-modules.sh scratch` builds the packa
 The standalone builder also works after sourcing `pax-tools/env.sh`.
 
 Compilation and host tests do not establish on-device performance or behavior.
+
+Toolbar artwork: the supplied Scratch green flag and red stop SVGs are embedded in `port/pax_icons.h`. New/Open/Save, Undo/Redo, Home, Pan/Blocks, and Back use matching vector glyphs. The controls retain their original touch hit areas; icons require no additional SD files.
