@@ -4,6 +4,8 @@
 #include <set>
 static std::set<std::string> keys;
 static int tx=PAX_W/2,ty=PAX_H/2;
+static int mouseButtons;
+static float mouseX=PAX_W/2,mouseY=PAX_H/2;
 static std::string keyName(int key) {
  switch(key) { case PAX_KEY_UP:return "up arrow"; case PAX_KEY_DOWN:return "down arrow"; case PAX_KEY_LEFT:return "left arrow"; case PAX_KEY_RIGHT:return "right arrow"; case 32:return "space"; case 13:return "enter"; case 8:case 127:return "backspace"; }
  return key>=33 && key<=126 ? std::string(1,(char)tolower(key)) : "";
@@ -21,7 +23,8 @@ void Input::getInput() {
  bool down=false; int x,y,cw=800,ch=480;
  if(pax_svc->display_get_size) pax_svc->display_get_size(&cw,&ch);
  if(pax_svc->touch_read && pax_svc->touch_read(&x,&y)) { float fit=std::min((float)cw/PAX_W,(float)ch/PAX_H);int ow=std::max(1,(int)(PAX_W*fit+.5f)),oh=std::max(1,(int)(PAX_H*fit+.5f));int ox=(cw-ow)/2,oy=(ch-oh)/2;if(x>=ox&&y>=oy&&x<ox+ow&&y<oy+oh){tx=(x-ox)*PAX_W/ow;ty=(y-oy)*PAX_H/oh;down=true;} }
- if(pax_svc->input_mouse_read) { int dx,dy,b; if(pax_svc->input_mouse_read(&dx,&dy,&b)) {tx=std::clamp(tx+dx,0,PAX_W-1); ty=std::clamp(ty+dy,0,PAX_H-1); down=down || (b&1);} }
+ if(down){mouseX=tx;mouseY=ty;}
+ if(pax_svc->input_mouse_read) {int dx,dy,b;if(pax_svc->input_mouse_read(&dx,&dy,&b)){float fit=std::max(.01f,std::min((float)cw/PAX_W,(float)ch/PAX_H));mouseX=std::clamp(mouseX+dx/fit,0.f,(float)PAX_W-1);mouseY=std::clamp(mouseY+dy/fit,0.f,(float)PAX_H-1);tx=(int)mouseX;ty=(int)mouseY;mouseButtons=b;}down=down||(mouseButtons&1);}
  mousePointer.isMoving=tx!=mousePointer.x || ty!=mousePointer.y;
  mousePointer.x=tx; mousePointer.y=ty; mousePointer.isPressed=down; mousePointer.mouseButton=Mouse::LEFT;
  mousePointer.heldFrames=down?mousePointer.heldFrames+1:0;

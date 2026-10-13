@@ -18,6 +18,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/_pthreadtypes.h>
 
 // ── Heap ─────────────────────────────────────────────────────────────────────
 
@@ -297,4 +298,8 @@ int pthread_mutexattr_settype(void *a,int type){(void)a;(void)type;return 0;}
 int pthread_cond_init(void *c,const void *a){(void)c;(void)a;return 0;}
 int pthread_cond_broadcast(void *c){(void)c;return 0;}
 int pthread_cond_wait(void *c,void *m){(void)c;(void)m;errno=ENOSYS;return ENOSYS;}
-int pthread_once(int *once,void (*fn)(void)){if(!*once){*once=1;fn();}return 0;}
+int pthread_once(pthread_once_t *once,void (*fn)(void)){
+    // ESP newlib uses {is_initialized, init_executed}, initialized to {1,0}.
+    // The C++ library calls this to initialize locale and guard state.
+    if(!once->init_executed){once->init_executed=1;fn();}return 0;
+}

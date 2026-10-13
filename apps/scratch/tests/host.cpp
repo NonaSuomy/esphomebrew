@@ -26,6 +26,13 @@ extern int pax_host_run();
 int main(){
  app_services_t svc{};svc.abi_version=1;svc.log_printf=printf;svc.log_vprintf=vprintf;svc.delay_ms=delay;svc.get_time_us=clockUs;svc.mem_alloc=malloc;svc.mem_calloc=calloc;svc.mem_realloc=realloc;svc.mem_free=free;svc.mem_caps_alloc=[](size_t n,uint32_t)->void*{return malloc(n);};svc.file_stat=statFile;svc.file_mkdir=mkdirFile;svc.input_gamepad_read=pad;svc.touch_read=noTouch;svc.input_keyboard_read=noKey;svc.display_write_frame_custom=frame;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};svc.audio_init=[](int rate){assert(rate==48000);};svc.audio_submit=submit;
  pax_svc=&svc;
+
+ // Touch coordinates use the scaled and centered Scratch viewport.
+ svc.display_get_size=[](int*w,int*h){*w=800;*h=480;};svc.touch_read=[](int*x,int*y){*x=240;*y=240;return 1;};Input::getInput();assert(Input::mousePointer.x==120&&Input::mousePointer.y==180&&Input::mousePointer.isPressed);
+ svc.touch_read=[](int*x,int*y){*x=10;*y=240;return 1;};Input::getInput();assert(!Input::mousePointer.isPressed);
+ svc.touch_read=noTouch;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};
+ static int report=0;svc.input_mouse_read=[](int*dx,int*dy,int*b){*dx=*dy=0;if(report==0){*b=1;report++;return 1;}if(report==2){*b=0;report++;return 1;}return 0;};Input::getInput();assert(Input::mousePointer.isPressed);Input::getInput();assert(Input::mousePointer.isPressed);report=2;Input::getInput();assert(!Input::mousePointer.isPressed);
+ puts("PASS letterboxed touch and held USB mouse input");
  assert(Scratch::initializeRuntime());
  Unzip::filePath=OS::getScratchFolderLocation()+"PAX Demo.sb3";assert(Unzip::load());assert(Scratch::sprites.size()==3);assert(!Scratch::sb3InRam);
  Scratch::initializeScratchProject();ScriptThread monitor;
