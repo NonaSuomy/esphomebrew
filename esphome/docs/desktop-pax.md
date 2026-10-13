@@ -110,4 +110,4 @@ The check uses an original generated mapper-0 ROM and exercises ZIP selection, e
 
 ## Browser builds
 
-The source-compiled WebAssembly launcher and NetSurf are separate from desktop SDL execution. See `pax-tools/web/README.md` for build instructions. Browser SD storage uses IndexedDB, and browser HTTP access follows CORS and HTTPS restrictions. ESP32 `.pax` binaries do not run in that source build.
+The browser Web Lab offers both source-compiled launcher/NetSurf previews and original ABI-1 RISC-V `.pax` execution through Unicorn WebAssembly. See `pax-tools/web/README.md` for build instructions. Choose **Start PAX emulator** for original binaries and verified GitHub store installation; **Source launcher** retains the source preview. Browser SD storage uses IndexedDB, and browser HTTP access follows CORS and HTTPS restrictions. Audio requires **Enable audio**. Browser compatibility and performance vary between apps.

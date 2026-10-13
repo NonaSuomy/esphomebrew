@@ -3,6 +3,7 @@ const $ = id => document.getElementById(id);
 let active = null, pending = null, currentApp = '', saveTimer = null, loading = false;
 const modules = {};
 const returns = [];
+let emulatedHost = null, emulatedCPU = null, sharedAudio = null;
 const log = message => {
   if (/^(INITIAL$|BEFORE_|IN_|AFTER_|GENERIC_)/.test(message))
     return;
@@ -40,6 +41,7 @@ async function start(name, arg = '') {
     throw new Error('Stop the current app first');
   loading = true;
   status(`Loading ${name}`);
+  $('emulated').disabled = $('start').disabled = $('netsurf').disabled = true;
   await loadScript(name);
   const module =
       await modules[name]({canvas : $('canvas'), noInitialRun : true, print : log, printErr : log});
@@ -75,7 +77,8 @@ async function start(name, arg = '') {
   await sync(module, true);
   folder(module, '/sd/roms/pax');
   folder(module, '/sd/roms/netsurf');
-  if (name === 'launcher' && modules.netsurf) {
+  if (name === 'launcher' && modules.netsurf &&
+      !module.FS.analyzePath('/sd/roms/pax/netsurf.pax').exists) {
     module.FS.writeFile('/sd/roms/pax/netsurf.pax', 'PAX Web module reference: netsurf\n');
     module.FS.writeFile('/sd/roms/pax/netsurf.json', JSON.stringify({
       name : 'netsurf',
@@ -115,6 +118,7 @@ async function start(name, arg = '') {
         clearInterval(saveTimer);
         $('stop').disabled = true;
         $('start').disabled = false;
+        $('emulated').disabled = false;
         $('netsurf').disabled = !modules.netsurf;
         status('App stopped; SD saved');
         if (next) {
@@ -131,6 +135,7 @@ async function start(name, arg = '') {
   $('start').disabled = true;
   $('netsurf').disabled = true;
   $('stop').disabled = false;
+  $('emulated').disabled = true;
   status(`${name} running`);
   saveTimer = setInterval(() => sync(module, false).catch(log), 15000);
   $('canvas').focus();
@@ -140,10 +145,24 @@ function fail(error) {
   loading = false;
   log(error.stack || String(error));
   status('Error: ' + error.message);
+  if (!active) {
+    $('emulated').disabled = $('start').disabled = false;
+    $('netsurf').disabled = !modules.netsurf;
+  }
 }
 $('start').onclick = () => start('launcher').catch(fail);
 $('netsurf').onclick = () => start('netsurf', $('page-url').value || 'about:welcome').catch(fail);
-$('stop').onclick = () => active?.ccall('pax_stop', null, [], []);
+$('stop').onclick = () => {
+  if (emulatedHost) {
+    emulatedHost.quit = true;
+    const cpu = emulatedCPU;
+    setTimeout(() => {
+      if (cpu === emulatedCPU)
+        cpu.stopped = true;
+    }, 2500);
+  } else
+    active?.ccall('pax_stop', null, [], []);
+};
 $('fullscreen').onclick = () => $('canvas').parentElement.requestFullscreen().catch(fail);
 $('save').onclick = () => save().catch(fail);
 $('apply').onclick = () => {
@@ -224,3 +243,129 @@ $('backup').onclick = () => {
   } catch {
   }
 })();
+
+async function startEmulated() {
+  if (active || loading)
+    throw new Error('Stop the current app first');
+  loading = true;
+  $('emulated').disabled = $('start').disabled = $('netsurf').disabled = true;
+  status('Loading RISC-V runtime');
+  await loadScript('launcher');
+  if (!window.MUnicorn)
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'unicorn_riscv.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Unicorn runtime missing; run stage_emulator.py'));
+      document.body.append(s);
+    });
+  const u = await window.MUnicorn(), fields = await (await fetch('pax-abi.json')).json(),
+        boot = await (await fetch('emulator-build.json')).json();
+  const module = await modules.launcher({noInitialRun : true, print : log, printErr : log});
+  module.FS.mkdir('/sd');
+  module.FS.mount(module.FS.filesystems.IDBFS, {}, '/sd');
+  await sync(module, true);
+  module.FS.mkdirTree('/sd/roms/pax');
+  try {
+    Object.assign(
+        module.paxGuestSettings ??= {},
+        JSON.parse(new TextDecoder().decode(module.FS.readFile('/sd/.pax-browser-settings.json'))));
+  } catch {
+  }
+  const reference = '/sd/roms/pax/netsurf.pax';
+  try {
+    const old = module.FS.readFile(reference);
+    if (old.length < 128 && new TextDecoder().decode(old).startsWith('PAX Web module reference:')) {
+      module.FS.mkdirTree('/sd/.pax-web-references');
+      module.FS.rename(reference, '/sd/.pax-web-references/netsurf.paxref');
+      try {
+        module.FS.rename(reference.replace('.pax', '.json'),
+                         '/sd/.pax-web-references/netsurf.json');
+      } catch {
+      }
+    }
+  } catch {
+  }
+  let launcher;
+  for (const app of boot.apps) {
+    const bytes = await PaxBinary.verified(app.url, app.size, app.sha256);
+    PaxBinary.validate(bytes);
+    if (app.name === 'launcher_ui') {
+      launcher = {bytes, target : '/sd/.pax-runtime/' + app.sha256 + '/launcher_ui.pax', arg : ''};
+      module.FS.mkdirTree(launcher.target.slice(0, launcher.target.lastIndexOf('/')));
+      module.FS.writeFile(launcher.target, bytes);
+    } else {
+      const path = '/sd/roms/pax/' + app.name + '.pax';
+      if (!module.FS.analyzePath(path).exists) {
+        module.FS.writeFile(path, bytes);
+        const r = await fetch('pax-apps/' + app.name + '.json');
+        if (r.ok)
+          module.FS.writeFile(path.replace('.pax', '.json'), new Uint8Array(await r.arrayBuffer()));
+      }
+    }
+  }
+  active = module;
+  loading = false;
+  $('start').disabled = true;
+  $('emulated').disabled = true;
+  $('netsurf').disabled = true;
+  $('stop').disabled = false;
+  module.paxAudio = sharedAudio;
+  saveTimer = setInterval(() => sync(module, false).catch(log), 15000);
+  const stack = [];
+  let job = launcher;
+  try {
+    while (job) {
+      status('RISC-V: ' + job.target.split('/').pop());
+      const host = emulatedHost = new PaxBrowserHost(module, $('canvas'), log);
+      const cpu = emulatedCPU = new PaxEmulator(u, fields, host);
+      $('canvas').focus();
+      let result;
+      try {
+        result = await cpu.run(job.bytes, job.arg);
+        log('RISC-V app returned ' + result);
+        if (result < 0)
+          log('Guest app reported a failure');
+      } catch (error) {
+        log('RISC-V execution failed: ' + error.message);
+      }
+      log(JSON.stringify(cpu.stats));
+      await sync(module, false);
+      if (host.handoff) {
+        if (host.handoff.back) {
+          if (stack.length >= 2)
+            throw new Error('PAX return stack full');
+          stack.push({...job, arg : host.resume});
+        }
+        job = host.handoff;
+      } else
+        job = stack.pop();
+    }
+  } finally {
+    emulatedHost = emulatedCPU = null;
+    active = null;
+    clearInterval(saveTimer);
+    $('start').disabled = false;
+    $('emulated').disabled = false;
+    $('netsurf').disabled = !modules.netsurf;
+    $('stop').disabled = true;
+    status('Emulator stopped; SD saved');
+  }
+}
+$('emulated').onclick = () => startEmulated().catch(fail);
+$('audio').onclick = async () => {
+  try {
+    sharedAudio ??= new AudioContext();
+    await sharedAudio.resume();
+    if (active)
+      active.paxAudio = sharedAudio;
+    if (emulatedHost) {
+      emulatedHost.audio = sharedAudio;
+      emulatedHost.audioAt = sharedAudio.currentTime;
+      emulatedHost.audioSources ??= [];
+    }
+    status('Browser audio enabled');
+  } catch (error) {
+    fail(error);
+  }
+};

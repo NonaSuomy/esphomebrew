@@ -4782,6 +4782,8 @@ static void select_source(int source)
   if (source < 0 || source >= SOURCE_COUNT) return;
   if (source != g_source || g_favorites_mode)
     play_ui_sound(PAX_UI_SOUND_CHIME, 0);
+  /* Cancel a deferred Archive search before another source can own the list. */
+  g_archive_search_pending = false;
   g_source = source;
   g_favorites_mode = false;
   g_settings_mode = false;
@@ -7878,7 +7880,8 @@ int app_entry(const app_services_t *svc)
       } else if (selection_changed || keyboard_changed) {
         (void)svc->ui_call_sync(update_selection_on_host, NULL, 1000);
       }
-      if (g_archive_search_pending &&
+      if (g_source == SOURCE_ARCHIVE && !g_favorites_mode &&
+          !g_settings_mode && !detail_mode && g_archive_search_pending &&
           (uint32_t)(now_ms - g_archive_search_changed_ms) >= 550U) {
         g_archive_search_pending = false;
         archive_search_load();

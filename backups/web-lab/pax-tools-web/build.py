@@ -243,3 +243,9 @@ for name in ("index.html", "page.js", "transport.js", "style.css", "test-page.ht
     + "\n"
 )
 print(out / "index.html")
+
+subprocess.run(
+    [os.environ.get('PYTHON', 'python3'), str(Path(__file__).parent / 'stage_emulator.py'),
+     '--out', str(out)],
+    check=True,
+)
