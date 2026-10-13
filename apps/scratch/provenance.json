@@ -1,0 +1,46 @@
+{
+  "ScratchEverywhere": {
+    "repo": "https://github.com/ScratchEverywhere/ScratchEverywhere.git",
+    "ref": "0bcc42bc1f216be2f75cbdaf9a5cf344dbf33b00"
+  },
+  "lunasvg": {
+    "repo": "https://github.com/sammycage/lunasvg.git",
+    "ref": "cf3594d5232e075fb344365191f0ecadd1519e1e"
+  },
+  "plutovg": {
+    "repo": "https://github.com/sammycage/lunasvg.git",
+    "ref": "cf3594d5232e075fb344365191f0ecadd1519e1e",
+    "patch": "uint32_t fill and gradient buffer portability; see deps/lunasvg/plutovg/source"
+  },
+  "stb": {
+    "repo": "https://github.com/nothings/stb.git",
+    "ref": "2c980bb59875b0d32144a71867fbdebb2f77cd20"
+  },
+  "dr_libs": {
+    "repo": "https://github.com/mackron/dr_libs.git",
+    "ref": "dfe8377631000664666519fdb83da193fd8037f4"
+  },
+  "TinySoundFont": {
+    "repo": "https://github.com/schellingb/TinySoundFont.git",
+    "ref": "853a0a171759f1ddba0de1442133a75912bbeffa"
+  },
+  "miniz": {
+    "repo": "https://github.com/richgel999/miniz",
+    "tag": "3.1.1",
+    "license": "see dependency snapshot"
+  },
+  "ryuJS": {
+    "repo": "https://github.com/poipole807/ryuJS",
+    "tag": "v3.1",
+    "license": "see dependency snapshot"
+  },
+  "expected-lite": {
+    "repo": "https://github.com/nonstd-lite/expected-lite",
+    "tag": "v0.10.0",
+    "license": "see dependency snapshot"
+  },
+  "nlohmann_json": {
+    "version": "3.12.0",
+    "license": "MIT, copyright retained in each header"
+  }
+}

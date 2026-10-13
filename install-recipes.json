@@ -189,6 +189,13 @@
     "requirements": 12
   },
   {
+    "app": "scratch",
+    "path": "apps/scratch/install-recipe.json",
+    "mode": "local-files",
+    "download_choices": 0,
+    "requirements": 2
+  },
+  {
     "app": "scummvm-access",
     "path": "apps/scummvm/install-recipes/scummvm-access.json",
     "mode": "download",

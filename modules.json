@@ -744,6 +744,32 @@
       ]
     },
     {
+      "name": "scratch",
+      "manifest": "apps/scratch/pax.json",
+      "upstream": {
+        "repo": "https://github.com/ScratchEverywhere/ScratchEverywhere",
+        "ref": "0bcc42bc1f216be2f75cbdaf9a5cf344dbf33b00",
+        "path": "."
+      },
+      "dependencies": [],
+      "local_inputs": [
+        "apps/scratch",
+        "apps/scratch/core"
+      ],
+      "output": "scratch.pax",
+      "published": false,
+      "data": [
+        {
+          "path": "/sd/roms/scratch/romfs/gfx/translations/languages.json",
+          "note": "Runtime assets from scratch-data.zip"
+        },
+        {
+          "path": "/sd/roms/scratch/projects/",
+          "note": "Scratch 3 projects (.sb3)"
+        }
+      ]
+    },
+    {
       "name": "sms",
       "manifest": "apps/sms/pax.json",
       "upstream": {

@@ -1,0 +1,187 @@
+{
+  "name": "scratch",
+  "title": "Scratch Everywhere!",
+  "version": "0.1.0",
+  "description": "Play Scratch 3 projects on ESP32-P4 with SVG/bitmap costumes, pen, touch and audio.",
+  "author": "ScratchEverywhere contributors / PAX port",
+  "category": "Game",
+  "license": "LGPL-3.0; bundled dependency licenses in source",
+  "about": "Scratch project player with a 480x360 software renderer. Export .sb3 projects from Scratch on your computer and copy them to /sd/roms/scratch/projects/. Install scratch-data.zip first. Experimental; compile and host tested, device validation pending. Cloud variables, downloads, custom extensions and advanced graphic effects are unavailable.",
+  "controls": [
+    "Touch / Up, Down, A: choose a project",
+    "D-pad: arrows; A: Space; B/X/Y/L/R: letters",
+    "USB keyboard, mouse and touch: Scratch input",
+    "Ask/answer: USB keyboard; Enter submits",
+    "Select+B: project browser",
+    "Hold Menu or Start+Select (2 s): exit"
+  ],
+  "canvas": {
+    "recommended": "800x480",
+    "sizes": [
+      "640x480",
+      "800x480",
+      "1024x600"
+    ]
+  },
+  "upstream": {
+    "project": "ScratchEverywhere",
+    "version": "1.2.1",
+    "url": "https://github.com/ScratchEverywhere/ScratchEverywhere"
+  },
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/ScratchEverywhere/ScratchEverywhere",
+    "ref": "0bcc42bc1f216be2f75cbdaf9a5cf344dbf33b00",
+    "path": "."
+  },
+  "includes": [
+    "include",
+    "include/runtime",
+    "include/runtime/parser",
+    "include/runtime/blocks",
+    "include/platforms",
+    "source",
+    "include/renderers/headless",
+    "external-include",
+    "local:apps/scratch/port",
+    "local:apps/scratch/deps/json",
+    "local:apps/scratch/deps/expected/include",
+    "local:apps/scratch/deps/miniz",
+    "local:apps/scratch/deps/ryu",
+    "local:apps/scratch/deps/lunasvg/include",
+    "local:apps/scratch/deps/lunasvg/plutovg/include",
+    "local:apps/scratch/deps/stb",
+    "local:apps/scratch/deps/dr_libs",
+    "local:apps/scratch/deps/tsf"
+  ],
+  "cflags": [
+    "-Os",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fno-tree-loop-distribute-patterns",
+    "-DRENDERER_HEADLESS",
+    "-DENABLE_BITMAP",
+    "-DENABLE_SVG",
+    "-DENABLE_AUDIO",
+    "-DSTBI_NO_THREAD_LOCALS",
+    "-DJSON_NOEXCEPTION",
+    "-DMINIZ_NO_TIME",
+    "-DLUNASVG_BUILD_STATIC",
+    "-DPLUTOVG_BUILD_STATIC",
+    "-DLUNASVG_DISABLE_LOAD_SYSTEM_FONTS",
+    "-DLUNASVG_DISABLE_EXTERNAL_RESOURCES",
+    "-DPLUTOVG_DISABLE_FONT_FACE_CACHE_LOAD",
+    "-std=gnu11"
+  ],
+  "cxxflags": [
+    "-std=gnu++17",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-use-cxa-atexit",
+    "-fno-threadsafe-statics"
+  ],
+  "groups": [
+    {
+      "dir": "source",
+      "prefix": "se0_",
+      "files": [
+        "*.cpp"
+      ],
+      "exclude": [
+        "main.cpp",
+        "libretro.cpp",
+        "log.cpp",
+        "filesystem.cpp",
+        "inspector.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime",
+      "prefix": "se1_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime/blocks",
+      "prefix": "se2_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime/parser",
+      "prefix": "se3_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime/zip/miniz",
+      "prefix": "se4_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/port",
+      "prefix": "pax0_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/miniz",
+      "prefix": "pax1_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/ryu/ryu",
+      "prefix": "pax2_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/lunasvg/source",
+      "prefix": "pax3_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/lunasvg/plutovg/source",
+      "prefix": "pax4_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    }
+  ],
+  "newlib": true,
+  "ldflags": [
+    "-lstdc++"
+  ],
+  "linker_script": "local:apps/scratch/port/pax_cpp.ld",
+  "patches": [
+    "local:apps/scratch/patches/*.patch"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scratch/romfs/gfx/translations/languages.json",
+      "note": "Runtime assets from scratch-data.zip"
+    },
+    {
+      "path": "/sd/roms/scratch/projects/",
+      "note": "Scratch 3 projects (.sb3)"
+    }
+  ],
+  "publish": false,
+  "install_recipe": "install-recipe.json"
+}

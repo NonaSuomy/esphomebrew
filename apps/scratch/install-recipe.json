@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "app": "scratch",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/scratch/incoming",
+  "folders": [
+    "/sd/roms/scratch/projects",
+    "/sd/roms/scratch/settings",
+    "/sd/roms/scratch/romfs"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scratch/romfs/gfx/translations/languages.json",
+      "note": "Runtime assets from scratch-data.zip"
+    },
+    {
+      "path": "/sd/roms/scratch/projects/",
+      "note": "Scratch 3 projects (.sb3)"
+    }
+  ],
+  "instructions": "Extract scratch-data.zip into /sd/roms/scratch/ before launching. The result includes romfs/gfx/translations/languages.json and an original PAX Demo.sb3 in projects/. Add your exported Scratch 3 .sb3 projects to /sd/roms/scratch/projects/. This is a project player; edit blocks in Scratch on your computer.",
+  "media": [],
+  "sources": []
+}

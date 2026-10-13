@@ -240,7 +240,8 @@
     "apps/azip/core": "upstream/retroesp32/components/azip",
     "apps/duke3d/core": "upstream/retroesp32/components/duke3d",
     "apps/doom/core": "upstream/retroesp32/components/prboom",
-    "apps/_shared/fluidsynth": "upstream/fluidsynth"
+    "apps/_shared/fluidsynth": "upstream/fluidsynth",
+    "apps/scratch/core": "upstream/scratch-everywhere"
   },
   "core_to_app": {
     "arnold": "gx4000",

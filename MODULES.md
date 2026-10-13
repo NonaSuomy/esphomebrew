@@ -1,6 +1,6 @@
 # PAX module inventory
 
-34 manifest recipes; 34 native source folders are organized under apps/; reference-only variants are under legacy/.
+35 manifest recipes; 35 native source folders are organized under apps/; reference-only variants are under legacy/.
 
 | Recipe | Output | Upstream pin |
 | --- | --- | --- |
@@ -27,6 +27,7 @@
 | [quake](apps/quake/pax.json) | `quake.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `5c475e9df46c` |
 | [quake2](apps/quake2/pax.json) | `quake2.pax` | https://github.com/alexkid77/ESP32_QUAKE2 @ `0c37920e0af6` |
 | [redalert](apps/redalert/pax.json) | `redalert.pax` | https://github.com/NonaSuomy/Vanilla-Conquer @ `bcce972e66b9` |
+| [scratch](apps/scratch/pax.json) | `scratch.pax` | https://github.com/ScratchEverywhere/ScratchEverywhere @ `0bcc42bc1f21` |
 | [sms](apps/sms/pax.json) | `sms.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 | [snes](apps/snes/pax.json) | `snes.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 | [spectrum](apps/spectrum/pax.json) | `spectrum.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
@@ -40,3 +41,4 @@
 | [ws](apps/ws/pax.json) | `ws.pax` | https://github.com/NonaSuomy/RetroESP32-P4 @ `ae04c88d166c` |
 
 Native source paths and dependency/local-port details are recorded in modules.json. The conversions variant is preserved separately under legacy/conversions. Existing compiled files are not evidence of a fresh rebuild; consult the root validation report.
+
