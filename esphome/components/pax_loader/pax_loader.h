@@ -359,6 +359,9 @@ class PaxLoader : public Component {
   void raise_catalog_volume_control_();
   void set_catalog_volume_control_visible_(bool visible);
   void set_brightness_number(number::Number *number) { this->catalog_brightness_number_ = number; }
+  void add_hardware_sensor(const std::string &name,const std::string &unit,sensor::Sensor *sensor);
+  void add_hardware_binary(const std::string &name,const std::string &unit,binary_sensor::BinarySensor *sensor);
+  void add_hardware_number(const std::string &name,const std::string &unit,number::Number *number);
   void set_ambient_light_sensor(sensor::Sensor *sensor) { this->ambient_light_sensor_ = sensor; }
   void toggle_catalog_volume_slider();
   void toggle_catalog_brightness_slider();
@@ -451,6 +454,23 @@ class PaxLoader : public Component {
   static void svc_display_write_frame_custom(const uint16_t *buffer, uint16_t in_w, uint16_t in_h,
                                              float scale, bool byte_swap);
   static void svc_display_write_rect(int x, int y, int w, int h, const uint16_t *data);
+  static int svc_hardware_count();
+  static int svc_hardware_info(int index,pax_hardware_info_t *out);
+  static int svc_hardware_read(const char *name,float *value);
+  static int svc_hardware_write(const char *name,float value);
+  void update_hardware_();
+  struct HardwareChannel {
+    pax_hardware_info_t info{};
+    std::function<float()> read;
+    number::Number *output=nullptr;
+    float value=0;
+    bool valid=false;
+  };
+  struct HardwareCommand { int index; float value; };
+  std::vector<HardwareChannel> hardware_;
+  HardwareCommand hardware_queue_[16]{};
+  unsigned hardware_head_=0,hardware_tail_=0;
+  portMUX_TYPE hardware_lock_=portMUX_INITIALIZER_UNLOCKED;
   static void svc_display_get_size(int *width, int *height);
   static int svc_display_set_canvas(int width, int height);
   static int svc_midi_read(uint8_t *buf, int len);

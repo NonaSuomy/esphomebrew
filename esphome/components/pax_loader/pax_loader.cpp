@@ -1906,6 +1906,7 @@ void PaxLoader::process_ui_call_() {
 }
 
 void PaxLoader::loop() {
+  this->update_hardware_();
   pax_wifi::loop();
   // Tiny active profile: refresh independently of the running app and keep the
   // raw overlays in the same theme as the launcher without adding SDK services.
@@ -7569,6 +7570,72 @@ void PaxLoader::svc_display_write_frame_rgb565(const uint16_t *buffer) {
     std::memcpy(active_->framebuffer_, buffer,
                 canvas::frame_bytes(active_->geometry_.canvas_w, active_->geometry_.canvas_h));
 }
+void PaxLoader::add_hardware_sensor(const std::string &name,const std::string &unit,sensor::Sensor *sensor) {
+  HardwareChannel c; snprintf(c.info.name,sizeof(c.info.name),"%s",name.c_str());
+  snprintf(c.info.unit,sizeof(c.info.unit),"%s",unit.c_str()); c.info.flags=PAX_HW_READ;
+  c.read=[sensor](){return sensor->state;}; this->hardware_.push_back(std::move(c));
+}
+void PaxLoader::add_hardware_binary(const std::string &name,const std::string &unit,binary_sensor::BinarySensor *sensor) {
+  HardwareChannel c; snprintf(c.info.name,sizeof(c.info.name),"%s",name.c_str());
+  snprintf(c.info.unit,sizeof(c.info.unit),"%s",unit.c_str()); c.info.flags=PAX_HW_READ;
+  c.read=[sensor](){return sensor->has_state()?float(sensor->state):NAN;}; this->hardware_.push_back(std::move(c));
+}
+void PaxLoader::add_hardware_number(const std::string &name,const std::string &unit,number::Number *number) {
+  HardwareChannel c; snprintf(c.info.name,sizeof(c.info.name),"%s",name.c_str());
+  snprintf(c.info.unit,sizeof(c.info.unit),"%s",unit.c_str()); c.info.flags=PAX_HW_READ|PAX_HW_WRITE;
+  c.read=[number](){return number->state;}; c.output=number; this->hardware_.push_back(std::move(c));
+}
+void PaxLoader::update_hardware_() {
+  // The vector is fixed after codegen/setup. Only cached POD state crosses tasks.
+  for(auto &c:this->hardware_) {
+    float value=c.read();float low=0,high=0;
+    if(c.output) {low=c.output->traits.get_min_value();high=c.output->traits.get_max_value();}
+    portENTER_CRITICAL(&this->hardware_lock_);
+    c.value=value;c.valid=std::isfinite(value);c.info.minimum=low;c.info.maximum=high;
+    portEXIT_CRITICAL(&this->hardware_lock_);
+  }
+  for(unsigned processed=0;processed<16;processed++) {
+    HardwareCommand command{};bool have=false;
+    portENTER_CRITICAL(&this->hardware_lock_);
+    if(this->hardware_head_!=this->hardware_tail_) {
+      command=this->hardware_queue_[this->hardware_head_];this->hardware_head_=(this->hardware_head_+1)%16;have=true;
+    }
+    portEXIT_CRITICAL(&this->hardware_lock_);
+    if(!have)break;
+    auto *output=this->hardware_[command.index].output;
+    if(output)output->make_call().set_value(command.value).perform();
+  }
+}
+int PaxLoader::svc_hardware_count() {return active_?active_->hardware_.size():0;}
+int PaxLoader::svc_hardware_info(int index,pax_hardware_info_t *out) {
+  auto *self=active_;if(!self || !out || index<0 || index>=(int)self->hardware_.size())return -1;
+  portENTER_CRITICAL(&self->hardware_lock_);*out=self->hardware_[index].info;
+  if(self->hardware_[index].valid)out->flags|=PAX_HW_VALID;
+  portEXIT_CRITICAL(&self->hardware_lock_);return 0;
+}
+int PaxLoader::svc_hardware_read(const char *name,float *value) {
+  auto *self=active_;if(!self || !name || !value)return -1;
+  for(auto &c:self->hardware_)if(strcmp(c.info.name,name)==0) {
+    portENTER_CRITICAL(&self->hardware_lock_);bool valid=c.valid;*value=c.value;portEXIT_CRITICAL(&self->hardware_lock_);
+    return valid?0:-2;
+  }
+  return -1;
+}
+int PaxLoader::svc_hardware_write(const char *name,float value) {
+  auto *self=active_;if(!self || !name)return -1;
+  if(!std::isfinite(value))return -2;
+  for(size_t i=0;i<self->hardware_.size();i++) {
+    auto &c=self->hardware_[i];if(strcmp(c.info.name,name)!=0)continue;
+    if(!c.output)return -1;
+    portENTER_CRITICAL(&self->hardware_lock_);
+    if(value<c.info.minimum || value>c.info.maximum) {portEXIT_CRITICAL(&self->hardware_lock_);return -2;}
+    unsigned next=(self->hardware_tail_+1)%16;
+    if(next==self->hardware_head_) {portEXIT_CRITICAL(&self->hardware_lock_);return -3;}
+    self->hardware_queue_[self->hardware_tail_]={(int)i,value};self->hardware_tail_=next;
+    portEXIT_CRITICAL(&self->hardware_lock_);return 0;
+  }
+  return -1;
+}
 void PaxLoader::svc_display_get_size(int *width, int *height) {
   int w = canvas::LEGACY_WIDTH;
   int h = canvas::LEGACY_HEIGHT;
@@ -9869,6 +9936,10 @@ void PaxLoader::populate_services(app_services_t *services) {
   services->net_tcp_recv = &PaxServiceGate<&PaxLoader::svc_net_tcp_recv>::call;
   services->net_poll = &PaxServiceGate<&PaxLoader::svc_net_poll>::call;
   services->net_resolve = &PaxServiceGate<&PaxLoader::svc_net_resolve>::call;
+  services->hardware_count = &PaxServiceGate<&PaxLoader::svc_hardware_count>::call;
+  services->hardware_info = &PaxServiceGate<&PaxLoader::svc_hardware_info>::call;
+  services->hardware_read = &PaxServiceGate<&PaxLoader::svc_hardware_read>::call;
+  services->hardware_write = &PaxServiceGate<&PaxLoader::svc_hardware_write>::call;
   services->display_get_size = &PaxServiceGate<&PaxLoader::svc_display_get_size>::call;
   services->display_set_canvas = &PaxServiceGate<&PaxLoader::svc_display_set_canvas>::call;
   services->midi_read = &PaxServiceGate<&PaxLoader::svc_midi_read>::call;

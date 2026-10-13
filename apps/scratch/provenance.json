@@ -42,5 +42,11 @@
   "nlohmann_json": {
     "version": "3.12.0",
     "license": "MIT, copyright retained in each header"
+  },
+  "scratch-editor-reference": {
+    "repo": "https://github.com/scratchfoundation/scratch-editor",
+    "ref": "2e28f0a8e7b7bd4b85ff3699c7ef9515636a4a04",
+    "use": "UI layout/color reference; native rendering is implemented in port/pax_editor_ui.cpp; no browser runtime source vendored",
+    "license": "AGPL-3.0 (reference repository)"
   }
 }

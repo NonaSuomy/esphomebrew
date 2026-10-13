@@ -18,7 +18,7 @@ static int64_t clockUs(){return std::chrono::duration_cast<std::chrono::microsec
 static int statFile(const char *p,pax_file_stat_t *o){std::error_code ec;auto st=std::filesystem::status(p,ec);if(ec||!std::filesystem::exists(st))return -1;o->is_dir=std::filesystem::is_directory(st);o->size=o->is_dir?0:std::filesystem::file_size(p);o->mtime=0;return 0;}
 static int mkdirFile(const char *p){std::error_code ec;std::filesystem::create_directories(p,ec);return ec?-1:0;}
 static void pad(pax_gamepad_state_t *p){memset(p,0,sizeof(*p));p->values[PAX_INPUT_MENU]=menu||(uiTest&&frames>35);if(uiTest&&frames==1)p->values[PAX_INPUT_A]=1;}
-static void frame(const uint16_t *p,uint16_t w,uint16_t h,float,bool){assert((w==480&&h==360)||(w==800&&h==480));frames++;FILE *f=fopen("/tmp/pax-scratch-test.ppm","wb");fprintf(f,"P6\n%d %d\n255\n",w,h);for(int i=0;i<w*h;i++){unsigned char rgb[]={static_cast<unsigned char>(((p[i]>>11)&31)*255/31),static_cast<unsigned char>(((p[i]>>5)&63)*255/63),static_cast<unsigned char>((p[i]&31)*255/31)};fwrite(rgb,1,3,f);}fclose(f);}
+static void frame(const uint16_t *p,uint16_t w,uint16_t h,float,bool){assert((w==480&&h==360)||(w==800&&h==480)||(w==1024&&h==600));frames++;FILE *f=fopen("/tmp/pax-scratch-test.ppm","wb");fprintf(f,"P6\n%d %d\n255\n",w,h);for(int i=0;i<w*h;i++){unsigned char rgb[]={static_cast<unsigned char>(((p[i]>>11)&31)*255/31),static_cast<unsigned char>(((p[i]>>5)&63)*255/63),static_cast<unsigned char>((p[i]&31)*255/31)};fwrite(rgb,1,3,f);}fclose(f);}
 static void submit(short *p,int n){audioFrames+=n;for(int i=0;i<n*2;i++)audioEnergy+=abs(p[i]);}
 static int noTouch(int*,int*){return 0;}
 static int noKey(pax_keyboard_event_t*){return 0;}
@@ -26,6 +26,10 @@ extern int pax_host_run();
 void testEditor();
 int main(){
  app_services_t svc{};svc.abi_version=1;svc.log_printf=printf;svc.log_vprintf=vprintf;svc.delay_ms=delay;svc.get_time_us=clockUs;svc.mem_alloc=malloc;svc.mem_calloc=calloc;svc.mem_realloc=realloc;svc.mem_free=free;svc.mem_caps_alloc=[](size_t n,uint32_t)->void*{return malloc(n);};svc.file_stat=statFile;svc.file_mkdir=mkdirFile;svc.input_gamepad_read=pad;svc.touch_read=noTouch;svc.input_keyboard_read=noKey;svc.display_write_frame_custom=frame;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};svc.audio_init=[](int rate){assert(rate==48000);};svc.audio_submit=submit;
+ svc.file_open=[](const char*p,const char*m)->void*{return fopen(p,m);};
+ svc.file_close=[](void*f){return fclose((FILE*)f);};
+ svc.file_seek=[](void*f,long n,int whence){return fseek((FILE*)f,n,whence);};
+ svc.file_read=[](void*b,size_t n,size_t c,void*f){return fread(b,n,c,(FILE*)f);};
  pax_svc=&svc;
 
  // Touch coordinates use the scaled and centered Scratch viewport.

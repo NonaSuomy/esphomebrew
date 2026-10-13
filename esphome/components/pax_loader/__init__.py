@@ -174,6 +174,29 @@ def validate_catalogs(config):
     return config
 
 
+def validate_hardware(channels):
+    names = set()
+    for channel in channels:
+        name = channel[CONF_NAME]
+        if name in names or not name or len(name.encode("utf-8")) > 39:
+            raise cv.Invalid("hardware channel names must be unique and 1..39 bytes")
+        names.add(name)
+    if len(channels) > 48:
+        raise cv.Invalid("at most 48 hardware channels")
+    return channels
+
+
+HARDWARE_SCHEMA = cv.All(
+    cv.Schema({
+        cv.Required(CONF_NAME): cv.string_strict,
+        cv.Optional("unit", default=""): cv.All(cv.string_strict, cv.Length(max=15)),
+        cv.Optional("sensor_id"): cv.use_id(sensor.Sensor),
+        cv.Optional("binary_sensor_id"): cv.use_id(binary_sensor.BinarySensor),
+        cv.Optional("number_id"): cv.use_id(number.Number),
+    }),
+    cv.has_exactly_one_key("sensor_id", "binary_sensor_id", "number_id"),
+)
+
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(PaxLoader),
@@ -224,6 +247,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_TOUCHSCREEN_ID): cv.use_id(touchscreen.Touchscreen),
         cv.Optional(CONF_SPEAKER_ID): cv.use_id(speaker.Speaker),
         cv.Optional(CONF_BRIGHTNESS_NUMBER): cv.use_id(number.Number),
+        cv.Optional("hardware", default=[]): cv.All(cv.ensure_list(HARDWARE_SCHEMA), validate_hardware),
         cv.Optional(CONF_AMBIENT_LIGHT_SENSOR): cv.use_id(sensor.Sensor),
         cv.Optional(CONF_LVGL_ID): cv.use_id(LvglComponent),
         # When enabled, USB HID keys are delivered to LVGL's focus group.
@@ -376,6 +400,15 @@ async def to_code(config):
         brightness_number_var = await cg.get_variable(brightness_number_id)
         cg.add(var.set_brightness_number(brightness_number_var))
 
+    for channel in config["hardware"]:
+        for key, method in (
+            ("sensor_id", "add_hardware_sensor"),
+            ("binary_sensor_id", "add_hardware_binary"),
+            ("number_id", "add_hardware_number"),
+        ):
+            if key in channel:
+                entity = await cg.get_variable(channel[key])
+                cg.add(getattr(var, method)(channel[CONF_NAME], channel["unit"], entity))
     if ambient_light_sensor_id := config.get(CONF_AMBIENT_LIGHT_SENSOR):
         ambient_light_sensor_var = await cg.get_variable(ambient_light_sensor_id)
         cg.add(var.set_ambient_light_sensor(ambient_light_sensor_var))

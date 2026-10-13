@@ -1,0 +1,7 @@
+# Experimental SC2336 camera variant; see docs/scratch-hardware.md.
+packages:
+  base: !include esp32-p4-elecrow-pax-scratch-local.yaml
+  camera: !include boards/elecrow/scratch-camera.yaml
+substitutions:
+  device_name: elecrow-pax-scratch-camera
+  friendly_name: "Elecrow PAX Scratch Camera"

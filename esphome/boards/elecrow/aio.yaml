@@ -188,3 +188,6 @@ pax_loader:
   touchscreen_id: touch_panel
   brightness_number: pax_display_brightness
   adc_button_sensor: pax_adc_buttons
+
+packages:
+  scratch_io: !include scratch-io.yaml

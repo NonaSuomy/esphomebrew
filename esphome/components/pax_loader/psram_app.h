@@ -211,6 +211,18 @@ enum {
  * Passed to the loaded app's entry function.
  * The PSRAM app must NOT call any function outside this table.
  */
+/* Named ESPHome I/O registry. Units are explicit; missing/unready inputs are
+ * reported rather than replaced by synthetic sensor values. */
+#define PAX_HW_READ 1u
+#define PAX_HW_WRITE 2u
+#define PAX_HW_VALID 4u
+typedef struct {
+    char name[40];
+    char unit[16];
+    uint32_t flags;
+    float minimum, maximum;
+} pax_hardware_info_t;
+
 typedef struct {
     uint32_t abi_version;   /* Must equal PAX_ABI_VERSION */
 
@@ -689,6 +701,15 @@ typedef struct {
     int (*game_menu_set_page)(const pax_game_menu_page_t *page);
     void (*game_menu_close)(void);
 
+    /* Optional, append-only named I/O bridge. NULL on older firmware.
+     * count/info enumerate configured channels. read returns 0 on success,
+     * -1 unknown, -2 no current sample. write queues a validated command for
+     * the ESPHome main loop: 0 accepted, -1 unknown/read-only, -2 out of range
+     * or nonfinite, -3 queue full. No ESPHome control runs on an app task. */
+    int (*hardware_count)(void);
+    int (*hardware_info)(int index, pax_hardware_info_t *out);
+    int (*hardware_read)(const char *name, float *value);
+    int (*hardware_write)(const char *name, float value);
 } app_services_t;
 
 /* Relative HID movement is already in the visible direction. The loader's

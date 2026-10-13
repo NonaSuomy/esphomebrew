@@ -1,12 +1,12 @@
 {
   "name": "scratch",
   "title": "Scratch Blocks",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",
   "license": "LGPL-3.0; bundled dependency licenses in source",
-  "about": "Create or open Scratch 3 projects with a native 800x480 touch editor. Drag colored blocks, snap stacks and nested loops, connect reporters, edit values with an on-screen keyboard, select or add sprites, and undo edits. Save exports a new .sb3 copy; Run opens the existing player with a touch Stop control. Core blocks are supported; costume/sound painting, lists and custom-block authoring are not included. Imported assets and unknown blocks are preserved.",
+  "about": "Create or open Scratch 3 projects with a native full-canvas touch editor (1024x600 on Elecrow). Drag colored blocks, snap stacks and nested loops, connect reporters, edit values with an on-screen keyboard, select or add sprites, and undo edits. Save exports a new .sb3 copy; Run opens the existing player with a touch Stop control. Core blocks are supported; costume/sound painting, lists and custom-block authoring are not included. Imported assets and unknown blocks are preserved. Scratch-style puzzle blocks with inline nested reporters. Board IO blocks read configured ESPHome sensors and control relay, servo, RGBW LED, backlight, microphone and speaker through optional firmware services.",
   "controls": [
     "New: create a project; Edit: open a project in the editor",
     "Drag palette blocks into the workspace to add them",
@@ -18,9 +18,8 @@
     "Hold Menu (2 s): exit; unsaved editor work is recovered"
   ],
   "canvas": {
-    "recommended": "800x480",
+    "recommended": "1024x600",
     "sizes": [
-      "640x480",
       "800x480",
       "1024x600"
     ]
