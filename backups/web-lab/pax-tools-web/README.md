@@ -66,3 +66,17 @@ node pax-tools/web/test_emulator.cjs install
 ```
 
 The NES test generates a small mapper-0 test ROM. Doom uses the existing verified free shareware files under `pax-dev/desktop/sd/roms/doom/`. These tests check rendering, cooperative exit, task services, ZIP extraction and installer rejection. They do not establish compatibility for every app or prove real-time audio performance. The engine currently runs in bounded main-thread batches, with Canvas2D rendering and WebAudio buffers. Workers, AudioWorklet and WebGPU remain future work.
+
+## Performance checks
+
+The emulator uses larger bounded CPU batches, reuses register-transfer memory, saves CPU contexts only when another guest task actually runs, and avoids promises for synchronous ABI services. Rendering retains pixel buffers and a RGB565 color table, converts only dirty UI regions, and reuses scaled rows. Direct guest framebuffer writes still trigger a complete conversion. Resolution and color output remain the same.
+
+```sh
+node pax-tools/web/test_render.cjs
+PAX_TEST_FRAMES=16 node pax-tools/web/test_emulator.cjs nes-zip
+node pax-tools/web/test_emulator.cjs doom
+```
+
+On the development computer, 100 full 960x600 rendering updates took 1439 ms before and 308 ms after. One hundred 48x44 updates took 584 ms before and 2.5 ms after. These service benchmarks include scaling and color conversion; the test checks byte-identical output, fractional scaling, clipping, swapped pixels and direct framebuffer writes. The original Doom boot plus eight frames took 58.2 seconds before and 42.8 seconds after in the recorded runs. Whole-app performance still depends on emulated CPU work and guest timing. Reports include elapsed time, CPU execution time and the largest CPU batch.
+
+The 16-frame generated NES ROM and ZIP tests pass. A longer 120-frame stress run exposes a WASM memory access error in both the previous and optimized runtimes. This remains an unresolved long-session limitation. Results and logs are recorded in `validation/browser-performance.json` at the workspace root.

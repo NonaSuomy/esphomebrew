@@ -7,8 +7,8 @@ const crypto = require('node:crypto');
 const zlib = require('node:zlib');
 const {execFileSync} = require('node:child_process');
 const ROOT = path.resolve(__dirname, '../..');
-const {PaxEmulator, PaxBinary} = require('./emulator.js');
-const {PaxBrowserHost} = require('./emulator-host.js');
+const {PaxEmulator, PaxBinary} = require(process.env.PAX_EMULATOR_JS || './emulator.js');
+const {PaxBrowserHost} = require(process.env.PAX_HOST_JS || './emulator-host.js');
 global.PaxBinary = PaxBinary;
 global.location = {
   href : 'http://localhost:8767/'
@@ -79,6 +79,8 @@ const canvas = {
 };
 (async () => {
   const target = process.argv[2] || 'touchtest';
+  const targetFrames = Number(process.env.PAX_TEST_FRAMES || (target === 'doom' ? 8 : 3));
+  const runStarted = performance.now();
   const module = await require(ROOT + '/pax-dev/web/launcher.js')(
       {noInitialRun : true, print : () => {}, printErr : console.error});
   module.FS.mkdir('/sd');
@@ -142,27 +144,28 @@ const canvas = {
     assert.ok(match, 'Build launcher ELF before testing its pending search state');
     pendingAddress = parseInt(match[1], 16);
   }
-  host.call = async (name, args) => {
+  host.call = (name, args) => {
     if (name === 'audio_submit') {
       audioFrames += args[1];
       if (host.mem.read(args[0], args[1] * 4).some(v => v !== 0))
         nonzeroAudio++;
     }
-    const result = await call(name, args);
+    const result = call(name, args);
     if (isolation && host.frames && !injected) {
       host.mem.write(pendingAddress, new Uint8Array([ 1 ]));
       injected = true;
       injectedAt = performance.now();
     }
-    if (isolation ? injected && performance.now() - injectedAt > 2000
-                  : host.frames >= (target === 'doom' ? 8 : 3))
+    if (isolation ? injected && performance.now() - injectedAt > 2000 : host.frames >= targetFrames)
       host.quit = true;
     return result;
   };
   const u = await require(ROOT + '/pax-dev/web/unicorn_riscv.js')(),
         fields = JSON.parse(fs.readFileSync(ROOT + '/pax-dev/web/pax-abi.json')),
         cpu = new PaxEmulator(u, fields, host);
-  const timeout = setTimeout(() => { cpu.stopped = true; }, target === 'doom' ? 120000 : 30000);
+  const timeout =
+      setTimeout(() => { cpu.stopped = true; },
+                 Number(process.env.PAX_TEST_TIMEOUT || (target === 'doom' ? 120000 : 30000)));
   const result = await cpu.run(fs.readFileSync(file));
   clearTimeout(timeout);
   assert.equal(result, 0);
@@ -180,8 +183,15 @@ const canvas = {
     assert.ok(cpu.stats.services.task_create > 0);
   if (name === 'doom')
     assert.ok(audioFrames > 0);
-  console.log(
-      JSON.stringify({target, result, ...cpu.stats, audioFrames, nonzeroAudio, coloredFrames}));
+  console.log(JSON.stringify({
+    target,
+    result,
+    elapsedMs : performance.now() - runStarted,
+    ...cpu.stats,
+    audioFrames,
+    nonzeroAudio,
+    coloredFrames
+  }));
 })().catch(error => {
   console.error(error);
   process.exitCode = 1;

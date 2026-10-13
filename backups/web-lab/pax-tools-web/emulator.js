@@ -67,7 +67,10 @@ class PaxMemory {
   read(p, n) {
     if (!Number.isSafeInteger(n) || n < 0 || n > 128 * 1024 * 1024)
       throw new Error('Invalid memory read');
-    const out = new Uint8Array(n);
+    return this.readInto(p, new Uint8Array(n));
+  }
+  readInto(p, out) {
+    const n = out.length;
     for (let at = 0; at < n; at += 8 * 1024 * 1024) {
       const size = Math.min(n - at, 8 * 1024 * 1024);
       this.check(
@@ -139,6 +142,10 @@ class PaxMemory {
       this.blocks.delete(p);
     }
   }
+  setReg(id, value) {
+    new DataView(this.u.paxHeap().buffer).setUint32(this.scratch, value >>> 0, true);
+    this.check(this.u._uc_reg_write(this.handle, id, this.scratch));
+  }
   reg(id) {
     this.check(this.u._uc_reg_read(this.handle, id, this.scratch));
     return new DataView(this.u.paxHeap().buffer).getUint32(this.scratch, true);
@@ -157,7 +164,7 @@ class PaxEmulator {
     this.tasks = new Map();
     this.current = 0;
     this.stopped = false;
-    this.stats = {services : {}, task_switches : 0, frames : 0};
+    this.stats = {services : {}, task_switches : 0, frames : 0, cpu_ms : 0, max_cpu_batch_ms : 0};
   }
   async run(bytes, arg = '') {
     const h = PaxBinary.validate(bytes), u = this.u;
@@ -185,6 +192,7 @@ class PaxEmulator {
       }
     }
     m.write(0x18000, table);
+    e.reg_write_i32 = (id, value) => m.setReg(id, value);
     e.reg_write_i32(u.RISCV_REG_SP, 0x701ff000);
     e.reg_write_i32(u.RISCV_REG_RA, 0x10000);
     e.reg_write_i32(u.RISCV_REG_A0, 0x18000);
@@ -201,6 +209,7 @@ class PaxEmulator {
       channel.port1.onmessage = resolve;
       channel.port2.postMessage(0);
     });
+    let failure = null;
     try {
       let quantum = performance.now();
       while (!this.stopped && this.tasks.size) {
@@ -211,11 +220,20 @@ class PaxEmulator {
         }
         if (t.wake > performance.now()) {
           this.schedule();
-          await new Promise(r => setTimeout(r, 1));
+          const now = performance.now();
+          if (this.tasks.get(this.current).wake > now) {
+            const wake = Math.min(...Array.from(this.tasks.values(), task => task.wake));
+            await new Promise(r => setTimeout(r, Math.max(1, Math.min(16, wake - now))));
+          }
           continue;
         }
         trap = null;
-        e.emu_start(t.pc, 0xffffffff, 0, 25000);
+        let scheduled = false;
+        const started = performance.now();
+        m.check(u._uc_emu_start(m.handle, BigInt(t.pc), 0xffffffffn, 0n, 100000));
+        const cpuMs = performance.now() - started;
+        this.stats.cpu_ms += cpuMs;
+        this.stats.max_cpu_batch_ms = Math.max(this.stats.max_cpu_batch_ms, cpuMs);
         const ra = m.reg(u.RISCV_REG_RA);
         if (trap === 0x10000) {
           if (this.current === 0) {
@@ -224,9 +242,11 @@ class PaxEmulator {
           }
           this.deleteTask(this.current);
           this.schedule();
+          scheduled = true;
         } else if (trap === 0x10008) {
           this.deleteTask(this.current);
           this.schedule();
+          scheduled = true;
         } else if (trap === 0x10004) {
           if (!t.ui.length)
             throw new Error('Guest UI callback return stack empty');
@@ -253,18 +273,23 @@ class PaxEmulator {
             t.pc = ra;
             t.wake = performance.now() + Math.max(1, a[0]);
             this.schedule();
+            scheduled = true;
           } else if (f.name === 'task_delete') {
             t.pc = ra;
             this.deleteTask(a[0] || this.current);
             this.schedule();
+            scheduled = true;
           } else {
             let result;
             if (f.name === 'task_create')
               result = this.createTask(a);
             else if (f.name === 'log_printf' || f.name === 'log_vprintf')
               result = this.formatLog(a[0], f.name === 'log_vprintf' ? a[1] : null);
-            else
-              result = await this.host.call(f.name, a);
+            else {
+              result = this.host.call(f.name, a);
+              if (result && typeof result.then === 'function')
+                result = await result;
+            }
             if (f.ret !== 'void') {
               const value = BigInt(Math.trunc(result || 0));
               e.reg_write_i32(u.RISCV_REG_A0, Number(value & 0xffffffffn));
@@ -276,38 +301,68 @@ class PaxEmulator {
         } else {
           t.pc = m.reg(u.RISCV_REG_PC);
           this.schedule();
+          scheduled = true;
         }
         if (performance.now() - quantum > 7) {
-          this.schedule();
+          if (!scheduled)
+            this.schedule();
           await yieldNow();
           quantum = performance.now();
         }
       }
       return this.result || 0;
+    } catch (error) {
+      failure = error;
+      throw error;
     } finally {
       channel.port1.close();
       channel.port2.close();
-      e.hook_del(hook);
+      const cleanupErrors = [];
+      const cleanup = fn => {
+        try {
+          fn();
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
+      };
+      cleanup(() => e.hook_del(hook));
       for (const t of this.tasks.values())
-        e.context_free(t.ctx);
+        cleanup(() => e.context_free(t.ctx));
       this.tasks.clear();
-      m.close();
-      e.close();
-      this.host.cleanup();
+      cleanup(() => m.close());
+      cleanup(() => e.close());
+      cleanup(() => this.host.cleanup());
+      if (!failure && cleanupErrors.length)
+        throw new AggregateError(cleanupErrors, 'Guest cleanup failed');
     }
   }
   schedule() {
+    if (!this.tasks.size)
+      return;
     const old = this.tasks.get(this.current);
+    const now = performance.now();
+    let next = null, first = null, passedCurrent = false;
+    for (const [id, task] of this.tasks) {
+      if (task.wake > now)
+        continue;
+      if (first === null)
+        first = id;
+      if (passedCurrent) {
+        next = id;
+        break;
+      }
+      if (id === this.current)
+        passedCurrent = true;
+    }
+    // A deleted current task has no place in the iteration order.
+    if (next === null)
+      next = first ?? (old ? this.current : this.tasks.keys().next().value);
+    if (next === this.current && old)
+      return;
     if (old)
       this.e.context_save(old.ctx);
-    const ids = [...this.tasks.keys() ];
-    if (!ids.length)
-      return;
-    const index = ids.indexOf(this.current);
-    const candidates = [...ids.slice(index + 1), ...ids.slice(0, index + 1) ];
-    const now = performance.now();
-    this.current = candidates.find(id => this.tasks.get(id).wake <= now) ?? candidates[0];
-    this.e.context_restore(this.tasks.get(this.current).ctx);
+    this.current = next;
+    this.e.context_restore(this.tasks.get(next).ctx);
     this.stats.task_switches++;
   }
   createTask([ fn, name, depth, arg, priority, out, core ]) {

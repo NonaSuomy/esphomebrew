@@ -1,4 +1,15 @@
 /* Browser services for unchanged ABI-1 PAX binaries. */
+const PAX_RGB565_RGBA = (() => {
+  const bytes = new Uint8ClampedArray(65536 * 4);
+  for (let c = 0; c < 65536; c++) {
+    const i = c * 4;
+    bytes[i] = (c >> 11) * 255 / 31;
+    bytes[i + 1] = ((c >> 5) & 63) * 255 / 63;
+    bytes[i + 2] = (c & 31) * 255 / 31;
+    bytes[i + 3] = 255;
+  }
+  return new Uint32Array(bytes.buffer);
+})();
 class PaxBrowserHost {
   constructor(module, canvas, log = console.log) {
     this.module = module;
@@ -133,17 +144,42 @@ class PaxBrowserHost {
     this.canvas.style.aspectRatio = `${w}/${h}`;
     this.context = this.canvas.getContext('2d');
     this.image = this.context.createImageData(w, h);
+    this.rgba = new Uint32Array(this.image.data.buffer, this.image.data.byteOffset, w * h);
+    this.pixels = new Uint8Array(w * h * 2);
+    this.scaled = new Uint8Array(w * h * 2);
+    this.directFramebuffer = false;
+    this.dirty = {x : 0, y : 0, right : w, bottom : h};
+  }
+  markDirty(x = 0, y = 0, w = this.width, h = this.height) {
+    if (!w || !h)
+      return;
+    const d = this.dirty;
+    this.dirty = d ? {
+      x : Math.min(d.x, x),
+      y : Math.min(d.y, y),
+      right : Math.max(d.right, x + w),
+      bottom : Math.max(d.bottom, y + h)
+    }
+                   : {x, y, right : x + w, bottom : y + h};
   }
   render() {
-    const data = this.mem.read(this.fbptr, this.width * this.height * 2), out = this.image.data;
-    for (let p = 0, i = 0; p < data.length; p += 2, i += 4) {
-      const c = data[p] | data[p + 1] << 8;
-      out[i] = (c >> 11) * 255 / 31;
-      out[i + 1] = ((c >> 5) & 63) * 255 / 63;
-      out[i + 2] = (c & 31) * 255 / 31;
-      out[i + 3] = 255;
+    if (this.directFramebuffer)
+      this.markDirty();
+    const d = this.dirty;
+    if (d) {
+      // Retain the complete canvas, converting only pixels changed by the app.
+      const start = (d.y * this.width + d.x) * 2;
+      const end = ((d.bottom - 1) * this.width + d.right) * 2;
+      this.mem.readInto(this.fbptr + start, this.pixels.subarray(start, end));
+      for (let y = d.y; y < d.bottom; y++) {
+        for (let x = d.x; x < d.right; x++) {
+          const pixel = y * this.width + x, p = pixel * 2;
+          this.rgba[pixel] = PAX_RGB565_RGBA[this.pixels[p] | this.pixels[p + 1] << 8];
+        }
+      }
+      this.context.putImageData(this.image, 0, 0, d.x, d.y, d.right - d.x, d.bottom - d.y);
+      this.dirty = null;
     }
-    this.context.putImageData(this.image, 0, 0);
     this.frames++;
     this.cpu.stats.frames = this.frames;
   }
@@ -290,7 +326,7 @@ class PaxBrowserHost {
     PaxBinary.validate(bytes);
     return bytes;
   }
-  async call(name, a) {
+  call(name, a) {
     const m = this.mem, F = this.FS, T = p => this.text(p);
     if (name.startsWith('mem_')) {
       if (name === 'mem_free') {
@@ -325,8 +361,10 @@ class PaxBrowserHost {
       this.canvasChosen = true;
       return 0;
     }
-    if (name === 'display_get_framebuffer' || name === 'display_get_emu_buffer')
+    if (name === 'display_get_framebuffer' || name === 'display_get_emu_buffer') {
+      this.directFramebuffer = true;
       return this.fbptr;
+    }
     if (name === 'display_clear') {
       const out = new Uint8Array(this.width * this.height * 2);
       for (let p = 0; p < out.length; p += 2) {
@@ -334,12 +372,14 @@ class PaxBrowserHost {
         out[p + 1] = a[0] >> 8;
       }
       m.write(this.fbptr, out);
+      this.markDirty();
       return 0;
     }
     if (name === 'display_write_rect') {
       const [x, y, w, h, p] = a;
       if (x < 0 || y < 0 || w < 0 || h < 0 || x + w > this.width || y + h > this.height)
         throw new Error('Display rectangle outside canvas');
+      this.markDirty(x, y, w, h);
       const data = m.read(p, w * h * 2);
       for (let r = 0; r < h; r++)
         m.write(this.fbptr + ((y + r) * this.width + x) * 2,
@@ -348,25 +388,44 @@ class PaxBrowserHost {
     }
     if (name === 'display_write_frame_rgb565') {
       m.write(this.fbptr, m.read(a[0], this.width * this.height * 2));
+      this.markDirty();
       return 0;
     }
     if (name === 'display_write_frame_custom') {
       const [p, w, h, scale, swap] = a;
       if (!w || !h || w > 2048 || h > 2048 || !(scale > 0 && scale <= 16))
         throw new Error('Invalid scaled framebuffer');
-      const source = m.read(p, w * h * 2), out = new Uint8Array(this.width * this.height * 2),
-            dw = Math.floor(w * scale), dh = Math.floor(h * scale),
+      const source = m.read(p, w * h * 2), out = this.scaled;
+      out.fill(0);
+      const dw = Math.floor(w * scale), dh = Math.floor(h * scale),
             ox = Math.floor((this.width - dw) / 2), oy = Math.floor((this.height - dh) / 2);
-      for (let y = 0; y < this.height; y++)
-        for (let x = 0; x < this.width; x++) {
-          if (x < ox || y < oy || x >= ox + dw || y >= oy + dh)
-            continue;
-          const from = (Math.floor((y - oy) / scale) * w + Math.floor((x - ox) / scale)) * 2,
-                to = (y * this.width + x) * 2;
-          out[to] = source[from + (swap ? 1 : 0)];
-          out[to + 1] = source[from + (swap ? 0 : 1)];
+      const left = Math.max(0, ox), right = Math.min(this.width, ox + dw);
+      const top = Math.max(0, oy), bottom = Math.min(this.height, oy + dh);
+      const key = [ w, h, scale, swap, this.width, this.height ].join(':');
+      if (this.scaleKey !== key) {
+        this.scaleKey = key;
+        this.scaleColumns = new Int32Array(this.width);
+        for (let x = left; x < right; x++)
+          this.scaleColumns[x] = Math.floor((x - ox) / scale) * 2;
+      }
+      let previousSourceRow = -1, previousOutputRow = 0;
+      for (let y = top; y < bottom; y++) {
+        const row = Math.floor((y - oy) / scale) * w * 2;
+        const output = (y * this.width + left) * 2;
+        if (row === previousSourceRow) {
+          out.copyWithin(output, previousOutputRow, previousOutputRow + (right - left) * 2);
+        } else {
+          for (let x = left; x < right; x++) {
+            const from = row + this.scaleColumns[x], to = (y * this.width + x) * 2;
+            out[to] = source[from + (swap ? 1 : 0)];
+            out[to + 1] = source[from + (swap ? 0 : 1)];
+          }
         }
+        previousSourceRow = row;
+        previousOutputRow = output;
+      }
       m.write(this.fbptr, out);
+      this.markDirty();
       this.render();
       return 0;
     }
@@ -563,7 +622,10 @@ class PaxBrowserHost {
           return 0;
         }
         if (name.startsWith('file_zip_'))
-          return await this.zip(name, a);
+          return this.zip(name, a).catch(error => {
+            this.log(`${name}: ${error.message}`);
+            return -1;
+          });
       } catch (error) {
         if (name === 'file_open')
           return 0;
@@ -629,22 +691,8 @@ class PaxBrowserHost {
       this.resume = text;
       return 0;
     }
-    if (name === 'app_open') {
-      if (this.handoff)
-        return -1;
-      try {
-        const target = T(a[0]), bytes = await this.loadTarget(target);
-        let arg = T(a[1]);
-        if (target.endsWith('/netsurf.pax') && arg === target)
-          arg = '';
-        this.handoff = {bytes, target, arg, back : !!a[2]};
-        this.quit = true;
-        return 0;
-      } catch (error) {
-        this.log(`app_open: ${error.message}`);
-        return -1;
-      }
-    }
+    if (name === 'app_open')
+      return this.openApp(a);
     if (name === 'archive_auth_get') {
       m.string(a[0], a[1], '');
       return 0;
@@ -708,6 +756,23 @@ class PaxBrowserHost {
       return 0;
     }
     throw new Error('Unimplemented guest service: ' + name);
+  }
+  async openApp(a) {
+    const T = p => this.text(p);
+    if (this.handoff)
+      return -1;
+    try {
+      const target = T(a[0]), bytes = await this.loadTarget(target);
+      let arg = T(a[1]);
+      if (target.endsWith('/netsurf.pax') && arg === target)
+        arg = '';
+      this.handoff = {bytes, target, arg, back : !!a[2]};
+      this.quit = true;
+      return 0;
+    } catch (error) {
+      this.log(`app_open: ${error.message}`);
+      return -1;
+    }
   }
   async installApp(info) {
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(info.name))
