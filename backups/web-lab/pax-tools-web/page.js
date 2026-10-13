@@ -41,8 +41,17 @@ async function start(name, arg = '') {
     throw new Error('Stop the current app first');
   loading = true;
   status(`Loading ${name}`);
-  $('emulated').disabled = $('start').disabled = $('netsurf').disabled = true;
+  $('emulated').disabled = $('start').disabled = true;
   await loadScript(name);
+  // Source mode also opens NetSurf through its launcher entry.
+  if (name === 'launcher' && !modules.netsurf) {
+    try {
+      const response = await fetch('netsurf.js', {method : 'HEAD'});
+      if (response.ok)
+        await loadScript('netsurf');
+    } catch {
+    }
+  }
   const module =
       await modules[name]({canvas : $('canvas'), noInitialRun : true, print : log, printErr : log});
   module.paxTouch = {x : 0, y : 0, down : false};
@@ -119,7 +128,6 @@ async function start(name, arg = '') {
         $('stop').disabled = true;
         $('start').disabled = false;
         $('emulated').disabled = false;
-        $('netsurf').disabled = !modules.netsurf;
         status('App stopped; SD saved');
         if (next) {
           await start(next.name, next.argument);
@@ -133,7 +141,6 @@ async function start(name, arg = '') {
   loading = false;
   currentApp = name;
   $('start').disabled = true;
-  $('netsurf').disabled = true;
   $('stop').disabled = false;
   $('emulated').disabled = true;
   status(`${name} running`);
@@ -147,11 +154,9 @@ function fail(error) {
   status('Error: ' + error.message);
   if (!active) {
     $('emulated').disabled = $('start').disabled = false;
-    $('netsurf').disabled = !modules.netsurf;
   }
 }
 $('start').onclick = () => start('launcher').catch(fail);
-$('netsurf').onclick = () => start('netsurf', $('page-url').value || 'about:welcome').catch(fail);
 $('stop').onclick = () => {
   if (emulatedHost) {
     emulatedHost.quit = true;
@@ -233,22 +238,11 @@ $('backup').onclick = () => {
     fail(error);
   }
 };
-(async () => {
-  try {
-    const response = await fetch('netsurf.js', {method : 'HEAD'});
-    if (response.ok) {
-      await loadScript('netsurf');
-      $('netsurf').disabled = false;
-    }
-  } catch {
-  }
-})();
-
 async function startEmulated() {
   if (active || loading)
     throw new Error('Stop the current app first');
   loading = true;
-  $('emulated').disabled = $('start').disabled = $('netsurf').disabled = true;
+  $('emulated').disabled = $('start').disabled = true;
   status('Loading RISC-V runtime');
   await loadScript('launcher');
   if (!window.MUnicorn)
@@ -308,7 +302,6 @@ async function startEmulated() {
   loading = false;
   $('start').disabled = true;
   $('emulated').disabled = true;
-  $('netsurf').disabled = true;
   $('stop').disabled = false;
   module.paxAudio = sharedAudio;
   saveTimer = setInterval(() => sync(module, false).catch(log), 15000);
@@ -347,7 +340,6 @@ async function startEmulated() {
     clearInterval(saveTimer);
     $('start').disabled = false;
     $('emulated').disabled = false;
-    $('netsurf').disabled = !modules.netsurf;
     $('stop').disabled = true;
     status('Emulator stopped; SD saved');
   }

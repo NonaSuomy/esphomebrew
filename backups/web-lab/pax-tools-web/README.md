@@ -11,7 +11,7 @@ python3 pax-tools/web/build.py --app netsurf
 python3 pax-tools/web/serve.py
 ```
 
-Open http://127.0.0.1:8767/ and choose **Start PAX emulator** for original binaries and verified GitHub store installation. Choose **Source launcher** or **Open NetSurf** for the source-built previews. NetSurf can also be launched from its entry in the launcher, with return to the launcher after exit. Set **NetSurf start page** to `http://127.0.0.1:8767/test-page.html` for a local HTTP check.
+Open http://127.0.0.1:8767/ and choose **Start PAX emulator** for original binaries and verified GitHub store installation. Choose **Source launcher** for the source-built preview. Open NetSurf through its entry in the launcher, with return to the launcher after exit. Enter addresses inside NetSurf; `http://127.0.0.1:8767/test-page.html` provides a local HTTP check.
 
 The builder uses `EMCC`, `emcc` on PATH, or `~/code/emsdk/upstream/emscripten/emcc`. Pass `--emcc` to select another toolchain, `--out` for another output directory and `--jobs` to change compiler concurrency. Tested with Emscripten 5.0.7. The launcher uses the workspace's shared LVGL checkout. NetSurf uses its existing pinned manifest, patched source cache and generated fonts/resources. If that cache has not been prepared, run the normal NetSurf PAX build first:
 
