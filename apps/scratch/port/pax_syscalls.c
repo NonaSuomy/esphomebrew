@@ -303,3 +303,10 @@ int pthread_once(pthread_once_t *once,void (*fn)(void)){
     // The C++ library calls this to initialize locale and guard state.
     if(!once->init_executed){once->init_executed=1;fn();}return 0;
 }
+
+// newlib's rename() is pulled in by archive export; use the current PAX
+// storage service so a temporary archive is renamed on the device filesystem.
+int _rename(const char *from,const char *to){
+    if(!pax_svc->file_rename){errno=ENOSYS;return -1;}
+    return pax_svc->file_rename(from,to);
+}

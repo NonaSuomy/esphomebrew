@@ -18,7 +18,7 @@
       "note": "Scratch 3 projects (.sb3)"
     }
   ],
-  "instructions": "Extract scratch-data.zip into /sd/roms/scratch/ before launching. The result includes romfs/gfx/translations/languages.json and an original PAX Demo.sb3 in projects/. Add your exported Scratch 3 .sb3 projects to /sd/roms/scratch/projects/. This is a project player; edit blocks in Scratch on your computer.",
+  "instructions": "Extract scratch-data.zip into /sd/roms/scratch/ before launching. Existing 0.1.0 runtime assets also work with the editor. Choose New to create a project, or Edit and an existing .sb3 file to change its blocks. Drag palette blocks into the workspace, tap inputs to edit them, and use Save to export a new .sb3 copy. Run previews the project; touch Stop to return to editing. Exported projects belong under /sd/roms/scratch/projects/.",
   "media": [],
   "sources": []
 }

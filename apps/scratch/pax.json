@@ -1,19 +1,21 @@
 {
   "name": "scratch",
-  "title": "Scratch Everywhere!",
-  "version": "0.1.0",
-  "description": "Play Scratch 3 projects on ESP32-P4 with SVG/bitmap costumes, pen, touch and audio.",
+  "title": "Scratch Blocks",
+  "version": "0.2.0",
+  "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",
   "license": "LGPL-3.0; bundled dependency licenses in source",
-  "about": "Scratch project player with a 480x360 software renderer. Export .sb3 projects from Scratch on your computer and copy them to /sd/roms/scratch/projects/. Install scratch-data.zip first. Experimental; compile and host tested, device validation pending. Cloud variables, downloads, custom extensions and advanced graphic effects are unavailable.",
+  "about": "Create or open Scratch 3 projects with a native 800x480 touch editor. Drag colored blocks, snap stacks and nested loops, connect reporters, edit values with an on-screen keyboard, select or add sprites, and undo edits. Save exports a new .sb3 copy; Run opens the existing player with a touch Stop control. Core blocks are supported; costume/sound painting, lists and custom-block authoring are not included. Imported assets and unknown blocks are preserved.",
   "controls": [
-    "Touch / Up, Down, A: choose a project",
-    "D-pad: arrows; A: Space; B/X/Y/L/R: letters",
-    "USB keyboard, mouse and touch: Scratch input",
-    "Ask/answer: USB keyboard; Enter submits",
-    "Select+B: project browser",
-    "Hold Menu or Start+Select (2 s): exit"
+    "New: create a project; Edit: open a project in the editor",
+    "Drag palette blocks into the workspace to add them",
+    "Drop on a stack or socket to connect blocks",
+    "Tap inputs to edit; on-screen or USB keyboard",
+    "Pan/Home: navigate scripts; Copy/Trash: selected stack",
+    "Save: export a new .sb3 copy; Undo/Redo: edit history",
+    "Run: preview; touch Stop or Select+B to return",
+    "Hold Menu (2 s): exit; unsaved editor work is recovered"
   ],
   "canvas": {
     "recommended": "800x480",

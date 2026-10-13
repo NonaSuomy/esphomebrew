@@ -12,7 +12,10 @@ long long pax_time_us(void);
 }
 #include <image.hpp>
 extern uint16_t *pax_pixels;
-constexpr int PAX_W = 480, PAX_H = 360;
+extern int PAX_W, PAX_H;
+extern bool pax_editor_playing;
+bool pax_resize_surface(int width, int height);
+void pax_set_clip(int x, int y, int w, int h);
 void pax_blend(int x, int y, int r, int g, int b, int a);
 void pax_draw_image(const ImageData &img, const ImageRenderParams &p);
 void pax_audio_pump();

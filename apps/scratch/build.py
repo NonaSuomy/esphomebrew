@@ -42,7 +42,9 @@ objs=[str(r[0]) for r in results]
 if host:
  test=root/'tests/host.cpp';r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(test),'-o',str(out/'test.o')]);
  if r.returncode:sys.exit(r.returncode)
- cmd=[cxx,*objs,str(out/'test.o'),'-Wl,--gc-sections','-o',str(out/'scratch-test')]
+ r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(root/'tests/editor.cpp'),'-o',str(out/'editor-test.o')]);
+ if r.returncode:sys.exit(r.returncode)
+ cmd=[cxx,*objs,str(out/'test.o'),str(out/'editor-test.o'),'-Wl,--gc-sections','-o',str(out/'scratch-test')]
 else:
  import importlib.util
  spec=importlib.util.spec_from_file_location('pax_builder',str(workspace/'pax-modules/tools/build_pax.py'));builder=importlib.util.module_from_spec(spec);sys.modules[spec.name]=builder;spec.loader.exec_module(builder)
