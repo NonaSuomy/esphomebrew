@@ -289,6 +289,9 @@ void testEditor() {
   auto before = full.project().document();
   assert(!full.load(dir + "missing.sb3"));
   assert(full.project().document() == before);
+  tap(full, 170,
+      23); // New recovers from the failed open without keeping the old file.
+  assert(full.project().blocks().empty() && full.project().source().empty());
   tap(full, 240, 23); // Open remains responsive after a failed load.
   tap(full, 112 + 600, 60 + 384); // Cancel the centered file picker.
   assert(full.load(dir + "Editor Test.sb3"));

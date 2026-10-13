@@ -1011,6 +1011,7 @@ void Editor::pointer(int x, int y, bool down) {
           modal_ = ConfirmNew;
         else {
           project_.fresh();
+          status_ = "New project; drag blocks into the workspace";
           home();
           refreshPreview();
           selected_.clear();
@@ -1204,6 +1205,7 @@ void Editor::handleModal(int x, int y) {
         closed_ = true;
       else {
         project_.fresh();
+        status_ = "New project; drag blocks into the workspace";
         dirty_ = false;
         selected_.clear();
         home();
