@@ -60,3 +60,5 @@ The standalone builder also works after sourcing `pax-tools/env.sh`.
 Compilation and host tests do not establish on-device performance or behavior.
 
 Toolbar artwork: the supplied Scratch green flag and red stop SVGs are embedded in `port/pax_icons.h`. New/Open/Save, Undo/Redo, Home, Pan/Blocks, and Back use matching vector glyphs. The controls retain their original touch hit areas; icons require no additional SD files.
+
+Desktop input: move/click the mouse to select projects or manipulate blocks. In the project picker, arrows change the selection, Enter previews, E opens the selected project in the editor, and N creates a project. Short key taps are handled even when press/release arrive in the same input poll.

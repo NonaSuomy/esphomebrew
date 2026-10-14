@@ -12,12 +12,12 @@
 #include <cstring>
 #include <cassert>
 static std::chrono::steady_clock::time_point start=std::chrono::steady_clock::now();
-static int frames=0,audioFrames=0;static long long audioEnergy=0;static bool menu=false;static bool uiTest=false;
+static int frames=0,audioFrames=0;static long long audioEnergy=0;static bool menu=false;static bool uiTest=false;static bool keyboardUiTest=false;
 static void delay(int n){std::this_thread::sleep_for(std::chrono::milliseconds(n));}
 static int64_t clockUs(){return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-start).count();}
 static int statFile(const char *p,pax_file_stat_t *o){std::error_code ec;auto st=std::filesystem::status(p,ec);if(ec||!std::filesystem::exists(st))return -1;o->is_dir=std::filesystem::is_directory(st);o->size=o->is_dir?0:std::filesystem::file_size(p);o->mtime=0;return 0;}
 static int mkdirFile(const char *p){std::error_code ec;std::filesystem::create_directories(p,ec);return ec?-1:0;}
-static void pad(pax_gamepad_state_t *p){memset(p,0,sizeof(*p));p->values[PAX_INPUT_MENU]=menu||(uiTest&&frames>35);if(uiTest&&frames==1)p->values[PAX_INPUT_A]=1;}
+static void pad(pax_gamepad_state_t *p){memset(p,0,sizeof(*p));p->values[PAX_INPUT_MENU]=menu||(uiTest&&frames>35);if(uiTest&&!keyboardUiTest&&frames==1)p->values[PAX_INPUT_A]=1;}
 static void frame(const uint16_t *p,uint16_t w,uint16_t h,float,bool){assert((w==480&&h==360)||(w==800&&h==480)||(w==1024&&h==600));frames++;FILE *f=fopen("/tmp/pax-scratch-test.ppm","wb");fprintf(f,"P6\n%d %d\n255\n",w,h);for(int i=0;i<w*h;i++){unsigned char rgb[]={static_cast<unsigned char>(((p[i]>>11)&31)*255/31),static_cast<unsigned char>(((p[i]>>5)&63)*255/63),static_cast<unsigned char>((p[i]&31)*255/31)};fwrite(rgb,1,3,f);}fclose(f);}
 static void submit(short *p,int n){audioFrames+=n;for(int i=0;i<n*2;i++)audioEnergy+=abs(p[i]);}
 static int noTouch(int*,int*){return 0;}
@@ -45,7 +45,7 @@ int main(){
  Sprite *sprite=nullptr;for(auto s:Scratch::sprites)if(s->name=="PAX Sprite")sprite=s;
  assert(sprite);double ticks=BlockExecutor::getVariableValue("ticks",sprite).get<double>();assert(ticks>5);assert(sprite->xPosition>-120);assert(frames>5);assert(audioFrames>1000);assert(audioEnergy>0);
  assert(pax_pixels[250*480+390]==0x261f);
- int black=0;for(int y=100;y<160;y++)for(int x=200;x<300;x++)if(pax_pixels[y*480+x]==0)black++;assert(black>10); // Bitmap costume is rendered on stage.
+ int black=0;int faceX=(int)sprite->renderInfo.renderX,faceY=(int)sprite->renderInfo.renderY;for(int y=std::max(0,faceY-30);y<std::min(360,faceY+30);y++)for(int x=std::max(0,faceX-30);x<std::min(480,faceX+30);x++)if(pax_pixels[y*480+x]==0)black++;assert(black>10); // SVG face follows the moving sprite, independent of timer speed.
  printf("PASS runtime: ticks=%g x=%g frames=%d audio=%d energy=%lld\n",ticks,sprite->xPosition,frames,audioFrames,audioEnergy);
  menu=true;Input::getInput();delay(2050);Input::getInput();assert(OS::toExit);
  Scratch::cleanupScratchProject();SoundPlayer::deinit();Render::deInit();OS::deinit();
@@ -53,5 +53,11 @@ int main(){
  OS::toExit=false;assert(Scratch::initializeRuntime());Unzip::filePath=OS::getScratchFolderLocation()+"PAX Demo.sb3";assert(Unzip::load());Scratch::cleanupScratchProject();SoundPlayer::deinit();Render::deInit();OS::deinit();
  puts("PASS exit and project reload");
  svc.file_list_dir=[](const char *path,char *buf,int len){auto f=std::string(path)+"PAX Demo.sb3";if(!std::filesystem::exists(f))return -1;const char names[]="PAX Demo.sb3\0";if(len<(int)sizeof(names))return -1;memcpy(buf,names,sizeof(names));return (int)sizeof(names);};
- menu=false;OS::toExit=false;testEditor();menu=false;uiTest=true;frames=0;OS::toExit=false;assert(pax_host_run()==0);assert(frames>35);puts("PASS project browser and full app lifecycle");return 0;
+ menu=false;OS::toExit=false;testEditor();menu=false;uiTest=true;frames=0;OS::toExit=false;assert(pax_host_run()==0);assert(frames>35);puts("PASS project browser and full app lifecycle");// Keyboard taps can be pressed and released in a single input poll.
+ std::filesystem::copy_file(OS::getScratchFolderLocation()+"PAX Demo.sb3",OS::getScratchFolderLocation()+"Z Keyboard Demo.sb3",std::filesystem::copy_options::overwrite_existing);
+ svc.file_list_dir=[](const char*,char *buf,int len){const char names[]="PAX Demo.sb3\0Z Keyboard Demo.sb3\0";assert(len>=(int)sizeof(names));memcpy(buf,names,sizeof(names));return (int)sizeof(names);};
+ static int keyStage=0;
+ svc.input_keyboard_read=[](pax_keyboard_event_t *e){if(keyStage==0&&frames>=1){*e={PAX_KEY_DOWN,1};keyStage++;return 1;}if(keyStage==1){*e={PAX_KEY_DOWN,0};keyStage++;return 1;}if(keyStage==2&&frames>=2){*e={PAX_KEY_ENTER,1};keyStage++;return 1;}if(keyStage==3){*e={PAX_KEY_ENTER,0};keyStage++;return 1;}return 0;};
+ keyboardUiTest=true;frames=0;OS::toExit=false;assert(pax_host_run()==0);assert(Unzip::filePath.find("Z Keyboard Demo.sb3")!=std::string::npos);assert(keyStage==4);puts("PASS keyboard arrows and short Enter tap select the second project");
+ return 0;
 }

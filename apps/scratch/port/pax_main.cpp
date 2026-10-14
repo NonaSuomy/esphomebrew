@@ -55,18 +55,29 @@ static std::string chooseProject() {
     Input::getInput();
     pax_gamepad_state_t pad{};
     pax_svc->input_gamepad_read(&pad);
-    bool up = pad.values[PAX_INPUT_UP], down = pad.values[PAX_INPUT_DOWN];
+    auto held = [](const std::string &key) {
+      return std::find(Input::inputKeys.begin(), Input::inputKeys.end(), key) != Input::inputKeys.end();
+    };
+    auto pressed = [](const std::string &key) {
+      return std::find(Input::inputBuffer.begin(), Input::inputBuffer.end(), key) != Input::inputBuffer.end();
+    };
+    bool up = pad.values[PAX_INPUT_UP] || held("up arrow"),
+         down = pad.values[PAX_INPUT_DOWN] || held("down arrow");
     if (!files.empty()) {
-      if (up && !wasUp)
+      if ((up && !wasUp) || pressed("up arrow"))
         selected = (selected + (int)files.size() - 1) % files.size();
-      if (down && !wasDown)
+      if ((down && !wasDown) || pressed("down arrow"))
         selected = (selected + 1) % files.size();
     }
     bool a = pad.values[PAX_INPUT_A] || pad.values[PAX_INPUT_START] ||
              std::find(Input::inputKeys.begin(), Input::inputKeys.end(),
                        "enter") != Input::inputKeys.end();
-    if (a && !wasA && !files.empty())
+    if (((a && !wasA) || pressed("enter")) && !files.empty())
       return files[selected];
+    if (pressed("n"))
+      return "@new";
+    if (pressed("e"))
+      return files.empty() ? "@new" : "@edit:" + files[selected];
     bool touch = Input::mousePointer.isPressed;
     if (touch && !wasTouch) {
       if (Input::mousePointer.x < 86 && Input::mousePointer.y < 46)
@@ -89,7 +100,7 @@ static std::string chooseProject() {
     pax_draw_text("New", 45, 16, 0xffffffff, .9, true);
     Render::drawBox(84, 30, PAX_W - 50, 25, 75, 95, 140);
     pax_draw_text("Edit", PAX_W - 50, 16, 0xffffffff, .8, true);
-    pax_draw_text("Touch a project to edit; A / Enter to play", PAX_W / 2, 60,
+    pax_draw_text("Click a project to edit; arrows select; Enter plays", PAX_W / 2, 60,
                   0xc8d4e8ff, 1, true);
     int first = (selected / 7) * 7;
     for (int i = first; i < (int)files.size() && i < first + 7; i++) {
@@ -103,7 +114,7 @@ static std::string chooseProject() {
       pax_draw_text("/sd/roms/scratch/projects/", PAX_W / 2, 160, 0xffffffff, 1,
                     true);
     }
-    pax_draw_text("New: create   Edit: selected project   Hold Menu: exit",
+    pax_draw_text("N: new   E: edit selected   Hold Menu: exit",
                   PAX_W / 2, PAX_H - 35, 0xc8d4e8ff, .9, true);
     Render::endFrame();
     pax_svc->delay_ms(15);

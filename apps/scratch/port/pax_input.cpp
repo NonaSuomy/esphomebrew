@@ -64,6 +64,15 @@ void Input::getInput() {
         }
     }
     inputKeys.insert(inputKeys.end(), keys.begin(), keys.end());
+    static int mouseWidth = 480, mouseHeight = 360;
+    if (mouseWidth != PAX_W || mouseHeight != PAX_H) {
+        mouseX *= (float)PAX_W / mouseWidth;
+        mouseY *= (float)PAX_H / mouseHeight;
+        tx = (int)mouseX;
+        ty = (int)mouseY;
+        mouseWidth = PAX_W;
+        mouseHeight = PAX_H;
+    }
     bool down = false;
     int x, y, cw = 800, ch = 480;
     if (pax_svc->display_get_size)
