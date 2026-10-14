@@ -94,3 +94,5 @@ Playback has a Turbo ON/OFF button and F7 shortcut. Turbo bypasses visual-block 
 0.4.2 playback uses the native panel framebuffer and the already bundled NotoSans-Medium.ttf for cached antialiased text (pixel-font fallback if the font file is missing). Turbo removes per-step sleeps and yields every 4 ms instead; Scratch waits/timers still use elapsed time. Normal mode keeps its existing scheduling.
 
 Turbo also waits one frame interval after a completed redraw before drawing again, so a slow LCD transfer cannot consume every interpreter step. Text baseline uses cap-height padding to match the UI top-origin convention.
+
+Variable-monitor labels/values are raised one native pixel. List item text and row numbers share an ink-bounds-centered row position, preserving the approved title/footer positions.

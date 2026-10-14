@@ -71,3 +71,16 @@ bool pax_font_draw(const std::string& text,int x,int y,int color,float scale,boo
  }
  return true;
 }
+
+int pax_text_center_y(const std::string& text,float scale,float center) {
+ if(!loadFont())return (int)std::lround(center-12*scale);
+ auto&f=face(scale);int top=100000,bottom=-100000,line=0;
+ for(unsigned char c:text){
+  if(c=='\n'){line+=f.height;continue;}
+  if(c<32||c>126)c='?';
+  auto&g=glyph(f,c);if(!g.h)continue;
+  top=std::min(top,line+f.baseline+g.y);bottom=std::max(bottom,line+f.baseline+g.y+g.h-1);
+ }
+ if(bottom<top)return (int)std::lround(center-f.height/2.f);
+ return (int)std::lround(center-(top+bottom)/2.f);
+}

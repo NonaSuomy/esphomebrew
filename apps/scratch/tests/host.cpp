@@ -41,6 +41,16 @@ int main(){
  int gray=0;for(int i=0;i<1024*600;i++)if(pax_pixels[i]!=0xffff&&pax_pixels[i]!=0)++gray;
  assert(gray>30);Render::hasFrameBegan=false;assert(pax_resize_surface(480,360));
  puts("PASS native-resolution Noto Sans text has antialiased glyph coverage");
+ assert(pax_resize_surface(1024,600));
+ for(const char* label:{"1","[PASSED] gpy%","42"}) {
+  Render::hasFrameBegan=false;Render::beginFrame(0,0,0,0);
+  pax_draw_text(label,512,pax_text_center_y(label,.833333f,200.5f),0xffffffff,.833333f,true);
+  int top=999,bottom=-1;for(int y=180;y<222;y++)for(int x=400;x<624;x++)if(pax_pixels[y*1024+x]){top=std::min(top,y);bottom=std::max(bottom,y);}
+  assert(bottom>=top&&std::abs((top+bottom)/2.f-200.5f)<=1);
+ }
+ Render::hasFrameBegan=false;assert(pax_resize_surface(480,360));
+ puts("PASS list row numbers and text share the ink-bounds center, including descenders");
+
  // A simulated clock checks that turbo batches work while yielding regularly.
  static int64_t simClock=1000000;static int yieldCalls=0;
  svc.get_time_us=[]()->int64_t{return simClock+=100;};svc.delay_ms=[](int){++yieldCalls;};

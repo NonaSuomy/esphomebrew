@@ -35,6 +35,7 @@ extern bool pax_project_playing;
 
 bool pax_turbo_frame_ready();
 void pax_turbo_frame_finish();
+int pax_text_center_y(const std::string&, float, float);
 bool pax_font_measure(const std::string&, float, float&, float&);
 bool pax_font_draw(const std::string&, int, int, int, float, bool);
 
