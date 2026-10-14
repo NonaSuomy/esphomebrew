@@ -9,6 +9,7 @@ An ESP32-P4 PAX block editor and player for Scratch 3 `.sb3` projects, based on 
    `romfs/gfx/translations/languages.json`, `projects/`, and `settings/`.
 3. Add `.sb3` files to `/sd/roms/scratch/projects/`. An original `PAX Demo.sb3`
    tests SVG/PNG costumes, scripts, a variable monitor, pen trails, speech and sound.
+   **PAX-Fun-Demo.sb3** adds seven live hardware pages and touch/keyboard examples for the onboard outputs. See [its controls and hardware notes](data/PAX-Fun-Demo.md).
 4. Launch Scratch. Touch **New** to create a project, or a project filename to open its scripts, or **Edit** to open the selected project directly. Use Up/Down and A/Enter to play a project.
 
 Default project controls are D-pad = arrows and A = Space; B/X/Y/L/R retain
