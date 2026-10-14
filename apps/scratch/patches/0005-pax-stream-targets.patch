@@ -1,0 +1,161 @@
+diff --git a/include/runtime/parser/parser.hpp b/include/runtime/parser/parser.hpp
+index a00670e..7c4e01e 100644
+--- a/include/runtime/parser/parser.hpp
++++ b/include/runtime/parser/parser.hpp
+@@ -20,6 +20,10 @@ struct SE_EXPORT Parser {
+     // Only for JSON-shaped formats (SB3, SB2)
+     static void loadSprites(const nlohmann::json &json, ProjectFormat format = ProjectFormat::SB3);
+     static bool loadExtensions(const nlohmann::json &json);
++#if defined(PAX_APP_SIDE)
++    // Consume one decoded target, keeping only its runtime representation.
++    static void loadSb3Target(nlohmann::json &&target);
++#endif
+ 
+ #ifdef ENABLE_CLOUDVARS
+     static void initMist();
+@@ -27,7 +31,7 @@ struct SE_EXPORT Parser {
+   private:
+     static void log(const std::string &message);
+ 
+-    static void loadSpritesSb3(const nlohmann::json &json);
++    static void loadSpritesSb3(const nlohmann::json &json, bool finalize = true);
+     static Block *loadBlockSb3(Sprite *newSprite, const std::string &id, const nlohmann::json &blockDatas, Block *parentBlock, int indent);
+     static void loadFieldsSb3(Block &block, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
+     static void loadInputsSb3(Block &block, Sprite *newSprite, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
+diff --git a/source/runtime/parser/sb3.cpp b/source/runtime/parser/sb3.cpp
+index 2876d7f..e4bd812 100644
+--- a/source/runtime/parser/sb3.cpp
++++ b/source/runtime/parser/sb3.cpp
+@@ -14,7 +14,16 @@
+ #include <unzip.hpp>
+ #include <variant>
+ 
+-void Parser::loadSpritesSb3(const nlohmann::json &json) {
++#if defined(PAX_APP_SIDE)
++void Parser::loadSb3Target(nlohmann::json &&target) {
++    nlohmann::json part;
++    part["targets"] = nlohmann::json::array();
++    part["targets"].push_back(std::move(target));
++    loadSpritesSb3(part, false);
++}
++#endif
++
++void Parser::loadSpritesSb3(const nlohmann::json &json, bool finalize) {
+     Parser::logParsing = false; // ToDo: Activate it via Settings (Only if Logs in general are enabled)
+     Parser::log("Loading sprites:");
+     const nlohmann::json &spritesData = json["targets"];
+@@ -119,7 +128,31 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+                 newList.name = data[0];
+                 newList.items.reserve(data[1].size());
+                 Parser::log("\t\t" + newList.name + " [" + std::to_string(data[1].size()) + " items]");
++#if defined(PAX_APP_SIDE)
++                // Values hold immutable shared strings. Large saved lists often
++                // repeat short text (e.g. 199k copies of "0"); share storage
++                // without converting strings to numbers or changing list items.
++                std::unordered_map<std::string, std::shared_ptr<const std::string>> strings;
++#endif
+                 for (const auto &listItem : data[1]) {
++#if defined(PAX_APP_SIDE)
++                    if (data[1].size() >= 1024 && listItem.is_string()) {
++                        const auto &text = listItem.get_ref<const std::string &>();
++                        if (text.size() <= 64) {
++                            auto found = strings.find(text);
++                            if (found != strings.end()) {
++                                newList.items.emplace_back(found->second);
++                                continue;
++                            }
++                            if (strings.size() < 256) {
++                                auto shared = std::make_shared<const std::string>(text);
++                                strings.emplace(text, shared);
++                                newList.items.emplace_back(std::move(shared));
++                                continue;
++                            }
++                        }
++                    }
++#endif
+                     newList.items.push_back(Value::fromJson(listItem));
+                 }
+             }
+@@ -314,6 +347,7 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+         if (newSprite->isStage) Scratch::stageSprite = newSprite;
+     }
+ 
++    if (!finalize) return;
+     Scratch::sortSprites();
+ 
+     if (json.contains("monitors") && json["monitors"].is_array()) {
+diff --git a/source/runtime/parser/zip_project_loader.cpp b/source/runtime/parser/zip_project_loader.cpp
+index 269f776..844a073 100644
+--- a/source/runtime/parser/zip_project_loader.cpp
++++ b/source/runtime/parser/zip_project_loader.cpp
+@@ -14,6 +14,30 @@
+ 
+ ZipProjectLoader::ZipProjectLoader(ProjectFormat format) : format(format) {}
+ 
++#if defined(PAX_APP_SIDE)
++// A callback keeps at most one target DOM alive. Runtime blocks/lists retain
++// every value, while completed target JSON is discarded before decoding more.
++static nlohmann::json parsePaxProject(const char *data, size_t size,
++                                    ProjectFormat format) {
++    bool targets = false;
++    auto consume = [&](int depth, nlohmann::json::parse_event_t event,
++                       nlohmann::json &value) {
++        using Event = nlohmann::json::parse_event_t;
++        if (depth == 1 && event == Event::key)
++            targets = format == ProjectFormat::SB3 && value == "targets";
++        if (targets && depth == 2 && event == Event::object_end) {
++            Parser::loadSb3Target(std::move(value));
++            return false;
++        }
++        if (targets && depth == 1 && event == Event::array_end)
++            targets = false;
++        return true;
++    };
++    // Parse the extraction buffer directly, avoiding a full-size string copy.
++    return nlohmann::json::parse(data, data + size, consume, false);
++}
++#endif
++
+ bool ZipProjectLoader::load(std::istream *file) {
+     nlohmann::json project_json;
+ 
+@@ -55,7 +79,11 @@ bool ZipProjectLoader::load(std::istream *file) {
+                 return false;
+             }
+ 
++            #if defined(PAX_APP_SIDE)
++            project_json = parsePaxProject(static_cast<const char *>(json_data), json_size, format);
++#else
+             project_json = nlohmann::json::parse(std::string(static_cast<const char *>(json_data), json_size));
++#endif
+             Unzip::zipArchive->freeHeap(json_data);
+         } else {
+             Scratch::sb3InRam = false;
+@@ -77,7 +105,11 @@ bool ZipProjectLoader::load(std::istream *file) {
+                 return false;
+             }
+ 
++            #if defined(PAX_APP_SIDE)
++            project_json = parsePaxProject(static_cast<const char *>(json_data), json_size, format);
++#else
+             project_json = nlohmann::json::parse(std::string(static_cast<const char *>(json_data), json_size));
++#endif
+             archive->freeHeap(json_data);
+         }
+     } else {
+@@ -95,10 +127,14 @@ bool ZipProjectLoader::load(std::istream *file) {
+         json_content.assign(std::istreambuf_iterator<char>(*file),
+                             std::istreambuf_iterator<char>());
+ 
++#if defined(PAX_APP_SIDE)
++        project_json = parsePaxProject(json_content.data(), json_content.size(), format);
++#else
+         project_json = nlohmann::json::parse(json_content);
++#endif
+     }
+ 
+-    if (project_json.empty()) {
++    if (project_json.is_discarded() || project_json.empty()) {
+         Log::logCritical("Project.json is empty.", false);
+         return false;
+     }

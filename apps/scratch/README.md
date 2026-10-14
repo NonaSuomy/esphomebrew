@@ -29,6 +29,10 @@ Date/time sensing depends on the loader's available clock and currently uses
 uptime. Complex Scratch projects may exceed the device's memory/CPU budget.
 
 
+## Project loading (0.4.4)
+
+Playback parses SB3 sprites incrementally and avoids copying the full extracted project description. Large saved lists share immutable repeated short strings, preserving every entry and its type. This reduces loading peaks for projects such as ScratchBenchmark v1.0.2 without deleting saved data or changing timed workloads. The editor still needs its editable project model; this change concerns playback loading.
+
 ## Playback input (0.4.3)
 
 Touch and USB mouse presses now dispatch the standard **when this sprite clicked** scripts; keyboard/gamepad input dispatches **when key pressed** scripts. Device mice have a visible pointer during playback; desktop keeps its OS pointer. Letterbox margins and player controls block clicks through to underlying sprites. Fast queued keyboard taps are retained without duplicating typed text.
