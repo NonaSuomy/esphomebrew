@@ -5,7 +5,8 @@
     "patches": [
       "patches/0001-pax-rgba.patch",
       "patches/0002-pax-empty-svg.patch",
-      "patches/0003-pax-empty-inputs.patch"
+      "patches/0003-pax-empty-inputs.patch",
+      "patches/0004-pax-list-alignment.patch"
     ]
   },
   "lunasvg": {
