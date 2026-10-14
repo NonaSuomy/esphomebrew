@@ -45,6 +45,15 @@ int main(){
  pax_update_project_clock();assert(BlockExecutor::timer.getTimeMs()>=20);
  BlockExecutor::timer.start();assert(BlockExecutor::timer.getTimeMs()==0);
  puts("PASS Scratch frame clock reset/read and independent wait timers");
+ // Real Scratch zero-viewport SVGs are valid blank costumes, not failures.
+ const std::string blankSvg="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"0\" height=\"0\" viewBox=\"0 0 0 0\"></svg>";
+ auto writeSvg=[](const char *name,const std::string &data){auto path=OS::getRomFSLocation()+name;FILE *f=fopen(path.c_str(),"wb");assert(f);fwrite(data.data(),1,data.size(),f);fclose(f);};
+ writeSvg("pax-empty.svg",blankSvg);
+ {auto image=createImageFromFile("pax-empty.svg",false);assert(image);assert(image.value()->getAlphaAt(0,0)==0);assert(image.value()->resizeSVG(2));assert(image.value()->getAlphaAt(0,0)==0);}
+ writeSvg("pax-solid.svg","<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"8\" height=\"8\"><rect width=\"8\" height=\"8\" fill=\"red\"/></svg>");
+ {auto image=createImageFromFile("pax-solid.svg",false);assert(image);assert(image.value()->getAlphaAt(4,4)==255);}
+ writeSvg("pax-invalid.svg","not an svg");assert(!createImageFromFile("pax-invalid.svg",false));
+ puts("PASS blank SVG load/resize, opaque SVG and invalid SVG error");
  assert(Scratch::initializeRuntime());
  Unzip::filePath=OS::getScratchFolderLocation()+"PAX Demo.sb3";assert(Unzip::load());assert(Scratch::sprites.size()==3);assert(!Scratch::sb3InRam);
  Scratch::initializeScratchProject();ScriptThread monitor;

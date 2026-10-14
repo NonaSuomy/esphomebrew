@@ -64,3 +64,5 @@ Toolbar artwork: the supplied Scratch green flag and red stop SVGs are embedded 
 Desktop input: move/click the mouse to select projects or manipulate blocks. In the project picker, arrows change the selection, Enter previews, E opens the selected project in the editor, and N creates a project. Short key taps are handled even when press/release arrive in the same input poll.
 
 The Scratch project timer uses the execution-step timestamp, matching scratch-vm `io/clock.js`. Reset followed by a timer read within a step is exactly zero. Wait/audio/frame timers continue using real time.
+
+Scratch-exported SVG costumes with a zero-width or zero-height viewport load as a transparent texel. Their blank texture remains transparent when scaled. Malformed SVG files still report parse errors. This PAX-only runtime adjustment is reproduced by `patches/0002-pax-empty-svg.patch`.

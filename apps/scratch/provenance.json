@@ -1,7 +1,11 @@
 {
   "ScratchEverywhere": {
     "repo": "https://github.com/ScratchEverywhere/ScratchEverywhere.git",
-    "ref": "0bcc42bc1f216be2f75cbdaf9a5cf344dbf33b00"
+    "ref": "0bcc42bc1f216be2f75cbdaf9a5cf344dbf33b00",
+    "patches": [
+      "patches/0001-pax-rgba.patch",
+      "patches/0002-pax-empty-svg.patch"
+    ]
   },
   "lunasvg": {
     "repo": "https://github.com/sammycage/lunasvg.git",
