@@ -2,7 +2,9 @@
 #include <input.hpp>
 #include <render.hpp>
 #include <set>
+#include <climits>
 bool pax_editor_playing = false;
+bool pax_native_cursor = false;
 static std::set<std::string> keys;
 static int tx = PAX_W / 2, ty = PAX_H / 2;
 static int mouseButtons;
@@ -74,34 +76,41 @@ void Input::getInput() {
         mouseHeight = PAX_H;
     }
     bool down = false;
-    int x, y, cw = 800, ch = 480;
+    int x = INT_MIN, y = INT_MIN, cw = 800, ch = 480;
     if (pax_svc->display_get_size)
         pax_svc->display_get_size(&cw, &ch);
-    if (pax_svc->touch_read && pax_svc->touch_read(&x, &y)) {
+    bool contact = pax_svc->touch_read && pax_svc->touch_read(&x, &y);
+    // The desktop host supplies absolute coordinates even when not pressed.
+    // Hardware touch_read leaves these outputs untouched without a contact.
+    bool absolute = x != INT_MIN && y != INT_MIN;
+    if (!contact)
+        pax_native_cursor = absolute;
+    bool inside = false;
+    if (absolute) {
         float fit = std::min((float)cw / PAX_W, (float)ch / PAX_H);
         int ow = std::max(1, (int)(PAX_W * fit + .5f)), oh = std::max(1, (int)(PAX_H * fit + .5f));
         int ox = (cw - ow) / 2, oy = (ch - oh) / 2;
-        if (x >= ox && y >= oy && x < ox + ow && y < oy + oh) {
-            tx = (x - ox) * PAX_W / ow;
-            ty = (y - oy) * PAX_H / oh;
-            down = true;
-        }
-    }
-    if (down) {
+        inside = x >= ox && y >= oy && x < ox + ow && y < oy + oh;
+        tx = std::clamp((x - ox) * PAX_W / ow, 0, PAX_W - 1);
+        ty = std::clamp((y - oy) * PAX_H / oh, 0, PAX_H - 1);
         mouseX = tx;
         mouseY = ty;
+        down = contact && inside;
     }
     if (pax_svc->input_mouse_read) {
         int dx, dy, b;
         if (pax_svc->input_mouse_read(&dx, &dy, &b)) {
-            float fit = std::max(.01f, std::min((float)cw / PAX_W, (float)ch / PAX_H));
-            mouseX = std::clamp(mouseX + dx / fit, 0.f, (float)PAX_W - 1);
-            mouseY = std::clamp(mouseY + dy / fit, 0.f, (float)PAX_H - 1);
-            tx = (int)mouseX;
-            ty = (int)mouseY;
+            // A desktop hover/contact already supplied this sample's position.
+            if (!absolute) {
+                float fit = std::max(.01f, std::min((float)cw / PAX_W, (float)ch / PAX_H));
+                mouseX = std::clamp(mouseX + dx / fit, 0.f, (float)PAX_W - 1);
+                mouseY = std::clamp(mouseY + dy / fit, 0.f, (float)PAX_H - 1);
+                tx = (int)mouseX;
+                ty = (int)mouseY;
+            }
             mouseButtons = b;
         }
-        down = down || (mouseButtons & 1);
+        down = down || ((mouseButtons & 1) && (!absolute || inside));
     }
     mousePointer.isMoving = tx != mousePointer.x || ty != mousePointer.y;
     mousePointer.x = tx;

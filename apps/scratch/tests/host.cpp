@@ -38,6 +38,20 @@ int main(){
  svc.touch_read=noTouch;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};
  static int report=0;svc.input_mouse_read=[](int*dx,int*dy,int*b){*dx=*dy=0;if(report==0){*b=1;report++;return 1;}if(report==2){*b=0;report++;return 1;}return 0;};Input::getInput();assert(Input::mousePointer.isPressed);Input::getInput();assert(Input::mousePointer.isPressed);report=2;Input::getInput();assert(!Input::mousePointer.isPressed);
  puts("PASS letterboxed touch and held USB mouse input");
+ // Desktop absolute hover remains aligned after leaving/re-entering and
+ // across the editor/player surfaces; the OS cursor replaces the software one.
+ assert(pax_resize_surface(1024,600));
+ svc.display_get_size=[](int*w,int*h){*w=1024;*h=600;};
+ svc.touch_read=[](int*x,int*y){*x=440;*y=110;return 0;};
+ svc.input_mouse_read=[](int*dx,int*dy,int*b){*dx=75;*dy=40;*b=0;return 1;};
+ Input::getInput();assert(pax_native_cursor&&Input::mousePointer.x==440&&Input::mousePointer.y==110&&!Input::mousePointer.isPressed);
+ assert(pax_resize_surface(480,360));svc.touch_read=[](int*x,int*y){*x=240;*y=300;return 0;};
+ Input::getInput();assert(Input::mousePointer.x==76&&Input::mousePointer.y==180);
+ assert(pax_resize_surface(1024,600));svc.touch_read=[](int*x,int*y){*x=975;*y=25;return 1;};
+ Input::getInput();assert(Input::mousePointer.x==975&&Input::mousePointer.y==25&&Input::mousePointer.isPressed);
+ svc.touch_read=noTouch;svc.input_mouse_read=nullptr;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};
+ assert(pax_resize_surface(480,360));Input::getInput();assert(!pax_native_cursor);
+ puts("PASS absolute desktop hover, canvas transitions and native cursor selection");
  // Disconnected sockets must initialize their result, including Boolean sockets.
  Block emptyBlock;ScriptThread emptyThread;Sprite emptySprite;
  bool emptyBool=true;double emptyNumber=123;std::string emptyText="stale";Value emptyValue("stale");

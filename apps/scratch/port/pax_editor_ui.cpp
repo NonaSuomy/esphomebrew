@@ -863,7 +863,7 @@ void Editor::render() {
   }
   // The player leaves cursor drawing to projects; the editor needs its own
   // pointer so USB mouse users can see blocks and sockets under the cursor.
-  if (oldX_ > 0 && oldY_ > 0) {
+  if (!pax_native_cursor && oldX_ > 0 && oldY_ > 0) {
     for (int yy = 0; yy < 18; yy++)
       for (int xx = 0; xx <= yy / 2; xx++) {
         bool edge = xx == 0 || xx == yy / 2 || yy == 17;

@@ -17,6 +17,7 @@ extern int pax_editor_width, pax_editor_height;
 void pax_choose_canvas();
 void pax_update_project_clock();
 extern bool pax_editor_playing;
+extern bool pax_native_cursor;
 bool pax_resize_surface(int width, int height);
 void pax_set_clip(int x, int y, int w, int h);
 void pax_blend(int x, int y, int r, int g, int b, int a);
