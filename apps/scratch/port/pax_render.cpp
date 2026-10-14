@@ -11,6 +11,7 @@
 #include <stb_easy_font.h>
 #include <text_headless.hpp>
 #include <vector>
+#include <memory>
 #include <window.hpp>
 uint16_t *pax_pixels;
 int PAX_W = 480, PAX_H = 360;
@@ -22,7 +23,11 @@ void pax_set_clip(int x, int y, int w, int h) {
     clipH = h;
 }
 WindowSE *globalWindow = nullptr;
-static std::vector<uint8_t> pen;
+struct PenRowDeleter {
+    void operator()(uint8_t *p) const { if (p) pax_svc->mem_free(p); }
+};
+static std::vector<std::unique_ptr<uint8_t, PenRowDeleter>> pen;
+static bool penAllocationFailed = false;
 static bool penTarget = false;
 class PaxSpeech : public SpeechManager {
     SpeechRenderConfig getSpeechRenderConfig() override {
@@ -48,7 +53,19 @@ static void blendPixel(int x, int y, int r, int g, int b, int a) {
     return;
   a = std::min(255, a);
   if (penTarget) {
-    auto *d = &pen[(y * PAX_W + x) * 4];
+    if (penAllocationFailed) return;
+    auto &row = pen[y];
+    if (!row) {
+      auto *pixels = static_cast<uint8_t *>(pax_svc->mem_caps_alloc(PAX_W * 4, PAX_MEM_CAP_SPIRAM));
+      if (!pixels) {
+        penAllocationFailed = true;
+        pax_svc->log_printf("Scratch: Warning: pen row allocation failed\n");
+        return;
+      }
+      std::memset(pixels, 0, PAX_W * 4);
+      row.reset(pixels);
+    }
+    auto *d = row.get() + x * 4;
     int da = d[3], oa = a + da * (255 - a) / 255;
     if (oa) {
       d[0] = (r * a + d[0] * da * (255 - a) / 255) / oa;
@@ -229,6 +246,7 @@ bool pax_resize_surface(int w, int h) {
     pen.clear();
     pen.shrink_to_fit();
     penTarget = false;
+    penAllocationFailed = false;
     Render::hasFrameBegan = false;
     pax_set_clip(0, 0, w, h);
     return true;
@@ -332,13 +350,15 @@ void Render::drawRoundedBox(int w, int h, int x, int y, int, uint8_t r, uint8_t 
     drawBox(w, h, x, y, r, g, b, a);
 }
 bool Render::initPen() {
-    if (pen.empty())
-        pen.resize(PAX_W * PAX_H * 4, 0);
-    return true;
+    if (pen.empty()) pen.resize(PAX_H);
+    return !penAllocationFailed;
 }
-void Render::penClear() { std::fill(pen.begin(), pen.end(), 0); }
+void Render::penClear() {
+    for (auto &row : pen) row.reset();
+    penAllocationFailed = false;
+}
 void Render::penMoveAccurate(double x1, double y1, double x2, double y2, Sprite *s) {
-    initPen();
+    if (!initPen()) return;
     auto c = CSBT2RGBA(s->penData.color);
     float scale =
         std::min((float)PAX_W / Scratch::projectWidth, (float)PAX_H / Scratch::projectHeight);
@@ -390,7 +410,7 @@ static void drawSprite(Sprite *s, bool stamp = false) {
     c->second->render(p);
 }
 void Render::penStamp(Sprite *s) {
-    initPen();
+    if (!initPen()) return;
     penTarget = true;
     drawSprite(s, true);
     penTarget = false;
@@ -398,11 +418,14 @@ void Render::penStamp(Sprite *s) {
 void Render::renderPenLayer() {
     if (pen.empty())
         return;
-    for (int y = 0; y < PAX_H; y++)
+    for (int y = 0; y < PAX_H; y++) {
+        if (!pen[y]) continue;
+        auto *row = pen[y].get();
         for (int x = 0; x < PAX_W; x++) {
-            auto *s = &pen[(y * PAX_W + x) * 4];
+            auto *s = row + x * 4;
             pax_blend(x, y, s[0], s[1], s[2], s[3]);
         }
+    }
 }
 void Render::renderSprites() {
     beginFrame(0, 0, 0, 0);

@@ -151,9 +151,16 @@ int main(){
  // Hidden pen stamps must reload an evicted costume and still draw.
  sprite->visible=false;const auto stampedName=sprite->costumes[sprite->currentCostume].fullName;
  Scratch::loadCurrentCostumeImage(Scratch::stageSprite);assert(!Scratch::costumeImages.count(stampedName));
- Render::penClear();Render::penStamp(sprite);assert(!sprite->visible);assert(Scratch::costumeImages.count(stampedName));
+ Render::penClear();
+ // A fragmented heap can service a scanline even when a full layer would fail.
+ static size_t largestPenRequest=0;static bool rejectPenRow=true;
+ auto normalAlloc=svc.mem_caps_alloc;
+ svc.mem_caps_alloc=[](size_t n,uint32_t)->void*{largestPenRequest=std::max(largestPenRequest,n);return rejectPenRow?nullptr:malloc(n);};
+ Render::penStamp(sprite);assert(!Render::initPen());Render::penClear();rejectPenRow=false;
+ Render::penStamp(sprite);assert(largestPenRequest<=480*4);svc.mem_caps_alloc=normalAlloc;
+ assert(!sprite->visible);assert(Scratch::costumeImages.count(stampedName));
  Render::beginFrame(0,0,0,0);Render::renderPenLayer();int stampedPixels=0;for(int i=0;i<480*360;i++)if(pax_pixels[i])stampedPixels++;assert(stampedPixels>20);Render::endFrame();
- sprite->visible=true;Render::penClear();puts("PASS hidden stamp reloads evicted pixels, draws, and preserves sprite visibility");
+ sprite->visible=true;Render::penClear();puts("PASS hidden stamp reloads evicted pixels, draws, and preserves sprite visibility");puts("PASS pen uses scanline allocations and recovers after row allocation failure");
  menu=true;Input::getInput();delay(2050);Input::getInput();assert(OS::toExit);
  Scratch::cleanupScratchProject();SoundPlayer::deinit();Render::deInit();OS::deinit();
  // Re-open to exercise runtime cleanup/reinitialization.
