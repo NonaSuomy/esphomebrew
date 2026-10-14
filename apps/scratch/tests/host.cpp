@@ -38,6 +38,14 @@ int main(){
  svc.touch_read=noTouch;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};
  static int report=0;svc.input_mouse_read=[](int*dx,int*dy,int*b){*dx=*dy=0;if(report==0){*b=1;report++;return 1;}if(report==2){*b=0;report++;return 1;}return 0;};Input::getInput();assert(Input::mousePointer.isPressed);Input::getInput();assert(Input::mousePointer.isPressed);report=2;Input::getInput();assert(!Input::mousePointer.isPressed);
  puts("PASS letterboxed touch and held USB mouse input");
+ // Disconnected sockets must initialize their result, including Boolean sockets.
+ Block emptyBlock;ScriptThread emptyThread;Sprite emptySprite;
+ bool emptyBool=true;double emptyNumber=123;std::string emptyText="stale";Value emptyValue("stale");
+ assert(Scratch::getInputValueAs(&emptyBlock,"OPERAND1",&emptyThread,&emptySprite,emptyBool)&&!emptyBool);
+ assert(Scratch::getInputValueAs(&emptyBlock,"OPERAND1",&emptyThread,&emptySprite,emptyNumber)&&emptyNumber==0);
+ assert(Scratch::getInputValueAs(&emptyBlock,"OPERAND1",&emptyThread,&emptySprite,emptyText)&&emptyText.empty());
+ assert(Scratch::getInputValue(&emptyBlock,"OPERAND1",&emptyThread,&emptySprite,emptyValue)&&!emptyValue.asBoolean());
+ puts("PASS disconnected Boolean, number, text and generic input defaults");
  // Project timer is stable within one Scratch execution step; wait timers
  // still measure real time. This reproduces both supplied SB3 timer checks.
  pax_update_project_clock();BlockExecutor::timer.start();Timer waitTimer(true);
