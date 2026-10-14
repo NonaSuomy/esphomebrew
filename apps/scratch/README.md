@@ -90,3 +90,5 @@ The Scratch project timer uses the execution-step timestamp, matching scratch-vm
 Scratch-exported SVG costumes with a zero-width or zero-height viewport load as a transparent texel. Their blank texture remains transparent when scaled. Malformed SVG files still report parse errors. This PAX-only runtime adjustment is reproduced by `patches/0002-pax-empty-svg.patch`.
 
 Playback has a Turbo ON/OFF button and F7 shortcut. Turbo bypasses visual-block redraw waits while elapsed-time waits/timers remain active. F6 or the stop icon returns to the editor or picker. Normal mode remains the default unless the project requests turbo. List titles, footer lengths, and add buttons use PAX top-origin text positioning.
+
+0.4.2 playback uses the native panel framebuffer and the already bundled NotoSans-Medium.ttf for cached antialiased text (pixel-font fallback if the font file is missing). Turbo removes per-step sleeps and yields every 4 ms instead; Scratch waits/timers still use elapsed time. Normal mode keeps its existing scheduling.

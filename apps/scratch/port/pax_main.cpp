@@ -123,12 +123,12 @@ static std::string chooseProject() {
 }
 bool pax_project_playing = false;
 bool pax_play_project(const std::string &path) {
-  if (PAX_W != 480 || PAX_H != 360)
-    if (!pax_resize_surface(480, 360))
+  if (PAX_W != pax_editor_width || PAX_H != pax_editor_height)
+    if (!pax_resize_surface(pax_editor_width, pax_editor_height))
       return false;
   Unzip::filePath = path;
   Render::beginFrame(0, 20, 25, 40);
-  pax_draw_text("Loading project", 240, 150, 0xffffffff, 1, true);
+  pax_draw_text("Loading project", PAX_W / 2, PAX_H / 2 - 12, 0xffffffff, 1, true);
   Render::endFrame();
   if (!Unzip::load()) {
     Scratch::cleanupScratchProject();

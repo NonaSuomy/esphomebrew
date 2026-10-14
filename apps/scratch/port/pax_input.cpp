@@ -120,9 +120,13 @@ void Input::getInput() {
         }
         down = down || ((mouseButtons & 1) && (!absolute || inside));
     }
-    mousePointer.isMoving = tx != mousePointer.x || ty != mousePointer.y;
-    mousePointer.x = tx;
-    mousePointer.y = ty;
+    const bool playback = pax_project_playing || pax_editor_playing;
+    const float stageScale = std::max(.01f, Render::renderScale);
+    const int pointerX = playback ? (int)std::lround((tx - PAX_W / 2.f) / stageScale) : tx;
+    const int pointerY = playback ? (int)std::lround((PAX_H / 2.f - ty) / stageScale) : ty;
+    mousePointer.isMoving = pointerX != mousePointer.x || pointerY != mousePointer.y;
+    mousePointer.x = pointerX;
+    mousePointer.y = pointerY;
     mousePointer.isPressed = down;
     mousePointer.mouseButton = Mouse::LEFT;
     mousePointer.heldFrames = down ? mousePointer.heldFrames + 1 : 0;

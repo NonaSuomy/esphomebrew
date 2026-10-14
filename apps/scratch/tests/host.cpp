@@ -31,6 +31,26 @@ int main(){
  svc.file_seek=[](void*f,long n,int whence){return fseek((FILE*)f,n,whence);};
  svc.file_read=[](void*b,size_t n,size_t c,void*f){return fread(b,n,c,(FILE*)f);};
  pax_svc=&svc;
+ // Test the real bundled font and its grayscale coverage, not the fallback.
+ auto fontPath=std::filesystem::path(OS::getRomFSLocation())/"gfx/ingame/fonts/NotoSans-Medium.ttf";
+ std::filesystem::create_directories(fontPath.parent_path());
+ std::filesystem::copy_file(std::filesystem::path(__FILE__).parent_path().parent_path()/"core/gfx/ingame/fonts/NotoSans-Medium.ttf",fontPath,std::filesystem::copy_options::overwrite_existing);
+ assert(pax_resize_surface(1024,600));Render::beginFrame(0,255,255,255);
+ float fw,fh;assert(pax_font_measure("output",.833333f,fw,fh));assert(fw>20&&fh==20);
+ pax_draw_text("output",512,160,0x000000ff,.833333f,true);
+ int gray=0;for(int i=0;i<1024*600;i++)if(pax_pixels[i]!=0xffff&&pax_pixels[i]!=0)++gray;
+ assert(gray>30);Render::hasFrameBegan=false;assert(pax_resize_surface(480,360));
+ puts("PASS native-resolution Noto Sans text has antialiased glyph coverage");
+ // A simulated clock checks that turbo batches work while yielding regularly.
+ static int64_t simClock=1000000;static int yieldCalls=0;
+ svc.get_time_us=[]()->int64_t{return simClock+=100;};svc.delay_ms=[](int){++yieldCalls;};
+ pax_project_playing=true;Scratch::turbo=false;
+ for(int i=0;i<100;i++)assert(Render::appShouldRun());assert(yieldCalls==100);
+ yieldCalls=0;Scratch::turbo=true;
+ for(int i=0;i<100;i++)assert(Render::appShouldRun());assert(yieldCalls>0&&yieldCalls<10);
+ printf("PASS turbo timed slices: normal=100 yields, turbo=%d yields for equal work\n",yieldCalls);
+ pax_project_playing=false;Scratch::turbo=false;svc.get_time_us=clockUs;svc.delay_ms=delay;
+
 
  // Touch coordinates use the scaled and centered Scratch viewport.
  svc.display_get_size=[](int*w,int*h){*w=800;*h=480;};svc.touch_read=[](int*x,int*y){*x=240;*y=240;return 1;};Input::getInput();assert(Input::mousePointer.x==120&&Input::mousePointer.y==180&&Input::mousePointer.isPressed);
@@ -52,6 +72,13 @@ int main(){
  svc.touch_read=noTouch;svc.input_mouse_read=nullptr;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};
  assert(pax_resize_surface(480,360));Input::getInput();assert(!pax_native_cursor);
  puts("PASS absolute desktop hover, canvas transitions and native cursor selection");
+ assert(pax_resize_surface(1024,600));svc.display_get_size=[](int*w,int*h){*w=1024;*h=600;};
+ svc.touch_read=[](int*x,int*y){*x=512;*y=300;return 0;};pax_project_playing=true;Render::renderScale=600.f/360;
+ Input::getInput();assert(Input::mousePointer.x==0&&Input::mousePointer.y==0);assert(Input::getTouchPosition()[0]==512);
+ svc.touch_read=[](int*x,int*y){*x=112;*y=0;return 0;};Input::getInput();assert(Input::mousePointer.x==-240&&Input::mousePointer.y==180);
+ pax_project_playing=false;svc.touch_read=noTouch;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};Render::renderScale=1;assert(pax_resize_surface(480,360));
+ puts("PASS native-resolution playback mouse maps into Scratch stage coordinates");
+
  // A quick F6 tap must stop a builder preview even if both edges are queued.
  static int stopKeyEdge=0;svc.input_keyboard_read=[](pax_keyboard_event_t *e){if(stopKeyEdge==2)return 0;*e={140,stopKeyEdge++==0};return 1;};
  pax_editor_playing=true;Scratch::shouldStop=false;Input::getInput();assert(Scratch::shouldStop);

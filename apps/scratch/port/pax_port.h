@@ -30,6 +30,10 @@ void pax_draw_image(const ImageData &img, const ImageRenderParams &p);
 void pax_audio_pump();
 void pax_draw_text(const std::string &txt, int x, int y, int color, float scale,
                    bool centered);
-#endif
 
 extern bool pax_project_playing;
+
+bool pax_font_measure(const std::string&, float, float&, float&);
+bool pax_font_draw(const std::string&, int, int, int, float, bool);
+
+#endif

@@ -170,6 +170,8 @@ void pax_draw_text(const std::string &original, int x, int y, int color, float s
     auto txt = asciiText(original);
     if (txt.empty() || scale <= 0)
         return;
+    if (pax_font_draw(txt, x, y, color, scale, centered))
+        return;
     std::vector<char> text(txt.begin(), txt.end());
     text.push_back(0);
     float s = 2 * scale;
@@ -207,6 +209,9 @@ void TextObjectHeadless::render(int x, int y) {
 }
 std::vector<float> TextObjectHeadless::getSize() { return getStringSize(text); }
 std::vector<float> TextObjectHeadless::getStringSize(const std::string &t) {
+    float width, height;
+    if (pax_font_measure(asciiText(t), scale, width, height))
+        return {width, height};
     return {(float)stb_easy_font_width((char *)asciiText(t).c_str()) * 2 * scale,
             (float)stb_easy_font_height((char *)asciiText(t).c_str()) * 2 * scale};
 }
@@ -281,8 +286,17 @@ int Render::getHeight() { return PAX_H; }
 float Render::getPixelDensity() { return 1; }
 bool Render::appShouldRun() {
     pax_update_project_clock();
-    pax_audio_pump();
-    pax_svc->delay_ms(1);
+    static long long lastYield = 0;
+    const auto now = pax_time_us();
+    // A timed slice, rather than one OS sleep per block/loop iteration.
+    // Keep elapsed clocks active on every step; device/audio work gets a
+    // regular opportunity to run even in a tight turbo loop.
+    if (!Scratch::turbo || !(pax_project_playing || pax_editor_playing) ||
+        now < lastYield || now - lastYield >= 4000) {
+        pax_audio_pump();
+        pax_svc->delay_ms(1);
+        lastYield = pax_time_us();
+    }
     return !OS::toExit;
 }
 void Render::drawBox(int w, int h, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
@@ -371,7 +385,10 @@ void Render::renderPenLayer() {
         }
 }
 void Render::renderSprites() {
-    beginFrame(0, 255, 255, 255);
+    beginFrame(0, 0, 0, 0);
+    drawBox((int)std::lround(Scratch::projectWidth * renderScale),
+            (int)std::lround(Scratch::projectHeight * renderScale),
+            PAX_W / 2, PAX_H / 2, 255, 255, 255);
     for (auto it = Scratch::sprites.rbegin(); it != Scratch::sprites.rend(); ++it) {
         drawSprite(*it);
         if ((*it)->isStage)

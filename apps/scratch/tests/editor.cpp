@@ -417,8 +417,10 @@ void testEditor() {
   auto *mutableSvc = const_cast<app_services_t *>(pax_svc);
   mutableSvc->touch_read = [](int *x, int *y) {
     if (pax_editor_playing) {
-      *x = 440;
-      *y = 15;
+      int cw, ch;pax_svc->display_get_size(&cw,&ch);
+      float fit=std::min((float)cw/PAX_W,(float)ch/PAX_H);
+      *x=(cw-(int)(PAX_W*fit))/2+(int)((PAX_W-40)*fit);
+      *y=(ch-(int)(PAX_H*fit))/2+(int)(17*fit);
       return 1;
     }
     return 0;
