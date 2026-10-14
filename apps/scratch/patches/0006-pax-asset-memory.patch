@@ -1,0 +1,108 @@
+diff --git a/source/image.cpp b/source/image.cpp
+index bff4e59..549fa97 100644
+--- a/source/image.cpp
++++ b/source/image.cpp
+@@ -298,15 +298,23 @@ nonstd::expected<unsigned char *, std::string> Image::loadSVGFromMemory(const ch
+     height = std::max(1, (int)(svgDocument->height() * finalScale));
+     imgData.scale = finalScale;
+ 
+-    auto bitmap = svgDocument->renderToBitmap(width, height);
+-    if (!bitmap.valid()) return nonstd::make_unexpected("LunaSVG failed to render SVG to bitmap");
+-
+-    unsigned char *src = bitmap.data();
+-    const size_t pixelsSize = width * height * 4;
++    const size_t pixelsSize = static_cast<size_t>(width) * height * 4;
+     unsigned char *dst = (unsigned char *)malloc(pixelsSize);
+     if (!dst) return nonstd::make_unexpected("Failed to allocate SVG pixels buffer");
+-
+-    reorderPixels(src, dst, pixelsSize);
++#if defined(PAX_APP_SIDE)
++    // Render directly into the final pixel storage. The external bitmap does
++    // not own dst; conversion is safe in place and preserves the original RGBA.
++    lunasvg::Bitmap bitmap(dst, width, height, width * 4);
++    if (!bitmap.valid()) { free(dst); return nonstd::make_unexpected("LunaSVG failed to create SVG surface"); }
++    bitmap.clear(0);
++    svgDocument->render(bitmap, lunasvg::Matrix(width / svgDocument->width(), 0, 0,
++                                             height / svgDocument->height(), 0, 0));
++    reorderPixels(dst, dst, pixelsSize);
++#else
++    auto bitmap = svgDocument->renderToBitmap(width, height);
++    if (!bitmap.valid()) { free(dst); return nonstd::make_unexpected("LunaSVG failed to render SVG to bitmap"); }
++    reorderPixels(bitmap.data(), dst, pixelsSize);
++#endif
+ 
+     imgData.pitch = width * 4;
+ 
+@@ -356,15 +364,23 @@ nonstd::expected<void, std::string> Image::resizeSVG(float scale) {
+     imgData.height = height;
+     imgData.scale = finalScale;
+ 
+-    auto bitmap = svgDocument->renderToBitmap(width, height);
+-    if (!bitmap.valid()) return nonstd::make_unexpected("LunaSVG failed to render SVG to bitmap");
+-
+-    unsigned char *src = bitmap.data();
+-    const size_t pixelsSize = width * height * 4;
++    const size_t pixelsSize = static_cast<size_t>(width) * height * 4;
+     unsigned char *dst = (unsigned char *)malloc(pixelsSize);
+     if (!dst) return nonstd::make_unexpected("Failed to allocate SVG pixels buffer");
+-
+-    reorderPixels(src, dst, pixelsSize);
++#if defined(PAX_APP_SIDE)
++    // Render directly into the final pixel storage. The external bitmap does
++    // not own dst; conversion is safe in place and preserves the original RGBA.
++    lunasvg::Bitmap bitmap(dst, width, height, width * 4);
++    if (!bitmap.valid()) { free(dst); return nonstd::make_unexpected("LunaSVG failed to create SVG surface"); }
++    bitmap.clear(0);
++    svgDocument->render(bitmap, lunasvg::Matrix(width / svgDocument->width(), 0, 0,
++                                             height / svgDocument->height(), 0, 0));
++    reorderPixels(dst, dst, pixelsSize);
++#else
++    auto bitmap = svgDocument->renderToBitmap(width, height);
++    if (!bitmap.valid()) { free(dst); return nonstd::make_unexpected("LunaSVG failed to render SVG to bitmap"); }
++    reorderPixels(bitmap.data(), dst, pixelsSize);
++#endif
+ 
+     if (imgData.pixels != nullptr) free(imgData.pixels);
+ 
+diff --git a/source/runtime/runtime.cpp b/source/runtime/runtime.cpp
+index d3937cb..d1608f9 100644
+--- a/source/runtime/runtime.cpp
++++ b/source/runtime/runtime.cpp
+@@ -930,6 +930,21 @@ void Scratch::loadCurrentCostumeImage(Sprite *sprite) {
+     Costume &costume = sprite->costumes[sprite->currentCostume];
+     const std::string &costumeName = costume.fullName;
+ 
++#if defined(PAX_APP_SIDE)
++    // Retain visible costumes and this explicit request (including hidden
++    // stamps). Release old/hidden cached bitmaps before allocating a new one.
++    std::unordered_set<std::string> needed{costumeName};
++    for (auto *active : sprites) {
++        if ((active->isStage || active->visible) && active->currentCostume >= 0 &&
++            static_cast<size_t>(active->currentCostume) < active->costumes.size())
++            needed.insert(active->costumes[active->currentCostume].fullName);
++    }
++    for (auto cached = costumeImages.begin(); cached != costumeImages.end();) {
++        if (!needed.count(cached->first)) cached = costumeImages.erase(cached);
++        else ++cached;
++    }
++#endif
++
+     const int screenWidth = Render::getWidth();
+     const int screenHeight = Render::renderMode == Render::BOTH_SCREENS ? 480 : Render::getHeight();
+ 
+diff --git a/source/runtime/unzip.cpp b/source/runtime/unzip.cpp
+index b9a0ba2..6a367fb 100644
+--- a/source/runtime/unzip.cpp
++++ b/source/runtime/unzip.cpp
+@@ -180,7 +180,10 @@ void projectLoaderThread(void *data) {
+ void loadInitialImages() {
+     Unzip::loadingState = TranslationManager::getTranslation("ui.loading.images");
+     for (auto &currentSprite : Scratch::sprites) {
+-
++#if defined(PAX_APP_SIDE)
++        // Hidden sprites load on show, stamp or a costume-dependent operation.
++        if (!currentSprite->isStage && !currentSprite->visible) continue;
++#endif
+         Scratch::loadCurrentCostumeImage(currentSprite);
+     }
+ }

@@ -131,6 +131,14 @@ int main(){
  {auto image=createImageFromFile("pax-solid.svg",false);assert(image);assert(image.value()->getAlphaAt(4,4)==255);}
  writeSvg("pax-invalid.svg","not an svg");assert(!createImageFromFile("pax-invalid.svg",false));
  puts("PASS blank SVG load/resize, opaque SVG and invalid SVG error");
+ const std::string alphaSvg=R"SVG(<svg xmlns="http://www.w3.org/2000/svg" width="23" height="17" viewBox="-5 -3 23 17"><defs><linearGradient id="a"><stop stop-color="red"/><stop offset="1" stop-color="blue" stop-opacity=".3"/></linearGradient></defs><ellipse cx="6" cy="5" rx="9" ry="7" fill="url(#a)" opacity=".7"/></svg>)SVG";
+ writeSvg("pax-alpha.svg",alphaSvg);
+ {auto loaded=createImageFromFile("pax-alpha.svg",false);assert(loaded);auto doc=lunasvg::Document::loadFromData(alphaSvg);
+ for(int scale: {1,2,3}){assert(loaded.value()->resizeSVG(scale));auto reference=doc->renderToBitmap(23*scale,17*scale);auto *src=reference.data();auto *dst=static_cast<unsigned char*>(loaded.value()->getNativeTexture());assert(dst);
+ for(int i=0;i<23*17*scale*scale;i++){unsigned a=src[i*4+3],r=src[i*4+2],g=src[i*4+1],b=src[i*4];if(a>0&&a<255){r=r*255/a;g=g*255/a;b=b*255/a;}assert(dst[i*4]==r&&dst[i*4+1]==g&&dst[i*4+2]==b&&dst[i*4+3]==a);}}
+ }
+ puts("PASS direct SVG rasterization and resize match every reference pixel, including antialiasing and alpha");
+
  assert(Scratch::initializeRuntime());
  Unzip::filePath=OS::getScratchFolderLocation()+"PAX Demo.sb3";assert(Unzip::load());assert(Scratch::sprites.size()==3);assert(!Scratch::sb3InRam);
  Scratch::initializeScratchProject();ScriptThread monitor;
@@ -140,6 +148,12 @@ int main(){
  assert(pax_pixels[250*480+390]==0x261f);
  int black=0;int faceX=(int)sprite->renderInfo.renderX,faceY=(int)sprite->renderInfo.renderY;for(int y=std::max(0,faceY-30);y<std::min(360,faceY+30);y++)for(int x=std::max(0,faceX-30);x<std::min(480,faceX+30);x++)if(pax_pixels[y*480+x]==0)black++;assert(black>10); // SVG face follows the moving sprite, independent of timer speed.
  printf("PASS runtime: ticks=%g x=%g frames=%d audio=%d energy=%lld\n",ticks,sprite->xPosition,frames,audioFrames,audioEnergy);
+ // Hidden pen stamps must reload an evicted costume and still draw.
+ sprite->visible=false;const auto stampedName=sprite->costumes[sprite->currentCostume].fullName;
+ Scratch::loadCurrentCostumeImage(Scratch::stageSprite);assert(!Scratch::costumeImages.count(stampedName));
+ Render::penClear();Render::penStamp(sprite);assert(!sprite->visible);assert(Scratch::costumeImages.count(stampedName));
+ Render::beginFrame(0,0,0,0);Render::renderPenLayer();int stampedPixels=0;for(int i=0;i<480*360;i++)if(pax_pixels[i])stampedPixels++;assert(stampedPixels>20);Render::endFrame();
+ sprite->visible=true;Render::penClear();puts("PASS hidden stamp reloads evicted pixels, draws, and preserves sprite visibility");
  menu=true;Input::getInput();delay(2050);Input::getInput();assert(OS::toExit);
  Scratch::cleanupScratchProject();SoundPlayer::deinit();Render::deInit();OS::deinit();
  // Re-open to exercise runtime cleanup/reinitialization.

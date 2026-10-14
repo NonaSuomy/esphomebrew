@@ -368,13 +368,16 @@ void Render::penDotAccurate(Sprite *s) {
     penMoveAccurate(s->xPosition, s->yPosition, s->xPosition, s->yPosition, s);
 }
 void Render::penDotFast(Sprite *s) { penDotAccurate(s); }
-static void drawSprite(Sprite *s) {
-    if (!s->visible || s->costumes.empty() || s->currentCostume < 0 ||
+static void drawSprite(Sprite *s, bool stamp = false) {
+    if ((!s->visible && !stamp) || s->costumes.empty() || s->currentCostume < 0 ||
         s->currentCostume >= (int)s->costumes.size())
         return;
     auto c = Scratch::costumeImages.find(s->costumes[s->currentCostume].fullName);
-    if (c == Scratch::costumeImages.end())
-        return;
+    if (c == Scratch::costumeImages.end()) {
+        Scratch::loadCurrentCostumeImage(s);
+        c = Scratch::costumeImages.find(s->costumes[s->currentCostume].fullName);
+        if (c == Scratch::costumeImages.end()) return;
+    }
     Render::calculateRenderPosition(s, s->costumes[s->currentCostume].isSVG);
     ImageRenderParams p;
     p.x = s->renderInfo.renderX;
@@ -389,7 +392,7 @@ static void drawSprite(Sprite *s) {
 void Render::penStamp(Sprite *s) {
     initPen();
     penTarget = true;
-    drawSprite(s);
+    drawSprite(s, true);
     penTarget = false;
 }
 void Render::renderPenLayer() {

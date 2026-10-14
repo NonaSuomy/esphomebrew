@@ -7,7 +7,8 @@
       "patches/0002-pax-empty-svg.patch",
       "patches/0003-pax-empty-inputs.patch",
       "patches/0004-pax-list-alignment.patch",
-      "patches/0005-pax-stream-targets.patch"
+      "patches/0005-pax-stream-targets.patch",
+      "patches/0006-pax-asset-memory.patch"
     ]
   },
   "lunasvg": {
