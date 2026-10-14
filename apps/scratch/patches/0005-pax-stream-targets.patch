@@ -1,8 +1,32 @@
 diff --git a/include/runtime/parser/parser.hpp b/include/runtime/parser/parser.hpp
-index a00670e..4e46056 100644
+index a00670e..6f872af 100644
 --- a/include/runtime/parser/parser.hpp
 +++ b/include/runtime/parser/parser.hpp
-@@ -20,6 +20,11 @@ struct SE_EXPORT Parser {
+@@ -10,6 +10,23 @@ enum class SE_EXPORT ProjectFormat {
+     SB1,
+ };
+ 
++// PAX keeps block definitions as compact JSON strings until visited. A local
++// decoded value survives recursive input parsing without retaining the whole DOM.
++#if defined(PAX_APP_SIDE)
++class Sb3BlockTable {
++    const nlohmann::json &data;
++  public:
++    Sb3BlockTable(const nlohmann::json &data) : data(data) {}
++    bool contains(const std::string &id) const { return data.contains(id); }
++    nlohmann::json operator[](const std::string &id) const {
++        const auto &value = data[id];
++        return value.is_string() ? nlohmann::json::parse(value.get_ref<const std::string &>()) : value;
++    }
++};
++#else
++using Sb3BlockTable = nlohmann::json;
++#endif
++
+ struct SE_EXPORT Parser {
+     static std::unordered_map<std::string, std::string> &getShadowBlocks();
+ 
+@@ -20,6 +37,11 @@ struct SE_EXPORT Parser {
      // Only for JSON-shaped formats (SB3, SB2)
      static void loadSprites(const nlohmann::json &json, ProjectFormat format = ProjectFormat::SB3);
      static bool loadExtensions(const nlohmann::json &json);
@@ -14,16 +38,22 @@ index a00670e..4e46056 100644
  
  #ifdef ENABLE_CLOUDVARS
      static void initMist();
-@@ -27,7 +32,8 @@ struct SE_EXPORT Parser {
+@@ -27,10 +49,11 @@ struct SE_EXPORT Parser {
    private:
      static void log(const std::string &message);
  
 -    static void loadSpritesSb3(const nlohmann::json &json);
+-    static Block *loadBlockSb3(Sprite *newSprite, const std::string &id, const nlohmann::json &blockDatas, Block *parentBlock, int indent);
+-    static void loadFieldsSb3(Block &block, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
+-    static void loadInputsSb3(Block &block, Sprite *newSprite, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
 +    static void loadSpritesSb3(const nlohmann::json &json, bool finalize = true,
 +                              std::unordered_map<std::string, std::vector<Value>> *savedLists = nullptr);
-     static Block *loadBlockSb3(Sprite *newSprite, const std::string &id, const nlohmann::json &blockDatas, Block *parentBlock, int indent);
-     static void loadFieldsSb3(Block &block, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
-     static void loadInputsSb3(Block &block, Sprite *newSprite, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
++    static Block *loadBlockSb3(Sprite *newSprite, const std::string &id, const Sb3BlockTable &blockDatas, Block *parentBlock, int indent);
++    static void loadFieldsSb3(Block &block, const std::string &blockKey, const Sb3BlockTable &blockDatas, int indent);
++    static void loadInputsSb3(Block &block, Sprite *newSprite, const std::string &blockKey, const Sb3BlockTable &blockDatas, int indent);
+     static void setSubstackSb3(Block *startBlock, Block *stopBlock = nullptr);
+     static void loadAdvancedProjectSettingsSb3(const nlohmann::json &json);
+     static void resolveVariableTypes(Sprite *sprite);
 diff --git a/include/runtime/zip_archive.hpp b/include/runtime/zip_archive.hpp
 index 4750def..87ae29d 100644
 --- a/include/runtime/zip_archive.hpp
@@ -58,7 +88,7 @@ index 4750def..87ae29d 100644
  
  SE_EXPORT std::unique_ptr<ZipArchive> createZipArchive();
 diff --git a/source/runtime/parser/sb3.cpp b/source/runtime/parser/sb3.cpp
-index 2876d7f..f467423 100644
+index 2876d7f..d67572c 100644
 --- a/source/runtime/parser/sb3.cpp
 +++ b/source/runtime/parser/sb3.cpp
 @@ -14,7 +14,17 @@
@@ -122,7 +152,68 @@ index 2876d7f..f467423 100644
                      newList.items.push_back(Value::fromJson(listItem));
                  }
              }
-@@ -314,6 +356,7 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+@@ -189,8 +231,14 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+         // Blocks
+         if (target.contains("blocks") && !target["blocks"].empty()) {
+             Parser::log("\tBlocks:");
++#if defined(PAX_APP_SIDE)
++            const Sb3BlockTable blockTable(target["blocks"]);
++#else
++            const Sb3BlockTable &blockTable = target["blocks"];
++#endif
+ 
+-            for (const auto &[id, data] : target["blocks"].items()) {
++            for (const auto &[id, encoded] : target["blocks"].items()) {
++                const auto &data = blockTable[id];
+                 if (data.contains("opcode") && data["opcode"].get<std::string>() == "procedures_definition") {
+                     procedureCallBlocks.push_back(id);
+                     continue;
+@@ -215,8 +263,8 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+                 }
+ 
+                 Parser::log("\t\t" + opcode);
+-                loadInputsSb3(*newBlock, newSprite, id, target["blocks"], 2);
+-                loadFieldsSb3(*newBlock, id, target["blocks"], 2);
++                loadInputsSb3(*newBlock, newSprite, id, blockTable, 2);
++                loadFieldsSb3(*newBlock, id, blockTable, 2);
+ 
+                 Scratch::blocks.push_back(newBlock);
+                 newSprite->hats[opcode].insert(newBlock);
+@@ -225,13 +273,13 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+                     Parser::log("\t\t\t! No next block");
+                 } else {
+                     std::string nextBlockKey = data["next"].get<std::string>();
+-                    newBlock->nextBlock = loadBlockSb3(newSprite, nextBlockKey, target["blocks"], nullptr, 2);
++                    newBlock->nextBlock = loadBlockSb3(newSprite, nextBlockKey, blockTable, nullptr, 2);
+                 }
+                 setSubstackSb3(newBlock);
+             }
+ 
+             for (const std::string &id : procedureCallBlocks) {
+-                const auto &data = target["blocks"][id];
++                const auto &data = blockTable[id];
+ 
+                 if (!data.contains("inputs") || !data["inputs"].contains("custom_block") ||
+                     !data["inputs"]["custom_block"].is_array() || data["inputs"]["custom_block"].size() < 2) {
+@@ -252,7 +300,7 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+                     continue;
+                 }
+ 
+-                const auto &prototype = target["blocks"][prototypeId];
++                const auto &prototype = blockTable[prototypeId];
+                 if (!prototype.contains("mutation")) {
+                     Parser::log("\t\t! procedures_call without mutation");
+                     continue;
+@@ -295,7 +343,7 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+ 
+                 if (data.contains("next") && !data["next"].is_null()) {
+                     std::string nextKey = data["next"].get<std::string>();
+-                    definitionBlock->nextBlock = loadBlockSb3(newSprite, nextKey, target["blocks"], nullptr, 2);
++                    definitionBlock->nextBlock = loadBlockSb3(newSprite, nextKey, blockTable, nullptr, 2);
+                     Parser::log("\t\t! Procedure body loaded from: " + nextKey);
+                 }
+                 setSubstackSb3(definitionBlock);
+@@ -314,6 +362,7 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
          if (newSprite->isStage) Scratch::stageSprite = newSprite;
      }
  
@@ -130,11 +221,42 @@ index 2876d7f..f467423 100644
      Scratch::sortSprites();
  
      if (json.contains("monitors") && json["monitors"].is_array()) {
+@@ -514,8 +563,8 @@ void Parser::loadAdvancedProjectSettingsSb3(const nlohmann::json &json) {
+     else Scratch::maxClones = 300;
+ }
+ 
+-void Parser::loadInputsSb3(Block &block, Sprite *newSprite, const std::string &blockKey, const nlohmann::json &blockDatas, int indent) {
+-    auto &blockData = blockDatas[blockKey];
++void Parser::loadInputsSb3(Block &block, Sprite *newSprite, const std::string &blockKey, const Sb3BlockTable &blockDatas, int indent) {
++    const auto &blockData = blockDatas[blockKey];
+     if (!blockData.contains("inputs") || blockData["inputs"].empty()) return;
+ 
+     std::string indentStr(indent, '\t');
+@@ -610,8 +659,8 @@ void Parser::loadInputsSb3(Block &block, Sprite *newSprite, const std::string &b
+     }
+ }
+ 
+-void Parser::loadFieldsSb3(Block &block, const std::string &blockKey, const nlohmann::json &blockDatas, int indent) {
+-    auto &blockData = blockDatas[blockKey];
++void Parser::loadFieldsSb3(Block &block, const std::string &blockKey, const Sb3BlockTable &blockDatas, int indent) {
++    const auto &blockData = blockDatas[blockKey];
+     if (!blockData.contains("fields") || blockData["fields"].empty()) return;
+ 
+     std::string indentStr(indent, '\t');
+@@ -724,7 +773,7 @@ void Parser::resolveVariableTypes(Sprite *sprite) {
+     }
+ }
+ 
+-Block *Parser::loadBlockSb3(Sprite *newSprite, const std::string &id, const nlohmann::json &blockDatas, Block *parentBlock, int indent) {
++Block *Parser::loadBlockSb3(Sprite *newSprite, const std::string &id, const Sb3BlockTable &blockDatas, Block *parentBlock, int indent) {
+     if (!blockDatas.contains(id)) return parentBlock;
+     if (!blockDatas[id].contains("opcode")) return parentBlock;
+ 
 diff --git a/source/runtime/parser/zip_project_loader.cpp b/source/runtime/parser/zip_project_loader.cpp
-index 269f776..8c2d23f 100644
+index 269f776..9f9baf3 100644
 --- a/source/runtime/parser/zip_project_loader.cpp
 +++ b/source/runtime/parser/zip_project_loader.cpp
-@@ -14,6 +14,72 @@
+@@ -14,6 +14,81 @@
  
  ZipProjectLoader::ZipProjectLoader(ProjectFormat format) : format(format) {}
  
@@ -142,7 +264,7 @@ index 269f776..8c2d23f 100644
 +// A callback keeps at most one target DOM alive. Runtime blocks/lists retain
 +// every value, while completed target JSON is discarded before decoding more.
 +static nlohmann::json parsePaxProject(std::istream &input, ProjectFormat format) {
-+    bool targets = false, inLists = false, inItems = false;
++    bool targets = false, inLists = false, inItems = false, inBlocks = false;
 +    std::string listId;
 +    Parser::Sb3SavedLists lists;
 +    std::unordered_map<std::string, std::shared_ptr<const std::string>> strings;
@@ -152,12 +274,21 @@ index 269f776..8c2d23f 100644
 +        if (depth == 1 && event == Event::key)
 +            targets = format == ProjectFormat::SB3 && value == "targets";
 +        if (targets && depth == 2 && event == Event::object_start) {
-+            lists.clear(); inLists = inItems = false;
++            lists.clear(); inLists = inItems = inBlocks = false;
 +        }
 +        if (targets && depth == 3 && event == Event::key) {
 +            inLists = value == "lists";
++            inBlocks = value == "blocks";
 +            if (inLists) lists.clear();
 +        }
++        if (inBlocks && depth == 4 &&
++            (event == Event::object_end || event == Event::array_end)) {
++            // Preserve every definition verbatim in meaning, but release its
++            // many JSON map/array allocations before decoding the next block.
++            value = value.dump();
++        }
++        if (inBlocks && depth == 3 && event == Event::object_end)
++            inBlocks = false;
 +        if (inLists && depth == 4 && event == Event::key)
 +            listId = value.get<std::string>();
 +        if (inLists && depth == 5 && event == Event::array_start) {
@@ -207,7 +338,7 @@ index 269f776..8c2d23f 100644
  bool ZipProjectLoader::load(std::istream *file) {
      nlohmann::json project_json;
  
-@@ -21,7 +87,7 @@ bool ZipProjectLoader::load(std::istream *file) {
+@@ -21,7 +96,7 @@ bool ZipProjectLoader::load(std::istream *file) {
          auto setting = Unzip::getSetting("sb3InRam");
          bool keepInRam;
          if (setting.is_null()) {
@@ -216,7 +347,7 @@ index 269f776..8c2d23f 100644
              keepInRam = false;
  #else
              keepInRam = true;
-@@ -48,15 +114,21 @@ bool ZipProjectLoader::load(std::istream *file) {
+@@ -48,15 +123,21 @@ bool ZipProjectLoader::load(std::istream *file) {
                  return false;
              }
  
@@ -243,7 +374,7 @@ index 269f776..8c2d23f 100644
          } else {
              Scratch::sb3InRam = false;
  
-@@ -70,35 +142,43 @@ bool ZipProjectLoader::load(std::istream *file) {
+@@ -70,35 +151,43 @@ bool ZipProjectLoader::load(std::istream *file) {
                  return false;
              }
  

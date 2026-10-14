@@ -29,9 +29,9 @@ Date/time sensing depends on the loader's available clock and currently uses
 uptime. Complex Scratch projects may exceed the device's memory/CPU budget.
 
 
-## Project loading (0.4.6)
+## Project loading (0.4.7)
 
-Playback reads project JSON directly from a bounded, CRC-verified ZIP-entry stream and parses sprites and saved-list entries incrementally, moving lists directly into runtime storage without retaining the full extracted project description. Large saved lists and parsed block constants share immutable repeated short strings with bounded caches, preserving every entry and its type. This reduces loading peaks for projects such as ScratchBenchmark v1.0.2 without deleting saved data or changing timed workloads. The editor still needs its editable project model; this change concerns playback loading.
+Playback reads project JSON directly from a bounded, CRC-verified ZIP-entry stream and parses sprites and saved-list entries incrementally, moving lists directly into runtime storage without retaining the full extracted project description. Block definitions stay as compact serialized JSON and are decoded individually when visited, avoiding a full block DOM alongside runtime scripts. Large saved lists and parsed block constants share immutable repeated short strings with bounded caches, preserving every entry and its type. This reduces loading peaks for projects such as ScratchBenchmark v1.0.2 without deleting saved data or changing timed workloads. The editor still needs its editable project model; this change concerns playback loading.
 
 ## Playback input (0.4.3)
 
