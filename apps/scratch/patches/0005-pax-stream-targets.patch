@@ -1,51 +1,97 @@
 diff --git a/include/runtime/parser/parser.hpp b/include/runtime/parser/parser.hpp
-index a00670e..7c4e01e 100644
+index a00670e..4e46056 100644
 --- a/include/runtime/parser/parser.hpp
 +++ b/include/runtime/parser/parser.hpp
-@@ -20,6 +20,10 @@ struct SE_EXPORT Parser {
+@@ -20,6 +20,11 @@ struct SE_EXPORT Parser {
      // Only for JSON-shaped formats (SB3, SB2)
      static void loadSprites(const nlohmann::json &json, ProjectFormat format = ProjectFormat::SB3);
      static bool loadExtensions(const nlohmann::json &json);
 +#if defined(PAX_APP_SIDE)
 +    // Consume one decoded target, keeping only its runtime representation.
-+    static void loadSb3Target(nlohmann::json &&target);
++    using Sb3SavedLists = std::unordered_map<std::string, std::vector<Value>>;
++    static void loadSb3Target(nlohmann::json &&target, Sb3SavedLists &&lists);
 +#endif
  
  #ifdef ENABLE_CLOUDVARS
      static void initMist();
-@@ -27,7 +31,7 @@ struct SE_EXPORT Parser {
+@@ -27,7 +32,8 @@ struct SE_EXPORT Parser {
    private:
      static void log(const std::string &message);
  
 -    static void loadSpritesSb3(const nlohmann::json &json);
-+    static void loadSpritesSb3(const nlohmann::json &json, bool finalize = true);
++    static void loadSpritesSb3(const nlohmann::json &json, bool finalize = true,
++                              std::unordered_map<std::string, std::vector<Value>> *savedLists = nullptr);
      static Block *loadBlockSb3(Sprite *newSprite, const std::string &id, const nlohmann::json &blockDatas, Block *parentBlock, int indent);
      static void loadFieldsSb3(Block &block, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
      static void loadInputsSb3(Block &block, Sprite *newSprite, const std::string &blockKey, const nlohmann::json &blockDatas, int indent);
+diff --git a/include/runtime/zip_archive.hpp b/include/runtime/zip_archive.hpp
+index 4750def..87ae29d 100644
+--- a/include/runtime/zip_archive.hpp
++++ b/include/runtime/zip_archive.hpp
+@@ -8,6 +8,17 @@
+ #include <memory>
+ #include <string>
+ 
++#if defined(PAX_APP_SIDE)
++#include <istream>
++class SE_EXPORT ZipEntryStream : public std::istream {
++  protected:
++    ZipEntryStream() : std::istream(nullptr) {}
++  public:
++    virtual bool finish() = 0; // Frees decoder state and verifies CRC.
++    virtual ~ZipEntryStream() = default;
++};
++#endif
++
+ class SE_EXPORT ZipArchive {
+   public:
+     virtual ~ZipArchive() = default;
+@@ -20,6 +31,10 @@ class SE_EXPORT ZipArchive {
+     virtual void freeHeap(void *ptr) = 0;
+ 
+     virtual bool extractAll(const std::function<std::string(const std::string &name)> &decide) = 0;
++#if defined(PAX_APP_SIDE)
++    virtual std::unique_ptr<ZipEntryStream> openEntryStream(const std::string &) { return nullptr; }
++#endif
++
+ };
+ 
+ SE_EXPORT std::unique_ptr<ZipArchive> createZipArchive();
 diff --git a/source/runtime/parser/sb3.cpp b/source/runtime/parser/sb3.cpp
-index 2876d7f..e4bd812 100644
+index 2876d7f..f467423 100644
 --- a/source/runtime/parser/sb3.cpp
 +++ b/source/runtime/parser/sb3.cpp
-@@ -14,7 +14,16 @@
+@@ -14,7 +14,17 @@
  #include <unzip.hpp>
  #include <variant>
  
 -void Parser::loadSpritesSb3(const nlohmann::json &json) {
 +#if defined(PAX_APP_SIDE)
-+void Parser::loadSb3Target(nlohmann::json &&target) {
++void Parser::loadSb3Target(nlohmann::json &&target, Sb3SavedLists &&lists) {
 +    nlohmann::json part;
 +    part["targets"] = nlohmann::json::array();
 +    part["targets"].push_back(std::move(target));
-+    loadSpritesSb3(part, false);
++    loadSpritesSb3(part, false, &lists);
 +}
 +#endif
 +
-+void Parser::loadSpritesSb3(const nlohmann::json &json, bool finalize) {
++void Parser::loadSpritesSb3(const nlohmann::json &json, bool finalize,
++                            std::unordered_map<std::string, std::vector<Value>> *savedLists) {
      Parser::logParsing = false; // ToDo: Activate it via Settings (Only if Logs in general are enabled)
      Parser::log("Loading sprites:");
      const nlohmann::json &spritesData = json["targets"];
-@@ -119,7 +128,31 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+@@ -117,9 +127,41 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+                 List &newList = result->second;
+                 newList.id = id;
                  newList.name = data[0];
++                if (savedLists) {
++                    auto found = savedLists->find(id);
++                    if (found != savedLists->end()) {
++                        newList.items = std::move(found->second);
++                        Parser::log("\t\t" + newList.name + " [" + std::to_string(newList.items.size()) + " items]");
++                        continue;
++                    }
++                }
                  newList.items.reserve(data[1].size());
                  Parser::log("\t\t" + newList.name + " [" + std::to_string(data[1].size()) + " items]");
 +#if defined(PAX_APP_SIDE)
@@ -76,7 +122,7 @@ index 2876d7f..e4bd812 100644
                      newList.items.push_back(Value::fromJson(listItem));
                  }
              }
-@@ -314,6 +347,7 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
+@@ -314,6 +356,7 @@ void Parser::loadSpritesSb3(const nlohmann::json &json) {
          if (newSprite->isStage) Scratch::stageSprite = newSprite;
      }
  
@@ -85,71 +131,161 @@ index 2876d7f..e4bd812 100644
  
      if (json.contains("monitors") && json["monitors"].is_array()) {
 diff --git a/source/runtime/parser/zip_project_loader.cpp b/source/runtime/parser/zip_project_loader.cpp
-index 269f776..844a073 100644
+index 269f776..8c2d23f 100644
 --- a/source/runtime/parser/zip_project_loader.cpp
 +++ b/source/runtime/parser/zip_project_loader.cpp
-@@ -14,6 +14,30 @@
+@@ -14,6 +14,72 @@
  
  ZipProjectLoader::ZipProjectLoader(ProjectFormat format) : format(format) {}
  
 +#if defined(PAX_APP_SIDE)
 +// A callback keeps at most one target DOM alive. Runtime blocks/lists retain
 +// every value, while completed target JSON is discarded before decoding more.
-+static nlohmann::json parsePaxProject(const char *data, size_t size,
-+                                    ProjectFormat format) {
-+    bool targets = false;
++static nlohmann::json parsePaxProject(std::istream &input, ProjectFormat format) {
++    bool targets = false, inLists = false, inItems = false;
++    std::string listId;
++    Parser::Sb3SavedLists lists;
++    std::unordered_map<std::string, std::shared_ptr<const std::string>> strings;
 +    auto consume = [&](int depth, nlohmann::json::parse_event_t event,
 +                       nlohmann::json &value) {
 +        using Event = nlohmann::json::parse_event_t;
 +        if (depth == 1 && event == Event::key)
 +            targets = format == ProjectFormat::SB3 && value == "targets";
++        if (targets && depth == 2 && event == Event::object_start) {
++            lists.clear(); inLists = inItems = false;
++        }
++        if (targets && depth == 3 && event == Event::key) {
++            inLists = value == "lists";
++            if (inLists) lists.clear();
++        }
++        if (inLists && depth == 4 && event == Event::key)
++            listId = value.get<std::string>();
++        if (inLists && depth == 5 && event == Event::array_start) {
++            inItems = true;
++            lists[listId].clear();
++            strings.clear();
++        }
++        if (inItems && depth == 6 &&
++            (event == Event::value || event == Event::object_end || event == Event::array_end)) {
++            auto &items = lists[listId];
++            if (value.is_string()) {
++                const auto &text = value.get_ref<const std::string &>();
++                auto found = strings.find(text);
++                if (found != strings.end()) items.emplace_back(found->second);
++                else if (text.size() <= 64 && strings.size() < 256) {
++                    auto shared = std::make_shared<const std::string>(text);
++                    strings.emplace(text, shared);
++                    items.emplace_back(std::move(shared));
++                } else items.push_back(Value::fromJson(value));
++            } else items.push_back(Value::fromJson(value));
++            // The runtime owns this entry; don't grow a duplicate JSON array.
++            return false;
++        }
++        if (inItems && depth == 5 && event == Event::array_end) {
++            inItems = false; strings.clear();
++            // Release geometric-growth slack before loading the next target.
++            auto &items = lists[listId];
++            if (items.size() >= 1024) items.shrink_to_fit();
++        }
++        if (inLists && depth == 3 && event == Event::object_end)
++            inLists = false;
 +        if (targets && depth == 2 && event == Event::object_end) {
-+            Parser::loadSb3Target(std::move(value));
++            const std::string name = value.value("name", std::string("unnamed"));
++            Parser::loadSb3Target(std::move(value), std::move(lists));
++            Log::log("Loaded SB3 target: " + name);
 +            return false;
 +        }
 +        if (targets && depth == 1 && event == Event::array_end)
 +            targets = false;
 +        return true;
 +    };
-+    // Parse the extraction buffer directly, avoiding a full-size string copy.
-+    return nlohmann::json::parse(data, data + size, consume, false);
++    // Decode from a bounded ZIP-entry buffer, never holding the full JSON text.
++    return nlohmann::json::parse(input, consume, false);
 +}
 +#endif
 +
  bool ZipProjectLoader::load(std::istream *file) {
      nlohmann::json project_json;
  
-@@ -55,7 +79,11 @@ bool ZipProjectLoader::load(std::istream *file) {
+@@ -21,7 +87,7 @@ bool ZipProjectLoader::load(std::istream *file) {
+         auto setting = Unzip::getSetting("sb3InRam");
+         bool keepInRam;
+         if (setting.is_null()) {
+-#if defined(__NDS__) || defined(__PSP__) || defined(GAMECUBE)
++#if defined(PAX_APP_SIDE) || defined(__NDS__) || defined(__PSP__) || defined(GAMECUBE)
+             keepInRam = false;
+ #else
+             keepInRam = true;
+@@ -48,15 +114,21 @@ bool ZipProjectLoader::load(std::istream *file) {
                  return false;
              }
  
-+            #if defined(PAX_APP_SIDE)
-+            project_json = parsePaxProject(static_cast<const char *>(json_data), json_size, format);
+-            // extract project.json
+-            size_t json_size;
+-            void *json_data = Unzip::zipArchive->extractToHeap("project.json", &json_size);
+-            if (!json_data) {
++#if defined(PAX_APP_SIDE)
++            auto input = Unzip::zipArchive->openEntryStream("project.json");
++            if (!input) return false;
++            project_json = parsePaxProject(*input, format);
++            if (!input->finish()) {
++                Log::logCritical("Project ZIP stream or CRC check failed", false);
+                 return false;
+             }
+-
 +#else
++            size_t json_size;
++            void *json_data = Unzip::zipArchive->extractToHeap("project.json", &json_size);
++            if (!json_data) return false;
              project_json = nlohmann::json::parse(std::string(static_cast<const char *>(json_data), json_size));
-+#endif
              Unzip::zipArchive->freeHeap(json_data);
++#endif
          } else {
              Scratch::sb3InRam = false;
-@@ -77,7 +105,11 @@ bool ZipProjectLoader::load(std::istream *file) {
+ 
+@@ -70,35 +142,43 @@ bool ZipProjectLoader::load(std::istream *file) {
                  return false;
              }
  
-+            #if defined(PAX_APP_SIDE)
-+            project_json = parsePaxProject(static_cast<const char *>(json_data), json_size, format);
++#if defined(PAX_APP_SIDE)
++            auto input = archive->openEntryStream("project.json");
++            if (!input) return false;
++            project_json = parsePaxProject(*input, format);
++            if (!input->finish()) {
++                Log::logCritical("Project ZIP stream or CRC check failed", false);
++                return false;
++            }
 +#else
+             size_t json_size;
+             void *json_data = archive->extractToHeap("project.json", &json_size);
+             if (!json_data) {
+                 Log::logCritical("Failed to extract project.json", false);
+                 return false;
+             }
+-
              project_json = nlohmann::json::parse(std::string(static_cast<const char *>(json_data), json_size));
-+#endif
              archive->freeHeap(json_data);
++#endif
          }
      } else {
-@@ -95,10 +127,14 @@ bool ZipProjectLoader::load(std::istream *file) {
-         json_content.assign(std::istreambuf_iterator<char>(*file),
-                             std::istreambuf_iterator<char>());
+         file->clear();
+         file->seekg(0, std::ios::beg);
  
+-        // get file size
 +#if defined(PAX_APP_SIDE)
-+        project_json = parsePaxProject(json_content.data(), json_content.size(), format);
++        project_json = parsePaxProject(*file, format);
 +#else
+         file->seekg(0, std::ios::end);
+         std::streamsize size = file->tellg();
+         file->seekg(0, std::ios::beg);
+-
+-        // put file into string
+         std::string json_content;
+         json_content.reserve(size);
+-        json_content.assign(std::istreambuf_iterator<char>(*file),
+-                            std::istreambuf_iterator<char>());
+-
++        json_content.assign(std::istreambuf_iterator<char>(*file), std::istreambuf_iterator<char>());
          project_json = nlohmann::json::parse(json_content);
 +#endif
      }
@@ -158,4 +294,108 @@ index 269f776..844a073 100644
 +    if (project_json.is_discarded() || project_json.empty()) {
          Log::logCritical("Project.json is empty.", false);
          return false;
+     }
+diff --git a/source/runtime/value.cpp b/source/runtime/value.cpp
+index 6d75418..04cd859 100644
+--- a/source/runtime/value.cpp
++++ b/source/runtime/value.cpp
+@@ -1,3 +1,6 @@
++#if defined(PAX_APP_SIDE)
++#include <unordered_map>
++#endif
+ #include "value.hpp"
+ #include "math.hpp"
+ #include <array>
+@@ -203,7 +206,25 @@ bool Value::isScratchInt() {
+ 
+ Value Value::fromJson(const nlohmann::json &jsonVal) {
+     if (jsonVal.is_number()) return Value(jsonVal.get<double>());
+-    if (jsonVal.is_string()) return Value(jsonVal.get<std::string>());
++    if (jsonVal.is_string()) {
++#if defined(PAX_APP_SIDE)
++        // Parsed constants are immutable. Share common short block literals,
++        // with weak ownership so closing a project releases its string data.
++        const auto &text = jsonVal.get_ref<const std::string &>();
++        if (text.size() <= 64) {
++            static std::unordered_map<std::string, std::weak_ptr<const std::string>> cache;
++            auto found = cache.find(text);
++            if (found != cache.end()) {
++                if (auto shared = found->second.lock()) return Value(std::move(shared));
++            }
++            auto shared = std::make_shared<const std::string>(text);
++            if (found != cache.end()) found->second = shared;
++            else if (cache.size() < 512) cache.emplace(text, shared);
++            return Value(std::move(shared));
++        }
++#endif
++        return Value(jsonVal.get<std::string>());
++    }
+     if (jsonVal.is_boolean()) return Value(jsonVal.get<bool>());
+     if (jsonVal.is_array()) {
+         if (jsonVal.size() > 1) return fromJson(jsonVal[1]);
+diff --git a/source/runtime/zip/miniz/zip_archive_miniz.cpp b/source/runtime/zip/miniz/zip_archive_miniz.cpp
+index 999a799..0754bec 100644
+--- a/source/runtime/zip/miniz/zip_archive_miniz.cpp
++++ b/source/runtime/zip/miniz/zip_archive_miniz.cpp
+@@ -1,10 +1,45 @@
+ #include "zip_archive.hpp"
+ 
+ #include <cstring>
++#include <array>
+ #include <istream>
+ #include <miniz.h>
+ 
+ namespace {
++#if defined(PAX_APP_SIDE)
++class MinizEntryBuffer : public std::streambuf {
++    mz_zip_reader_extract_iter_state *state;
++    std::array<char, 4096> bytes;
++    bool verified = false;
++  public:
++    explicit MinizEntryBuffer(mz_zip_reader_extract_iter_state *s) : state(s) {}
++    ~MinizEntryBuffer() override { finish(); }
++    bool finish() {
++        if (state) {
++            verified = mz_zip_reader_extract_iter_free(state) != 0;
++            state = nullptr;
++        }
++        return verified;
++    }
++  protected:
++    int_type underflow() override {
++        if (gptr() && gptr() < egptr()) return traits_type::to_int_type(*gptr());
++        const size_t n = state ? mz_zip_reader_extract_iter_read(state, bytes.data(), bytes.size()) : 0;
++        if (!n) return traits_type::eof();
++        setg(bytes.data(), bytes.data(), bytes.data() + n);
++        return traits_type::to_int_type(*gptr());
++    }
++};
++class MinizEntryStream : public ZipEntryStream {
++    MinizEntryBuffer buffer;
++  public:
++    explicit MinizEntryStream(mz_zip_reader_extract_iter_state *state) : buffer(state) {
++        rdbuf(&buffer); clear();
++    }
++    bool finish() override { return buffer.finish(); }
++};
++#endif
++
+ 
+ class MinizZipArchive : public ZipArchive {
+   public:
+@@ -39,6 +74,15 @@ class MinizZipArchive : public ZipArchive {
+         return mz_zip_reader_extract_to_heap(&archive, file_index, outSize, 0);
+     }
+ 
++#if defined(PAX_APP_SIDE)
++    std::unique_ptr<ZipEntryStream> openEntryStream(const std::string &name) override {
++        if (!opened) return nullptr;
++        auto state = mz_zip_reader_extract_file_iter_new(&archive, name.c_str(), 0);
++        if (!state) return nullptr;
++        return std::make_unique<MinizEntryStream>(state);
++    }
++#endif
++
+     void freeHeap(void *ptr) override {
+         mz_free(ptr);
      }
