@@ -29,6 +29,12 @@ Date/time sensing depends on the loader's available clock and currently uses
 uptime. Complex Scratch projects may exceed the device's memory/CPU budget.
 
 
+## Playback input (0.4.3)
+
+Touch and USB mouse presses now dispatch the standard **when this sprite clicked** scripts; keyboard/gamepad input dispatches **when key pressed** scripts. Device mice have a visible pointer during playback; desktop keeps its OS pointer. Letterbox margins and player controls block clicks through to underlying sprites. Fast queued keyboard taps are retained without duplicating typed text.
+
+The native input regression is `python3 build.py --input-test`, followed by `build-host/scratch-test data/PAX-Fun-Demo.sb3`. It exercises actual touch, relative USB and absolute desktop input, cursor display, quick Space taps, and timed output cleanup against simulated hardware. The ordinary `--host` suite continues testing editor, selector and lifecycle behavior.
+
 ## Block editor (0.4.0)
 
 The editor negotiates the PAX canvas and uses all 1024×600 pixels on Elecrow (800×480 fallback for older loaders). Extra width expands the workspace, and the stage, toolbar and footer stay anchored. Playback keeps its existing 480×360 stage surface. Choose a category in the left column, then drag or tap a palette block to add it. Palette items size themselves to their contents, wrap long labels, and leave clear space around hat tops, tabs and C shapes. Inline script elements have explicit gaps and matching text measurements. Drag a stack under another block, inside a loop/condition, or drag a round/green reporter into an input. A red line marks a compatible drop target. Dragging a middle block carries the blocks below it and any nested scripts.

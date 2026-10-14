@@ -5,6 +5,7 @@
 #include <climits>
 bool pax_editor_playing = false;
 bool pax_native_cursor = false;
+bool pax_mouse_present = false;
 static std::set<std::string> keys;
 static int tx = PAX_W / 2, ty = PAX_H / 2;
 static int mouseButtons;
@@ -42,6 +43,7 @@ void Input::getInput() {
     inputButtons.clear();
     inputKeys.clear();
     inputBuffer.clear();
+    std::set<std::string> pressedKeys, freshKeys;
     pax_gamepad_state_t pad{};
     pax_svc->input_gamepad_read(&pad);
     const int buttons[] = {PAX_INPUT_UP, PAX_INPUT_DOWN, PAX_INPUT_LEFT,  PAX_INPUT_RIGHT,
@@ -66,7 +68,9 @@ void Input::getInput() {
             if (e.down) {
                 if ((k == "f5" || k == "f6" || k == "f7") && keys.count(k))
                     continue;
-                keys.insert(k);
+                if (keys.insert(k).second)
+                    freshKeys.insert(k);
+                pressedKeys.insert(k);
                 inputBuffer.push_back(e.key >= 33 && e.key <= 126 ? std::string(1, (char)e.key)
                                                                   : k);
             } else
@@ -74,6 +78,10 @@ void Input::getInput() {
         }
     }
     inputKeys.insert(inputKeys.end(), keys.begin(), keys.end());
+    // Keep a complete tap visible for one poll even when both edges are queued.
+    for (const auto &k : pressedKeys)
+        if (std::find(inputKeys.begin(), inputKeys.end(), k) == inputKeys.end())
+            inputKeys.push_back(k);
     static int mouseWidth = 480, mouseHeight = 360;
     if (mouseWidth != PAX_W || mouseHeight != PAX_H) {
         mouseX *= (float)PAX_W / mouseWidth;
@@ -108,6 +116,7 @@ void Input::getInput() {
     if (pax_svc->input_mouse_read) {
         int dx, dy, b;
         if (pax_svc->input_mouse_read(&dx, &dy, &b)) {
+            pax_mouse_present = true;
             // A desktop hover/contact already supplied this sample's position.
             if (!absolute) {
                 float fit = std::max(.01f, std::min((float)cw / PAX_W, (float)ch / PAX_H));
@@ -129,12 +138,16 @@ void Input::getInput() {
     mousePointer.y = pointerY;
     mousePointer.isPressed = down;
     mousePointer.mouseButton = Mouse::LEFT;
-    mousePointer.heldFrames = down ? mousePointer.heldFrames + 1 : 0;
+    const bool newPress = down && mousePointer.heldFrames == 0;
+    // The runtime click dispatcher owns the playback hold counter. The editor
+    // and picker still need their own first-press detection without dispatch.
+    if (!playback)
+        mousePointer.heldFrames = down ? mousePointer.heldFrames + 1 : 0;
     mouseScrollDelta = 0;
     if (pax_svc->input_mouse_scroll_read)
         pax_svc->input_mouse_scroll_read(&mouseScrollDelta);
     if ((pax_project_playing || pax_editor_playing) &&
-        ((down && mousePointer.heldFrames == 1 && tx >= PAX_W - 164 && tx < PAX_W - 82 && ty < 34) ||
+        ((newPress && tx >= PAX_W - 164 && tx < PAX_W - 82 && ty < 34) ||
          std::find(inputBuffer.begin(), inputBuffer.end(), "f7") != inputBuffer.end())) {
         Scratch::turbo = !Scratch::turbo;
         Scratch::forceRedraw = true;
@@ -143,6 +156,28 @@ void Input::getInput() {
     if ((pax_project_playing || pax_editor_playing) && ((down && tx >= PAX_W - 78 && ty < 34) || keys.count("escape") || keys.count("f6") ||
         std::find(inputBuffer.begin(), inputBuffer.end(), "f6") != inputBuffer.end()))
         Scratch::shouldStop = true;
+    if (playback && !Scratch::sprites.empty()) {
+        // Match upstream windowing backends: input must dispatch Scratch hats.
+        // Keep typed text intact; executeKeyHats also appends to inputBuffer.
+        for (const auto &k : freshKeys)
+            keyHeldDuration[k] = 0;
+        auto typed = inputBuffer;
+        BlockExecutor::executeKeyHats();
+        inputBuffer = std::move(typed);
+        const bool pointerDown = mousePointer.isPressed;
+        const int held = mousePointer.heldFrames;
+        const bool onStage = std::abs(pointerX) <= Scratch::projectWidth / 2.f &&
+                             std::abs(pointerY) <= Scratch::projectHeight / 2.f;
+        const bool playerControl = tx >= PAX_W - 164 && ty < 34;
+        const bool blocked = !onStage || playerControl ||
+                             Render::isPointOverMonitor(tx, ty);
+        if (blocked)
+            mousePointer.isPressed = false;
+        BlockExecutor::doSpriteClicking();
+        mousePointer.isPressed = pointerDown;
+        if (blocked)
+            mousePointer.heldFrames = down ? held + 1 : 0;
+    }
     if (!Scratch::sprites.empty() && pad.values[PAX_INPUT_SELECT] && pad.values[PAX_INPUT_B])
         Scratch::shouldStop = true;
     static long long quitSince = 0;

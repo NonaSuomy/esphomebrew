@@ -4,7 +4,8 @@ import os,sys,json,subprocess,concurrent.futures,hashlib,struct
 from pathlib import Path
 root=Path(__file__).resolve().parent
 workspace=Path(os.environ['PAX_ROOT']) if 'PAX_ROOT' in os.environ else root.parents[2]
-host='--host' in sys.argv
+input_test='--input-test' in sys.argv
+host='--host' in sys.argv or input_test
 out=root/('build-host' if host else 'build-pax');out.mkdir(exist_ok=True)
 paths=['port','core/include','core/include/runtime','core/include/runtime/parser','core/include/runtime/blocks','core/include/platforms','core/include/menus','core/include/renderers/headless','core/source','core/external-include','deps/json','deps/expected/include','deps/miniz','deps/ryu','deps/lunasvg/include','deps/lunasvg/plutovg/include','deps/stb','deps/dr_libs','deps/tsf']
 units=[]
@@ -40,7 +41,7 @@ for obj,code,output in errors:print(obj.name,output)
 if errors:sys.exit(1)
 objs=[str(r[0]) for r in results]
 if host:
- test=root/'tests/host.cpp';r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(test),'-o',str(out/'test.o')]);
+ test=root/('tests/playback_input.cpp' if input_test else 'tests/host.cpp');r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(test),'-o',str(out/'test.o')]);
  if r.returncode:sys.exit(r.returncode)
  r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(root/'tests/editor.cpp'),'-o',str(out/'editor-test.o')]);
  if r.returncode:sys.exit(r.returncode)

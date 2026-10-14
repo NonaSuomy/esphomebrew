@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include <image_headless.hpp>
+#include <input.hpp>
 #include <render.hpp>
 #include <speech_manager.hpp>
 #include <stb_easy_font.h>
@@ -277,6 +278,15 @@ void Render::endFrame(bool) {
                       0x26374cff, .65f, true);
         drawBox(74, 30, PAX_W - 40, 17, 233, 241, 252);
         pax_draw_icon(PaxIcon::Stop, PAX_W - 52, 5, 24);
+        // Device USB mice need a visible pointer; desktop already draws one.
+        if (pax_mouse_present && !pax_native_cursor) {
+            auto pos = Input::getTouchPosition();
+            for (int yy = 0; yy < 18; ++yy)
+                for (int xx = 0; xx <= yy / 2; ++xx) {
+                    int c = (xx == 0 || xx == yy / 2 || yy == 17) ? 255 : 25;
+                    pax_blend(pos[0] + xx, pos[1] + yy, c, c, c, 255);
+                }
+        }
     }
     int cw = 800, ch = 480;
     if (pax_svc->display_get_size)
