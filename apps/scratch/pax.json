@@ -1,7 +1,7 @@
 {
   "name": "scratch",
   "title": "Scratch Blocks",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",
@@ -11,6 +11,7 @@
     "New: create a project; Edit: open a project in the editor",
     "Desktop: mouse selects; arrows browse; Enter plays; E edits",
     "Drag palette blocks into the workspace to add them",
+    "Builder: F5 plays; F6 stops; desktop Shift+F5 also stops",
     "Drop on a stack or socket to connect blocks",
     "Tap inputs to edit; on-screen or USB keyboard",
     "Pan/Home: navigate scripts; Copy/Trash: selected stack",

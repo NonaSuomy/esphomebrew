@@ -82,7 +82,7 @@ class Editor {
   int width_ = 800, height_ = 480;
   int category_ = 3, palettePage_ = 0;
   int viewX_ = 20, viewY_ = 25;
-  std::string selected_, status_ = "Drag blocks into the workspace";
+  std::string selected_, status_ = "Drag blocks into the workspace; F5: play, F6: stop";
   std::vector<Hit> hits_;
   std::vector<Dock> docks_;
   std::vector<std::pair<Rect, std::string>> palette_;

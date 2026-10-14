@@ -19,6 +19,10 @@ static std::string keyName(int key) {
         return "left arrow";
     case PAX_KEY_RIGHT:
         return "right arrow";
+    case 139:
+        return "f5";
+    case 140:
+        return "f6";
     case 32:
         return "space";
     case 13:
@@ -58,6 +62,8 @@ void Input::getInput() {
             if (k.empty())
                 continue;
             if (e.down) {
+                if ((k == "f5" || k == "f6") && keys.count(k))
+                    continue;
                 keys.insert(k);
                 inputBuffer.push_back(e.key >= 33 && e.key <= 126 ? std::string(1, (char)e.key)
                                                                   : k);
@@ -121,7 +127,8 @@ void Input::getInput() {
     mouseScrollDelta = 0;
     if (pax_svc->input_mouse_scroll_read)
         pax_svc->input_mouse_scroll_read(&mouseScrollDelta);
-    if (pax_editor_playing && ((down && tx >= PAX_W - 78 && ty < 34) || keys.count("escape")))
+    if (pax_editor_playing && ((down && tx >= PAX_W - 78 && ty < 34) || keys.count("escape") || keys.count("f6") ||
+        std::find(inputBuffer.begin(), inputBuffer.end(), "f6") != inputBuffer.end()))
         Scratch::shouldStop = true;
     if (!Scratch::sprites.empty() && pad.values[PAX_INPUT_SELECT] && pad.values[PAX_INPUT_B])
         Scratch::shouldStop = true;

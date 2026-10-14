@@ -52,6 +52,12 @@ int main(){
  svc.touch_read=noTouch;svc.input_mouse_read=nullptr;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};
  assert(pax_resize_surface(480,360));Input::getInput();assert(!pax_native_cursor);
  puts("PASS absolute desktop hover, canvas transitions and native cursor selection");
+ // A quick F6 tap must stop a builder preview even if both edges are queued.
+ static int stopKeyEdge=0;svc.input_keyboard_read=[](pax_keyboard_event_t *e){if(stopKeyEdge==2)return 0;*e={140,stopKeyEdge++==0};return 1;};
+ pax_editor_playing=true;Scratch::shouldStop=false;Input::getInput();assert(Scratch::shouldStop);
+ pax_editor_playing=false;Scratch::shouldStop=false;stopKeyEdge=0;Input::getInput();assert(!Scratch::shouldStop);
+ svc.input_keyboard_read=noKey;
+ puts("PASS queued F6 press/release stops preview only");
  // Disconnected sockets must initialize their result, including Boolean sockets.
  Block emptyBlock;ScriptThread emptyThread;Sprite emptySprite;
  bool emptyBool=true;double emptyNumber=123;std::string emptyText="stale";Value emptyValue("stale");

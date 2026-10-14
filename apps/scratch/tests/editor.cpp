@@ -25,6 +25,13 @@ static void drag(Editor &e, int x, int y, int dx, int dy) {
 void testEditor() {
   for (auto &d : definitions())
     assert(BlockExecutor::getHandlers().count(d.opcode));
+  int shortcutRuns = 0;
+  Editor shortcuts([&](const std::string &file) { assert(std::filesystem::exists(file));shortcutRuns++; });
+  shortcuts.keyboard("f5");assert(shortcutRuns == 1);
+  // Function keys never run a project while editing a filename/input.
+  shortcuts.render();tap(shortcuts, 310, 25);
+  shortcuts.keyboard("f5");assert(shortcutRuns == 1);
+  puts("PASS F5 preview and modal shortcut guard");
   std::string dir = OS::getScratchFolderLocation();
   std::filesystem::remove(dir + "Editor Test.sb3");
   std::filesystem::remove(dir + "Editor Import.sb3");

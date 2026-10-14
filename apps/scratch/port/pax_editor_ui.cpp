@@ -1310,6 +1310,10 @@ void Editor::handleModal(int x, int y) {
     commitText();
 }
 void Editor::keyboard(const std::string &key) {
+  if (modal_ == None && key == "f5") {
+    run();
+    return;
+  }
   if (modal_ == None || modal_ == OpenFile || modal_ == HardwareChannels ||
       modal_ == ReporterInputs || modal_ == ConfirmBack || modal_ == ConfirmNew)
     return;
@@ -1439,7 +1443,9 @@ void open(const std::string &path) {
     Input::getInput();
     editor.pointer(Input::mousePointer.x, Input::mousePointer.y,
                    Input::mousePointer.isPressed);
-    for (const auto &key : Input::inputBuffer)
+    // Playing calls Input::getInput again; keep this iteration independent.
+    auto keyboardEvents = Input::inputBuffer;
+    for (const auto &key : keyboardEvents)
       editor.keyboard(key);
     if (Input::mouseScrollDelta)
       editor.scroll(Input::mouseScrollDelta, Input::mousePointer.x);
