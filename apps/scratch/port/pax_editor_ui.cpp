@@ -1,6 +1,7 @@
 #include "pax_editor.h"
 #include "pax_icons.h"
 #include <algorithm>
+#include <audiostack.hpp>
 #include <cmath>
 #include <filesystem.hpp>
 #include <font_atlas.hpp>
@@ -15,10 +16,11 @@
 #include <stb_image.h>
 namespace PaxEdit {
 static const char *categories[] = {
-    "Motion",  "Looks",     "Sound",     "Events", "Control",
-    "Sensing", "Operators", "Variables", "Pen",    "Board IO"};
-static const int colors[] = {0x4c97ff, 0x9966ff, 0xcf63cf, 0xffbf00, 0xffab19,
-                             0x5cb1d6, 0x59c059, 0xff8c1a, 0x0fbd8c, 0x0f9f96};
+    "Motion",    "Looks",     "Sound", "Events",   "Control",  "Sensing",
+    "Operators", "Variables", "Pen",   "Board IO", "My Blocks"};
+static const int colors[] = {0x4c97ff, 0x9966ff, 0xcf63cf, 0xffbf00,
+                             0xffab19, 0x5cb1d6, 0x59c059, 0xff8c1a,
+                             0x0fbd8c, 0x0f9f96, 0xff6680};
 static int panelWidth() { return 177 + std::max(0, PAX_W - 800) / 3; }
 static int previewHeight() { return (panelWidth() - 17) * 3 / 4; }
 static int paletteWidth() {
@@ -42,7 +44,7 @@ static Rect R(Rect r) {
     r.y += PAX_H - 480;
   return r;
 }
-static int categoryStep() { return std::min(39, (PAX_H - 105) / 10); }
+static int categoryStep() { return std::min(39, (PAX_H - 105) / 11); }
 static Rect categoryRect(int i) {
   return {4, 60 + i * categoryStep(), 65, categoryStep() - 4};
 }
@@ -136,7 +138,8 @@ static void contour(Rect r, int color, int type, bool selected = false,
     return;
   int pad = type == Hat ? 9 : 1;
   int top = std::max(0, pad - r.y),
-      bitmapHeight = std::min(r.h + pad + 7, PAX_H - r.y + pad) - top;
+      bitmapHeight =
+          std::min(r.h + pad + 7, (int)(PAX_H / pax_ui_zoom) - r.y + pad) - top;
   if (bitmapHeight <= 0)
     return;
   std::string variant;
@@ -299,6 +302,13 @@ static std::string propertyValue(Project &p,const std::string &key) {
   if(!t.contains(key))return "";return t[key].is_string()?t[key].get<std::string>():t[key].dump();
 }
 static Shape shape(const Json &b) {
+  auto op = b.value("opcode", "");
+  if (op == "procedures_definition")
+    return Hat;
+  if (op == "argument_reporter_boolean")
+    return Boolean;
+  if (op == "argument_reporter_string_number")
+    return Reporter;
   const auto *d = definition(b.value("opcode", ""));
   if (d)
     return d->shape;
@@ -408,8 +418,12 @@ Rect Editor::drawHeader(const std::string &id, int x, int y,
   auto *d = definition(op);
   auto type = shape(b);
   auto slots = project_.slots(id);
-  auto ps = pieces(d ? d->label : op.substr(0, 40), slots);
-  int color = d ? colors[d->category] : 0x71849a;
+  auto ps = pieces(project_.blockLabel(id), slots);
+  int color =
+      d ? colors[d->category]
+        : (op.rfind("procedures_", 0) == 0 || op.rfind("argument_", 0) == 0
+               ? 0xff6680
+               : 0x71849a);
   std::vector<Rect> cells(slots.size());
   std::vector<std::string> children(slots.size());
   int padding = type == Boolean ? 18 : 16;
@@ -651,7 +665,11 @@ int Editor::drawStack(const std::string &id, int x, int y,
     auto op = b.value("opcode", "");
     const auto *d = definition(op);
     auto type = shape(b);
-    int color = d ? colors[d->category] : 0x71849a;
+    int color =
+        d ? colors[d->category]
+          : (op.rfind("procedures_", 0) == 0 || op.rfind("argument_", 0) == 0
+                 ? 0xff6680
+                 : 0x71849a);
     std::set<std::string> ancestors;
     auto head = drawHeader(current, x, y, ancestors, false);
     int w = head.w, header = head.h, height = header;
@@ -793,7 +811,7 @@ void Editor::render() {
   toolbarButton(R({624, 9, 75, 31}), panMode_ ? PaxIcon::Blocks : PaxIcon::Pan, panMode_ ? "Blocks" : "Pan");
   toolbarButton(R({713, 9, 74, 31}), PaxIcon::Back, "Back");
   box(R({0, 49, 72, PAX_H - 96}), 0xe6edf6);
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 11; i++) {
     Rect r = categoryRect(i);
     if (category_ == i)
       box(r, 0xffffff);
@@ -804,10 +822,12 @@ void Editor::render() {
   text(categories[category_], 86, 60, 0x26374cff, .8f);
   auto defs = categoryDefinitions(category_);
   auto starts = paletteStarts(category_);
-  palettePage_ = std::clamp(palettePage_, 0, (int)starts.size() - 1);
-  int first = starts[palettePage_], last = palettePage_ + 1 < (int)starts.size()
-                                               ? starts[palettePage_ + 1]
-                                               : defs.size();
+  if (category_ != 10)
+    palettePage_ = std::clamp(palettePage_, 0, (int)starts.size() - 1);
+  int first = category_ == 10 ? 0 : starts[palettePage_],
+      last = category_ == 10                         ? 0
+             : palettePage_ + 1 < (int)starts.size() ? starts[palettePage_ + 1]
+                                                     : defs.size();
   int paletteY = 89;
   for (int i = first; i < last; i++) {
     auto layout = paletteLayout(*defs[i]);
@@ -818,6 +838,38 @@ void Editor::render() {
     palette_.push_back({r, defs[i]->opcode});
     paletteY += r.h + 12;
   }
+  if (category_ == 10) {
+    button({84, 89, paletteWidth() - 18, 32}, "Make a Block");
+    auto entries = project_.customEntries();
+    int count = std::max(1, (PAX_H - 220) / 48);
+    palettePage_ = std::clamp(palettePage_, 0,
+                              std::max(0, ((int)entries.size() - 1) / count));
+    for (int i = palettePage_ * count;
+         i < (int)entries.size() && i < (palettePage_ + 1) * count; i++) {
+      Rect r{84, 140 + (i - palettePage_ * count) * 48, paletteWidth() - 18,
+             36};
+      auto label = entries[i].substr(6);
+      if (entries[i].rfind("@arg:", 0) == 0)
+        label = entries[i].substr(5, entries[i].size() - 7);
+      else
+        for (auto &entry : project_.blocks().items())
+          if (entry.value().value("opcode", "") == "procedures_prototype" &&
+              entry.value().contains("mutation") &&
+              entry.value()["mutation"].value("proccode", "") ==
+                  entries[i].substr(6)) {
+            label = project_.blockLabel(entry.key());
+            break;
+          }
+      contour(r, 0xff6680,
+              entries[i].rfind("@arg:", 0) == 0
+                  ? (entries[i].substr(entries[i].size() - 2) == ":b"
+                         ? Boolean
+                         : Reporter)
+                  : Stack);
+      text(label.substr(0, 23), r.x + 9, r.y + 10, 0xffffffff, .65f);
+      palette_.push_back({r, entries[i]});
+    }
+  }
   button(R({84, 382, 70, 29}), "Prev");
   button(R({164, 382, 76, 29}), "Next");
   box(workspace(), 0xffffff);
@@ -825,6 +877,7 @@ void Editor::render() {
   for (int y = workspace().y + 10; y < workspace().y + workspace().h; y += 20)
     for (int x = workspace().x + 10; x < workspace().x + workspace().w; x += 20)
       box({x, y, 1, 1}, 0xdbe3ed);
+  pax_set_ui_zoom(zoom_, workspace().x, workspace().y);
   std::set<std::string> visited;
   for (auto it = project_.blocks().begin(); it != project_.blocks().end(); ++it)
     if (it.value().is_object() && it.value().value("topLevel", false) &&
@@ -843,15 +896,20 @@ void Editor::render() {
     auto *d = definition(project_.blocks()[selected_].value("opcode", ""));
     auto ids = project_.descendants(selected_);
     for (const auto &dock : docks_)
-      if (!ids.count(dock.id) && dock.rect.contains(oldX_, oldY_) && d &&
-          ((dock.input && (d->shape == Reporter || d->shape == Boolean) &&
-            (!dock.boolean || d->shape == Boolean)) ||
-           (!dock.input && d->shape != Reporter && d->shape != Boolean &&
-            d->shape != Hat))) {
+      if (!ids.count(dock.id) && dock.rect.contains(oldX_, oldY_) &&
+          ((dock.input &&
+            (shape(project_.blocks()[selected_]) == Reporter ||
+             shape(project_.blocks()[selected_]) == Boolean) &&
+            (!dock.boolean ||
+             shape(project_.blocks()[selected_]) == Boolean)) ||
+           (!dock.input && shape(project_.blocks()[selected_]) != Reporter &&
+            shape(project_.blocks()[selected_]) != Boolean &&
+            shape(project_.blocks()[selected_]) != Hat))) {
         box({dock.rect.x, dock.rect.y, dock.rect.w, 3}, 0xff495f);
         break;
       }
   }
+  pax_set_ui_zoom(1, 0, 0);
   pax_set_clip(0, 0, PAX_W, PAX_H);
   box(R({623, 49, 177, PAX_H - 96}), 0xe6edf6);
   text(previewLabel_, PAX_W - panelWidth() + 10, 61, 0x26374cff, .6f);
@@ -879,8 +937,13 @@ void Editor::render() {
   button(R({633, 394, 73, 29}), "Sprite +");
   button(R({714, 394, 73, 29}), "Var +");
   box(R({0, 436, PAX_W, 44}), 0xe1e9f3);
-  text((dirty_ ? "* " : "") + status_.substr(0, 76), 12, PAX_H - 32, 0x26374cff,
+  text((dirty_ ? "* " : "") + status_.substr(0, 50), 12, PAX_H - 32, 0x26374cff,
        .65f);
+  int zx = PAX_W - panelWidth() - 135;
+  button({zx, PAX_H - 37, 34, 28}, "-");
+  button({zx + 38, PAX_H - 37, 34, 28}, "+");
+  button({zx + 76, PAX_H - 37, 53, 28},
+         std::to_string((int)std::lround(zoom_ * 100)) + "%");
   button(R({625, 443, 76, 28}), "Copy");
   button(R({711, 443, 77, 28}), "Trash", 0xf4bcc4);
   if (modal_ != None) {
@@ -894,7 +957,15 @@ void Editor::render() {
       for (int xx = 0; xx <= yy / 2; xx++) {
         bool edge = xx == 0 || xx == yy / 2 || yy == 17;
         int c = edge ? 255 : 25;
-        pax_blend(oldX_ + xx, oldY_ + yy, c, c, c, 255);
+        pax_blend((oldWorkspace_
+                       ? workspace().x + (int)((oldX_ - workspace().x) * zoom_)
+                       : oldX_) +
+                      xx,
+                  (oldWorkspace_
+                       ? workspace().y + (int)((oldY_ - workspace().y) * zoom_)
+                       : oldY_) +
+                      yy,
+                  c, c, c, 255);
       }
   }
   Render::endFrame();
@@ -918,7 +989,47 @@ bool Editor::drop(const std::string &id, int x, int y) {
     }
   return false;
 }
+void Editor::setZoom(float value) {
+  value = std::clamp(value, .5f, 2.f);
+  float cx = workspace().w / 2.f, cy = workspace().h / 2.f;
+  viewX_ += (int)(cx / value - cx / zoom_);
+  viewY_ += (int)(cy / value - cy / zoom_);
+  zoom_ = value;
+}
 void Editor::pointer(int x, int y, bool down) {
+  bool inWorkspace = modal_ == None && workspace().contains(x, y);
+  if (modal_ == CostumePaint && down) {
+    int px = x - (PAX_W - 800) / 2 - 90, py = y - (PAX_H - 480) / 2 - 100;
+    if (px >= 0 && py >= 0 && px < 256 && py < 256) {
+      if (!down_) {
+        paintUndo_.push_back(paintPixels_);
+        paintRedo_.clear();
+        if (paintUndo_.size() > 16)
+          paintUndo_.erase(paintUndo_.begin());
+      }
+      int gx = px / 8, gy = py / 8;
+      if (paintLastX_ < 0) {
+        paintLastX_ = gx;
+        paintLastY_ = gy;
+      }
+      int steps = std::max(abs(gx - paintLastX_), abs(gy - paintLastY_));
+      for (int i = 0; i <= steps; i++) {
+        int xx = steps ? paintLastX_ + (gx - paintLastX_) * i / steps : gx,
+            yy = steps ? paintLastY_ + (gy - paintLastY_) * i / steps : gy;
+        paintPixels_[yy * 32 + xx] = paintColor_;
+      }
+      paintLastX_ = gx;
+      paintLastY_ = gy;
+    } else
+      paintLastX_ = -1;
+  }
+  if (!down)
+    paintLastX_ = -1;
+  if (inWorkspace) {
+    x = workspace().x + (int)((x - workspace().x) / zoom_);
+    y = workspace().y + (int)((y - workspace().y) / zoom_);
+  }
+
   if (down && !down_) {
     pressX_ = oldX_ = x;
     pressY_ = oldY_ = y;
@@ -929,7 +1040,7 @@ void Editor::pointer(int x, int y, bool down) {
     palettePending_.clear();
     pendingInput_ = false;
     if (modal_ == None) {
-      if (workspace().contains(x, y)) {
+      if (inWorkspace) {
         if (panMode_)
           pan_ = true;
         else
@@ -995,7 +1106,7 @@ void Editor::pointer(int x, int y, bool down) {
         project_.erase(selected_);
         selected_.clear();
         status_ = "Stack deleted (Undo restores it)";
-      } else if (workspace().contains(x, y))
+      } else if (inWorkspace)
         drop(selected_, x, y);
       else {
         project_.undo();
@@ -1012,6 +1123,40 @@ void Editor::pointer(int x, int y, bool down) {
         status_ = "Added block; drag it to connect";
       } else if (!pending_.empty()) {
         selected_ = pending_;
+        if (!pendingInput_ && project_.blocks()[pending_].value("opcode", "") ==
+                                  "procedures_definition") {
+          customEditing_ = pending_;
+          auto proto = project_.blocks()[pending_]["inputs"]["custom_block"][1]
+                           .get<std::string>();
+          auto m = project_.blocks()[proto]["mutation"];
+          auto code = m.value("proccode", "");
+          customName_ = code;
+          size_t pos = 0;
+          while ((pos = customName_.find('%', pos)) != std::string::npos) {
+            if (pos + 1 < customName_.size() &&
+                (customName_[pos + 1] == 's' || customName_[pos + 1] == 'b'))
+              customName_.erase(pos, 2);
+            else
+              pos++;
+          }
+          while (!customName_.empty() && customName_.back() == ' ')
+            customName_.pop_back();
+          customArgs_.clear();
+          auto names =
+              Json::parse(m.value("argumentnames", "[]"), nullptr, false);
+          pos = 0;
+          if (names.is_array())
+            for (const auto &name : names) {
+              pos = code.find('%', pos);
+              bool boolean = pos != std::string::npos &&
+                             pos + 1 < code.size() && code[pos + 1] == 'b';
+              if (pos != std::string::npos)
+                pos += 2;
+              customArgs_.push_back({name.get<std::string>(), boolean});
+            }
+          customWarp_ = m.value("warp", "false") == "true";
+          modal_ = CustomWizard;
+        }
         if (pendingInput_) {
           editId_ = pending_;
           editSlot_ = pendingSlot_;
@@ -1039,13 +1184,14 @@ void Editor::pointer(int x, int y, bool down) {
             modal_ = ReporterInputs;
           }
         }
-      } else if (y >= 60 && y < 60 + categoryStep() * 10 && x < 72) {
-        category_ = std::clamp((y - 60) / categoryStep(), 0, 9);
+      } else if (y >= 60 && y < 60 + categoryStep() * 11 && x < 72) {
+        category_ = std::clamp((y - 60) / categoryStep(), 0, 10);
         palettePage_ = 0;
       } else if (R({84, 382, 70, 29}).contains(x, y))
         palettePage_ = std::max(0, palettePage_ - 1);
       else if (R({164, 382, 76, 29}).contains(x, y)) {
-        if (palettePage_ + 1 < (int)paletteStarts(category_).size())
+        if (category_ == 10 ||
+            palettePage_ + 1 < (int)paletteStarts(category_).size())
           palettePage_++;
       } else if (R({140, 9, 62, 31}).contains(x, y)) {
         if (dirty_)
@@ -1113,9 +1259,28 @@ void Editor::pointer(int x, int y, bool down) {
         selected_.clear();
         dirty_ = true;
         status_ = "Deleted stack";
-      } else if (Rect{PAX_W-panelWidth()+10,PAX_H-122,panelWidth()-22,28}.contains(x,y)) {
+      } else if (Rect{PAX_W - panelWidth() - 135, PAX_H - 37, 34, 28}.contains(
+                     x, y))
+        setZoom(zoom_ - .25f);
+      else if (Rect{PAX_W - panelWidth() - 97, PAX_H - 37, 34, 28}.contains(x,
+                                                                            y))
+        setZoom(zoom_ + .25f);
+      else if (Rect{PAX_W - panelWidth() - 59, PAX_H - 37, 53, 28}.contains(x,
+                                                                            y))
+        setZoom(1);
+      else if (category_ == 10 &&
+               Rect{84, 89, paletteWidth() - 18, 32}.contains(x, y)) {
+        customEditing_.clear();
+        customName_ = "my block";
+        customArgs_.clear();
+        customWarp_ = false;
+        modal_ = CustomWizard;
+      } else if (Rect{PAX_W - panelWidth() + 10, PAX_H - 122, panelWidth() - 22,
+                      28}
+                     .contains(x, y)) {
         editId_.clear();modal_=SpriteProperties;
-      } else if (category_==7&&Rect{84,PAX_H-146,70,26}.contains(x,y)) {
+      } else if (category_ == 7 &&
+                 Rect{84, PAX_H - 146, 70, 26}.contains(x, y)) {
         modal_=ListName;text_="my list";
       } else if (R({633, 394, 73, 29}).contains(x, y)) {
         modal_ = SpriteName;
@@ -1147,6 +1312,7 @@ void Editor::pointer(int x, int y, bool down) {
     }
   }
   down_ = down;
+  oldWorkspace_ = inWorkspace;
   oldX_ = x;
   oldY_ = y;
 }
@@ -1159,6 +1325,441 @@ void Editor::scroll(int amount, int x) {
       viewY_ += amount * 30;
   }
 }
+void Editor::openAssets(bool sound) {
+  pax_stop_editor_sound();
+  assetSound_ = sound;
+  assetPage_ = 0;
+  assetIndex_ = 0;
+  modal_ = Assets;
+}
+void Editor::openPaint(bool fresh) {
+  paintName_ =
+      fresh ? "painted costume"
+            : project_.target()["costumes"][assetIndex_].value("name", "") +
+                  " painted";
+  paintWidth_ = project_.target().value("isStage", false) ? 480 : 96;
+  paintHeight_ = project_.target().value("isStage", false) ? 360 : 96;
+  paintPixels_.assign(1024, 0);
+  paintUndo_.clear();
+  paintRedo_.clear();
+  if (!fresh && !project_.costumePixels(assetIndex_, paintPixels_, paintWidth_,
+                                        paintHeight_)) {
+    status_ = "Could not rasterize costume";
+    return;
+  }
+  paintLastX_ = -1;
+  modal_ = CostumePaint;
+}
+void Editor::openSound() {
+  pax_stop_editor_sound();
+  if (!project_.soundPcm(assetIndex_, soundSamples_, soundRate_)) {
+    status_ = "Edit WAV/MP3 audio with at most 1 million frames";
+    return;
+  }
+  trimFrom_ = 0;
+  trimTo_ = 100;
+  modal_ = SoundEdit;
+}
+void Editor::drawAssetModal() {
+  auto &assets = project_.target()[assetSound_ ? "sounds" : "costumes"];
+  if (modal_ == Assets) {
+    text(assetSound_                                 ? "Sounds"
+         : project_.target().value("isStage", false) ? "Backdrops"
+                                                     : "Costumes",
+         400, 76, 0x26374cff, .9f, true);
+    if (assets.empty())
+      text("No assets yet. Add a tone or import a file.", 400, 180, 0x575e75ff,
+           .8f, true);
+    for (int i = assetPage_ * 7;
+         i < (int)assets.size() && i < assetPage_ * 7 + 7; i++)
+      button({90, 110 + (i - assetPage_ * 7) * 34, 620, 30},
+             assets[i].value("name", "").substr(0, 45));
+    button({90, 368, 105, 32}, "New");
+    button({210, 368, 105, 32}, "Import");
+    button({330, 368, 105, 32}, "Prev");
+    button({450, 368, 105, 32}, "Next");
+    button({570, 368, 140, 32}, "Done");
+    return;
+  }
+  if (modal_ == ImportAsset) {
+    text(assetSound_ ? "Import WAV / MP3" : "Import SVG / PNG", 400, 76,
+         0x26374cff, .9f, true);
+    text("Put files in /sd/roms/scratch/assets/", 400, 97, 0x575e75ff, .65f,
+         true);
+    for (int i = filePage_ * 7; i < (int)files_.size() && i < filePage_ * 7 + 7;
+         i++)
+      button({90, 125 + (i - filePage_ * 7) * 31, 620, 28},
+             files_[i].substr(0, 50));
+    button({100, 368, 140, 32}, "Prev");
+    button({265, 368, 140, 32}, "Next");
+    button({555, 368, 140, 32}, "Cancel");
+    return;
+  }
+  if (modal_ == AssetActions) {
+    if (assetIndex_ >= (int)assets.size()) {
+      modal_ = Assets;
+      return;
+    }
+    text(assets[assetIndex_].value("name", "").substr(0, 45), 400, 85,
+         0x26374cff, .9f, true);
+    button({100, 150, 280, 44}, assetSound_ ? "Edit sound" : "Paint a copy");
+    button({420, 150, 280, 44}, "Rename");
+    button({100, 220, 280, 44}, assetSound_ ? "Preview" : "Use this costume");
+    button({420, 220, 280, 44}, "Delete", 0xf4bcc4);
+    text("Edits can be undone with Undo.", 400, 310, 0x575e75ff, .8f, true);
+    button({555, 368, 140, 32}, "Back");
+    return;
+  }
+  if (modal_ == CostumePaint) {
+    text("Paint a copy - original costume stays intact", 400, 76, 0x26374cff,
+         .85f, true);
+    for (int y = 0; y < 32; y++)
+      for (int x = 0; x < 32; x++) {
+        box({90 + x * 8, 100 + y * 8, 8, 8},
+            (x / 2 + y / 2) % 2 ? 0xffffff : 0xd9dfe8);
+        auto color = paintPixels_[y * 32 + x];
+        for (int yy = 0; yy < 8; yy++)
+          for (int xx = 0; xx < 8; xx++)
+            pax_blend(90 + x * 8 + xx + (PAX_W - 800) / 2,
+                      100 + y * 8 + yy + (PAX_H - 480) / 2, color >> 24,
+                      (color >> 16) & 255, (color >> 8) & 255, color & 255);
+      }
+    static const uint32_t colors[] = {0x000000ff, 0xffffffff, 0xff6680ff,
+                                      0xffab19ff, 0xffbf00ff, 0x59c059ff,
+                                      0x4c97ffff, 0x9966ffff};
+    for (int i = 0; i < 8; i++) {
+      box({400 + (i % 4) * 70, 120 + (i / 4) * 55, 55, 40}, colors[i] >> 8);
+      if (paintColor_ == colors[i])
+        text("*", 425 + (i % 4) * 70, 128 + (i / 4) * 55,
+             colors[i] == 0x000000ff ? 0xffffffff : 0x26374cff, .9f, true);
+    }
+    button({400, 235, 135, 32}, "Eraser");
+    button({555, 235, 135, 32}, "Fill all");
+    button({400, 280, 135, 32}, "Mirror");
+    button({555, 280, 135, 32}, "Clear");
+    button({400, 315, 135, 20}, "Undo");
+    button({555, 315, 135, 20}, "Redo");
+    button({400, 340, 140, 38}, "Apply copy", 0xbbe8d3);
+    button({555, 340, 140, 38}, "Cancel");
+    return;
+  }
+  if (modal_ == SoundEdit) {
+    text(assets[assetIndex_].value("name", "") + " - " +
+             std::to_string(soundSamples_.size() / (double)soundRate_)
+                 .substr(0, 5) +
+             " seconds",
+         400, 76, 0x26374cff, .8f, true);
+    box({90, 110, 620, 105}, 0xffffff);
+    for (int x = 0; x < 620; x++) {
+      size_t from = soundSamples_.size() * x / 620,
+             to = std::max(from + 1, soundSamples_.size() * (x + 1) / 620);
+      int peak = 0;
+      for (size_t i = from; i < std::min(to, soundSamples_.size()); i++)
+        peak = std::max(peak, std::abs((int)soundSamples_[i]));
+      int h = std::max(1, peak * 95 / 32768);
+      box({90 + x, 162 - h / 2, 1, h},
+          x >= trimFrom_ * 6.2 && x < trimTo_ * 6.2 ? 0x855cd6 : 0xbac4d4);
+    }
+    button({90, 230, 190, 32},
+           "Start: " + std::to_string((int)trimFrom_) + "%");
+    button({290, 230, 190, 32}, "End: " + std::to_string((int)trimTo_) + "%");
+    button({490, 230, 100, 32}, "Trim");
+    button({600, 230, 110, 32}, "Reverse");
+    button({90, 275, 140, 32}, "Louder");
+    button({250, 275, 140, 32}, "Quieter");
+    button({410, 275, 140, 32}, "Fade in");
+    button({570, 275, 140, 32}, "Fade out");
+    button({90, 335, 190, 38}, "Play / Stop");
+    button({300, 335, 190, 38}, "Undo edit");
+    button({510, 335, 200, 38}, "Done");
+    return;
+  }
+  if (modal_ == CustomWizard) {
+    text(customEditing_.empty() ? "Make a Block" : "Edit custom block", 400, 76,
+         0x26374cff, .9f, true);
+    button({90, 105, 620, 32}, "Name: " + customName_);
+    for (size_t i = 0; i < customArgs_.size(); i++)
+      button({90 + (int)(i % 2) * 310, 150 + (int)(i / 2) * 36, 295, 30},
+             (customArgs_[i].second ? "Boolean: " : "Text/number: ") +
+                 customArgs_[i].first);
+    button({90, 303, 190, 30}, "Add text/number");
+    button({290, 303, 190, 30}, "Add Boolean");
+    button({490, 303, 220, 30},
+           customWarp_ ? "Fast mode: on" : "Fast mode: off");
+    button({90, 350, 190, 40}, "Cancel");
+    button({510, 350, 200, 40}, customEditing_.empty() ? "Create" : "Apply",
+           0xbbe8d3);
+    return;
+  }
+}
+void Editor::handleAssetModal(int x, int y) {
+  auto &assets = project_.target()[assetSound_ ? "sounds" : "costumes"];
+  auto applySound = [&](double from, double to, double gain, bool reverse,
+                        bool fadeIn = false, bool fadeOut = false) {
+    pax_stop_editor_sound();
+    project_.checkpoint();
+    if (project_.editSound(assetIndex_, from, to, gain, reverse, fadeIn,
+                           fadeOut)) {
+      dirty_ = true;
+      status_ = "Sound updated";
+      openSound();
+    } else
+      status_ = project_.error;
+  };
+  if (modal_ == Assets) {
+    if (Rect{90, 368, 105, 32}.contains(x, y)) {
+      if (assetSound_) {
+        project_.checkpoint();
+        if (project_.addTone("tone")) {
+          dirty_ = true;
+          assetIndex_ = assets.size() - 1;
+          openSound();
+        } else
+          status_ = project_.error;
+      } else
+        openPaint(true);
+    } else if (Rect{210, 368, 105, 32}.contains(x, y)) {
+      files_.clear();
+      filePage_ = 0;
+      auto made =
+          FileSystem::createDirectory(std::string("/sd/roms/scratch/assets/"));
+      if (!made) {
+        status_ = made.error();
+        return;
+      }
+      auto entries =
+          FileSystem::listDirectory(std::string("/sd/roms/scratch/assets/"));
+      if (entries)
+        for (auto name : *entries) {
+          auto dot = name.find_last_of('.');
+          auto ext = dot == std::string::npos ? "" : name.substr(dot + 1);
+          std::transform(ext.begin(), ext.end(), ext.begin(),
+                         [](unsigned char c) { return std::tolower(c); });
+          if (assetSound_ ? (ext == "wav" || ext == "mp3")
+                          : (ext == "png" || ext == "svg"))
+            files_.push_back(name);
+        }
+      modal_ = ImportAsset;
+    } else if (Rect{330, 368, 105, 32}.contains(x, y))
+      assetPage_ = std::max(0, assetPage_ - 1);
+    else if (Rect{450, 368, 105, 32}.contains(x, y)) {
+      if ((assetPage_ + 1) * 7 < (int)assets.size())
+        assetPage_++;
+    } else if (Rect{570, 368, 140, 32}.contains(x, y)) {
+      pax_stop_editor_sound();
+      modal_ = SpriteProperties;
+    } else if (x >= 90 && x < 710 && y >= 110 && y < 348 &&
+               (y - 110) % 34 < 30) {
+      int index = assetPage_ * 7 + (y - 110) / 34;
+      if (index < (int)assets.size()) {
+        assetIndex_ = index;
+        modal_ = AssetActions;
+      }
+    }
+    return;
+  }
+  if (modal_ == ImportAsset) {
+    if (Rect{100, 368, 140, 32}.contains(x, y))
+      filePage_ = std::max(0, filePage_ - 1);
+    else if (Rect{265, 368, 140, 32}.contains(x, y)) {
+      if ((filePage_ + 1) * 7 < (int)files_.size())
+        filePage_++;
+    } else if (Rect{555, 368, 140, 32}.contains(x, y))
+      modal_ = Assets;
+    else if (x >= 90 && x < 710 && y >= 125 && y < 342 && (y - 125) % 31 < 28) {
+      int index = filePage_ * 7 + (y - 125) / 31;
+      if (index < (int)files_.size()) {
+        project_.checkpoint();
+        if (project_.importAsset(std::string("/sd/roms/scratch/assets/") +
+                                     files_[index],
+                                 assetSound_)) {
+          dirty_ = true;
+          status_ = "Asset imported";
+          assetIndex_ = assets.size() - 1;
+          modal_ = AssetActions;
+          refreshPreview();
+        } else
+          status_ = project_.error;
+      }
+    }
+    return;
+  }
+  if (modal_ == AssetActions) {
+    if (Rect{100, 150, 280, 44}.contains(x, y)) {
+      if (assetSound_)
+        openSound();
+      else
+        openPaint(false);
+    } else if (Rect{420, 150, 280, 44}.contains(x, y)) {
+      text_ = assets[assetIndex_].value("name", "");
+      modal_ = AssetRename;
+    } else if (Rect{100, 220, 280, 44}.contains(x, y)) {
+      if (assetSound_) {
+        std::vector<int16_t> samples;
+        int rate;
+        if (project_.soundPcm(assetIndex_, samples, rate))
+          pax_preview_editor_sound(samples, rate);
+        else
+          status_ = "Could not decode sound";
+      } else {
+        project_.checkpoint();
+        project_.target()["currentCostume"] = assetIndex_;
+        dirty_ = true;
+        refreshPreview();
+      }
+    } else if (Rect{420, 220, 280, 44}.contains(x, y)) {
+      project_.checkpoint();
+      if (project_.deleteAsset(assetSound_, assetIndex_)) {
+        dirty_ = true;
+        modal_ = Assets;
+        refreshPreview();
+      } else
+        status_ = project_.error;
+    } else if (Rect{555, 368, 140, 32}.contains(x, y)) {
+      pax_stop_editor_sound();
+      modal_ = Assets;
+    }
+    return;
+  }
+  if (modal_ == CostumePaint) {
+    static const uint32_t colors[] = {0x000000ff, 0xffffffff, 0xff6680ff,
+                                      0xffab19ff, 0xffbf00ff, 0x59c059ff,
+                                      0x4c97ffff, 0x9966ffff};
+    for (int i = 0; i < 8; i++)
+      if (Rect{400 + (i % 4) * 70, 120 + (i / 4) * 55, 55, 40}.contains(x, y)) {
+        paintColor_ = colors[i];
+        return;
+      }
+    bool changesCanvas = Rect{555, 235, 135, 32}.contains(x, y) ||
+                         Rect{400, 280, 135, 32}.contains(x, y) ||
+                         Rect{555, 280, 135, 32}.contains(x, y);
+    if (changesCanvas) {
+      paintUndo_.push_back(paintPixels_);
+      paintRedo_.clear();
+      if (paintUndo_.size() > 16)
+        paintUndo_.erase(paintUndo_.begin());
+    }
+    if (Rect{400, 235, 135, 32}.contains(x, y))
+      paintColor_ = 0;
+    else if (Rect{555, 235, 135, 32}.contains(x, y))
+      std::fill(paintPixels_.begin(), paintPixels_.end(), paintColor_);
+    else if (Rect{400, 280, 135, 32}.contains(x, y))
+      for (int yy = 0; yy < 32; yy++)
+        for (int xx = 0; xx < 16; xx++)
+          std::swap(paintPixels_[yy * 32 + xx],
+                    paintPixels_[yy * 32 + 31 - xx]);
+    else if (Rect{555, 280, 135, 32}.contains(x, y))
+      std::fill(paintPixels_.begin(), paintPixels_.end(), 0);
+    else if (Rect{400, 315, 135, 20}.contains(x, y)) {
+      if (!paintUndo_.empty()) {
+        paintRedo_.push_back(paintPixels_);
+        paintPixels_ = paintUndo_.back();
+        paintUndo_.pop_back();
+      }
+    } else if (Rect{555, 315, 135, 20}.contains(x, y)) {
+      if (!paintRedo_.empty()) {
+        paintUndo_.push_back(paintPixels_);
+        paintPixels_ = paintRedo_.back();
+        paintRedo_.pop_back();
+      }
+    } else if (Rect{400, 340, 140, 38}.contains(x, y)) {
+      project_.checkpoint();
+      if (project_.paintCostume(paintName_, paintPixels_, paintWidth_,
+                                paintHeight_)) {
+        dirty_ = true;
+        status_ = "Painted copy added";
+        modal_ = Assets;
+        refreshPreview();
+      } else
+        status_ = project_.error;
+    } else if (Rect{555, 340, 140, 38}.contains(x, y))
+      modal_ = Assets;
+    return;
+  }
+  if (modal_ == SoundEdit) {
+    if (Rect{90, 230, 190, 32}.contains(x, y) ||
+        Rect{290, 230, 190, 32}.contains(x, y)) {
+      trimKey_ = x < 280 ? "Start (%)" : "End (%)";
+      text_ = std::to_string((int)(x < 280 ? trimFrom_ : trimTo_));
+      modal_ = SoundTrim;
+    } else if (Rect{490, 230, 100, 32}.contains(x, y))
+      applySound(trimFrom_, trimTo_, 1, false);
+    else if (Rect{600, 230, 110, 32}.contains(x, y))
+      applySound(0, 100, 1, true);
+    else if (Rect{90, 275, 140, 32}.contains(x, y))
+      applySound(0, 100, 1.25, false);
+    else if (Rect{250, 275, 140, 32}.contains(x, y))
+      applySound(0, 100, .8, false);
+    else if (Rect{410, 275, 140, 32}.contains(x, y))
+      applySound(0, 100, 1, false, true);
+    else if (Rect{570, 275, 140, 32}.contains(x, y))
+      applySound(0, 100, 1, false, false, true);
+    else if (Rect{90, 335, 190, 38}.contains(x, y)) {
+      if (Mixer::isSoundPlaying("pax_editor_preview"))
+        pax_stop_editor_sound();
+      else
+        pax_preview_editor_sound(soundSamples_, soundRate_);
+    } else if (Rect{300, 335, 190, 38}.contains(x, y)) {
+      pax_stop_editor_sound();
+      if (project_.undo()) {
+        dirty_ = true;
+        if (assetIndex_ < (int)project_.target()["sounds"].size())
+          openSound();
+        else
+          modal_ = Assets;
+      }
+    } else if (Rect{510, 335, 200, 38}.contains(x, y)) {
+      pax_stop_editor_sound();
+      std::vector<int16_t>().swap(soundSamples_);
+      modal_ = Assets;
+    }
+    return;
+  }
+  if (modal_ == CustomWizard) {
+    if (Rect{90, 105, 620, 32}.contains(x, y)) {
+      text_ = customName_;
+      modal_ = CustomName;
+    } else if (Rect{90, 303, 190, 30}.contains(x, y) ||
+               Rect{290, 303, 190, 30}.contains(x, y)) {
+      if (customArgs_.size() < 8)
+        customArgs_.push_back(
+            {"input" + std::to_string(customArgs_.size() + 1), x >= 290});
+      else
+        status_ = "A custom block can have up to 8 inputs";
+    } else if (Rect{490, 303, 220, 30}.contains(x, y))
+      customWarp_ = !customWarp_;
+    else if (Rect{90, 350, 190, 40}.contains(x, y))
+      modal_ = None;
+    else if (Rect{510, 350, 200, 40}.contains(x, y)) {
+      project_.checkpoint();
+      auto id =
+          customEditing_.empty()
+              ? project_.createCustom(customName_, customArgs_, customWarp_)
+              : (project_.updateCustom(customEditing_, customName_, customArgs_,
+                                       customWarp_)
+                     ? customEditing_
+                     : std::string());
+      if (!id.empty()) {
+        selected_ = id;
+        dirty_ = true;
+        modal_ = None;
+        home();
+        status_ = "Custom block created; drag blocks below its definition";
+      } else
+        status_ = project_.error;
+    } else
+      for (size_t i = 0; i < customArgs_.size(); i++)
+        if (Rect{90 + (int)(i % 2) * 310, 150 + (int)(i / 2) * 36, 295, 30}
+                .contains(x, y)) {
+          argEdit_ = i;
+          text_ = customArgs_[i].first;
+          modal_ = CustomArgName;
+          break;
+        }
+    return;
+  }
+}
+
 void Editor::chooseInput() {
   files_=project_.choices(editSlot_.key);filePage_=0;
   modal_=files_.empty()?(editId_.empty()?SpritePropertyValue:InputValue):Choices;
@@ -1176,11 +1777,21 @@ void Editor::drawModal() {
     button({515, 245, 165, 45}, "Discard", 0xf4bcc4);
     return;
   }
+  if (modal_ == Assets || modal_ == AssetActions || modal_ == ImportAsset ||
+      modal_ == CostumePaint || modal_ == SoundEdit || modal_ == CustomWizard) {
+    drawAssetModal();
+    return;
+  }
   if(modal_==SpriteProperties) {
     text(project_.target().value("isStage",false)?"Stage properties":"Sprite properties",400,76,0x26374cff,.9f,true);
     auto fields=propertyKeys(project_);
     for(size_t i=0;i<fields.size();i++)button({90+(int)(i%2)*310,120+(int)(i/2)*52,295,40},fieldLabel(fields[i],project_.target().value("isStage",false))+": "+propertyValue(project_,fields[i]).substr(0,22));
-    button({555,368,140,32},"Done");return;
+    button({90, 368, 140, 32}, project_.target().value("isStage", false)
+                                   ? "Backdrops"
+                                   : "Costumes");
+    button({255, 368, 140, 32}, "Sounds");
+    button({555, 368, 140, 32}, "Done");
+    return;
   }
   if(modal_==Choices) {
     text("Choose "+fieldLabel(editSlot_.key,project_.target().value("isStage",false)),400,76,0x26374cff,.9f,true);
@@ -1222,11 +1833,17 @@ void Editor::drawModal() {
     button({555, 368, 140, 32}, "Cancel");
     return;
   }
-  std::string title = (modal_ == InputValue || modal_ == SpritePropertyValue) ? fieldLabel(editSlot_.key,project_.target().value("isStage",false))
-                      : modal_ == ProjectName ? "Save project as"
-                      : modal_ == SpriteName  ? "Sprite name"
-                      : modal_ == ListName ? "List name"
-                                              : "Variable name";
+  std::string title =
+      (modal_ == InputValue || modal_ == SpritePropertyValue)
+          ? fieldLabel(editSlot_.key, project_.target().value("isStage", false))
+      : modal_ == ProjectName   ? "Save project as"
+      : modal_ == SpriteName    ? "Sprite name"
+      : modal_ == ListName      ? "List name"
+      : modal_ == AssetRename   ? "Asset name"
+      : modal_ == CustomName    ? "Custom block name"
+      : modal_ == CustomArgName ? "Input name"
+      : modal_ == SoundTrim     ? trimKey_
+                                : "Variable name";
   text(title, 400, 72, 0x26374cff, .9f, true);
   box({88, 106, 620, 36}, 0xffffff);
   text(text_.substr(0, 60) + "_", 98, 116, 0x26374cff, .85f);
@@ -1275,7 +1892,20 @@ void Editor::handleModal(int x, int y) {
     }
     return;
   }
+  if (modal_ == Assets || modal_ == AssetActions || modal_ == ImportAsset ||
+      modal_ == CostumePaint || modal_ == SoundEdit || modal_ == CustomWizard) {
+    handleAssetModal(x, y);
+    return;
+  }
   if(modal_==SpriteProperties) {
+    if (Rect{90, 368, 140, 32}.contains(x, y)) {
+      openAssets(false);
+      return;
+    }
+    if (Rect{255, 368, 140, 32}.contains(x, y)) {
+      openAssets(true);
+      return;
+    }
     if(Rect{555,368,140,32}.contains(x,y)){modal_=None;return;}
     auto fields=propertyKeys(project_);
     for(size_t i=0;i<fields.size();i++)if(Rect{90+(int)(i%2)*310,120+(int)(i/2)*52,295,40}.contains(x,y)) {
@@ -1367,7 +1997,11 @@ void Editor::handleModal(int x, int y) {
   } else if (Rect{419, 335, 90, 35}.contains(x, y))
     text_.clear();
   else if (Rect{516, 335, 89, 35}.contains(x, y))
-    modal_ = None;
+    modal_ = modal_ == AssetRename                               ? AssetActions
+             : (modal_ == CustomName || modal_ == CustomArgName) ? CustomWizard
+             : modal_ == SoundTrim                               ? SoundEdit
+             : modal_ == SpritePropertyValue ? SpriteProperties
+                                             : None;
   else if (Rect{612, 335, 95, 35}.contains(x, y))
     commitText();
 }
@@ -1377,7 +2011,11 @@ void Editor::keyboard(const std::string &key) {
     return;
   }
   if (modal_ == None || modal_ == OpenFile || modal_ == HardwareChannels ||
-      modal_ == ReporterInputs || modal_ == Choices || modal_ == SpriteProperties || modal_ == ConfirmBack || modal_ == ConfirmNew)
+      modal_ == ReporterInputs || modal_ == Choices ||
+      modal_ == SpriteProperties || modal_ == Assets ||
+      modal_ == AssetActions || modal_ == ImportAsset ||
+      modal_ == CostumePaint || modal_ == SoundEdit || modal_ == CustomWizard ||
+      modal_ == ConfirmBack || modal_ == ConfirmNew)
     return;
   if (key == "enter")
     commitText();
@@ -1391,6 +2029,42 @@ void Editor::keyboard(const std::string &key) {
     text_ += key;
 }
 void Editor::commitText() {
+  if (modal_ == AssetRename) {
+    project_.checkpoint();
+    if (!project_.renameAsset(assetSound_, assetIndex_, text_)) {
+      status_ = project_.error;
+      return;
+    }
+    dirty_ = true;
+    modal_ = AssetActions;
+    refreshPreview();
+    return;
+  }
+  if (modal_ == CustomName) {
+    customName_ = text_;
+    modal_ = CustomWizard;
+    return;
+  }
+  if (modal_ == CustomArgName) {
+    if (argEdit_ >= 0 && argEdit_ < (int)customArgs_.size())
+      customArgs_[argEdit_].first = text_;
+    modal_ = CustomWizard;
+    return;
+  }
+  if (modal_ == SoundTrim) {
+    char *end;
+    double v = std::strtod(text_.c_str(), &end);
+    if (text_.empty() || *end || !std::isfinite(v) || v < 0 || v > 100) {
+      status_ = "Enter a percent from 0 to 100";
+      return;
+    }
+    if (trimKey_ == "Start (%)")
+      trimFrom_ = v;
+    else
+      trimTo_ = v;
+    modal_ = SoundEdit;
+    return;
+  }
   if(modal_==SpritePropertyValue) {
     project_.checkpoint();
     if(!project_.setTargetProperty(editSlot_.key,text_)){status_=project_.error;return;}
@@ -1522,6 +2196,7 @@ void open(const std::string &path) {
     editor.render();
     pax_svc->delay_ms(12);
   }
+  pax_stop_editor_sound();
   if (OS::toExit)
     editor.recoverDraft();
   pax_resize_surface(480, 360);

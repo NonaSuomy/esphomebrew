@@ -28,17 +28,39 @@ Date/time sensing depends on the loader's available clock and currently uses
 uptime. Complex Scratch projects may exceed the device's memory/CPU budget.
 
 
-## Block editor (0.3.0)
+## Block editor (0.4.0)
 
 The editor negotiates the PAX canvas and uses all 1024×600 pixels on Elecrow (800×480 fallback for older loaders). Extra width expands the workspace, and the stage, toolbar and footer stay anchored. Playback keeps its existing 480×360 stage surface. Choose a category in the left column, then drag or tap a palette block to add it. Palette items size themselves to their contents, wrap long labels, and leave clear space around hat tops, tabs and C shapes. Inline script elements have explicit gaps and matching text measurements. Drag a stack under another block, inside a loop/condition, or drag a round/green reporter into an input. A red line marks a compatible drop target. Dragging a middle block carries the blocks below it and any nested scripts.
 
 Tap an input to change its value using the on-screen keyboard or USB keyboard. Connected reporters are drawn inline; tap their own sockets to edit their inputs. **Shift** supplies capital letters and symbols. Select sprites on the right; arrows page through larger projects. **Sprite +** adds a simple sprite with a built-in beep sound. **Var +** creates a sprite variable. Existing project costumes and sounds can be selected by their names in the relevant block inputs.
 
-**Run** exports a temporary snapshot and opens it in the player. Touch **STOP** in its top-right corner, press Escape, or use Select+B to return to editing. The stage pane then shows the last run. **Save** creates a new `.sb3` file and preserves the original; choose a different name for another save. The matching `.sb3.json` keeps imported controls and streams archives from SD to reduce memory use.
+The **green flag** or **F5** exports a temporary snapshot and opens it in the player. Touch the **red stop sign** in its top-right corner, press **F6** (desktop **Shift+F5** also works), or use Select+B to return to editing. The stage pane then shows the last run. **Save** creates a new `.sb3` file and preserves the original; choose a different name for another save. The matching `.sb3.json` keeps imported controls and streams archives from SD to reduce memory use.
 
 **Copy** duplicates a selected stack. **Trash**, or dropping a stack on the palette, removes it. **Undo/Redo** restores edits (up to 20 snapshots within a 1 MiB history budget). **Pan** lets you drag the workspace, mouse-wheel scrolls it, and **Home** brings scripts back into view. Back/New confirm unsaved edits. Open preserves dirty work in a recovery draft before replacing the workspace. Load errors remain visible and keep New/Open usable. Holding Menu to exit saves an unsaved workspace as `Recovered-<timestamp>.sb3` when storage permits.
 
-This is a native editor with Motion, Looks, Sound, Events, Control, Sensing, Operators, Variables, Pen and Board IO blocks. It supports stacks, nested repeat/forever/if/if-else, round/boolean inputs, sprite selection and exported projects. Costume/sound drawing or recording, list editing, custom procedures, cloud/Lua extensions and full Scratch GUI parity are outside this version. Unknown imported blocks retain their JSON and assets and are shown by opcode. The initial stage thumbnail is approximate; Run uses the real interpreter and renderer.
+This is a native editor with Motion, Looks, Sound, Events, Control, Sensing, Operators, Variables, Pen and Board IO blocks. It supports stacks, nested repeat/forever/if/if-else, round/boolean inputs, sprite selection and exported projects. Cloud/Lua extension authoring and full browser Scratch GUI parity are outside this version. Unknown imported blocks retain their JSON and assets and are shown by opcode. The initial stage thumbnail is approximate; Run uses the real interpreter and renderer.
+
+### Lists and named inputs
+
+**Variables > List +** creates a list and the palette exposes all twelve supported list blocks. Tapping named inputs opens a paged selector for variables, lists, messages, costumes, sounds and keys; keyboard entry remains available. Stage-owned variable/list IDs and existing message IDs are retained. Select the Stage to create a shared variable/list there.
+
+### Sprite properties and assets
+
+**Properties** edits the selected sprite's name, X/Y, size, direction, visibility, costume and rotation style. For Stage it offers name and backdrop. Values are validated and changes participate in Undo and SB3 export.
+
+Inside Properties, **Costumes/Backdrops** and **Sounds** open asset browsers with rename, delete, select/preview and import actions. Put SVG/PNG images or WAV/MP3 files under `/sd/roms/scratch/assets/` (desktop: `pax-dev/desktop/sd/roms/scratch/assets/`). Files are limited to 8 MiB; PNG editing/import is limited to 1024x1024 pixels. At least one costume/backdrop must remain.
+
+**Paint a copy** opens a 32x32 pixel-art canvas. Use the brush, eraser, fill, mirror, clear and stroke Undo/Redo controls, then **Apply copy** to add a content-addressed SVG costume. The original stays intact, including an imported vector original.
+
+**New** in Sounds adds a one-second tone. **Edit sound** shows a waveform with selection percentages, trim, reverse, louder/quieter, fade in/out, Play/Stop and Undo edit. WAV and MP3 files are decoded and edits export mono 16-bit PCM WAV, capped at one million sample frames. Original bytes remain available to Undo. Generated assets have actual MD5 filenames; unused generated revisions are omitted from saved archives. After 8 MiB of in-memory asset revisions, save and reopen before making more edits.
+
+Microphone recording is unavailable: the current ABI provides audio output and microphone control/status, but no PCM capture service. Neither simulated recordings nor SDK/firmware layout changes are introduced.
+
+### Custom blocks and zoom
+
+**My Blocks > Make a Block** creates a procedure with up to eight named text/number or Boolean inputs and optional fast mode. Calls and parameter reporters appear in the palette; drag statements under the pink definition and reporters into its body. Clicking a definition opens its editor. Renaming/adding inputs updates existing calls and body reporters; existing input types are retained. Duplicated definitions get unique procedure codes.
+
+The footer **- / + / percentage** controls zoom the workspace from 50% to 200%; percentage resets it to 100%. Blocks and fonts scale together, and dragging, snapping and nested input hit testing use the inverse transform. Toolbars, palettes, stage and modal dialogs stay at native resolution.
 
 ## Board I/O
 
@@ -47,7 +69,7 @@ See the firmware workspace documentation in `pax-esphome/docs/scratch-hardware.m
 ## Source and builds
 
 `core` links to the independently versioned pinned ScratchEverywhere checkout in `upstream/`. The official browser-editor reference is kept separately in `upstream/scratch-editor-reference`, pinned in `provenance.json`; it is not part of the native binary.
-`port/` owns the PAX adapters. `pax_editor_model.cpp` owns block graphs, history and SB3 export; `pax_editor_ui.cpp` owns the touch interface. `deps/` keeps exact dependency snapshots and their
+`port/` owns the PAX adapters. `pax_editor_model.cpp` owns block graphs, history and SB3 export; `pax_editor_ui.cpp` owns the touch interface; `pax_editor_assets.cpp` owns image/audio edits and immutable assets, and `pax_editor_custom.cpp` owns procedure metadata. `deps/` keeps exact dependency snapshots and their
 licenses; see `provenance.json`. The Plutovg patch replaces `unsigned int*` with
 `uint32_t*` in its fill/gradient buffers because ESP newlib uses `unsigned long`
 for `uint32_t`. The PAX ABI remains version 1. The optional I/O bridge appends four service pointers; hardware blocks require the updated firmware.

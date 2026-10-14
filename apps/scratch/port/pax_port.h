@@ -11,6 +11,7 @@ long long pax_time_us(void);
 #ifdef __cplusplus
 }
 #include <image.hpp>
+#include <vector>
 extern uint16_t *pax_pixels;
 extern int PAX_W, PAX_H;
 extern int pax_editor_width, pax_editor_height;
@@ -20,6 +21,10 @@ extern bool pax_editor_playing;
 extern bool pax_native_cursor;
 bool pax_resize_surface(int width, int height);
 void pax_set_clip(int x, int y, int w, int h);
+extern float pax_ui_zoom;
+void pax_set_ui_zoom(float scale, int x, int y);
+void pax_preview_editor_sound(const std::vector<int16_t> &samples, int rate);
+void pax_stop_editor_sound();
 void pax_blend(int x, int y, int r, int g, int b, int a);
 void pax_draw_image(const ImageData &img, const ImageRenderParams &p);
 void pax_audio_pump();

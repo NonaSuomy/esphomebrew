@@ -646,6 +646,12 @@ bool Project::save(const std::string &path) {
   std::string json = doc_.dump();
   bool ok = mz_zip_writer_add_mem(&writer, "project.json", json.data(),
                                   json.size(), MZ_BEST_SPEED);
+  std::set<std::string> referencedAssets;
+  for (const auto &owner : doc_["targets"])
+    for (const auto &kind : {"costumes", "sounds"})
+      if (owner.contains(kind))
+        for (const auto &asset : owner[kind])
+          referencedAssets.insert(asset.value("md5ext", ""));
   if (reading)
     for (mz_uint i = 0; ok && i < mz_zip_reader_get_num_files(&reader); i++) {
       mz_zip_archive_file_stat st{};
@@ -654,12 +660,13 @@ bool Project::save(const std::string &path) {
         break;
       }
       std::string name = st.m_filename;
-      if (name == "project.json" || assets_.count(name))
+      if (name == "project.json" ||
+          (assets_.count(name) && referencedAssets.count(name)))
         continue;
       ok = mz_zip_writer_add_from_zip_reader(&writer, &reader, i);
     }
   for (const auto &item : assets_)
-    if (ok)
+    if (ok && referencedAssets.count(item.first))
       ok =
           mz_zip_writer_add_mem(&writer, item.first.c_str(), item.second.data(),
                                 item.second.size(), MZ_BEST_SPEED);
@@ -731,6 +738,60 @@ std::vector<unsigned char> Project::asset(const std::string &name) const {
   return bytes;
 }
 std::string Project::add(const std::string &op, int x, int y) {
+  if (op.rfind("@call:", 0) == 0 || op.rfind("@arg:", 0) == 0) {
+    std::string id;
+    bool used;
+    do {
+      id = "pax_block_" + std::to_string(++serial_);
+      used = false;
+      for (const auto &t : doc_["targets"])
+        used = used || t["blocks"].contains(id);
+    } while (used);
+    Json node = {{"next", nullptr},
+                 {"parent", nullptr},
+                 {"inputs", Json::object()},
+                 {"fields", Json::object()},
+                 {"shadow", false},
+                 {"topLevel", true},
+                 {"x", x},
+                 {"y", y}};
+    if (op.rfind("@arg:", 0) == 0) {
+      auto end = op.rfind(':');
+      node["opcode"] = op.substr(end) == ":b"
+                           ? "argument_reporter_boolean"
+                           : "argument_reporter_string_number";
+      node["fields"]["VALUE"] = Json::array({op.substr(5, end - 5), nullptr});
+    } else {
+      std::string code = op.substr(6);
+      bool found = false;
+      for (const auto &b : blocks())
+        if (b.value("opcode", "") == "procedures_prototype" &&
+            b.contains("mutation") &&
+            b["mutation"].value("proccode", "") == code) {
+          node["opcode"] = "procedures_call";
+          node["mutation"] = b["mutation"];
+          auto ids = Json::parse(b["mutation"].value("argumentids", "[]"));
+          size_t at = 0;
+          for (const auto &arg : ids) {
+            at = code.find('%', at);
+            bool boolean = at != std::string::npos && code[at + 1] == 'b';
+            if (at != std::string::npos)
+              at += 2;
+            node["inputs"][arg.get<std::string>()] =
+                boolean ? Json::array({2, nullptr})
+                        : Json::array({1, Json::array({10, ""})});
+          }
+          found = true;
+          break;
+        }
+      if (!found) {
+        error = "Unknown custom block";
+        return "";
+      }
+    }
+    blocks()[id] = node;
+    return id;
+  }
   const auto *d = definition(op);
   if (!d)
     return "";
@@ -818,9 +879,13 @@ bool Project::attach(const std::string &id, const std::string &parent,
       descendants(id).count(parent))
     return false;
   const auto *d = definition(blocks()[id].value("opcode", ""));
-  if (d && d->shape == Hat)
+  if ((d && d->shape == Hat) ||
+      blocks()[id].value("opcode", "") == "procedures_definition")
     return false;
-  bool reporter = d && (d->shape == Reporter || d->shape == Boolean);
+  bool reporter =
+      (d && (d->shape == Reporter || d->shape == Boolean)) ||
+      blocks()[id].value("opcode", "") == "argument_reporter_boolean" ||
+      blocks()[id].value("opcode", "") == "argument_reporter_string_number";
   bool sub = slot == "SUBSTACK" || slot == "SUBSTACK2";
   if (reporter && (slot.empty() || sub))
     return false;
@@ -911,6 +976,30 @@ std::string Project::duplicate(const std::string &id) {
               in[k] = map[blockReference(in[k])];
     blocks()[map[s]] = copy;
   }
+  if (blocks()[id].value("opcode", "") == "procedures_definition") {
+    std::string copiedProto = blocks()[map[id]]["inputs"]["custom_block"][1];
+    auto oldCode = blocks()[copiedProto]["mutation"].value("proccode", "");
+    std::string code = "copy " + oldCode;
+    bool collision;
+    do {
+      collision = false;
+      for (const auto &block : blocks())
+        if (block.value("opcode", "") == "procedures_prototype" &&
+            block.contains("mutation") &&
+            block["mutation"].value("proccode", "") == code)
+          collision = true;
+      if (collision)
+        code = "copy " + code;
+    } while (collision);
+    blocks()[copiedProto]["mutation"]["proccode"] = code;
+    for (const auto &entry : map) {
+      auto &block = blocks()[entry.second];
+      if (block.value("opcode", "") == "procedures_call" &&
+          block.contains("mutation") &&
+          block["mutation"].value("proccode", "") == oldCode)
+        block["mutation"]["proccode"] = code;
+    }
+  }
   auto newId = map[id];
   blocks()[newId]["parent"] = nullptr;
   blocks()[newId]["topLevel"] = true;
@@ -969,6 +1058,8 @@ std::vector<Slot> Project::slots(const std::string &id) const {
   if (!bs.contains(id))
     return {};
   const auto &b = bs[id];
+  if (b.value("opcode", "") == "procedures_definition")
+    return {};
   auto *d = definition(b.value("opcode", ""));
   std::vector<Slot> result = d ? d->slots : std::vector<Slot>{};
   if (!d) {
@@ -979,6 +1070,23 @@ std::vector<Slot> Project::slots(const std::string &id) const {
     if (b.contains("fields") && b["fields"].is_object())
       for (auto it = b["fields"].begin(); it != b["fields"].end(); ++it)
         result.push_back({it.key(), "", true, false});
+  }
+  if (b.value("opcode", "") == "procedures_call" && b.contains("mutation")) {
+    auto code = b["mutation"].value("proccode", "");
+    auto ids =
+        Json::parse(b["mutation"].value("argumentids", "[]"), nullptr, false);
+    size_t at = 0;
+    if (ids.is_array())
+      for (const auto &arg : ids) {
+        at = code.find('%', at);
+        bool boolean = at != std::string::npos && at + 1 < code.size() &&
+                       code[at + 1] == 'b';
+        if (at != std::string::npos)
+          at += 2;
+        for (auto &slot : result)
+          if (slot.key == arg)
+            slot.boolean = boolean;
+      }
   }
   for (auto &s : result) {
     Json value;
@@ -1011,6 +1119,10 @@ std::vector<Slot> Project::slots(const std::string &id) const {
       }
     }
   }
+  if (b.value("opcode", "") == "procedures_call")
+    for (auto &slot : result)
+      if (slot.value.empty() && !slot.boolean)
+        slot.value = "0";
   return result;
 }
 void Project::checkpoint() {

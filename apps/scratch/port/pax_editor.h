@@ -61,6 +61,29 @@ public:
   void addList(const std::string &name);
   std::vector<std::string> choices(const std::string &key) const;
   bool setTargetProperty(const std::string &key, const std::string &value);
+  std::string
+  createCustom(const std::string &name,
+               const std::vector<std::pair<std::string, bool>> &args,
+               bool warp);
+  bool updateCustom(const std::string &id, const std::string &name,
+                    const std::vector<std::pair<std::string, bool>> &args,
+                    bool warp);
+  std::vector<std::string> customEntries() const;
+  std::string blockLabel(const std::string &id) const;
+  bool paintCostume(const std::string &name,
+                    const std::vector<uint32_t> &pixels, int width = 96,
+                    int height = 96);
+  bool costumePixels(int index, std::vector<uint32_t> &pixels, int &width,
+                     int &height) const;
+  bool importAsset(const std::string &path, bool sound);
+  bool renameAsset(bool sound, int index, const std::string &name);
+  bool deleteAsset(bool sound, int index);
+  bool soundPcm(int index, std::vector<int16_t> &samples, int &rate) const;
+  bool editSound(int index, double from, double to, double gain, bool reverse,
+                 bool fadeIn = false, bool fadeOut = false);
+  bool addTone(const std::string &name, double frequency = 440,
+               double seconds = 1);
+  std::string storeAsset(const std::string &data, const std::string &extension);
   std::vector<unsigned char> asset(const std::string &name) const;
 };
 struct Rect {
@@ -106,6 +129,16 @@ class Editor {
     Choices,
     SpriteProperties,
     SpritePropertyValue,
+    Assets,
+    AssetActions,
+    AssetRename,
+    ImportAsset,
+    CostumePaint,
+    SoundEdit,
+    SoundTrim,
+    CustomWizard,
+    CustomName,
+    CustomArgName,
     ConfirmBack,
     ConfirmNew,
     OpenFile,
@@ -133,6 +166,26 @@ class Editor {
   void handleModal(int x, int y);
   void commitText();
   void chooseInput();
+  void setZoom(float value);
+  void openAssets(bool sound);
+  void openPaint(bool fresh);
+  void openSound();
+  void drawAssetModal();
+  void handleAssetModal(int x, int y);
+  float zoom_ = 1;
+  bool oldWorkspace_ = false, assetSound_ = false, customWarp_ = false;
+  int assetIndex_ = 0, assetPage_ = 0, paintWidth_ = 96, paintHeight_ = 96,
+      paintLastX_ = -1, paintLastY_ = -1, argEdit_ = -1;
+  uint32_t paintColor_ = 0x4c97ffff;
+  std::vector<uint32_t> paintPixels_;
+  std::vector<std::vector<uint32_t>> paintUndo_, paintRedo_;
+  std::vector<int16_t> soundSamples_;
+  int soundRate_ = 22050;
+  double trimFrom_ = 0, trimTo_ = 100;
+  std::string customEditing_;
+  std::string paintName_, customName_ = "my block", trimKey_;
+  std::vector<std::pair<std::string, bool>> customArgs_;
+
   void refreshPreview();
   void home();
   void run();
@@ -153,6 +206,7 @@ public:
   void keyboard(const std::string &text);
   void scroll(int amount, int x);
   bool recoverDraft();
+  float zoom() const { return zoom_; }
   bool closed() const { return closed_; }
 };
 void open(const std::string &path);

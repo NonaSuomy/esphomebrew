@@ -34,33 +34,40 @@ static PaxSpeech *speech;
 static uint16_t rgb565(int r, int g, int b) {
     return ((r & 248) << 8) | ((g & 252) << 3) | (b >> 3);
 }
-void pax_blend(int x, int y, int r, int g, int b, int a) {
-    if (x < 0 || y < 0 || x >= PAX_W || y >= PAX_H || x < clipX || y < clipY ||
-        x >= clipX + clipW || y >= clipY + clipH || a <= 0)
-        return;
-    a = std::min(255, a);
-    if (penTarget) {
-        auto *d = &pen[(y * PAX_W + x) * 4];
-        int da = d[3], oa = a + da * (255 - a) / 255;
-        if (oa) {
-            d[0] = (r * a + d[0] * da * (255 - a) / 255) / oa;
-            d[1] = (g * a + d[1] * da * (255 - a) / 255) / oa;
-            d[2] = (b * a + d[2] * da * (255 - a) / 255) / oa;
-            d[3] = oa;
-        }
-        return;
+float pax_ui_zoom = 1;
+static int zoomX, zoomY;
+void pax_set_ui_zoom(float scale, int x, int y) {
+  pax_ui_zoom = scale;
+  zoomX = x;
+  zoomY = y;
+}
+static void blendPixel(int x, int y, int r, int g, int b, int a) {
+  if (x < 0 || y < 0 || x >= PAX_W || y >= PAX_H || x < clipX || y < clipY ||
+      x >= clipX + clipW || y >= clipY + clipH || a <= 0)
+    return;
+  a = std::min(255, a);
+  if (penTarget) {
+    auto *d = &pen[(y * PAX_W + x) * 4];
+    int da = d[3], oa = a + da * (255 - a) / 255;
+    if (oa) {
+      d[0] = (r * a + d[0] * da * (255 - a) / 255) / oa;
+      d[1] = (g * a + d[1] * da * (255 - a) / 255) / oa;
+      d[2] = (b * a + d[2] * da * (255 - a) / 255) / oa;
+      d[3] = oa;
     }
-    if (!pax_pixels)
-        return;
-    uint16_t &d = pax_pixels[y * PAX_W + x];
-    if (a < 255) {
-        int dr = ((d >> 11) & 31) * 255 / 31, dg = ((d >> 5) & 63) * 255 / 63,
-            db = (d & 31) * 255 / 31;
-        r = (r * a + dr * (255 - a)) / 255;
-        g = (g * a + dg * (255 - a)) / 255;
-        b = (b * a + db * (255 - a)) / 255;
-    }
-    d = rgb565(r, g, b);
+    return;
+  }
+  if (!pax_pixels)
+    return;
+  uint16_t &d = pax_pixels[y * PAX_W + x];
+  if (a < 255) {
+    int dr = ((d >> 11) & 31) * 255 / 31, dg = ((d >> 5) & 63) * 255 / 63,
+        db = (d & 31) * 255 / 31;
+    r = (r * a + dr * (255 - a)) / 255;
+    g = (g * a + dg * (255 - a)) / 255;
+    b = (b * a + db * (255 - a)) / 255;
+  }
+  d = rgb565(r, g, b);
 }
 void pax_draw_icon(PaxIcon icon, int x, int y, int size) {
     struct Raster {
@@ -87,6 +94,19 @@ void pax_draw_icon(PaxIcon icon, int x, int y, int size) {
             const auto *c = &it->pixels[(yy * it->w + xx) * 4];
             pax_blend(x + xx, y + yy, c[0], c[1], c[2], c[3]);
         }
+}
+void pax_blend(int x, int y, int r, int g, int b, int a) {
+  if (pax_ui_zoom == 1) {
+    blendPixel(x, y, r, g, b, a);
+    return;
+  }
+  int x0 = zoomX + (int)std::floor((x - zoomX) * pax_ui_zoom),
+      y0 = zoomY + (int)std::floor((y - zoomY) * pax_ui_zoom);
+  int x1 = zoomX + (int)std::floor((x + 1 - zoomX) * pax_ui_zoom),
+      y1 = zoomY + (int)std::floor((y + 1 - zoomY) * pax_ui_zoom);
+  for (int yy = y0; yy < y1; yy++)
+    for (int xx = x0; xx < x1; xx++)
+      blendPixel(xx, yy, r, g, b, a);
 }
 void pax_draw_image(const ImageData &img, const ImageRenderParams &p) {
     if (!img.pixels || img.width <= 0 || img.height <= 0 || !std::isfinite(p.scale) || p.scale <= 0)
@@ -262,9 +282,15 @@ bool Render::appShouldRun() {
     return !OS::toExit;
 }
 void Render::drawBox(int w, int h, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    for (int yy = std::max(0, y - h / 2); yy < std::min(PAX_H, y + (h + 1) / 2); yy++)
-        for (int xx = std::max(0, x - w / 2); xx < std::min(PAX_W, x + (w + 1) / 2); xx++)
-            pax_blend(xx, yy, r, g, b, a);
+  for (int yy = pax_ui_zoom == 1 ? std::max(0, y - h / 2) : y - h / 2;
+       yy <
+       (pax_ui_zoom == 1 ? std::min(PAX_H, y + (h + 1) / 2) : y + (h + 1) / 2);
+       yy++)
+    for (int xx = pax_ui_zoom == 1 ? std::max(0, x - w / 2) : x - w / 2;
+         xx < (pax_ui_zoom == 1 ? std::min(PAX_W, x + (w + 1) / 2)
+                                : x + (w + 1) / 2);
+         xx++)
+      pax_blend(xx, yy, r, g, b, a);
 }
 void Render::drawRoundedBox(int w, int h, int x, int y, int, uint8_t r, uint8_t g, uint8_t b,
                             uint8_t a) {

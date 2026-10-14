@@ -1,6 +1,7 @@
 #include "pax_editor.h"
 #include <audio.hpp>
 #include <cassert>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <input.hpp>
@@ -21,6 +22,11 @@ static void drag(Editor &e, int x, int y, int dx, int dy) {
   e.render();
   e.pointer(dx, dy, false);
   e.render();
+}
+static void captureEditor(const std::string &name) {
+  std::error_code error;
+  std::filesystem::copy_file("/tmp/pax-scratch-test.ppm","/tmp/scratch-native-"+name+".ppm",std::filesystem::copy_options::overwrite_existing,error);
+  assert(!error);
 }
 void testEditor() {
   for (auto &d : definitions())
@@ -55,6 +61,88 @@ void testEditor() {
   std::filesystem::remove(dir+"UI Features.sb3");assert(features.save(dir+"UI Features.sb3"));Project reopened;assert(reopened.load(dir+"UI Features.sb3"));
   assert(reopened.target()["x"]==123.5&&!reopened.target()["visible"].get<bool>());assert(reopened.blocks()[listAdd]["fields"]["LIST"][1]==globalList);
   puts("PASS list authoring, shared selectors, preserved broadcast IDs, sprite properties and SB3 round trip");
+  Project advanced;
+  assert(advanced.storeAsset("abc", "txt") ==
+         "900150983cd24fb0d6963f7d28e17f72");
+  std::vector<uint32_t> painted(1024, 0);
+  painted[0] = 0x112233ff;
+  painted[33] = 0xff6680ff;
+  auto originalCostume = advanced.target()["costumes"][0];
+  advanced.checkpoint();
+  assert(advanced.paintCostume("pixel art", painted));
+  assert(advanced.target()["costumes"][0] == originalCostume);
+  std::vector<uint32_t> raster;
+  int pw, ph;
+  assert(advanced.costumePixels(1, raster, pw, ph));
+  assert(raster[0] == painted[0] && raster[33] == painted[33]);
+  auto paintFile =
+      advanced.target()["costumes"][1]["md5ext"].get<std::string>();
+  assert(advanced.undo());
+  assert(advanced.target()["costumes"].size() == 1);
+  assert(!advanced.asset(paintFile).empty());
+  assert(advanced.redo());
+  assert(advanced.addTone("tone", 440, 1));
+  int toneIndex = advanced.target()["sounds"].size() - 1, rate = 0;
+  std::vector<int16_t> samples, edited;
+  assert(advanced.soundPcm(toneIndex, samples, rate) &&
+         samples.size() == 22050 && rate == 22050);
+  advanced.checkpoint();
+  assert(advanced.editSound(toneIndex, 50, 100, .5, true));
+  assert(advanced.soundPcm(toneIndex, edited, rate) && edited.size() == 11025);
+  assert(edited[0] == (int16_t)std::lround(samples.back() * .5));
+  assert(!advanced.editSound(toneIndex, 70, 20, 1, false));
+  assert(advanced.undo());
+  assert(advanced.soundPcm(toneIndex, edited, rate) && edited == samples);
+  {
+    std::ofstream f(dir + "import.svg");
+    f << "<svg xmlns='http://www.w3.org/2000/svg' width='20' height='10'><rect "
+         "width='20' height='10' fill='red'/></svg>";
+  }
+  assert(advanced.importAsset(dir + "import.svg", false));
+  assert(advanced.target()["costumes"].size() == 3);
+  auto fn = advanced.createCustom(
+      "advance", {{"distance", false}, {"enabled", true}}, false);
+  assert(!fn.empty());
+  assert(advanced
+             .createCustom("advance", {{"distance", false}, {"enabled", true}},
+                           false)
+             .empty());
+  auto customBody = advanced.add("control_if", 30, 90),
+       customMove = advanced.add("motion_movesteps", 30, 160);
+  auto distanceArg = advanced.add("@arg:distance:s", 320, 40),
+       enabledArg = advanced.add("@arg:enabled:b", 320, 100);
+  assert(advanced.attach(customBody, fn));
+  assert(advanced.attach(customMove, customBody, "SUBSTACK"));
+  assert(advanced.attach(distanceArg, customMove, "STEPS"));
+  assert(advanced.attach(enabledArg, customBody, "CONDITION"));
+  auto customFlag = advanced.add("event_whenflagclicked", 380, 30),
+       customCall = advanced.add("@call:advance %s %b", 380, 90);
+  assert(advanced.attach(customCall, customFlag));
+  auto customSlots = advanced.slots(customCall);
+  assert(customSlots.size() == 2);
+  Slot numberSlot, booleanSlot;
+  for (auto slot : customSlots)
+    (slot.boolean ? booleanSlot : numberSlot) = slot;
+  assert(booleanSlot.boolean);
+  advanced.literal(customCall, numberSlot, "12");
+  auto trueCondition = advanced.add("operator_gt", 500, 150);
+  assert(advanced.attach(trueCondition, customCall, booleanSlot.key));
+  assert(advanced.updateCustom(
+      fn, "forward", {{"steps", false}, {"go", true}, {"note", false}}, true));
+  assert(advanced.blocks()[distanceArg]["fields"]["VALUE"][0] == "steps");
+  assert(advanced.blocks()[customCall]["mutation"]["proccode"] ==
+         "forward %s %b %s");
+  std::filesystem::remove(dir + "Advanced UI.sb3");
+  assert(advanced.save(dir + "Advanced UI.sb3"));
+  Project advancedCopy;
+  assert(advancedCopy.load(dir + "Advanced UI.sb3"));
+  assert(advancedCopy.asset(paintFile) == advanced.asset(paintFile));
+  assert(advancedCopy.soundPcm(toneIndex, edited, rate) && edited == samples);
+  assert(advancedCopy.blocks()[customCall]["mutation"] ==
+         advanced.blocks()[customCall]["mutation"]);
+  puts("PASS MD5 assets, non-destructive paint, audio trim/reverse/undo/import "
+       "and typed custom-block SB3 round trip");
+
   Project p;
   auto flag = p.add("event_whenflagclicked", 30, 25);
   auto repeat = p.add("control_repeat", 30, 70);
@@ -127,6 +215,25 @@ void testEditor() {
   Render::deInit();
   OS::deinit();
   OS::toExit = false;
+  assert(Scratch::initializeRuntime());
+  Unzip::filePath = dir + "Advanced UI.sb3";
+  assert(Unzip::load());
+  Scratch::initializeScratchProject();
+  ScriptThread customMonitor;
+  for (int i = 0; i < 30; i++)
+    assert(Scratch::stepScratchProject(customMonitor).first);
+  Sprite *customSprite = nullptr;
+  for (auto target : Scratch::sprites)
+    if (target->name == "Sprite")
+      customSprite = target;
+  assert(customSprite && customSprite->xPosition == 12);
+  Scratch::cleanupScratchProject();
+  SoundPlayer::deinit();
+  Render::deInit();
+  OS::deinit();
+  OS::toExit = false;
+  puts("PASS authored custom number and Boolean arguments execute in the real "
+       "Scratch runtime");
   // Imported unknown blocks, metadata, and all assets survive a copy/save.
   Project imported;
   assert(imported.load(dir + "PAX Demo.sb3"));
@@ -165,6 +272,72 @@ void testEditor() {
   assert(listHit.w>0);tap(ui,listHit.x+listHit.w/2,listHit.y+listHit.h/2);tap(ui,200,125);
   assert(ui.project().blocks()[listBlock]["fields"]["LIST"][0]=="q");
   puts("PASS touch property dialog and list creation dialog");
+  Editor tools;
+  tools.render();
+  tap(tools, 640, 370);
+  tap(tools, 120, 382);
+  tap(tools, 120, 382);
+  drag(tools, 124, 132, 300, 308);
+  tap(tools, 440, 325);
+  tap(tools, 600, 325);
+  captureEditor("paint");
+  tap(tools, 450, 355);
+  assert(tools.project().target()["costumes"].size() == 2);
+  tap(tools, 650, 382);
+  tap(tools, 650, 382);
+  tap(tools, 440, 25);
+  assert(tools.project().target()["costumes"].size() == 1);
+  tap(tools, 640, 370);
+  tap(tools, 300, 382);
+  tap(tools, 120, 382);
+  assert(tools.project().target()["sounds"].size() == 2);
+  captureEditor("sound");
+  tap(tools, 150, 246);
+  for (int i = 0; i < 5; i++)
+    tools.keyboard("backspace");
+  tools.keyboard("5");
+  tools.keyboard("0");
+  tools.keyboard("enter");
+  tap(tools, 530, 246);
+  assert(tools.project().target()["sounds"][1]["sampleCount"] == 11025);
+  tap(tools, 180, 350);
+  tap(tools, 610, 350);
+  tap(tools, 650, 382);
+  tap(tools, 650, 382);
+  tap(tools, 35, 410);
+  tap(tools, 125, 105);
+  tap(tools, 160, 318);
+  tap(tools, 360, 318);
+  captureEditor("custom");
+  tap(tools, 610, 370);
+  assert(tools.project().customEntries().size() == 3);
+  auto zoomBlock = tools.project().add("motion_movesteps", 20, 160);
+  tap(tools, 543, 455);
+  assert(tools.zoom() == 1.25f);
+  tools.render();
+  Rect zh{};
+  for (auto &hit : tools.hits())
+    if (hit.id == zoomBlock && !hit.input)
+      zh = hit.rect;
+  int zx = 254 + (int)((zh.x + 60 - 254) * tools.zoom()),
+      zy = 58 + (int)((zh.y + zh.h - 2 - 58) * tools.zoom());
+  int beforeX = tools.project().blocks()[zoomBlock]["x"],
+      beforeY = tools.project().blocks()[zoomBlock]["y"];
+  drag(tools, zx, zy, zx + 50, zy + 50);
+  assert(tools.project().blocks()[zoomBlock]["x"] == beforeX + 40 &&
+         tools.project().blocks()[zoomBlock]["y"] == beforeY + 40);
+  tap(tools, 588, 455);
+  assert(tools.zoom() == 1);
+  std::vector<std::pair<std::string, bool>> manyArgs;
+  for (int i = 0; i < 8; i++)
+    manyArgs.push_back({"a" + std::to_string(i), i % 2 != 0});
+  assert(!tools.project().createCustom("many inputs", manyArgs, false).empty());
+  tools.render();
+  auto pageOne = tools.palette().front().second;
+  tap(tools, 200, 395);
+  assert(!tools.palette().empty() && tools.palette().front().second != pageOne);
+  puts("PASS paint strokes, waveform trim, custom block wizard and dragging at "
+       "125 percent zoom");
   Editor e;
   e.render();
   drag(e, 120, 105, 310, 100);
