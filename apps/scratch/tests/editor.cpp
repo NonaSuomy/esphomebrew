@@ -35,6 +35,26 @@ void testEditor() {
   std::string dir = OS::getScratchFolderLocation();
   std::filesystem::remove(dir + "Editor Test.sb3");
   std::filesystem::remove(dir + "Editor Import.sb3");
+  Project features;features.selectTarget(0);features.addVariable("global score");features.addList("shared items");
+  const auto globalVariable=features.target()["variables"].begin().key();
+  const auto globalList=features.target()["lists"].begin().key();
+  features.target()["broadcasts"]["originalMessageId"]="ready";
+  features.selectTarget(1);auto listAdd=features.add("data_addtolist",30,30);
+  features.literal(listAdd,{"LIST","",true,false},"shared items");
+  assert(features.blocks()[listAdd]["fields"]["LIST"][1]==globalList);
+  auto setGlobal=features.add("data_setvariableto",30,90);features.literal(setGlobal,{"VARIABLE","",true,false},"global score");
+  assert(features.blocks()[setGlobal]["fields"]["VARIABLE"][1]==globalVariable);
+  auto message=features.add("event_whenbroadcastreceived",30,150);features.literal(message,{"BROADCAST_OPTION","",true,false},"ready");
+  assert(features.blocks()[message]["fields"]["BROADCAST_OPTION"][1]=="originalMessageId");
+  assert(features.choices("LIST").size()==2);assert(!features.choices("COSTUME").empty());assert(!features.choices("SOUND_MENU").empty());
+  assert(features.setTargetProperty("x","123.5"));assert(!features.setTargetProperty("size","-1"));
+  assert(!features.setTargetProperty("direction","nan"));assert(features.setTargetProperty("visible","false"));
+  std::string oldName=features.target().value("name","");auto say=features.add("looks_say",30,210);features.literal(say,{"MESSAGE","",false,false},oldName);
+  assert(features.setTargetProperty("name","Renamed sprite"));assert(features.blocks()[say]["inputs"]["MESSAGE"][1][1]==oldName);
+  features.checkpoint();features.addList("temporary");assert(features.undo());
+  std::filesystem::remove(dir+"UI Features.sb3");assert(features.save(dir+"UI Features.sb3"));Project reopened;assert(reopened.load(dir+"UI Features.sb3"));
+  assert(reopened.target()["x"]==123.5&&!reopened.target()["visible"].get<bool>());assert(reopened.blocks()[listAdd]["fields"]["LIST"][1]==globalList);
+  puts("PASS list authoring, shared selectors, preserved broadcast IDs, sprite properties and SB3 round trip");
   Project p;
   auto flag = p.add("event_whenflagclicked", 30, 25);
   auto repeat = p.add("control_repeat", 30, 70);
@@ -134,6 +154,17 @@ void testEditor() {
   // Exercise actual palette drags and snapping through pointer events.
   assert(Render::Init());
   assert(pax_resize_surface(800, 480));
+  // Exercise the actual touch dialogs at 800x480, including list creation.
+  Editor ui;ui.render();tap(ui,640,370);tap(ui,450,135);
+  for(int i=0;i<10;i++)ui.keyboard("backspace");ui.keyboard("4");ui.keyboard("2");ui.keyboard("enter");assert(ui.project().target()["x"]==42);
+  tap(ui,600,382);tap(ui,34,330);tap(ui,110,347);
+  for(int i=0;i<10;i++)ui.keyboard("backspace");ui.keyboard("q");ui.keyboard("enter");
+  bool madeList=false;for(const auto &list:ui.project().target()["lists"])if(list[0]=="q")madeList=true;assert(madeList);
+  auto listBlock=ui.project().add("data_addtolist",40,60);ui.render();
+  Rect listHit{};for(const auto &hit:ui.hits())if(hit.id==listBlock&&hit.input&&hit.slot.key=="LIST")listHit=hit.rect;
+  assert(listHit.w>0);tap(ui,listHit.x+listHit.w/2,listHit.y+listHit.h/2);tap(ui,200,125);
+  assert(ui.project().blocks()[listBlock]["fields"]["LIST"][0]=="q");
+  puts("PASS touch property dialog and list creation dialog");
   Editor e;
   e.render();
   drag(e, 120, 105, 310, 100);

@@ -274,6 +274,30 @@ static void toolbarButton(Rect r, PaxIcon icon, const std::string &label,
   pax_draw_icon(icon, left, r.y + (r.h - glyph) / 2, glyph);
   text(label, left + glyph + gap, r.y + 7, 0x575e75ff, .70f);
 }
+static std::string fieldLabel(const std::string &key,bool stage=false) {
+  if(key=="name")return "Name";if(key=="x")return "X";if(key=="y")return "Y";
+  if(key=="size")return "Size (%)";if(key=="direction")return "Direction";if(key=="visible")return "Visible";
+  if(key=="currentCostume")return stage?"Backdrop":"Costume";
+  if(key=="rotationStyle"||key=="STYLE")return "Rotation";
+  if(key=="VARIABLE")return "Variable";if(key=="LIST")return "List";
+  if(key=="COSTUME")return "Costume";if(key=="BACKDROP")return "Backdrop";if(key=="SOUND_MENU")return "Sound";
+  if(key=="BROADCAST_OPTION"||key=="BROADCAST_INPUT")return "Message";
+  if(key=="KEY_OPTION")return "Key";if(key=="STOP_OPTION")return "Stop";
+  if(key=="TO"||key=="TOWARDS"||key=="TOUCHINGOBJECTMENU")return "Target";
+  return key;
+}
+static std::string choiceLabel(const std::string &value) {
+  if(value=="_mouse_")return "mouse-pointer";if(value=="_random_")return "random position";if(value=="_edge_")return "edge";return value;
+}
+static std::vector<std::string> propertyKeys(Project &p) {
+  return p.target().value("isStage",false)?std::vector<std::string>{"name","currentCostume"}:
+    std::vector<std::string>{"name","x","y","size","direction","visible","currentCostume","rotationStyle"};
+}
+static std::string propertyValue(Project &p,const std::string &key) {
+  auto &t=p.target();
+  if(key=="currentCostume") {int i=t.value("currentCostume",0);return i>=0&&i<(int)t["costumes"].size()?t["costumes"][i].value("name",""):"";}
+  if(!t.contains(key))return "";return t[key].is_string()?t[key].get<std::string>():t[key].dump();
+}
 static Shape shape(const Json &b) {
   const auto *d = definition(b.value("opcode", ""));
   if (d)
@@ -529,7 +553,7 @@ static std::vector<int> paletteStarts(int category) {
   int y = 89;
   for (size_t i = 0; i < defs.size(); i++) {
     int height = paletteLayout(*defs[i]).height();
-    if (i && y + height > PAX_H - 106) {
+    if (i && y + height > PAX_H - (category==7?156:106)) {
       starts.push_back(i);
       y = 89;
     }
@@ -788,7 +812,7 @@ void Editor::render() {
   for (int i = first; i < last; i++) {
     auto layout = paletteLayout(*defs[i]);
     Rect r{84, paletteY, layout.width, layout.height()};
-    pax_set_clip(75, 80, paletteWidth(), PAX_H - 181);
+    pax_set_clip(75, 80, paletteWidth(), PAX_H - (category_==7?231:181));
     paletteBlock(r, *defs[i], colors[category_], layout);
     pax_set_clip(0, 0, PAX_W, PAX_H);
     palette_.push_back({r, defs[i]->opcode});
@@ -840,16 +864,18 @@ void Editor::render() {
   text("Sprites", PAX_W - panelWidth() + 12, 215 + previewHeight() - 120,
        0x26374cff, .8f);
   int n = project_.document()["targets"].size(),
-      spriteFirst = project_.targetIndex() / 5 * 5;
+      spriteFirst = project_.targetIndex() / 4 * 4;
   button(R({721, 210, 30, 24}), "<");
   button(R({758, 210, 30, 24}), ">");
-  for (int i = spriteFirst; i < n && i < spriteFirst + 5; i++) {
+  for (int i = spriteFirst; i < n && i < spriteFirst + 4; i++) {
     Rect r = R({633, 241 + (i - spriteFirst) * 29, 155, 26});
     button(
         r,
         project_.document()["targets"][i].value("name", "Sprite").substr(0, 17),
         i == project_.targetIndex() ? 0xbacef4 : 0xffffff);
   }
+  button({PAX_W-panelWidth()+10,PAX_H-122,panelWidth()-22,28}, "Properties");
+  if(category_==7)button({84,PAX_H-146,70,26},"List +");
   button(R({633, 394, 73, 29}), "Sprite +");
   button(R({714, 394, 73, 29}), "Var +");
   box(R({0, 436, PAX_W, 44}), 0xe1e9f3);
@@ -990,7 +1016,7 @@ void Editor::pointer(int x, int y, bool down) {
           editId_ = pending_;
           editSlot_ = pendingSlot_;
           text_ = pendingSlot_.value;
-          modal_ = InputValue;
+          chooseInput();
           if (editSlot_.key == "CHANNEL") {
             files_.clear();
             filePage_ = 0;
@@ -1087,6 +1113,10 @@ void Editor::pointer(int x, int y, bool down) {
         selected_.clear();
         dirty_ = true;
         status_ = "Deleted stack";
+      } else if (Rect{PAX_W-panelWidth()+10,PAX_H-122,panelWidth()-22,28}.contains(x,y)) {
+        editId_.clear();modal_=SpriteProperties;
+      } else if (category_==7&&Rect{84,PAX_H-146,70,26}.contains(x,y)) {
+        modal_=ListName;text_="my list";
       } else if (R({633, 394, 73, 29}).contains(x, y)) {
         modal_ = SpriteName;
         text_ =
@@ -1095,19 +1125,19 @@ void Editor::pointer(int x, int y, bool down) {
         modal_ = VariableName;
         text_ = "score";
       } else if (R({721, 210, 30, 24}).contains(x, y)) {
-        project_.selectTarget(std::max(0, project_.targetIndex() - 5));
+        project_.selectTarget(std::max(0, project_.targetIndex() - 4));
         selected_.clear();
         home();
       } else if (R({758, 210, 30, 24}).contains(x, y)) {
         project_.selectTarget(
             std::min((int)project_.document()["targets"].size() - 1,
-                     project_.targetIndex() + 5));
+                     project_.targetIndex() + 4));
         selected_.clear();
         home();
       } else if (x >= PAX_W - panelWidth() + 10 && x < PAX_W - 12 &&
                  y >= 241 + previewHeight() - 120 &&
-                 y < 386 + previewHeight() - 120) {
-        int index = project_.targetIndex() / 5 * 5 +
+                 y < 357 + previewHeight() - 120) {
+        int index = project_.targetIndex() / 4 * 4 +
                     (y - 241 - previewHeight() + 120) / 29;
         project_.selectTarget(index);
         selected_.clear();
@@ -1129,6 +1159,10 @@ void Editor::scroll(int amount, int x) {
       viewY_ += amount * 30;
   }
 }
+void Editor::chooseInput() {
+  files_=project_.choices(editSlot_.key);filePage_=0;
+  modal_=files_.empty()?(editId_.empty()?SpritePropertyValue:InputValue):Choices;
+}
 void Editor::drawModal() {
   modalDrawing = true;
   box({65, 55, 670, 367}, 0x26374c);
@@ -1141,6 +1175,17 @@ void Editor::drawModal() {
     button({313, 245, 165, 45}, "Save a copy", 0xbbe8d3);
     button({515, 245, 165, 45}, "Discard", 0xf4bcc4);
     return;
+  }
+  if(modal_==SpriteProperties) {
+    text(project_.target().value("isStage",false)?"Stage properties":"Sprite properties",400,76,0x26374cff,.9f,true);
+    auto fields=propertyKeys(project_);
+    for(size_t i=0;i<fields.size();i++)button({90+(int)(i%2)*310,120+(int)(i/2)*52,295,40},fieldLabel(fields[i],project_.target().value("isStage",false))+": "+propertyValue(project_,fields[i]).substr(0,22));
+    button({555,368,140,32},"Done");return;
+  }
+  if(modal_==Choices) {
+    text("Choose "+fieldLabel(editSlot_.key,project_.target().value("isStage",false)),400,76,0x26374cff,.9f,true);
+    for(int i=filePage_*7;i<(int)files_.size()&&i<filePage_*7+7;i++)button({90,110+(i-filePage_*7)*34,620,30},choiceLabel(files_[i]).substr(0,55));
+    button({90,368,115,32},"Prev");button({220,368,115,32},"Next");button({350,368,145,32},"Keyboard");button({515,368,180,32},"Cancel");return;
   }
   if (modal_ == ReporterInputs) {
     text("Reporter inputs", 400, 80, 0x26374cff, .9f, true);
@@ -1177,9 +1222,10 @@ void Editor::drawModal() {
     button({555, 368, 140, 32}, "Cancel");
     return;
   }
-  std::string title = modal_ == InputValue    ? editSlot_.key
+  std::string title = (modal_ == InputValue || modal_ == SpritePropertyValue) ? fieldLabel(editSlot_.key,project_.target().value("isStage",false))
                       : modal_ == ProjectName ? "Save project as"
                       : modal_ == SpriteName  ? "Sprite name"
+                      : modal_ == ListName ? "List name"
                                               : "Variable name";
   text(title, 400, 72, 0x26374cff, .9f, true);
   box({88, 106, 620, 36}, 0xffffff);
@@ -1229,6 +1275,22 @@ void Editor::handleModal(int x, int y) {
     }
     return;
   }
+  if(modal_==SpriteProperties) {
+    if(Rect{555,368,140,32}.contains(x,y)){modal_=None;return;}
+    auto fields=propertyKeys(project_);
+    for(size_t i=0;i<fields.size();i++)if(Rect{90+(int)(i%2)*310,120+(int)(i/2)*52,295,40}.contains(x,y)) {
+      editId_.clear();editSlot_={fields[i],propertyValue(project_,fields[i]),false,false};text_=editSlot_.value;chooseInput();break;
+    }
+    return;
+  }
+  if(modal_==Choices) {
+    if(Rect{515,368,180,32}.contains(x,y))modal_=editId_.empty()?SpriteProperties:None;
+    else if(Rect{350,368,145,32}.contains(x,y))modal_=editId_.empty()?SpritePropertyValue:InputValue;
+    else if(Rect{90,368,115,32}.contains(x,y))filePage_=std::max(0,filePage_-1);
+    else if(Rect{220,368,115,32}.contains(x,y)){if((filePage_+1)*7<(int)files_.size())filePage_++;}
+    else if(x>=90&&x<710&&y>=110&&y<348){int index=filePage_*7+(y-110)/34;if((y-110)%34<30&&index<(int)files_.size()){text_=files_[index];modal_=editId_.empty()?SpritePropertyValue:InputValue;commitText();}}
+    return;
+  }
   if (modal_ == ReporterInputs) {
     if (Rect{545, 368, 140, 32}.contains(x, y)) {
       modal_ = None;
@@ -1244,7 +1306,7 @@ void Editor::handleModal(int x, int y) {
           auto child = project_.blocks()[editId_]["inputs"][editSlot_.key];
           editId_ = blockReference(child[1]);
         } else
-          modal_ = InputValue;
+          chooseInput();
       }
     }
     return;
@@ -1315,7 +1377,7 @@ void Editor::keyboard(const std::string &key) {
     return;
   }
   if (modal_ == None || modal_ == OpenFile || modal_ == HardwareChannels ||
-      modal_ == ReporterInputs || modal_ == ConfirmBack || modal_ == ConfirmNew)
+      modal_ == ReporterInputs || modal_ == Choices || modal_ == SpriteProperties || modal_ == ConfirmBack || modal_ == ConfirmNew)
     return;
   if (key == "enter")
     commitText();
@@ -1329,6 +1391,11 @@ void Editor::keyboard(const std::string &key) {
     text_ += key;
 }
 void Editor::commitText() {
+  if(modal_==SpritePropertyValue) {
+    project_.checkpoint();
+    if(!project_.setTargetProperty(editSlot_.key,text_)){status_=project_.error;return;}
+    dirty_=true;status_="Sprite property updated";refreshPreview();modal_=SpriteProperties;return;
+  }
   if (modal_ == InputValue) {
     if (editSlot_.boolean) {
       modal_ = None;
@@ -1348,6 +1415,9 @@ void Editor::commitText() {
     selected_.clear();
     home();
     refreshPreview();
+  } else if(modal_==ListName) {
+    if(text_.empty()){status_="Enter a list name";return;}
+    project_.checkpoint();project_.addList(text_);dirty_=true;category_=7;palettePage_=0;status_="List created";
   } else if (modal_ == VariableName) {
     project_.checkpoint();
     project_.addVariable(text_);

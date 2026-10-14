@@ -58,6 +58,9 @@ public:
   bool redo();
   void addSprite(const std::string &name);
   void addVariable(const std::string &name);
+  void addList(const std::string &name);
+  std::vector<std::string> choices(const std::string &key) const;
+  bool setTargetProperty(const std::string &key, const std::string &value);
   std::vector<unsigned char> asset(const std::string &name) const;
 };
 struct Rect {
@@ -99,6 +102,10 @@ class Editor {
     ProjectName,
     SpriteName,
     VariableName,
+    ListName,
+    Choices,
+    SpriteProperties,
+    SpritePropertyValue,
     ConfirmBack,
     ConfirmNew,
     OpenFile,
@@ -125,6 +132,7 @@ class Editor {
   void drawModal();
   void handleModal(int x, int y);
   void commitText();
+  void chooseInput();
   void refreshPreview();
   void home();
   void run();

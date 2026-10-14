@@ -1,6 +1,8 @@
 #include "pax_editor.h"
 #include <algorithm>
 #include <cstring>
+#include <cstdlib>
+#include <cmath>
 #include <filesystem.hpp>
 #include <fstream>
 #include <miniz.h>
@@ -264,6 +266,18 @@ const std::vector<Definition> &definitions() {
        7,
        Stack,
        {field("VARIABLE", "score")}},
+      {"data_addtolist", "add {ITEM} to {LIST}", 7, Stack, {str("ITEM", "thing"), field("LIST", "my list")}},
+      {"data_deleteoflist", "delete {INDEX} of {LIST}", 7, Stack, {str("INDEX", "1"), field("LIST", "my list")}},
+      {"data_deletealloflist", "delete all of {LIST}", 7, Stack, {field("LIST", "my list")}},
+      {"data_insertatlist", "insert {ITEM} at {INDEX} of {LIST}", 7, Stack, {str("ITEM", "thing"), str("INDEX", "1"), field("LIST", "my list")}},
+      {"data_replaceitemoflist", "replace item {INDEX} of {LIST} with {ITEM}", 7, Stack, {str("INDEX", "1"), field("LIST", "my list"), str("ITEM", "thing")}},
+      {"data_itemoflist", "item {INDEX} of {LIST}", 7, Reporter, {str("INDEX", "1"), field("LIST", "my list")}},
+      {"data_itemnumoflist", "item # of {ITEM} in {LIST}", 7, Reporter, {str("ITEM", "thing"), field("LIST", "my list")}},
+      {"data_lengthoflist", "length of {LIST}", 7, Reporter, {field("LIST", "my list")}},
+      {"data_listcontainsitem", "{LIST} contains {ITEM}?", 7, Boolean, {field("LIST", "my list"), str("ITEM", "thing")}},
+      {"data_listcontents", "{LIST}", 7, Reporter, {field("LIST", "my list")}},
+      {"data_showlist", "show list {LIST}", 7, Stack, {field("LIST", "my list")}},
+      {"data_hidelist", "hide list {LIST}", 7, Stack, {field("LIST", "my list")}},
       {"pen_clear", "erase all pen", 8, Stack, {}},
       {"pen_penDown", "pen down", 8, Stack, {}},
       {"pen_penUp", "pen up", 8, Stack, {}},
@@ -488,6 +502,68 @@ void Project::addVariable(const std::string &name) {
        {"sliderMin", 0},
        {"sliderMax", 100},
        {"isDiscrete", true}});
+}
+void Project::addList(const std::string &name) {
+  if (name.empty()) return;
+  auto &lists = target()["lists"];
+  for (const auto &v : lists) if (v.is_array() && v.size() >= 2 && v[0] == name) return;
+  std::string id;
+  do { id = "pax_list_" + std::to_string(++serial_); } while (usedId(doc_, id, "lists"));
+  lists[id] = Json::array({name, Json::array()});
+  doc_["monitors"].push_back({{"id",id},{"mode","list"},{"opcode","data_listcontents"},
+    {"params",{{"LIST",name}}},{"spriteName",target().value("isStage",false)?Json(nullptr):target()["name"]},
+    {"value",Json::array()},{"x",10},{"y",10},{"width",180},{"height",140},{"visible",false}});
+}
+std::vector<std::string> Project::choices(const std::string &key) const {
+  std::vector<std::string> out;
+  auto add = [&](const std::string &name) {if(std::find(out.begin(),out.end(),name)==out.end())out.push_back(name);};
+  const auto &t=doc_["targets"][target_];
+  if(key=="VARIABLE" || key=="LIST") {
+    std::string collection=key=="VARIABLE"?"variables":"lists";
+    for(int index:{target_,0})for(const auto &v:doc_["targets"][index][collection])if(v.is_array()&&!v.empty()&&v[0].is_string())add(v[0]);
+  } else if(key=="COSTUME" || key=="BACKDROP" || key=="SOUND_MENU" || key=="currentCostume") {
+    const auto &owner=key=="BACKDROP"?doc_["targets"][0]:t;
+    for(const auto &v:owner[key=="SOUND_MENU"?"sounds":"costumes"])add(v.value("name",""));
+  } else if(key=="BROADCAST_OPTION" || key=="BROADCAST_INPUT") {
+    for(const auto &v:doc_["targets"][0]["broadcasts"])if(v.is_string())add(v);
+  } else if(key=="KEY_OPTION") {
+    out={"space","up arrow","down arrow","right arrow","left arrow","any"};
+    for(char c='a';c<='z';c++)add(std::string(1,c));for(char c='0';c<='9';c++)add(std::string(1,c));
+  } else if(key=="STOP_OPTION") out={"all","this script","other scripts in sprite"};
+  else if(key=="rotationStyle" || key=="STYLE") out={"all around","left-right","don't rotate"};
+  else if(key=="visible") out={"true","false"};
+  else if(key=="TO" || key=="TOWARDS" || key=="TOUCHINGOBJECTMENU") {
+    out={"_mouse_"};if(key=="TO")add("_random_");if(key=="TOUCHINGOBJECTMENU")add("_edge_");
+    for(const auto &sprite:doc_["targets"])if(!sprite.value("isStage",false)&&sprite.value("name","")!=t.value("name",""))add(sprite.value("name",""));
+  }
+  return out;
+}
+bool Project::setTargetProperty(const std::string &key,const std::string &value) {
+  auto &t=target();error.clear();
+  if(key=="name") {
+    if(value.empty()||value.size()>64){error="Use a name of 1 to 64 characters";return false;}
+    for(int i=0;i<(int)doc_["targets"].size();i++)if(i!=target_&&doc_["targets"][i].value("name","")==value){error="That sprite name already exists";return false;}
+    std::string old=t.value("name","");t[key]=value;
+    for(auto &monitor:doc_["monitors"])if(monitor.value("spriteName",Json())==old)monitor["spriteName"]=value;
+    // Rename only sprite selectors, never arbitrary text literals.
+    auto selector=[](const std::string &k){return k=="TO"||k=="TOWARDS"||k=="TOUCHINGOBJECTMENU"||k=="OBJECT";};
+    for(auto &owner:doc_["targets"])for(auto &block:owner["blocks"])if(block.is_object()) {
+      if(block.contains("fields"))for(auto &entry:block["fields"].items())if(selector(entry.key())&&entry.value().is_array()&&!entry.value().empty()&&entry.value()[0]==old)entry.value()[0]=value;
+      if(block.contains("inputs"))for(auto &entry:block["inputs"].items())if(selector(entry.key())&&entry.value().is_array())for(size_t i=1;i<entry.value().size();i++) {
+        auto &literal=entry.value()[i];if(literal.is_array()&&literal.size()==2&&literal[0]==10&&literal[1]==old)literal[1]=value;
+      }
+    }
+    return true;
+  }
+  if(key=="currentCostume") {for(size_t i=0;i<t["costumes"].size();i++)if(t["costumes"][i].value("name","")==value){t[key]=i;return true;}error="Choose an existing costume";return false;}
+  if(key=="visible"){if(value!="true"&&value!="false"){error="Use true or false";return false;}t[key]=value=="true";return true;}
+  if(key=="rotationStyle"){auto opts=choices(key);if(std::find(opts.begin(),opts.end(),value)==opts.end()){error="Choose a rotation style";return false;}t[key]=value;return true;}
+  if(key!="x"&&key!="y"&&key!="size"&&key!="direction"){error="Unknown sprite property";return false;}
+  if(t.value("isStage",false)){error="This property belongs to sprites";return false;}
+  char *end=nullptr;double number=std::strtod(value.c_str(),&end);
+  if(value.empty()||!end||*end||!std::isfinite(number)||std::abs(number)>1000000||(key=="size"&&(number<0||number>1000))){error="Enter a valid number (size 0 to 1000)";return false;}
+  if(key=="direction"){number=std::fmod(number+180,360);if(number<0)number+=360;number-=180;}
+  t[key]=number;return true;
 }
 bool Project::load(const std::string &path) {
   mz_zip_archive zip{};
@@ -849,20 +925,17 @@ void Project::literal(const std::string &id, const Slot &slot,
   auto &b = blocks()[id];
   if (slot.field) {
     Json identifier = nullptr;
-    if (slot.key == "VARIABLE") {
-      addVariable(value);
-      for (auto it = target()["variables"].begin();
-           it != target()["variables"].end(); ++it)
-        if (it.value()[0] == value) {
-          identifier = it.key();
-          break;
-        }
+    if (slot.key == "VARIABLE" || slot.key == "LIST") {
+      const char *collection=slot.key=="VARIABLE"?"variables":"lists";
+      auto findId=[&](){for(int index:{target_,0})for(auto it=doc_["targets"][index][collection].begin();it!=doc_["targets"][index][collection].end();++it)
+        if(it.value().is_array()&&it.value().size()>=2&&it.value()[0]==value){identifier=it.key();return;}};
+      findId();
+      if(identifier.is_null()){if(slot.key=="VARIABLE")addVariable(value);else addList(value);findId();}
     }
     if (slot.key == "BROADCAST_OPTION") {
       auto &messages = doc_["targets"][0]["broadcasts"];
-      std::string key = "pax_message_" + value;
-      messages[key] = value;
-      identifier = key;
+      for(auto it=messages.begin();it!=messages.end();++it)if(it.value()==value){identifier=it.key();break;}
+      if(identifier.is_null()){std::string key="pax_message_"+value;messages[key]=value;identifier=key;}
     }
     b["fields"][slot.key] = Json::array({value, identifier});
     if (slot.key == "STOP_OPTION")
