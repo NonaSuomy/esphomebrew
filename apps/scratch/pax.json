@@ -1,7 +1,7 @@
 {
   "name": "scratch",
   "title": "Scratch Blocks",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",
@@ -24,7 +24,8 @@
     "Import SVG/PNG or WAV/MP3 from scratch/assets/",
     "My Blocks: create or edit procedures and typed inputs",
     "Workspace -/+/percent: zoom out, in or reset to 100%",
-    "Sound: trim, reverse, fades, volume, preview and undo"
+    "Sound: trim, reverse, fades, volume, preview and undo",
+    "Playback: tap Turbo or F7 to toggle turbo; F6 stops"
   ],
   "canvas": {
     "recommended": "1024x600",

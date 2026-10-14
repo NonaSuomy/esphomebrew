@@ -23,6 +23,8 @@ static std::string keyName(int key) {
         return "f5";
     case 140:
         return "f6";
+    case 141:
+        return "f7";
     case 32:
         return "space";
     case 13:
@@ -62,7 +64,7 @@ void Input::getInput() {
             if (k.empty())
                 continue;
             if (e.down) {
-                if ((k == "f5" || k == "f6") && keys.count(k))
+                if ((k == "f5" || k == "f6" || k == "f7") && keys.count(k))
                     continue;
                 keys.insert(k);
                 inputBuffer.push_back(e.key >= 33 && e.key <= 126 ? std::string(1, (char)e.key)
@@ -127,7 +129,14 @@ void Input::getInput() {
     mouseScrollDelta = 0;
     if (pax_svc->input_mouse_scroll_read)
         pax_svc->input_mouse_scroll_read(&mouseScrollDelta);
-    if (pax_editor_playing && ((down && tx >= PAX_W - 78 && ty < 34) || keys.count("escape") || keys.count("f6") ||
+    if ((pax_project_playing || pax_editor_playing) &&
+        ((down && mousePointer.heldFrames == 1 && tx >= PAX_W - 164 && tx < PAX_W - 82 && ty < 34) ||
+         std::find(inputBuffer.begin(), inputBuffer.end(), "f7") != inputBuffer.end())) {
+        Scratch::turbo = !Scratch::turbo;
+        Scratch::forceRedraw = true;
+        pax_svc->log_printf("Scratch: Turbo %s\n", Scratch::turbo ? "ON" : "OFF");
+    }
+    if ((pax_project_playing || pax_editor_playing) && ((down && tx >= PAX_W - 78 && ty < 34) || keys.count("escape") || keys.count("f6") ||
         std::find(inputBuffer.begin(), inputBuffer.end(), "f6") != inputBuffer.end()))
         Scratch::shouldStop = true;
     if (!Scratch::sprites.empty() && pad.values[PAX_INPUT_SELECT] && pad.values[PAX_INPUT_B])

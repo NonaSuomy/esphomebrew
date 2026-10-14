@@ -260,7 +260,11 @@ void Render::beginFrame(int, int r, int g, int b) {
     }
 }
 void Render::endFrame(bool) {
-    if (pax_editor_playing) {
+    if (pax_project_playing || pax_editor_playing) {
+        drawBox(78, 30, PAX_W - 123, 17, Scratch::turbo ? 95 : 233,
+                Scratch::turbo ? 210 : 241, Scratch::turbo ? 120 : 252);
+        pax_draw_text(Scratch::turbo ? "Turbo ON" : "Turbo OFF", PAX_W - 123, 9,
+                      0x26374cff, .65f, true);
         drawBox(74, 30, PAX_W - 40, 17, 233, 241, 252);
         pax_draw_icon(PaxIcon::Stop, PAX_W - 52, 5, 24);
     }

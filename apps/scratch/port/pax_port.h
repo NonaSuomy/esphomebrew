@@ -31,3 +31,5 @@ void pax_audio_pump();
 void pax_draw_text(const std::string &txt, int x, int y, int color, float scale,
                    bool centered);
 #endif
+
+extern bool pax_project_playing;

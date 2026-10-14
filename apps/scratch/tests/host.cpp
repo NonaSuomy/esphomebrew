@@ -58,6 +58,13 @@ int main(){
  pax_editor_playing=false;Scratch::shouldStop=false;stopKeyEdge=0;Input::getInput();assert(!Scratch::shouldStop);
  svc.input_keyboard_read=noKey;
  puts("PASS queued F6 press/release stops preview only");
+ pax_project_playing=true;Scratch::turbo=false;
+ static int turboEdge=0;svc.input_keyboard_read=[](pax_keyboard_event_t*e){if(turboEdge==2)return 0;*e={141,turboEdge++==0};return 1;};
+ Input::getInput();assert(Scratch::turbo);Input::getInput();assert(Scratch::turbo);
+ turboEdge=0;Input::getInput();assert(!Scratch::turbo);pax_project_playing=false;
+ svc.input_keyboard_read=[](pax_keyboard_event_t*){return 0;};
+ puts("PASS F7 toggles turbo once per press during playback");
+
  // Disconnected sockets must initialize their result, including Boolean sockets.
  Block emptyBlock;ScriptThread emptyThread;Sprite emptySprite;
  bool emptyBool=true;double emptyNumber=123;std::string emptyText="stale";Value emptyValue("stale");

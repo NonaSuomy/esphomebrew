@@ -121,6 +121,7 @@ static std::string chooseProject() {
   }
   return "";
 }
+bool pax_project_playing = false;
 bool pax_play_project(const std::string &path) {
   if (PAX_W != 480 || PAX_H != 360)
     if (!pax_resize_surface(480, 360))
@@ -144,7 +145,9 @@ bool pax_play_project(const std::string &path) {
     Input::inputControls["A"] = "space";
   }
   pax_update_project_clock();
+  pax_project_playing = true;
   Scratch::startScratchProject();
+  pax_project_playing = false;
   return true;
 }
 static int run() {
