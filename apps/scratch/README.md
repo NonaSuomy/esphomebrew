@@ -50,7 +50,7 @@ This is a native editor with Motion, Looks, Sound, Events, Control, Sensing, Ope
 
 Inside Properties, **Costumes/Backdrops** and **Sounds** open asset browsers with rename, delete, select/preview and import actions. Put SVG/PNG images or WAV/MP3 files under `/sd/roms/scratch/assets/` (desktop: `pax-dev/desktop/sd/roms/scratch/assets/`). Files are limited to 8 MiB; PNG editing/import is limited to 1024x1024 pixels. At least one costume/backdrop must remain.
 
-**Paint a copy** opens a 32x32 pixel-art canvas. Use the brush, eraser, fill, mirror, clear and stroke Undo/Redo controls, then **Apply copy** to add a content-addressed SVG costume. The original stays intact, including an imported vector original.
+**Paint a copy** opens a 32x32 pixel-art canvas. Use the brush, eraser, fill, mirror, clear and stroke Undo/Redo controls, then **Apply copy** to add a content-addressed SVG costume. The original stays intact, including an imported vector original. Painted copies retain the source bitmap resolution and rotation pivot. Brush strokes finish at the release point, even when desktop motion events are coalesced.
 
 **New** in Sounds adds a one-second tone. **Edit sound** shows a waveform with selection percentages, trim, reverse, louder/quieter, fade in/out, Play/Stop and Undo edit. WAV and MP3 files are decoded and edits export mono 16-bit PCM WAV, capped at one million sample frames. Original bytes remain available to Undo. Generated assets have actual MD5 filenames; unused generated revisions are omitted from saved archives. After 8 MiB of in-memory asset revisions, save and reopen before making more edits.
 

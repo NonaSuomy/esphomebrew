@@ -998,16 +998,19 @@ void Editor::setZoom(float value) {
 }
 void Editor::pointer(int x, int y, bool down) {
   bool inWorkspace = modal_ == None && workspace().contains(x, y);
-  if (modal_ == CostumePaint && down) {
+  bool finishedPaintStroke = false;
+  if (modal_ == CostumePaint) {
     int px = x - (PAX_W - 800) / 2 - 90, py = y - (PAX_H - 480) / 2 - 100;
-    if (px >= 0 && py >= 0 && px < 256 && py < 256) {
+    if (down && !down_)
+      paintStroke_ = px >= 0 && py >= 0 && px < 256 && py < 256;
+    if (paintStroke_ && (down || down_)) {
       if (!down_) {
         paintUndo_.push_back(paintPixels_);
         paintRedo_.clear();
         if (paintUndo_.size() > 16)
           paintUndo_.erase(paintUndo_.begin());
       }
-      int gx = px / 8, gy = py / 8;
+      int gx = std::clamp(px, 0, 255) / 8, gy = std::clamp(py, 0, 255) / 8;
       if (paintLastX_ < 0) {
         paintLastX_ = gx;
         paintLastY_ = gy;
@@ -1020,8 +1023,8 @@ void Editor::pointer(int x, int y, bool down) {
       }
       paintLastX_ = gx;
       paintLastY_ = gy;
-    } else
-      paintLastX_ = -1;
+    }
+    finishedPaintStroke = !down && paintStroke_;
   }
   if (!down)
     paintLastX_ = -1;
@@ -1051,6 +1054,13 @@ void Editor::pointer(int x, int y, bool down) {
               pendingSlot_ = it->slot;
               offsetX_ = x - it->rect.x;
               offsetY_ = y - it->rect.y;
+              if (it->input && it->slot.value != "[block]")
+                for (const auto &head : hits_)
+                  if (head.id == it->id && !head.input) {
+                    offsetX_ = x - head.rect.x;
+                    offsetY_ = y - head.rect.y;
+                    break;
+                  }
               break;
             }
         if (pending_.empty())
@@ -1065,7 +1075,8 @@ void Editor::pointer(int x, int y, bool down) {
           }
     }
   }
-  if (down && down_ && modal_ == None) {
+  if (down_ && modal_ == None &&
+      (down || abs(x - pressX_) + abs(y - pressY_) > 8)) {
     if (abs(x - pressX_) + abs(y - pressY_) > 8)
       moved_ = true;
     if (moved_ && !dragging_ &&
@@ -1100,7 +1111,8 @@ void Editor::pointer(int x, int y, bool down) {
   }
   if (!down && down_) {
     if (modal_ != None) {
-      handleModal(x, y);
+      if (!finishedPaintStroke)
+        handleModal(x, y);
     } else if (dragging_) {
       if (R({711, 443, 77, 28}).contains(x, y) || x < paletteRight()) {
         project_.erase(selected_);
@@ -1311,6 +1323,8 @@ void Editor::pointer(int x, int y, bool down) {
       }
     }
   }
+  if (!down)
+    paintStroke_ = false;
   down_ = down;
   oldWorkspace_ = inWorkspace;
   oldX_ = x;
@@ -1347,7 +1361,22 @@ void Editor::openPaint(bool fresh) {
     status_ = "Could not rasterize costume";
     return;
   }
+  paintCenterX_ = paintWidth_ / 2.;
+  paintCenterY_ = paintHeight_ / 2.;
+  if (!fresh) {
+    const auto &costume = project_.target()["costumes"][assetIndex_];
+    double resolution = costume.value("bitmapResolution", 1.);
+    if (!std::isfinite(resolution) || resolution <= 0)
+      resolution = 1;
+    paintCenterX_ =
+        costume.value("rotationCenterX", paintWidth_ / 2.) / resolution;
+    paintCenterY_ =
+        costume.value("rotationCenterY", paintHeight_ / 2.) / resolution;
+    paintWidth_ = std::max(1, (int)std::ceil(paintWidth_ / resolution));
+    paintHeight_ = std::max(1, (int)std::ceil(paintHeight_ / resolution));
+  }
   paintLastX_ = -1;
+  paintStroke_ = false;
   modal_ = CostumePaint;
 }
 void Editor::openSound() {
@@ -1665,7 +1694,7 @@ void Editor::handleAssetModal(int x, int y) {
     } else if (Rect{400, 340, 140, 38}.contains(x, y)) {
       project_.checkpoint();
       if (project_.paintCostume(paintName_, paintPixels_, paintWidth_,
-                                paintHeight_)) {
+                                paintHeight_, paintCenterX_, paintCenterY_)) {
         dirty_ = true;
         status_ = "Painted copy added";
         modal_ = Assets;

@@ -64,6 +64,8 @@ void testEditor() {
   Project advanced;
   assert(advanced.storeAsset("abc", "txt") ==
          "900150983cd24fb0d6963f7d28e17f72");
+  assert(advanced.storeAsset(std::string(1000000, 'a'), "txt") ==
+         "7707d6ae4e027c70eea2a935c2296f21");
   std::vector<uint32_t> painted(1024, 0);
   painted[0] = 0x112233ff;
   painted[33] = 0xff6680ff;
@@ -132,6 +134,15 @@ void testEditor() {
   assert(advanced.blocks()[distanceArg]["fields"]["VALUE"][0] == "steps");
   assert(advanced.blocks()[customCall]["mutation"]["proccode"] ==
          "forward %s %b %s");
+  auto copiedDefinition = advanced.duplicate(fn);
+  assert(!copiedDefinition.empty());
+  auto originalPrototype =
+      advanced.blocks()[fn]["inputs"]["custom_block"][1].get<std::string>();
+  auto copiedPrototype =
+      advanced.blocks()[copiedDefinition]["inputs"]["custom_block"][1]
+          .get<std::string>();
+  assert(advanced.blocks()[originalPrototype]["mutation"]["proccode"] !=
+         advanced.blocks()[copiedPrototype]["mutation"]["proccode"]);
   std::filesystem::remove(dir + "Advanced UI.sb3");
   assert(advanced.save(dir + "Advanced UI.sb3"));
   Project advancedCopy;
@@ -273,16 +284,30 @@ void testEditor() {
   assert(ui.project().blocks()[listBlock]["fields"]["LIST"][0]=="q");
   puts("PASS touch property dialog and list creation dialog");
   Editor tools;
+  tools.project().target()["costumes"][0]["bitmapResolution"] = 2;
+  tools.project().target()["costumes"][0]["rotationCenterX"] = 24;
+  tools.project().target()["costumes"][0]["rotationCenterY"] = 48;
   tools.render();
   tap(tools, 640, 370);
   tap(tools, 120, 382);
-  tap(tools, 120, 382);
-  drag(tools, 124, 132, 300, 308);
+  tap(tools, 200, 125);
+  tap(tools, 200, 170);
+  tools.pointer(124, 132, true);
+  tools.pointer(300, 308, false);
+  tools.render();
   tap(tools, 440, 325);
   tap(tools, 600, 325);
   captureEditor("paint");
   tap(tools, 450, 355);
   assert(tools.project().target()["costumes"].size() == 2);
+  std::vector<uint32_t> fastStroke;
+  int fsw, fsh;
+  assert(tools.project().costumePixels(1, fastStroke, fsw, fsh));
+  assert(std::count_if(fastStroke.begin(), fastStroke.end(),
+                       [](uint32_t c) { return c == 0x4c97ffff; }) > 20);
+  assert(tools.project().target()["costumes"][1]["rotationCenterX"] == 12);
+  assert(tools.project().target()["costumes"][1]["rotationCenterY"] == 24);
+  assert(fsw == 32 && fsh == 32);
   tap(tools, 650, 382);
   tap(tools, 650, 382);
   tap(tools, 440, 25);
@@ -323,7 +348,9 @@ void testEditor() {
       zy = 58 + (int)((zh.y + zh.h - 2 - 58) * tools.zoom());
   int beforeX = tools.project().blocks()[zoomBlock]["x"],
       beforeY = tools.project().blocks()[zoomBlock]["y"];
-  drag(tools, zx, zy, zx + 50, zy + 50);
+  tools.pointer(zx, zy, true);
+  tools.pointer(zx + 50, zy + 50, false);
+  tools.render();
   assert(tools.project().blocks()[zoomBlock]["x"] == beforeX + 40 &&
          tools.project().blocks()[zoomBlock]["y"] == beforeY + 40);
   tap(tools, 588, 455);

@@ -2,6 +2,7 @@
 #include "pax_port.h"
 #include <deque>
 #include <functional>
+#include <limits>
 #include <map>
 #include <nlohmann/json.hpp>
 #include <set>
@@ -72,7 +73,9 @@ public:
   std::string blockLabel(const std::string &id) const;
   bool paintCostume(const std::string &name,
                     const std::vector<uint32_t> &pixels, int width = 96,
-                    int height = 96);
+                    int height = 96,
+                    double centerX = std::numeric_limits<double>::quiet_NaN(),
+                    double centerY = std::numeric_limits<double>::quiet_NaN());
   bool costumePixels(int index, std::vector<uint32_t> &pixels, int &width,
                      int &height) const;
   bool importAsset(const std::string &path, bool sound);
@@ -108,7 +111,8 @@ class Editor {
   int width_ = 800, height_ = 480;
   int category_ = 3, palettePage_ = 0;
   int viewX_ = 20, viewY_ = 25;
-  std::string selected_, status_ = "Drag blocks into the workspace; F5: play, F6: stop";
+  std::string selected_,
+      status_ = "Drag blocks into the workspace; F5: play, F6: stop";
   std::vector<Hit> hits_;
   std::vector<Dock> docks_;
   std::vector<std::pair<Rect, std::string>> palette_;
@@ -173,9 +177,11 @@ class Editor {
   void drawAssetModal();
   void handleAssetModal(int x, int y);
   float zoom_ = 1;
-  bool oldWorkspace_ = false, assetSound_ = false, customWarp_ = false;
+  bool oldWorkspace_ = false, assetSound_ = false, customWarp_ = false,
+       paintStroke_ = false;
   int assetIndex_ = 0, assetPage_ = 0, paintWidth_ = 96, paintHeight_ = 96,
       paintLastX_ = -1, paintLastY_ = -1, argEdit_ = -1;
+  double paintCenterX_ = 48, paintCenterY_ = 48;
   uint32_t paintColor_ = 0x4c97ffff;
   std::vector<uint32_t> paintPixels_;
   std::vector<std::vector<uint32_t>> paintUndo_, paintRedo_;
