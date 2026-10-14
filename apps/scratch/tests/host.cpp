@@ -49,6 +49,11 @@ int main(){
  yieldCalls=0;Scratch::turbo=true;
  for(int i=0;i<100;i++)assert(Render::appShouldRun());assert(yieldCalls>0&&yieldCalls<10);
  printf("PASS turbo timed slices: normal=100 yields, turbo=%d yields for equal work\n",yieldCalls);
+ // A slow frame must be followed by an interpreter work interval.
+ simClock+=80000;pax_turbo_frame_finish();assert(!pax_turbo_frame_ready());
+ simClock+=34000;assert(pax_turbo_frame_ready());
+ puts("PASS turbo reserves work time after a slow LCD redraw");
+
  pax_project_playing=false;Scratch::turbo=false;svc.get_time_us=clockUs;svc.delay_ms=delay;
 
 

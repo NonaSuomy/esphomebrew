@@ -33,6 +33,8 @@ void pax_draw_text(const std::string &txt, int x, int y, int color, float scale,
 
 extern bool pax_project_playing;
 
+bool pax_turbo_frame_ready();
+void pax_turbo_frame_finish();
 bool pax_font_measure(const std::string&, float, float&, float&);
 bool pax_font_draw(const std::string&, int, int, int, float, bool);
 

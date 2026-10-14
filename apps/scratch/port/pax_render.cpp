@@ -264,6 +264,11 @@ void Render::beginFrame(int, int r, int g, int b) {
         hasFrameBegan = true;
     }
 }
+static long long nextTurboFrame;
+bool pax_turbo_frame_ready() { return pax_time_us() >= nextTurboFrame; }
+void pax_turbo_frame_finish() {
+    nextTurboFrame = pax_time_us() + 1000000 / std::max(1, Scratch::FPS);
+}
 void Render::endFrame(bool) {
     if (pax_project_playing || pax_editor_playing) {
         drawBox(78, 30, PAX_W - 123, 17, Scratch::turbo ? 95 : 233,
@@ -280,6 +285,8 @@ void Render::endFrame(bool) {
     pax_svc->display_write_frame_custom(pax_pixels, PAX_W, PAX_H, fit, false);
     hasFrameBegan = false;
     pax_audio_pump();
+    if ((pax_project_playing || pax_editor_playing) && Scratch::turbo)
+        pax_turbo_frame_finish();
 }
 int Render::getWidth() { return PAX_W; }
 int Render::getHeight() { return PAX_H; }

@@ -35,7 +35,11 @@ Face& face(float scale) {
   if(faces.size()>=8)faces.clear();
   Face f{};f.height=height;f.scale=stbtt_ScaleForPixelHeight(&font,height);
   int ascent,descent,gap;stbtt_GetFontVMetrics(&font,&ascent,&descent,&gap);
-  f.baseline=std::lround(ascent*f.scale);it=faces.emplace(height,std::move(f)).first;
+  // Match the top-origin UI convention: a small cap-height padding,
+  // instead of the font ascent's larger reserved accent/line spacing.
+  int x0,y0,x1,y1;stbtt_GetCodepointBitmapBox(&font,'H',f.scale,f.scale,&x0,&y0,&x1,&y1);
+  f.baseline=-y0+std::max(1,(int)std::lround(height*.1f));
+  it=faces.emplace(height,std::move(f)).first;
  }
  return it->second;
 }
