@@ -3,6 +3,7 @@
 #include <log.hpp>
 #include <os.hpp>
 #include <timer.hpp>
+#include <blockExecutor.hpp>
 #include <thread.hpp>
 #include <algorithm>
 #include <cstring>
@@ -56,10 +57,18 @@ nonstd::expected<std::vector<std::string>,std::string> listDirectory(const std::
  std::sort(out.begin(),out.end()); return out;
 }
 }
+static long long projectClockUs;
+static bool projectClockValid;
+void pax_update_project_clock() { projectClockUs = pax_time_us() / 1000 * 1000; projectClockValid = true; }
+static long long timerNow(const Timer *timer) {
+ if (timer != &BlockExecutor::timer) return pax_time_us();
+ if (!projectClockValid) pax_update_project_clock();
+ return projectClockUs;
+}
 Timer::Timer(bool startNow):startTime(0) { if(startNow) start(); }
-void Timer::start() { startTime=pax_time_us(); }
-uint64_t Timer::getTimeMs() { return (pax_time_us()-startTime)/1000; }
-double Timer::getTimeMsDouble() { return (pax_time_us()-startTime)/1000.0; }
+void Timer::start() { startTime=timerNow(this); }
+uint64_t Timer::getTimeMs() { return (timerNow(this)-startTime)/1000; }
+double Timer::getTimeMsDouble() { return (timerNow(this)-startTime)/1000.0; }
 // The interpreter and mixer are pumped by one task; no concurrent SE operations.
 struct SE_Mutex::Impl {};
 SE_Mutex::SE_Mutex():impl(nullptr) {}

@@ -38,6 +38,13 @@ int main(){
  svc.touch_read=noTouch;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};
  static int report=0;svc.input_mouse_read=[](int*dx,int*dy,int*b){*dx=*dy=0;if(report==0){*b=1;report++;return 1;}if(report==2){*b=0;report++;return 1;}return 0;};Input::getInput();assert(Input::mousePointer.isPressed);Input::getInput();assert(Input::mousePointer.isPressed);report=2;Input::getInput();assert(!Input::mousePointer.isPressed);
  puts("PASS letterboxed touch and held USB mouse input");
+ // Project timer is stable within one Scratch execution step; wait timers
+ // still measure real time. This reproduces both supplied SB3 timer checks.
+ pax_update_project_clock();BlockExecutor::timer.start();Timer waitTimer(true);
+ delay(25);assert(BlockExecutor::timer.getTimeMs()==0);assert(waitTimer.getTimeMs()>=20);
+ pax_update_project_clock();assert(BlockExecutor::timer.getTimeMs()>=20);
+ BlockExecutor::timer.start();assert(BlockExecutor::timer.getTimeMs()==0);
+ puts("PASS Scratch frame clock reset/read and independent wait timers");
  assert(Scratch::initializeRuntime());
  Unzip::filePath=OS::getScratchFolderLocation()+"PAX Demo.sb3";assert(Unzip::load());assert(Scratch::sprites.size()==3);assert(!Scratch::sb3InRam);
  Scratch::initializeScratchProject();ScriptThread monitor;

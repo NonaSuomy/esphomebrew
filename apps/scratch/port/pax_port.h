@@ -15,6 +15,7 @@ extern uint16_t *pax_pixels;
 extern int PAX_W, PAX_H;
 extern int pax_editor_width, pax_editor_height;
 void pax_choose_canvas();
+void pax_update_project_clock();
 extern bool pax_editor_playing;
 bool pax_resize_surface(int width, int height);
 void pax_set_clip(int x, int y, int w, int h);

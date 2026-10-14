@@ -256,6 +256,7 @@ int Render::getWidth() { return PAX_W; }
 int Render::getHeight() { return PAX_H; }
 float Render::getPixelDensity() { return 1; }
 bool Render::appShouldRun() {
+    pax_update_project_clock();
     pax_audio_pump();
     pax_svc->delay_ms(1);
     return !OS::toExit;

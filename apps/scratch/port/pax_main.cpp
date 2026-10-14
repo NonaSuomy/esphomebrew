@@ -143,6 +143,7 @@ bool pax_play_project(const std::string &path) {
     Input::inputControls["dpadRight"] = "right arrow";
     Input::inputControls["A"] = "space";
   }
+  pax_update_project_clock();
   Scratch::startScratchProject();
   return true;
 }
