@@ -607,6 +607,48 @@ void testEditor() {
   assert(pax_resize_surface(800, 480));
   puts("PASS native 1024x600, loader-backed ZIP, failed-open recovery, real "
        "hardware opcode execution");
+  for (auto dimensions : {std::pair<int,int>{800,480}, {1024,600}}) {
+    assert(pax_resize_surface(dimensions.first, dimensions.second));
+    Editor navigation;
+    auto near = navigation.project().add("motion_movesteps", 0, 0);
+    auto far = navigation.project().add("motion_movesteps", 1400, 1600);
+    navigation.render();
+    auto hit = [&](const std::string &id) { for (const auto &h : navigation.hits()) if(h.id==id&&!h.input)return h.rect; assert(false); return Rect{}; };
+    auto before = hit(far);
+    int panel = 177 + std::max(0, PAX_W-800)/3;
+    int left = 80 + std::clamp(174+(PAX_W-800)/4,174,220);
+    int trackX = PAX_W-panel-19, trackY=PAX_H-61;
+    tap(navigation, trackX-40, trackY);
+    auto horizontal=hit(far);printf("SCROLL %dx%d before=%d,%d after=%d,%d track=%d,%d\n",PAX_W,PAX_H,before.x,before.y,horizontal.x,horizontal.y,left+100,trackY);assert(horizontal.x<before.x&&horizontal.y==before.y);
+    drag(navigation, trackX, 100, trackX, PAX_H-90);
+    auto vertical=hit(far);assert(vertical.y<horizontal.y&&vertical.x==horizontal.x);
+    navigation.render();captureEditor("scrollbars-"+std::to_string(PAX_W));
+  }
+  assert(pax_resize_surface(1024,600));
+  Editor hardwareLayout;
+  auto demo = std::filesystem::path(__FILE__).parent_path().parent_path()/"data/PAX-Fun-Demo.sb3";
+  assert(hardwareLayout.load(demo.string()));hardwareLayout.render();captureEditor("properties-scrollbars-1024");
+  assert(pax_resize_surface(800,480));
+  puts("PASS both canvas scrollbars navigate off-screen blocks at 800x480 and 1024x600");
+  {
+    auto *svc=const_cast<app_services_t *>(pax_svc);
+    auto oldTouch=svc->touch_read;auto oldMouse=svc->input_mouse_read;auto oldSize=svc->display_get_size;
+    svc->touch_read=[](int*,int*){return 0;};
+    svc->display_get_size=[](int*w,int*h){*w=PAX_W;*h=PAX_H;};
+    static int deltaX=0,deltaY=0;
+    svc->input_mouse_read=[](int*x,int*y,int*b){*x=deltaX;*y=deltaY;*b=0;deltaX=deltaY=0;return 1;};
+    pax_native_cursor=false;
+    Input::getInput();auto pos=Input::getTouchPosition();deltaX=50-pos[0];deltaY=60-pos[1];Input::getInput();
+    Render::beginFrame(0,0,0,0);Render::endFrame();assert(pax_pixels[60*PAX_W+50]==0xffff);
+    deltaX=25;deltaY=30;Input::getInput();pax_refresh_pointer();
+    assert(pax_pixels[60*PAX_W+50]==0);assert(pax_pixels[90*PAX_W+75]==0xffff);
+    deltaX=PAX_W;deltaY=PAX_H;Input::getInput();pax_refresh_pointer();
+    assert(pax_pixels[90*PAX_W+75]==0);assert(pax_pixels[PAX_W*PAX_H-1]==0xffff);
+    pax_native_cursor=true;pax_refresh_pointer();assert(pax_pixels[PAX_W*PAX_H-1]==0);
+    svc->touch_read=oldTouch;svc->input_mouse_read=oldMouse;svc->display_get_size=oldSize;
+    pax_mouse_present=false;pax_native_cursor=false;
+    puts("PASS cursor-only updates restore the old background, clip at screen edges, and suppress duplicate desktop cursor");
+  }
   // A long imported stack must render without recursive task-stack growth.
   Editor longStack;
   auto top = longStack.project().add("event_whenflagclicked", 30, 20);

@@ -171,6 +171,9 @@ class Editor {
   void commitText();
   void chooseInput();
   void setZoom(float value);
+  void drawScrollbars();
+  Rect scrollTrackX_{}, scrollTrackY_{}, scrollThumbX_{}, scrollThumbY_{};
+  int scrollMinX_=0, scrollMaxX_=0, scrollMinY_=0, scrollMaxY_=0, scrollDrag_=0, scrollGrab_=0;
   void openAssets(bool sound);
   void openPaint(bool fresh);
   void openSound();

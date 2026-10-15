@@ -29,18 +29,19 @@ static int paletteWidth() {
 static int paletteRight() { return 75 + paletteWidth(); }
 static Rect workspace() {
   int left = paletteRight() + 5;
-  return {left, 58, PAX_W - panelWidth() - 5 - left, PAX_H - 105};
+  return {left, 58, PAX_W - panelWidth() - 21 - left, PAX_H - 121};
 }
 // Extra panel pixels belong to the script workspace; stage and footer stay
 // anchored.
 static Rect R(Rect r) {
+  const bool footer = r.y >= 382;
   if (r.x >= 623) {
     r.x = PAX_W - panelWidth() + (r.x - 623) * panelWidth() / 177;
     r.w = r.w * panelWidth() / 177;
     if (r.y >= 210 && r.y < 382)
       r.y += previewHeight() - 120;
   }
-  if (r.y >= 382)
+  if (footer)
     r.y += PAX_H - 480;
   return r;
 }
@@ -911,6 +912,7 @@ void Editor::render() {
   }
   pax_set_ui_zoom(1, 0, 0);
   pax_set_clip(0, 0, PAX_W, PAX_H);
+  drawScrollbars();
   box(R({623, 49, 177, PAX_H - 96}), 0xe6edf6);
   text(previewLabel_, PAX_W - panelWidth() + 10, 61, 0x26374cff, .6f);
   if (preview_.size() == 160 * 120)
@@ -950,24 +952,6 @@ void Editor::render() {
     drawModal();
     modalDrawing = false;
   }
-  // The editor needs its own
-  // pointer so USB mouse users can see blocks and sockets under the cursor.
-  if (!pax_native_cursor && oldX_ > 0 && oldY_ > 0) {
-    for (int yy = 0; yy < 18; yy++)
-      for (int xx = 0; xx <= yy / 2; xx++) {
-        bool edge = xx == 0 || xx == yy / 2 || yy == 17;
-        int c = edge ? 255 : 25;
-        pax_blend((oldWorkspace_
-                       ? workspace().x + (int)((oldX_ - workspace().x) * zoom_)
-                       : oldX_) +
-                      xx,
-                  (oldWorkspace_
-                       ? workspace().y + (int)((oldY_ - workspace().y) * zoom_)
-                       : oldY_) +
-                      yy,
-                  c, c, c, 255);
-      }
-  }
   Render::endFrame();
 }
 bool Editor::drop(const std::string &id, int x, int y) {
@@ -989,6 +973,38 @@ bool Editor::drop(const std::string &id, int x, int y) {
     }
   return false;
 }
+void Editor::drawScrollbars() {
+  const auto area = workspace();
+  const int visibleX = std::max(1, (int)(area.w / zoom_));
+  const int visibleY = std::max(1, (int)(area.h / zoom_));
+  int left = std::min(-viewX_, -24), top = std::min(-viewY_, -24);
+  int right = std::max(-viewX_ + visibleX, visibleX), bottom = std::max(-viewY_ + visibleY, visibleY);
+  for (auto it = project_.blocks().begin(); it != project_.blocks().end(); ++it) {
+    if (!it.value().is_object() || !it.value().value("topLevel", false) || it.value().value("shadow", false)) continue;
+    std::set<std::string> visited;
+    auto size = measureStack(it.key(), visited, 0);
+    int x = it.value().value("x", 30), y = it.value().value("y", 30);
+    left = std::min(left, x - 24); top = std::min(top, y - 24);
+    right = std::max(right, x + size.w + 24); bottom = std::max(bottom, y + size.h + 24);
+  }
+  if (!scrollDrag_) {
+    scrollMinX_ = left; scrollMaxX_ = std::max(left, right - visibleX);
+    scrollMinY_ = top; scrollMaxY_ = std::max(top, bottom - visibleY);
+  }
+  scrollTrackX_ = {area.x, area.y + area.h + 2, area.w, 12};
+  scrollTrackY_ = {area.x + area.w + 2, area.y, 12, area.h};
+  auto thumb = [](Rect track, bool vertical, int pos, int low, int high, int visible) {
+    int length = vertical ? track.h : track.w;
+    int size = high > low ? std::clamp((int)((double)length * visible / (high - low + visible)), 22, length) : length;
+    int offset = high > low ? (int)((double)(length - size) * std::clamp(pos - low, 0, high - low) / (high - low)) : 0;
+    return vertical ? Rect{track.x, track.y + offset, track.w, size} : Rect{track.x + offset, track.y, size, track.h};
+  };
+  scrollThumbX_ = thumb(scrollTrackX_, false, -viewX_, scrollMinX_, scrollMaxX_, visibleX);
+  scrollThumbY_ = thumb(scrollTrackY_, true, -viewY_, scrollMinY_, scrollMaxY_, visibleY);
+  box(scrollTrackX_, 0xe9edf3); box(scrollTrackY_, 0xe9edf3);
+  box(scrollThumbX_, scrollDrag_ == 1 ? 0x855cd6 : 0xaab5c5);
+  box(scrollThumbY_, scrollDrag_ == 2 ? 0x855cd6 : 0xaab5c5);
+}
 void Editor::setZoom(float value) {
   value = std::clamp(value, .5f, 2.f);
   float cx = workspace().w / 2.f, cy = workspace().h / 2.f;
@@ -997,6 +1013,28 @@ void Editor::setZoom(float value) {
   zoom_ = value;
 }
 void Editor::pointer(int x, int y, bool down) {
+  // Scrollbars stay in screen coordinates, independent of block zoom.
+  if (modal_ == None && (scrollDrag_ || (down && !down_ &&
+      (scrollTrackX_.contains(x, y) || scrollTrackY_.contains(x, y))))) {
+    if (!scrollDrag_) {
+      scrollDrag_ = scrollTrackX_.contains(x, y) ? 1 : 2;
+      const auto thumb = scrollDrag_ == 1 ? scrollThumbX_ : scrollThumbY_;
+      scrollGrab_ = thumb.contains(x, y) ? (scrollDrag_ == 1 ? x - thumb.x : y - thumb.y)
+                                       : (scrollDrag_ == 1 ? thumb.w : thumb.h) / 2;
+    }
+    auto track = scrollDrag_ == 1 ? scrollTrackX_ : scrollTrackY_;
+    auto thumb = scrollDrag_ == 1 ? scrollThumbX_ : scrollThumbY_;
+    int travel = (scrollDrag_ == 1 ? track.w - thumb.w : track.h - thumb.h);
+    int offset = (scrollDrag_ == 1 ? x - track.x : y - track.y) - scrollGrab_;
+    int low = scrollDrag_ == 1 ? scrollMinX_ : scrollMinY_;
+    int high = scrollDrag_ == 1 ? scrollMaxX_ : scrollMaxY_;
+    int value = low + (travel > 0 ? (int)((double)std::clamp(offset, 0, travel) * (high - low) / travel) : 0);
+    if (scrollDrag_ == 1) viewX_ = -value; else viewY_ = -value;
+    if (!down) scrollDrag_ = 0;
+    down_ = down; oldX_ = x; oldY_ = y; oldWorkspace_ = false;
+    return;
+  }
+
   bool inWorkspace = modal_ == None && workspace().contains(x, y);
   bool finishedPaintStroke = false;
   if (modal_ == CostumePaint) {
@@ -2212,6 +2250,8 @@ void open(const std::string &path) {
     pax_svc->delay_ms(12);
   }
   editor.render();
+  bool previousDown = false;
+  int previousX = Input::mousePointer.x, previousY = Input::mousePointer.y;
   while (!OS::toExit && !editor.closed()) {
     Input::getInput();
     editor.pointer(Input::mousePointer.x, Input::mousePointer.y,
@@ -2222,8 +2262,16 @@ void open(const std::string &path) {
       editor.keyboard(key);
     if (Input::mouseScrollDelta)
       editor.scroll(Input::mouseScrollDelta, Input::mousePointer.x);
-    editor.render();
-    pax_svc->delay_ms(12);
+    const bool down = Input::mousePointer.isPressed;
+    bool changed = down != previousDown || (down &&
+        (Input::mousePointer.x != previousX || Input::mousePointer.y != previousY)) ||
+        !keyboardEvents.empty() || Input::mouseScrollDelta;
+    if (changed) editor.render();
+    else pax_refresh_pointer();
+    previousDown = down;
+    previousX = Input::mousePointer.x; previousY = Input::mousePointer.y;
+    pax_audio_pump();
+    pax_svc->delay_ms(4);
   }
   pax_stop_editor_sound();
   if (OS::toExit)

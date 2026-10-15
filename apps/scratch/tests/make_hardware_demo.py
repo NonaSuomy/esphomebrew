@@ -217,13 +217,13 @@ add_button('Relay','2',57,-122,
     [status('Relay: ON for 0.5 seconds'),node('paxio_relay',{'VALUE':1}),wait(.5),node('paxio_relay',{'VALUE':0}),status('Relay pulse finished; OFF')],
     'relay','Brief relay pulse then off. Stop during the wait interrupts cleanup; allow it to finish.')
 add_button('Servo','3',173,-122,
-    [status('Servo: +20% for 1 second'),node('paxio_servo',{'VALUE':20}),wait(1),node('paxio_servo',{'VALUE':0}),status('Servo finished; neutral (0%)')],
-    'servo','+20% for one second then neutral. V1.0 is continuous rotation; V1.1 is position. This does not mean 20 degrees.')
+    [status('Servo: forward 60% for 1 second'),node('paxio_servo',{'VALUE':60}),wait(1),node('paxio_servo',{'VALUE':0}),wait(.3),status('Servo: reverse 60% for 1 second'),node('paxio_servo',{'VALUE':-60}),wait(1),node('paxio_servo',{'VALUE':0}),status('Servo finished; stopped (0%)')],
+    'servo','Continuous servo: +60% forward for one second, neutral pause, -60% reverse for one second, then stop at 0%. Levels are speed/direction, not degrees; positional revisions move instead.')
 add_button('Sound','4',-175,-154,
-    [setvar('hw_speaker',read('speaker_enabled')),write('speaker_enabled',1),status('Speaker: playing beep'),
+    [setvar('hw_speaker',read('speaker_enabled')),write('speaker_enabled',1),wait(.25),status('Speaker: playing three beeps'),
      node('sound_playuntildone',{'SOUND_MENU':node('sound_sounds_menu',fields={'SOUND_MENU':['beep',None]})}),
-     write('speaker_enabled',var('hw_speaker')),status('Beep finished; speaker setting restored')],
-    'speaker_enabled','Play original bundled 440Hz beep at 40% Scratch volume, restoring the previous speaker enable afterward.')
+     wait(.15),node('sound_playuntildone',{'SOUND_MENU':node('sound_sounds_menu',fields={'SOUND_MENU':['beep',None]})}),wait(.15),node('sound_playuntildone',{'SOUND_MENU':node('sound_sounds_menu',fields={'SOUND_MENU':['beep',None]})}),wait(.4),write('speaker_enabled',var('hw_speaker')),status('Beeps finished; speaker setting restored')],
+    'speaker_enabled','Enable the amplifier, allow startup, play three bundled 440Hz beeps at 40% Scratch volume, allow buffered audio to drain, then restore speaker enable. Master volume must be above zero.')
 add_button('Mic','5',-59,-154,
     [setvar('hw_mic',read('microphone_enabled')),node('paxio_microphone',{'VALUE':1}),setvar('hw_page',5),
      status('Microphone: speak or clap for 8 seconds'),wait(8),node('paxio_microphone',{'VALUE':var('hw_mic')}),

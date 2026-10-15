@@ -127,6 +127,7 @@ void pax_blend(int x, int y, int r, int g, int b, int a) {
       blendPixel(xx, yy, r, g, b, a);
 }
 void pax_draw_image(const ImageData &img, const ImageRenderParams &p) {
+    pax_audio_pump();
     if (!img.hasPixels() || img.width <= 0 || img.height <= 0 || !std::isfinite(p.scale) || p.scale <= 0)
         return;
     ImageSubrect sub = p.subrect ? *p.subrect : ImageSubrect{0, 0, img.width, img.height};
@@ -185,6 +186,7 @@ static std::string asciiText(const std::string &txt) {
 }
 void pax_draw_text(const std::string &original, int x, int y, int color, float scale,
                    bool centered) {
+    pax_audio_pump();
     auto txt = asciiText(original);
     if (txt.empty() || scale <= 0)
         return;
@@ -233,7 +235,43 @@ std::vector<float> TextObjectHeadless::getStringSize(const std::string &t) {
     return {(float)stb_easy_font_width((char *)asciiText(t).c_str()) * 2 * scale,
             (float)stb_easy_font_height((char *)asciiText(t).c_str()) * 2 * scale};
 }
+namespace {
+int cursorX=-1, cursorY=-1, cursorW=0, cursorH=0;
+uint16_t cursorUnder[10*18];
+int64_t cursorPresentedAt=0;
+void removeCursor() {
+  if (cursorX >= 0 && pax_pixels)
+    for (int y=0; y<cursorH; ++y)
+      std::copy_n(cursorUnder+y*10, cursorW, pax_pixels+(cursorY+y)*PAX_W+cursorX);
+  cursorX=-1;
+}
+void drawCursor() {
+  if (!pax_mouse_present || pax_native_cursor || !pax_pixels) return;
+  auto pos=Input::getTouchPosition();
+  cursorX=std::clamp(pos[0],0,PAX_W-1);cursorY=std::clamp(pos[1],0,PAX_H-1);
+  cursorW=std::min(10,PAX_W-cursorX);cursorH=std::min(18,PAX_H-cursorY);
+  for(int y=0;y<cursorH;++y) {
+    std::copy_n(pax_pixels+(cursorY+y)*PAX_W+cursorX,cursorW,cursorUnder+y*10);
+    for(int x=0;x<cursorW&&x<=y/2;++x)
+      pax_pixels[(cursorY+y)*PAX_W+cursorX+x]=(x==0||x==y/2||y==17)?0xffff:0x18c3;
+  }
+}
+void presentFrame() {
+  cursorPresentedAt=pax_time_us();
+  int cw=PAX_W,ch=PAX_H;
+  if(pax_svc->display_get_size)pax_svc->display_get_size(&cw,&ch);
+  pax_svc->display_write_frame_custom(pax_pixels,PAX_W,PAX_H,std::min((float)cw/PAX_W,(float)ch/PAX_H),false);
+}
+}
+void pax_refresh_pointer() {
+  auto pos=Input::getTouchPosition();
+  const bool heartbeat = pax_time_us()-cursorPresentedAt >= 500000;
+  if ((!pax_mouse_present || pax_native_cursor) && cursorX<0 && !heartbeat) return;
+  if (pax_mouse_present && !pax_native_cursor && pos[0]==cursorX && pos[1]==cursorY && !heartbeat) return;
+  removeCursor();drawCursor();presentFrame();
+}
 bool pax_resize_surface(int w, int h) {
+    cursorX=-1;
     if (w < 1 || h < 1 || w > 1024 || h > 768)
         return false;
     auto *pixels = (uint16_t *)pax_svc->mem_caps_alloc(w * h * 2, PAX_MEM_CAP_SPIRAM);
@@ -279,6 +317,7 @@ void Render::destroySpeechManager() {
 SpeechManager *Render::getSpeechManager() { return speech; }
 void Render::beginFrame(int, int r, int g, int b) {
     if (!hasFrameBegan) {
+        cursorX=-1;
         std::fill_n(pax_pixels, PAX_W * PAX_H, rgb565(r, g, b));
         hasFrameBegan = true;
     }
@@ -296,21 +335,10 @@ void Render::endFrame(bool) {
                       0x26374cff, .65f, true);
         drawBox(74, 30, PAX_W - 40, 17, 233, 241, 252);
         pax_draw_icon(PaxIcon::Stop, PAX_W - 52, 5, 24);
-        // Device USB mice need a visible pointer; desktop already draws one.
-        if (pax_mouse_present && !pax_native_cursor) {
-            auto pos = Input::getTouchPosition();
-            for (int yy = 0; yy < 18; ++yy)
-                for (int xx = 0; xx <= yy / 2; ++xx) {
-                    int c = (xx == 0 || xx == yy / 2 || yy == 17) ? 255 : 25;
-                    pax_blend(pos[0] + xx, pos[1] + yy, c, c, c, 255);
-                }
-        }
+
     }
-    int cw = 800, ch = 480;
-    if (pax_svc->display_get_size)
-        pax_svc->display_get_size(&cw, &ch);
-    float fit = std::min((float)cw / PAX_W, (float)ch / PAX_H);
-    pax_svc->display_write_frame_custom(pax_pixels, PAX_W, PAX_H, fit, false);
+    drawCursor();
+    presentFrame();
     hasFrameBegan = false;
     pax_audio_pump();
     if ((pax_project_playing || pax_editor_playing) && Scratch::turbo)

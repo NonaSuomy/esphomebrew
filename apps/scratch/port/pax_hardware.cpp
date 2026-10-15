@@ -4,6 +4,8 @@
 #include <input.hpp>
 static int lastHardwareStatus = -1;
 static unsigned hardwareErrorReports = 0;
+static unsigned hardwareCommandReports = 0;
+static int writeHardware(const char *name, float value);
 static BlockResult readHardware(const char *name, Value *out) {
   float value = 0;
   lastHardwareStatus =
@@ -35,12 +37,7 @@ SCRATCH_BLOCK(paxio, write) {
   if (!Scratch::getInputValueAs(block, "CHANNEL", thread, sprite, name) ||
       !Scratch::getInputValueAs(block, "VALUE", thread, sprite, value))
     return BlockResult::REPEAT;
-  lastHardwareStatus = pax_svc->hardware_write
-                           ? pax_svc->hardware_write(name.c_str(), (float)value)
-                           : -1;
-  if (lastHardwareStatus != 0 && hardwareErrorReports++ < 8)
-    pax_svc->log_printf("Scratch: hardware write %s failed (%d)\n",
-                        name.c_str(), lastHardwareStatus);
+  lastHardwareStatus = writeHardware(name.c_str(), (float)value);
   return BlockResult::CONTINUE;
 }
 SCRATCH_BLOCK_DOUBLE(paxio, status) {
@@ -79,6 +76,8 @@ static int writeHardware(const char *name, float value) {
   if (result != 0 && hardwareErrorReports++ < 8)
     pax_svc->log_printf("Scratch: hardware write %s failed (%d)\n", name,
                         result);
+  if (result == 0 && hardwareCommandReports++ < 24)
+    pax_svc->log_printf("Scratch: hardware command queued %s=%g\n", name, (double)value);
   return result;
 }
 #define BOARD_WRITER(id, channel)                                              \

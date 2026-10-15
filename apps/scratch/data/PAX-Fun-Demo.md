@@ -18,8 +18,8 @@ Touch the purple buttons or use a USB keyboard. **Space / Next** cycles seven pa
 | --- | --- |
 | LED / 1 | Red, green, blue and white at 40%, 0.4 seconds each, then off |
 | Relay / 2 | On for 0.5 seconds, then off |
-| Servo / 3 | +20% for one second, then neutral (0%) |
-| Sound / 4 | Original 440 Hz beep at Scratch volume 40%, restoring speaker enable |
+| Servo / 3 | +60% forward for one second, neutral pause, -60% reverse for one second, then stop (0%) |
+| Sound / 4 | Amplifier startup pause, three original 440 Hz beeps at Scratch volume 40%, drain pause, then restore speaker enable |
 | Mic / 5 | Enable microphone and show its RMS for eight seconds, restoring prior enable |
 | Display / 6 | 40% LCD brightness for one second, restoring prior brightness |
 | Camera / 7 | Queue one JPEG capture when camera is ready; show its separate result |

@@ -120,3 +120,9 @@ This sends the namespace, anonymous username and script-written cloud values to 
 The WebSocket implementation verifies the upgrade accept digest, masks client frames, handles fragmented/newline-delimited JSON and ping/pong, preserves numeric strings, rate-limits updates to ten per second, bounds frames/queues, and reconnects with backoff. Cloud defaults saved in the SB3 are cleared locally only after a verified connection, before server updates are applied; they are never uploaded as initial leaderboard data. This prevents stale offline cloud snapshots from overwriting live records. Cloud callbacks only update variables declared as cloud variables. Editor cloud-block authoring remains outside this version.
 
 Protocol references: https://github.com/ScratchEverywhere/mistpp and https://github.com/TurboWarp/cloud-server/blob/master/doc/protocol.md. Server rules: https://docs.turbowarp.org/cloud-variables.
+
+## Editor responsiveness and hardware demo (0.4.15)
+
+Idle/hovering in the editor reuses its last raster and updates the USB mouse cursor without rebuilding block SVGs. Cached frames still present regularly to satisfy the loader frame watchdog. Horizontal and vertical workspace scrollbars reflect the full stack bounds, including nested blocks and negative coordinates, and support touch/mouse thumb dragging and track clicks. Sprite list rows use their original layout anchor, avoiding a second footer translation at 1024x600 that overlapped Properties.
+
+Rendering pumps audio between text and image operations so short sounds are not entirely skipped during a slow UI frame. The hardware demo now exercises continuous-servo direction/speed with +60%, stop, -60%, stop; its sound example allows amplifier startup and buffered playback before restoring enable. Hardware logs distinguish queued commands from physical feedback. Actual servo motion and audible speaker output still require physical confirmation.

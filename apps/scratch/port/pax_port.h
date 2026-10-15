@@ -29,6 +29,7 @@ void pax_stop_editor_sound();
 void pax_blend(int x, int y, int r, int g, int b, int a);
 void pax_draw_image(const ImageData &img, const ImageRenderParams &p);
 void pax_audio_pump();
+void pax_refresh_pointer();
 void pax_draw_text(const std::string &txt, int x, int y, int color, float scale,
                    bool centered);
 
