@@ -41,12 +41,36 @@ static std::string rowPngFixture(int w,int h,int channels,bool solid=false,bool 
 }
 int main(){
  setvbuf(stdout,nullptr,_IONBF,0);
+ // Color storage must retain precision across every union lifetime transition.
+ { Color color{21.125f,63.5f,87.25f,12.75f};Value a(color),b(a),c(std::move(b));
+   assert(a==c && a.asDouble()==c.asDouble() && a.asString()==c.asString());
+   Value number(3.25);number=c;assert(number==a);number=number;assert(number==a);
+   Value text(std::string("old"));text=std::move(number);assert(text==a);
+   Value different(Color{21.25f,63.5f,87.25f,12.75f});assert(!(a==different));
+   a=Value(false);c=Value(7.0);text=Value(std::string("done"));
+   assert(!a.asBoolean() && c.asDouble()==7 && text.asString()=="done");
+   std::vector<Value> mixed;for(int i=0;i<1000;i++){mixed.push_back(Value(color));mixed.push_back(Value(i));}
+   for(int i=0;i<1000;i++){assert(mixed[i*2]==Value(color));assert(mixed[i*2+1].asDouble()==i);}
+ }
+ puts("PASS shared color values preserve equality/conversions and union copy/move/destruction");
+
  app_services_t svc{};svc.abi_version=1;svc.log_printf=printf;svc.log_vprintf=vprintf;svc.delay_ms=delay;svc.get_time_us=clockUs;svc.mem_alloc=malloc;svc.mem_calloc=calloc;svc.mem_realloc=realloc;svc.mem_free=free;svc.mem_caps_alloc=[](size_t n,uint32_t)->void*{return malloc(n);};svc.file_stat=statFile;svc.file_mkdir=mkdirFile;svc.input_gamepad_read=pad;svc.touch_read=noTouch;svc.input_keyboard_read=noKey;svc.display_write_frame_custom=frame;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};svc.audio_init=[](int rate){assert(rate==48000);};svc.audio_submit=submit;
  svc.file_open=[](const char*p,const char*m)->void*{return fopen(p,m);};
  svc.file_close=[](void*f){return fclose((FILE*)f);};
  svc.file_seek=[](void*f,long n,int whence){return fseek((FILE*)f,n,whence);};
  svc.file_read=[](void*b,size_t n,size_t c,void*f){return fread(b,n,c,(FILE*)f);};
  pax_svc=&svc;
+ { Sprite stage;auto previous=Scratch::stageSprite;Scratch::stageSprite=&stage;
+   auto &list=stage.lists["clear-test"];list.id="clear-test";list.name="test";
+   Block block;block.fields.push_back({"LIST",ParsedField{"test","clear-test"}});block.fieldMap["LIST"]=&block.fields.back().second;
+   ScriptThread thread;auto &handler=BlockExecutor::getHandlers().at("data_deletealloflist");
+   list.items.resize(8192,Value(42));assert(handler(&block,&thread,&stage,nullptr)==BlockResult::CONTINUE);
+   assert(list.items.empty() && list.items.capacity()==0);
+   list.items.emplace_back(3);handler(&block,&thread,&stage,nullptr);assert(list.items.empty());
+   list.items.emplace_back(std::string("preserved"));assert(list.items[0].asString()=="preserved");
+   Scratch::stageSprite=previous;
+ }
+ puts("PASS delete-all releases large list capacity and allows reuse");
  // Test the real bundled font and its grayscale coverage, not the fallback.
  auto fontPath=std::filesystem::path(OS::getRomFSLocation())/"gfx/ingame/fonts/NotoSans-Medium.ttf";
  std::filesystem::create_directories(fontPath.parent_path());
