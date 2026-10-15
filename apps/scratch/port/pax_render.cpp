@@ -143,6 +143,35 @@ void pax_draw_image(const ImageData &img, const ImageRenderParams &p) {
         x1 = (int)std::clamp(ceilf(cx + bw / 2), 0.f, (float)PAX_W);
     int y0 = (int)std::clamp(floorf(cy - bh / 2), 0.f, (float)PAX_H),
         y1 = (int)std::clamp(ceilf(cy + bh / 2), 0.f, (float)PAX_H);
+    // Most stage backdrops and UI sprites are unrotated. Map X once and
+    // decode each source row once, instead of calling rowData per pixel.
+    if (p.rotation == 0 && p.opacity == 1 && p.brightness == 0 &&
+        pax_ui_zoom == 1 && !penTarget && pax_pixels) {
+        x0=std::max(x0,clipX);x1=std::min(x1,clipX+clipW);
+        y0=std::max(y0,clipY);y1=std::min(y1,clipY+clipH);
+        if (x1<=x0 || y1<=y0) return;
+        static std::vector<int> columns;
+        columns.resize(x1-x0);
+        for (int x=x0;x<x1;++x) {
+            float u=(x+.5f-cx)/sc+sub.w/2.f;
+            int sx=u>=0 && u<sub.w ? sub.x+(p.flip?sub.w-1-(int)u:(int)u) : -1;
+            columns[x-x0]=sx>=0 && sx<img.width?sx:-1;
+        }
+        for (int y=y0;y<y1;++y) {
+            float v=(y+.5f-cy)/sc+sub.h/2.f;
+            int sy=sub.y+(int)v;
+            if(v<0 || v>=sub.h || sy<0 || sy>=img.height)continue;
+            const auto *row=img.rowData(sy);
+            for(int x=x0;x<x1;++x) {
+                int sx=columns[x-x0];if(sx<0)continue;
+                const auto *c=row+sx*4;
+                if(c[3]==255)pax_pixels[y*PAX_W+x]=rgb565(c[0],c[1],c[2]);
+                else if(c[3])blendPixel(x,y,c[0],c[1],c[2],c[3]);
+            }
+            if ((y&31)==0)pax_audio_pump();
+        }
+        return;
+    }
     for (int y = y0; y < y1; y++)
         for (int x = x0; x < x1; x++) {
             float dx = x + .5f - cx, dy = y + .5f - cy, u = (cs * dx + sn * dy) / sc + sub.w / 2.f,
@@ -363,6 +392,15 @@ bool Render::appShouldRun() {
     return !OS::toExit;
 }
 void Render::drawBox(int w, int h, int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+  if (pax_ui_zoom==1 && !penTarget && pax_pixels && a==255) {
+    int left=std::max({0,clipX,x-w/2}),right=std::min({PAX_W,clipX+clipW,x+(w+1)/2});
+    int top=std::max({0,clipY,y-h/2}),bottom=std::min({PAX_H,clipY+clipH,y+(h+1)/2});
+    if(right<=left)return;
+    uint16_t color=rgb565(r,g,b);
+    for(int yy=top;yy<bottom;++yy)std::fill_n(pax_pixels+yy*PAX_W+left,right-left,color);
+    return;
+  }
+
   for (int yy = pax_ui_zoom == 1 ? std::max(0, y - h / 2) : y - h / 2;
        yy <
        (pax_ui_zoom == 1 ? std::min(PAX_H, y + (h + 1) / 2) : y + (h + 1) / 2);
@@ -456,6 +494,7 @@ void Render::renderPenLayer() {
     }
 }
 void Render::renderSprites() {
+    const auto composeStarted=pax_time_us();
     beginFrame(0, 0, 0, 0);
     drawBox((int)std::lround(Scratch::projectWidth * renderScale),
             (int)std::lround(Scratch::projectHeight * renderScale),
@@ -468,5 +507,13 @@ void Render::renderSprites() {
     if (speech)
         speech->render();
     renderMonitors();
+    static int64_t composeTotal=0,composeWorst=0,composeLastLog=0;
+    static unsigned composeFrames=0;
+    const auto composeTime=pax_time_us()-composeStarted;
+    composeTotal+=composeTime;composeWorst=std::max<int64_t>(composeWorst,composeTime);++composeFrames;
+    if(pax_time_us()-composeLastLog>=5000000){
+      pax_svc->log_printf("Scratch: player compose avg=%lld us worst=%lld us frames=%u\n",(long long)(composeTotal/composeFrames),(long long)composeWorst,composeFrames);
+      composeLastLog=pax_time_us();composeTotal=composeWorst=0;composeFrames=0;
+    }
     endFrame();
 }

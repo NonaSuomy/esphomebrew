@@ -498,7 +498,7 @@ struct MistConnection::Impl {
           "\r\nUpgrade: websocket\r\nConnection: "
           "Upgrade\r\nSec-WebSocket-Key: " +
           key +
-          "\r\nSec-WebSocket-Version: 13\r\nUser-Agent: PAX-Scratch/0.4.15 " +
+          "\r\nSec-WebSocket-Version: 13\r\nUser-Agent: PAX-Scratch/0.4.16 " +
           contact + "\r\n\r\n");
       state = 2;
       deadline = now() + 15000000;

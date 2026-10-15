@@ -83,6 +83,8 @@ output:
   - platform: ledc
     pin: GPIO20
     id: backlight_pwm
+    # Keep the backlight on a different LEDC timer from the 50 Hz servo.
+    channel: 0
     frequency: 30000Hz
 
 

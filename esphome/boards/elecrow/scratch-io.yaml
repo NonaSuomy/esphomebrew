@@ -93,6 +93,8 @@ output:
   - platform: ledc
     pin: GPIO25
     frequency: 50Hz
+    # Channels 0/1 share timer 0; channel 2 uses timer 1.
+    channel: 2
     id: scratch_servo_pwm
 
 servo:

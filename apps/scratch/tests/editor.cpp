@@ -1,5 +1,6 @@
 #include "pax_editor.h"
 #include <audio.hpp>
+#include <image.hpp>
 #include <cassert>
 #include <cmath>
 #include <filesystem>
@@ -648,6 +649,34 @@ void testEditor() {
     svc->touch_read=oldTouch;svc->input_mouse_read=oldMouse;svc->display_get_size=oldSize;
     pax_mouse_present=false;pax_native_cursor=false;
     puts("PASS cursor-only updates restore the old background, clip at screen edges, and suppress duplicate desktop cursor");
+  }
+  {
+    std::vector<uint8_t> rgba(7*5*4);
+    for(int y=0;y<5;++y)for(int x=0;x<7;++x){auto i=(y*7+x)*4;rgba[i]=x*31;rgba[i+1]=y*47;rgba[i+2]=(x+y)*17;rgba[i+3]=(x+y)%3==0?0:(x+y)%3==1?128:255;}
+    ImageData image;image.width=7;image.height=5;image.pitch=28;image.pixels=rgba.data();
+    ImageSubrect sub{1,1,5,3};
+    for(float scale:{.5f,1.f,1.67f,70.f})for(bool flip:{false,true})for(bool cropped:{false,true}){
+      ImageRenderParams params;params.x=160.25f;params.y=120.75f;params.scale=scale;params.flip=flip;if(cropped)params.subrect=&sub;
+      auto render=[&](bool fast){Render::hasFrameBegan=false;pax_set_ui_zoom(1,0,0);pax_set_clip(0,0,PAX_W,PAX_H);Render::beginFrame(0,31,65,93);pax_set_clip(5,9,PAX_W-17,PAX_H-25);pax_set_ui_zoom(fast?1.f:std::nextafter(1.f,2.f),0,0);pax_draw_image(image,params);return std::vector<uint16_t>(pax_pixels,pax_pixels+PAX_W*PAX_H);};
+      auto fast=render(true);auto reference=render(false);assert(fast==reference);
+    }
+    pax_set_ui_zoom(1,0,0);pax_set_clip(0,0,PAX_W,PAX_H);Render::hasFrameBegan=false;
+    puts("PASS row-based image renderer matches reference pixels for clipping, scaling, horizontal flip, cropped images and alpha blending");
+  }
+  {
+    auto *svc=const_cast<app_services_t *>(pax_svc);auto oldClock=svc->get_time_us;
+    static int64_t fakeClock;fakeClock=1000;
+    svc->get_time_us=[]()->int64_t{return fakeClock;};
+    bool oldWarp=Scratch::warpTimer,oldStop=Scratch::shouldStop;
+    Scratch::warpTimer=true;Scratch::shouldStop=false;
+    Block loop;loop.nextBlock=&loop;int blocks=0;
+    loop.blockFunction=BlockFunc(BlockFuncValue([&](Block*,ScriptThread*,Sprite*,Value*){++blocks;fakeClock+=100;return BlockResult::CONTINUE_IMMEDIATELY;}));
+    ScriptThread thread;Sprite sprite;thread.finished=false;thread.nextBlock=&loop;thread.withoutScreenRefresh=true;
+    BlockExecutor::runThread(thread,sprite);
+    assert(blocks==64&&!thread.finished&&thread.nextBlock==&loop);
+    BlockExecutor::runThread(thread,sprite);assert(blocks==128&&!thread.finished);
+    svc->get_time_us=oldClock;Scratch::warpTimer=oldWarp;Scratch::shouldStop=oldStop;
+    puts("PASS long warp chains yield a bounded slice and resume without losing the next block");
   }
   // A long imported stack must render without recursive task-stack growth.
   Editor longStack;

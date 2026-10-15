@@ -126,3 +126,11 @@ Protocol references: https://github.com/ScratchEverywhere/mistpp and https://git
 Idle/hovering in the editor reuses its last raster and updates the USB mouse cursor without rebuilding block SVGs. Cached frames still present regularly to satisfy the loader frame watchdog. Horizontal and vertical workspace scrollbars reflect the full stack bounds, including nested blocks and negative coordinates, and support touch/mouse thumb dragging and track clicks. Sprite list rows use their original layout anchor, avoiding a second footer translation at 1024x600 that overlapped Properties.
 
 Rendering pumps audio between text and image operations so short sounds are not entirely skipped during a slow UI frame. The hardware demo now exercises continuous-servo direction/speed with +60%, stop, -60%, stop; its sound example allows amplifier startup and buffered playback before restoring enable. Hardware logs distinguish queued commands from physical feedback. Actual servo motion and audible speaker output still require physical confirmation.
+
+## Player rendering and scheduling (0.4.16)
+
+Unrotated opaque/alpha images map horizontal source coordinates once per draw and obtain one decoded source scanline per output row. Opaque rectangles use clipped RGB565 row fills. Other transforms keep the reference rendering path. Pixel regressions compare scaled/flipped/cropped/transparent output with that reference. Player composition timing is logged separately from the loader's display transfer time.
+
+Long immediate/warp block chains yield a resumable interpreter slice after the next 64-block time check exceeds four milliseconds, allowing the main runtime to service input/audio/networking. This bounds chains rather than changing Scratch wait durations or benchmark timing checks. A single expensive block or display transfer can still delay input.
+
+The Elecrow firmware must keep its GPIO25 servo at 50 Hz on LEDC channel 2 (timer 1), with the 30 kHz GPIO20 LCD backlight on channel 0 (timer 0). Automatically allocating adjacent channels 0/1 makes the outputs share a timer and can replace the servo frequency with the backlight frequency. Updating the PAX app alone cannot repair that timer conflict.
