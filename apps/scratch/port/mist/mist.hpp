@@ -23,9 +23,14 @@ public:
   void onConnectionStatus(ConnectionStatusCallback);
   void tick();
   bool isConnected() const;
+  bool isConnecting() const;
 
 private:
   struct Impl;
   std::unique_ptr<Impl> p;
 };
 void pax_cloud_tick();
+
+bool pax_cloud_begin_startup();
+bool pax_cloud_startup_waiting();
+void pax_cloud_draw_startup();

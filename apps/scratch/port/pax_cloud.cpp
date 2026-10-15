@@ -10,6 +10,7 @@
 #include <log.hpp>
 #include <map>
 #include <nlohmann/json.hpp>
+#include <render.hpp>
 #include <runtime.hpp>
 #include <settings.hpp>
 #include <unzip.hpp>
@@ -497,7 +498,7 @@ struct MistConnection::Impl {
           "\r\nUpgrade: websocket\r\nConnection: "
           "Upgrade\r\nSec-WebSocket-Key: " +
           key +
-          "\r\nSec-WebSocket-Version: 13\r\nUser-Agent: PAX-Scratch/0.4.13 " +
+          "\r\nSec-WebSocket-Version: 13\r\nUser-Agent: PAX-Scratch/0.4.14 " +
           contact + "\r\n\r\n");
       state = 2;
       deadline = now() + 15000000;
@@ -554,6 +555,9 @@ void MistConnection::disconnect() {
 }
 void MistConnection::tick() { p->tick(); }
 bool MistConnection::isConnected() const { return p->ready; }
+bool MistConnection::isConnecting() const {
+  return p->state == 1 || p->state == 2;
+}
 void MistConnection::onVariableUpdate(VariableUpdateCallback cb) {
   p->onValue = std::move(cb);
 }
@@ -606,3 +610,29 @@ std::string pax_cloud_test_accept(const std::string &key) {
   return acceptKey(key);
 }
 #endif
+
+namespace {
+int64_t cloudStartupDeadline = 0, cloudStartupFrame = 0;
+}
+bool pax_cloud_begin_startup() {
+  cloudStartupDeadline = now() + 60000000;
+  cloudStartupFrame = 0;
+  return cloudConnection && cloudConnection->isConnecting();
+}
+bool pax_cloud_startup_waiting() {
+  if (!cloudConnection || !cloudConnection->isConnecting())
+    return false;
+  if (now() < cloudStartupDeadline)
+    return true;
+  Log::logWarning("Cloud startup timed out; starting project offline");
+  return false;
+}
+void pax_cloud_draw_startup() {
+  if (cloudStartupFrame && now() - cloudStartupFrame < 100000)
+    return;
+  cloudStartupFrame = now();
+  Render::beginFrame(0, 20, 25, 40);
+  pax_draw_text("Connecting to cloud...", PAX_W / 2, PAX_H / 2 - 12, 0xffffffff,
+                1, true);
+  Render::endFrame();
+}

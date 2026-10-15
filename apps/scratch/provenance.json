@@ -14,7 +14,8 @@
       "patches/0009-pax-audio-errors-and-clock.patch",
       "patches/0010-pax-compact-color-values.patch",
       "patches/0011-pax-lossless-image-runs.patch",
-      "patches/0012-pax-cloud-hooks.patch"
+      "patches/0012-pax-cloud-hooks.patch",
+      "patches/0013-pax-cloud-startup-order.patch"
     ]
   },
   "lunasvg": {

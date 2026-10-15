@@ -1,0 +1,56 @@
+diff --git a/source/runtime/runtime.cpp b/source/runtime/runtime.cpp
+index e2ac1fb..ee1530d 100644
+--- a/source/runtime/runtime.cpp
++++ b/source/runtime/runtime.cpp
+@@ -1,6 +1,7 @@
+ #if defined(PAX_APP_SIDE) && defined(ENABLE_CLOUDVARS)
+ #include <mist/mist.hpp>
+ extern std::unique_ptr<MistConnection> cloudConnection;
++static bool paxCloudStartupPending = false;
+ #endif
+ #include "runtime.hpp"
+ #include "audiostack.hpp"
+@@ -152,7 +153,11 @@ void Scratch::initializeScratchProject() {
+ #endif
+     Render::setRenderScale();
+ 
+-    Scratch::greenFlagClicked();
++#if defined(PAX_APP_SIDE) && defined(ENABLE_CLOUDVARS)
++    paxCloudStartupPending = pax_cloud_begin_startup();
++    if (!paxCloudStartupPending)
++#endif
++        Scratch::greenFlagClicked();
+ 
+     if (debugVars) fpsTimer.start();
+ }
+@@ -170,6 +175,22 @@ std::pair<bool, bool> Scratch::stepScratchProject(ScriptThread &monitorDisplayTh
+ #endif
+         return std::make_pair(false, false);
+     }
++#if defined(PAX_APP_SIDE) && defined(ENABLE_CLOUDVARS)
++    if (paxCloudStartupPending) {
++        Input::getInput();
++        if (shouldStop || OS::toExit) {
++            cleanupScratchProject();
++            shouldStop = false;
++            return std::make_pair(false, true);
++        }
++        if (pax_cloud_startup_waiting()) {
++            pax_cloud_draw_startup();
++            return std::make_pair(true, false);
++        }
++        paxCloudStartupPending = false;
++        Scratch::greenFlagClicked();
++    }
++#endif
+ #ifdef ENABLE_MENU
+     if (pauseMenu != nullptr) {
+         MenuManager::render();
+@@ -319,6 +340,7 @@ bool Scratch::startScratchProject() {
+ void Scratch::cleanupScratchProject() {
+ #if defined(PAX_APP_SIDE) && defined(ENABLE_CLOUDVARS)
+     cloudConnection.reset();
++    paxCloudStartupPending = false;
+     cloudProject = false;
+ #endif
+ #ifdef ENABLE_CUSTOM_EXTENSIONS

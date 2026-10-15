@@ -5,6 +5,7 @@
 #include <cstring>
 #include <nlohmann/json.hpp>
 #include <vector>
+extern std::unique_ptr<MistConnection> cloudConnection;
 extern std::string pax_cloud_test_accept(const std::string &);
 namespace {
 std::string incoming, outgoing;
@@ -216,6 +217,33 @@ void testCloud() {
   incoming.clear();
   outgoing.clear();
   assert(closes >= 5);
+  incoming.clear();
+  outgoing.clear();
+  status = 0;
+  cloudConnection = std::make_unique<MistConnection>(
+      "test-room", "player1234567", "https://example.org/issues");
+  assert(cloudConnection->connect());
+  assert(pax_cloud_begin_startup());
+  clockValue += 3000000;
+  pax_cloud_tick();
+  assert(pax_cloud_startup_waiting());
+  status = 1;
+  accept(*cloudConnection);
+  assert(!pax_cloud_startup_waiting());
+  cloudConnection.reset();
+  incoming.clear();
+  outgoing.clear();
+  status = -1;
+  cloudConnection = std::make_unique<MistConnection>(
+      "test-room", "player1234567", "https://example.org/issues");
+  assert(cloudConnection->connect());
+  assert(pax_cloud_begin_startup());
+  pax_cloud_tick();
+  assert(!pax_cloud_startup_waiting());
+  cloudConnection.reset();
+  status = 1;
+  puts("PASS cloud startup gate waits through slow connection and releases on "
+       "success or failure");
   pax_svc = old;
   puts("PASS cloud: verified WebSocket handshake, masked/partial sends, "
        "fragmented/newline JSON, exact long values, ping, rate limit, bounded "
