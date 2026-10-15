@@ -26,10 +26,10 @@ static int noTouch(int*,int*){return 0;}
 static int noKey(pax_keyboard_event_t*){return 0;}
 extern int pax_host_run();
 void testEditor();
-static std::string rowPngFixture(int w,int h,int channels,bool solid=false,bool badAdler=false) {
+static std::string rowPngFixture(int w,int h,int channels,int solid=0,bool badAdler=false) {
  std::vector<unsigned char> raw;std::vector<unsigned char> previous(w*channels),row(w*channels);
  auto paeth=[](int a,int b,int c){int p=a+b-c,pa=abs(p-a),pb=abs(p-b),pc=abs(p-c);return pa<=pb&&pa<=pc?a:pb<=pc?b:c;};
- for(int y=0;y<h;y++){for(int x=0;x<w;x++){row[x*channels]=solid?17:x%256;row[x*channels+1]=solid?31:y%256;row[x*channels+2]=solid?63:(x+y)%256;if(channels==4)row[x*channels+3]=solid?128:(x*3+y)%256;}
+ for(int y=0;y<h;y++){for(int x=0;x<w;x++){row[x*channels]=solid==2?x/80:solid?17:x%256;row[x*channels+1]=solid==2?y/20:solid?31:y%256;row[x*channels+2]=solid==2?(x/80+y/20)%256:solid?63:(x+y)%256;if(channels==4)row[x*channels+3]=solid==2?x/160:solid?128:(x*3+y)%256;}
   int filter=y%5;raw.push_back(filter);for(int x=0;x<w*channels;x++){int a=x>=channels?row[x-channels]:0,b=previous[x],c=x>=channels?previous[x-channels]:0;int predicted=filter==1?a:filter==2?b:filter==3?(a+b)/2:filter==4?paeth(a,b,c):0;raw.push_back((unsigned char)(row[x]-predicted));}previous=row;
  }
  mz_ulong n=mz_compressBound(raw.size());std::string compressed(n,'\0');assert(mz_compress2((unsigned char*)compressed.data(),&n,raw.data(),raw.size(),6)==MZ_OK);compressed.resize(n);if(badAdler)compressed.back()^=1;
@@ -196,6 +196,17 @@ int main(){
   png.resize(png.size()-10);writeSvg("pax-truncated.png",png);assert(!createImageFromFile("pax-truncated.png",false));
  }
  writeSvg("pax-solid-rows.png",rowPngFixture(960,720,4,true));{auto loaded=createImageFromFile("pax-solid-rows.png",false);assert(loaded);auto p=loaded.value()->getPixels();assert(p.scanlines->rows.front()==p.scanlines->rows.back());assert(p.rowData(719)[3836]==17&&p.rowData(719)[3839]==128);}
+ writeSvg("pax-striped-rows.png",rowPngFixture(960,720,4,2));
+ {auto loaded=createImageFromFile("pax-striped-rows.png",false);assert(loaded);auto p=loaded.value()->getPixels();
+  size_t bytes=0;for(auto &row:p.scanlines->rows)bytes+=row->size();assert(bytes<960*720*4/8);
+  for(int y=719;y>=0;y--)for(int x=0;x<960;x++){auto row=p.rowData(y);assert(row[x*4]==x/80&&row[x*4+1]==y/20&&row[x*4+2]==(x/80+y/20)%256&&row[x*4+3]==x/160);}
+  auto sub=loaded.value()->getPixels({240,100,160,40});assert(sub.rowData(25)[0]==3&&sub.rowData(25)[1]==6);
+  assert(p.rowData(0)[0]==0&&p.rowData(719)[1]==35&&p.rowData(0)[0]==0);
+  printf("PASS lossless striped RGBA rows use %zu bytes versus 2764800 raw; reverse-row and subrect reads preserve every pixel\n",bytes);
+ }
+ {SoundStream missing((ZipArchive*)nullptr,"pax-missing-audio.wav");assert(missing.error.has_value());}
+ {SoundStream missing("/tmp/pax-missing-audio.wav",true,true);assert(missing.error.has_value());}
+ puts("PASS failed ZIP and file sound loads remain safely destructible");
  auto largeSvg=alphaSvg;largeSvg.replace(largeSvg.find("width=\"23\""),10,"width=\"600\"");largeSvg.replace(largeSvg.find("height=\"17\""),11,"height=\"400\"");writeSvg("pax-large.svg",largeSvg);
  {auto loaded=createImageFromFile("pax-large.svg",false);assert(loaded);auto doc=lunasvg::Document::loadFromData(largeSvg);for(int scale:{1,2}){assert(loaded.value()->resizeSVG(scale));auto ref=doc->renderToBitmap(600*scale,400*scale);auto p=loaded.value()->getPixels();assert(p.scanlines);int maxAlpha=0,maxComposite=0;
  for(int y=0;y<400*scale;y++)for(int x=0;x<600*scale;x++){auto src=ref.data()+(y*600*scale+x)*4;auto dst=p.rowData(y)+x*4;int a=src[3],r=src[2],g=src[1],b=src[0];if(a>0&&a<255){r=r*255/a;g=g*255/a;b=b*255/a;}maxAlpha=std::max(maxAlpha,abs(int(dst[3])-a));int expected[]={r,g,b};for(int c=0;c<3;c++)for(int bg:{0,255}){int actual=(int(dst[c])*dst[3]+bg*(255-dst[3]))/255;int reference=(expected[c]*a+bg*(255-a))/255;maxComposite=std::max(maxComposite,abs(actual-reference));}}

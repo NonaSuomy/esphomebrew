@@ -12,7 +12,8 @@
       "patches/0007-pax-compact-values.patch",
       "patches/0008-pax-image-scanlines.patch",
       "patches/0009-pax-audio-errors-and-clock.patch",
-      "patches/0010-pax-compact-color-values.patch"
+      "patches/0010-pax-compact-color-values.patch",
+      "patches/0011-pax-lossless-image-runs.patch"
     ]
   },
   "lunasvg": {
