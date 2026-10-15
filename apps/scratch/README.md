@@ -22,7 +22,7 @@ Per-project `name.sb3.json` settings and controller mappings use the upstream
 format. Recommended for larger projects: `{"settings":{"sb3InRam":false}}`.
 The renderer uses a 480×360 RGB565 surface, scaled with letterboxing to the PAX
 canvas. Standard sprite rotation, size, flip, ghost, brightness and pen are
-implemented. Cloud variables, network downloads, custom Lua/native extensions,
+implemented. Network downloads, custom Lua/native extensions,
 advanced color/fisheye/whirl/pixelate/mosaic effects and clipboard are unavailable.
 Player text overlays use a small ASCII font; the editor uses antialiased Noto Sans from the existing asset pack. SVG costume text uses the bundled fonts.
 Date/time sensing depends on the loader's available clock and currently uses
@@ -109,3 +109,14 @@ Turbo also waits one frame interval after a completed redraw before drawing agai
 Variable-monitor labels/values are raised one native pixel. List item text and row numbers share an ink-bounds-centered row position, preserving the approved title/footer positions.
 
 Audio playback advances missed source samples after long interpreter stalls so play-until-done follows elapsed time instead of stretching a clip. ZIP audio load errors propagate to sound blocks. Benchmark scripts and timing checks are unchanged.
+
+
+## Cloud networking (0.4.13)
+
+PAX supports the Mist/TurboWarp cloud-variable protocol over its loader's verified TLS services. It polls cooperatively on the interpreter task and closes the connection when the project exits. Cloud networking starts disabled. To enable a project, add `"cloudEnabled":true` inside its `.sb3.json` sidecar's `settings` object. `cloudHost` optionally chooses a `wss://` endpoint (default `wss://clouddata.turbowarp.org/`); explicit `ws://` is available for a local test server. `cloudProjectId` optionally chooses the server namespace; otherwise the upstream `ScratchEverywhere/hash-...` identifier is derived from costume/sound asset IDs. Do not reuse a namespace for an unrelated project. The saved anonymous `playerNNNNNNN` name is stored in `scratch/cloud-username.txt`.
+
+This sends the namespace, anonymous username and script-written cloud values to the selected server. TurboWarp's service is separate from Scratch's authenticated cloud/leaderboards, and it resets data after inactivity/server restarts. A compatible server and namespace must contain the data expected by a given project; enabling transport does not join a Scratch-account leaderboard. Server close codes and connection failures are logged, including missing firmware TLS support. There is no insecure fallback for `wss://` certificate failures.
+
+The WebSocket implementation verifies the upgrade accept digest, masks client frames, handles fragmented/newline-delimited JSON and ping/pong, preserves numeric strings, rate-limits updates to ten per second, bounds frames/queues, and reconnects with backoff. Cloud defaults saved in the SB3 are cleared locally only after a verified connection, before server updates are applied; they are never uploaded as initial leaderboard data. This prevents stale offline cloud snapshots from overwriting live records. Cloud callbacks only update variables declared as cloud variables. Editor cloud-block authoring remains outside this version.
+
+Protocol references: https://github.com/ScratchEverywhere/mistpp and https://github.com/TurboWarp/cloud-server/blob/master/doc/protocol.md. Server rules: https://docs.turbowarp.org/cloud-variables.

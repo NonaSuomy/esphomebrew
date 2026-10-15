@@ -1,7 +1,7 @@
 {
   "name": "scratch",
   "title": "Scratch Blocks",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",
@@ -82,14 +82,16 @@
     "-DLUNASVG_DISABLE_LOAD_SYSTEM_FONTS",
     "-DLUNASVG_DISABLE_EXTERNAL_RESOURCES",
     "-DPLUTOVG_DISABLE_FONT_FACE_CACHE_LOAD",
-    "-std=gnu11"
+    "-std=gnu11",
+    "-DENABLE_CLOUDVARS"
   ],
   "cxxflags": [
     "-std=gnu++17",
     "-fno-exceptions",
     "-fno-rtti",
     "-fno-use-cxa-atexit",
-    "-fno-threadsafe-statics"
+    "-fno-threadsafe-statics",
+    "-DENABLE_CLOUDVARS"
   ],
   "groups": [
     {

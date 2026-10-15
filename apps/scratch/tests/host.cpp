@@ -26,6 +26,7 @@ static int noTouch(int*,int*){return 0;}
 static int noKey(pax_keyboard_event_t*){return 0;}
 extern int pax_host_run();
 void testEditor();
+void testCloud();
 static std::string rowPngFixture(int w,int h,int channels,int solid=0,bool badAdler=false) {
  std::vector<unsigned char> raw;std::vector<unsigned char> previous(w*channels),row(w*channels);
  auto paeth=[](int a,int b,int c){int p=a+b-c,pa=abs(p-a),pb=abs(p-b),pc=abs(p-c);return pa<=pb&&pa<=pc?a:pb<=pc?b:c;};
@@ -60,6 +61,7 @@ int main(){
  svc.file_seek=[](void*f,long n,int whence){return fseek((FILE*)f,n,whence);};
  svc.file_read=[](void*b,size_t n,size_t c,void*f){return fread(b,n,c,(FILE*)f);};
  pax_svc=&svc;
+ testCloud();
  { Sprite stage;auto previous=Scratch::stageSprite;Scratch::stageSprite=&stage;
    auto &list=stage.lists["clear-test"];list.id="clear-test";list.name="test";
    Block block;block.fields.push_back({"LIST",ParsedField{"test","clear-test"}});block.fieldMap["LIST"]=&block.fields.back().second;

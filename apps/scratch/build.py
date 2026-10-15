@@ -19,7 +19,7 @@ units.append(root/'core/source/runtime/time.cpp') if root/'core/source/runtime/t
 # Vorbis implementation is a distinct translation unit.
 units.append(root/'port/vorbis.c') if root/'port/vorbis.c' not in units else None
 includes=['-I'+str(root/p) for p in paths]+['-I'+str(workspace/'pax-esphome/components/pax_loader')]
-flags=['-Os','-ffunction-sections','-fdata-sections','-fno-tree-loop-distribute-patterns','-DRENDERER_HEADLESS','-DENABLE_BITMAP','-DENABLE_SVG','-DENABLE_AUDIO','-DSTBI_NO_THREAD_LOCALS','-DJSON_NOEXCEPTION','-DMINIZ_NO_TIME','-DLUNASVG_BUILD_STATIC','-DPLUTOVG_BUILD_STATIC','-DLUNASVG_DISABLE_LOAD_SYSTEM_FONTS','-DLUNASVG_DISABLE_EXTERNAL_RESOURCES','-DPLUTOVG_DISABLE_FONT_FACE_CACHE_LOAD','-DPAX_APP_SIDE=1']
+flags=['-Os','-ffunction-sections','-fdata-sections','-fno-tree-loop-distribute-patterns','-DRENDERER_HEADLESS','-DENABLE_BITMAP','-DENABLE_SVG','-DENABLE_AUDIO','-DSTBI_NO_THREAD_LOCALS','-DJSON_NOEXCEPTION','-DMINIZ_NO_TIME','-DLUNASVG_BUILD_STATIC','-DPLUTOVG_BUILD_STATIC','-DLUNASVG_DISABLE_LOAD_SYSTEM_FONTS','-DLUNASVG_DISABLE_EXTERNAL_RESOURCES','-DPLUTOVG_DISABLE_FONT_FACE_CACHE_LOAD','-DPAX_APP_SIDE=1','-DENABLE_CLOUDVARS']
 arch=[] if host else ['-march=rv32imafc_zicsr_zifencei','-mabi=ilp32f','-mcmodel=medany','-mno-relax']
 if host:flags+=['-DPAX_HOST_TEST','-g']
 cc='gcc' if host else 'riscv32-esp-elf-gcc';cxx='g++' if host else 'riscv32-esp-elf-g++'
@@ -45,7 +45,9 @@ if host:
  if r.returncode:sys.exit(r.returncode)
  r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(root/'tests/editor.cpp'),'-o',str(out/'editor-test.o')]);
  if r.returncode:sys.exit(r.returncode)
- cmd=[cxx,*objs,str(out/'test.o'),str(out/'editor-test.o'),'-Wl,--gc-sections','-o',str(out/'scratch-test')]
+ r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(root/'tests/cloud.cpp'),'-o',str(out/'cloud-test.o')]);
+ if r.returncode:sys.exit(r.returncode)
+ cmd=[cxx,*objs,str(out/'test.o'),str(out/'editor-test.o'),str(out/'cloud-test.o'),'-Wl,--gc-sections','-o',str(out/'scratch-test')]
 else:
  import importlib.util
  spec=importlib.util.spec_from_file_location('pax_builder',str(workspace/'pax-modules/tools/build_pax.py'));builder=importlib.util.module_from_spec(spec);sys.modules[spec.name]=builder;spec.loader.exec_module(builder)

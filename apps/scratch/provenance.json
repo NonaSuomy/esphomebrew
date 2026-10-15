@@ -13,7 +13,8 @@
       "patches/0008-pax-image-scanlines.patch",
       "patches/0009-pax-audio-errors-and-clock.patch",
       "patches/0010-pax-compact-color-values.patch",
-      "patches/0011-pax-lossless-image-runs.patch"
+      "patches/0011-pax-lossless-image-runs.patch",
+      "patches/0012-pax-cloud-hooks.patch"
     ]
   },
   "lunasvg": {
@@ -61,5 +62,10 @@
     "ref": "2e28f0a8e7b7bd4b85ff3699c7ef9515636a4a04",
     "use": "UI layout/color reference; native rendering is implemented in port/pax_editor_ui.cpp; no browser runtime source vendored",
     "license": "AGPL-3.0 (reference repository)"
+  },
+  "PAX cloud protocol": {
+    "reference": "https://github.com/ScratchEverywhere/mistpp",
+    "reference_commit": "689409429d0cfae13935b81be8bbf83e74bef625",
+    "transport": "native PAX WebSocket over verified TLS; TurboWarp cloud JSON protocol; no curl dependency"
   }
 }
