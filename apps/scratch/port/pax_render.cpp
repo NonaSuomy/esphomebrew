@@ -127,7 +127,7 @@ void pax_blend(int x, int y, int r, int g, int b, int a) {
       blendPixel(xx, yy, r, g, b, a);
 }
 void pax_draw_image(const ImageData &img, const ImageRenderParams &p) {
-    if (!img.pixels || img.width <= 0 || img.height <= 0 || !std::isfinite(p.scale) || p.scale <= 0)
+    if (!img.hasPixels() || img.width <= 0 || img.height <= 0 || !std::isfinite(p.scale) || p.scale <= 0)
         return;
     ImageSubrect sub = p.subrect ? *p.subrect : ImageSubrect{0, 0, img.width, img.height};
     if (sub.w <= 0 || sub.h <= 0)
@@ -151,7 +151,7 @@ void pax_draw_image(const ImageData &img, const ImageRenderParams &p) {
             int sx = sub.x + (p.flip ? sub.w - 1 - (int)u : (int)u), sy = sub.y + (int)v;
             if (sx < 0 || sy < 0 || sx >= img.width || sy >= img.height)
                 continue;
-            const uint8_t *s = (const uint8_t *)img.pixels + sy * img.pitch + sx * 4;
+            const uint8_t *s = img.rowData(sy) + sx * 4;
             int bright = p.brightness * 255 / 100;
             pax_blend(x, y, std::clamp(s[0] + bright, 0, 255), std::clamp(s[1] + bright, 0, 255),
                       std::clamp(s[2] + bright, 0, 255), s[3] * std::clamp(p.opacity, 0.f, 1.f));

@@ -1,0 +1,349 @@
+diff --git a/include/image.hpp b/include/image.hpp
+index 176a6ee..453ad6f 100644
+--- a/include/image.hpp
++++ b/include/image.hpp
+@@ -44,6 +44,11 @@ enum ImageFormat {
+     IMAGE_FORMAT_PAL8,   // used by GL2D (NDS)
+ };
+ 
++#if defined(PAX_APP_SIDE)
++struct PaxImageRows {
++    std::vector<std::shared_ptr<const std::vector<uint8_t>>> rows;
++};
++#endif
+ struct SE_EXPORT ImageData {
+     int width = 0;
+     int height = 0;
+@@ -51,6 +56,22 @@ struct SE_EXPORT ImageData {
+     int pitch = 0;
+     void *pixels = nullptr;
+     float scale = 1.0f;
++#if defined(PAX_APP_SIDE)
++    std::shared_ptr<PaxImageRows> scanlines;
++    int rowOffsetX = 0, rowOffsetY = 0;
++#endif
++    bool hasPixels() const {
++#if defined(PAX_APP_SIDE)
++        if (scanlines) return true;
++#endif
++        return pixels != nullptr;
++    }
++    const uint8_t *rowData(int y) const {
++#if defined(PAX_APP_SIDE)
++        if (scanlines) return scanlines->rows[y + rowOffsetY]->data() + rowOffsetX * 4;
++#endif
++        return static_cast<const uint8_t *>(pixels) + y * pitch;
++    }
+ };
+ 
+ #ifdef ENABLE_SVG
+@@ -101,21 +122,21 @@ class SE_EXPORT Image {
+     }
+ 
+     inline uint8_t getAlphaAt(int x, int y) const {
+-        if (!imgData.pixels || x < 0 || x >= imgData.width || y < 0 || y >= imgData.height)
++        if (!imgData.hasPixels() || x < 0 || x >= imgData.width || y < 0 || y >= imgData.height)
+             return 0;
+         const uint8_t *px =
+-            static_cast<const uint8_t *>(imgData.pixels) + y * imgData.pitch + x * 4;
++            imgData.rowData(y) + x * 4;
+         return px[3];
+     }
+ 
+     // Only valid for IMAGE_FORMAT_RGBA32
+     inline void getColorAt(int x, int y, uint8_t &r, uint8_t &g, uint8_t &b) const {
+-        if (!imgData.pixels || x < 0 || x >= imgData.width || y < 0 || y >= imgData.height) {
++        if (!imgData.hasPixels() || x < 0 || x >= imgData.width || y < 0 || y >= imgData.height) {
+             r = g = b = 0;
+             return;
+         }
+         const uint8_t *px =
+-            static_cast<const uint8_t *>(imgData.pixels) + y * imgData.pitch + x * 4;
++            imgData.rowData(y) + x * 4;
+         r = px[0];
+         g = px[1];
+         b = px[2];
+diff --git a/source/image.cpp b/source/image.cpp
+index 549fa97..566a346 100644
+--- a/source/image.cpp
++++ b/source/image.cpp
+@@ -5,6 +5,9 @@
+ #include <stdexcept>
+ #include <string_view>
+ #include <unzip.hpp>
++#if defined(PAX_APP_SIDE)
++#include "pax_image_rows.hpp"
++#endif
+ #ifdef ENABLE_BITMAP
+ #ifdef __WIIU__
+ #define STBI_NO_THREAD_LOCALS
+@@ -298,6 +301,13 @@ nonstd::expected<unsigned char *, std::string> Image::loadSVGFromMemory(const ch
+     height = std::max(1, (int)(svgDocument->height() * finalScale));
+     imgData.scale = finalScale;
+ 
++#if defined(PAX_APP_SIDE)
++    if (static_cast<size_t>(width) * height * 4 > 256 * 1024) {
++        imgData.scanlines = paxRasterSvgRows(*svgDocument, width, height);
++        imgData.pitch = width * 4;
++        return static_cast<unsigned char *>(nullptr);
++    }
++#endif
+     const size_t pixelsSize = static_cast<size_t>(width) * height * 4;
+     unsigned char *dst = (unsigned char *)malloc(pixelsSize);
+     if (!dst) return nonstd::make_unexpected("Failed to allocate SVG pixels buffer");
+@@ -364,6 +374,16 @@ nonstd::expected<void, std::string> Image::resizeSVG(float scale) {
+     imgData.height = height;
+     imgData.scale = finalScale;
+ 
++#if defined(PAX_APP_SIDE)
++    if (static_cast<size_t>(width) * height * 4 > 256 * 1024) {
++        auto rows = paxRasterSvgRows(*svgDocument, width, height);
++        if (imgData.pixels) free(imgData.pixels);
++        imgData.pixels = nullptr;
++        imgData.scanlines = std::move(rows);
++        imgData.pitch = width * 4;
++        return refreshTexture();
++    }
++#endif
+     const size_t pixelsSize = static_cast<size_t>(width) * height * 4;
+     unsigned char *dst = (unsigned char *)malloc(pixelsSize);
+     if (!dst) return nonstd::make_unexpected("Failed to allocate SVG pixels buffer");
+@@ -423,6 +443,15 @@ unsigned char *Image::resizeRaster(const unsigned char *srcPixels, int srcW, int
+ 
+ nonstd::expected<unsigned char *, std::string> Image::loadRasterFromMemory(const unsigned char *data, size_t size, int &width, int &height, bool bitmapHalfQuality) {
+ #ifdef ENABLE_BITMAP
++#if defined(PAX_APP_SIDE)
++    auto streamed = paxDecodePngRows(data, size, width, height, bitmapHalfQuality);
++    if (!streamed) return nonstd::make_unexpected(streamed.error());
++    if (streamed.value()) {
++        imgData.scanlines = std::move(streamed.value());
++        imgData.pitch = width * 4;
++        return static_cast<unsigned char *>(nullptr);
++    }
++#endif
+     int channels;
+     unsigned char *pixels = stbi_load_from_memory(data, size, &width, &height, &channels, 4);
+     if (!pixels) return nonstd::make_unexpected("Failed to decode raster image");
+@@ -483,7 +512,7 @@ nonstd::expected<void, std::string> Image::init(std::string filePath, bool fromS
+         imgData.pixels = pixels.value();
+     }
+ 
+-    if (!imgData.pixels) return nonstd::make_unexpected("Failed to load image: " + filePath);
++    if (!imgData.hasPixels()) return nonstd::make_unexpected("Failed to load image: " + filePath);
+ 
+     return {};
+ }
+@@ -526,7 +555,7 @@ nonstd::expected<void, std::string> Image::init(std::string filePath, ZipArchive
+         imgData.pixels = pixels.value();
+     }
+ 
+-    if (!imgData.pixels) return nonstd::make_unexpected("Failed to load image from zip: " + filePath);
++    if (!imgData.hasPixels()) return nonstd::make_unexpected("Failed to load image from zip: " + filePath);
+ 
+     return {};
+ }
+@@ -552,11 +581,20 @@ ImageData Image::getPixels(ImageSubrect rect) {
+     if (rect.x + rect.w > imgData.width) rect.w = imgData.width - rect.x;
+     if (rect.y + rect.h > imgData.height) rect.h = imgData.height - rect.y;
+ 
+-    if (rect.w <= 0 || rect.h <= 0 || !imgData.pixels) {
++    if (rect.w <= 0 || rect.h <= 0 || !imgData.hasPixels()) {
+         out.format = IMAGE_FORMAT_NONE;
+         return out;
+     }
+ 
++#if defined(PAX_APP_SIDE)
++    if (imgData.scanlines) {
++        out = imgData;
++        out.rowOffsetX += rect.x; out.rowOffsetY += rect.y;
++        out.width = rect.w; out.height = rect.h;
++        out.format = IMAGE_FORMAT_RGBA32;
++        return out;
++    }
++#endif
+     const int bytesPerPixel = 4;
+     unsigned char *base =
+         static_cast<unsigned char *>(imgData.pixels) +
+diff --git a/source/pax_image_rows.hpp b/source/pax_image_rows.hpp
+new file mode 100644
+index 0000000..f3a289e
+--- /dev/null
++++ b/source/pax_image_rows.hpp
+@@ -0,0 +1,130 @@
++#pragma once
++#include <miniz.h>
++#include <cstring>
++#include <algorithm>
++#include <cstdlib>
++#include <limits>
++
++// Keep the original RGBA samples; identical adjacent rows share immutable data.
++static void paxStoreImageRow(PaxImageRows &image, std::vector<uint8_t> row) {
++    if (!image.rows.empty() && *image.rows.back() == row)
++        image.rows.push_back(image.rows.back());
++    else image.rows.push_back(std::make_shared<std::vector<uint8_t>>(std::move(row)));
++}
++
++static std::shared_ptr<PaxImageRows> paxRasterSvgRows(lunasvg::Document &doc, int width, int height) {
++    auto image = std::make_shared<PaxImageRows>();
++    image->rows.reserve(height);
++    constexpr int bandHeight = 16, guardRows = 4;
++    std::vector<uint8_t> band(static_cast<size_t>(width) * (bandHeight + guardRows * 2) * 4);
++    for (int top = 0; top < height; top += bandHeight) {
++        const int count = std::min(bandHeight, height - top);
++        const int renderTop = std::max(0, top - guardRows);
++        const int renderBottom = std::min(height, top + count + guardRows);
++        lunasvg::Bitmap bitmap(band.data(), width, renderBottom - renderTop, width * 4);
++        bitmap.clear(0);
++        doc.render(bitmap, lunasvg::Matrix(width / doc.width(), 0, 0, height / doc.height(), 0, -renderTop));
++        for (int y = 0; y < count; ++y) {
++            std::vector<uint8_t> row(width * 4);
++            for (int x = 0; x < width; ++x) {
++                auto *src = band.data() + ((y + top - renderTop) * width + x) * 4;
++                auto *dst = row.data() + x * 4;
++#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
++                unsigned a = src[0], r = src[1], g = src[2], b = src[3];
++#else
++                unsigned b = src[0], g = src[1], r = src[2], a = src[3];
++#endif
++                if (a > 0 && a < 255) { r = r * 255 / a; g = g * 255 / a; b = b * 255 / a; }
++                dst[0] = r; dst[1] = g; dst[2] = b; dst[3] = a;
++            }
++            paxStoreImageRow(*image, std::move(row));
++        }
++    }
++    return image;
++}
++
++static uint32_t paxPngU32(const unsigned char *p) {
++    return uint32_t(p[0]) << 24 | uint32_t(p[1]) << 16 | uint32_t(p[2]) << 8 | p[3];
++}
++static uint8_t paxPngPaeth(int a, int b, int c) {
++    const int p = a + b - c, pa = std::abs(p - a), pb = std::abs(p - b), pc = std::abs(p - c);
++    return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
++}
++
++// Stream large noninterlaced 8-bit RGB/RGBA PNGs, rather than asking stb for
++// contiguous inflated and output buffers. Other formats retain the stb path.
++static nonstd::expected<std::shared_ptr<PaxImageRows>, std::string>
++paxDecodePngRows(const unsigned char *data, size_t size, int &width, int &height, bool half) {
++    std::shared_ptr<PaxImageRows> unsupported;
++    const unsigned char signature[] = {137, 80, 78, 71, 13, 10, 26, 10};
++    if (size < 33 || std::memcmp(data, signature, 8) != 0 || std::memcmp(data + 12, "IHDR", 4) != 0)
++        return unsupported;
++    if (paxPngU32(data + 8) != 13) return nonstd::make_unexpected("Invalid PNG header length");
++    const uint32_t w = paxPngU32(data + 16), h = paxPngU32(data + 20);
++    if (w == 0 || h == 0 || w > 16384 || h > 16384)
++        return nonstd::make_unexpected("Invalid PNG dimensions");
++    const int channels = data[25] == 6 ? 4 : data[25] == 2 ? 3 : 0;
++    if (uint64_t(w) * h * 4 <= 256 * 1024 || data[24] != 8 || channels == 0 || data[26] || data[27] || data[28])
++        return unsupported;
++    std::vector<uint8_t> compressed;
++    bool end = false;
++    for (size_t at = 8; at < size;) {
++        if (size - at < 12) return nonstd::make_unexpected("Truncated PNG chunk");
++        const size_t n = paxPngU32(data + at);
++        if (n > size - at - 12) return nonstd::make_unexpected("Invalid PNG chunk length");
++        if (uint32_t(mz_crc32(0, data + at + 4, n + 4)) != paxPngU32(data + at + 8 + n))
++            return nonstd::make_unexpected("PNG chunk CRC mismatch");
++        if (std::memcmp(data + at + 4, "tRNS", 4) == 0) return unsupported;
++        if (std::memcmp(data + at + 4, "IDAT", 4) == 0)
++            compressed.insert(compressed.end(), data + at + 8, data + at + 8 + n);
++        if (std::memcmp(data + at + 4, "IEND", 4) == 0) { end = true; break; }
++        at += n + 12;
++    }
++    if (!end || compressed.empty() || compressed.size() > std::numeric_limits<unsigned int>::max())
++        return nonstd::make_unexpected("Incomplete PNG data");
++    mz_stream stream{};
++    if (mz_inflateInit(&stream) != MZ_OK) return nonstd::make_unexpected("PNG inflater initialization failed");
++    struct EndInflate { mz_stream &s; ~EndInflate() { mz_inflateEnd(&s); } } guard{stream};
++    stream.next_in = compressed.data(); stream.avail_in = compressed.size();
++    width = half ? std::max<uint32_t>(1, w >> 1) : w;
++    height = half ? std::max<uint32_t>(1, h >> 1) : h;
++    auto image = std::make_shared<PaxImageRows>(); image->rows.reserve(height);
++    std::vector<uint8_t> raw(static_cast<size_t>(w) * channels + 1), previous(raw.size() - 1, 0);
++    int status = MZ_OK;
++    for (uint32_t y = 0; y < h; ++y) {
++        stream.next_out = raw.data(); stream.avail_out = raw.size();
++        while (stream.avail_out) {
++            const auto before = stream.total_out;
++            status = mz_inflate(&stream, MZ_NO_FLUSH);
++            if ((status != MZ_OK && status != MZ_STREAM_END) || stream.total_out == before ||
++                (status == MZ_STREAM_END && stream.avail_out))
++                return nonstd::make_unexpected("Truncated or corrupt PNG pixels");
++        }
++        const int filter = raw[0];
++        if (filter > 4) return nonstd::make_unexpected("Invalid PNG row filter");
++        for (size_t x = 0; x < previous.size(); ++x) {
++            const int a = x >= static_cast<size_t>(channels) ? raw[1 + x - channels] : 0;
++            const int b = previous[x], c = x >= static_cast<size_t>(channels) ? previous[x - channels] : 0;
++            const int predicted = filter == 1 ? a : filter == 2 ? b : filter == 3 ? (a + b) / 2 : filter == 4 ? paxPngPaeth(a, b, c) : 0;
++            raw[1 + x] = uint8_t(raw[1 + x] + predicted);
++        }
++        if ((!half || (y % 2 == 0)) && image->rows.size() < static_cast<size_t>(height)) {
++            std::vector<uint8_t> row(width * 4);
++            for (int x = 0; x < width; ++x) {
++                const size_t src = 1 + static_cast<size_t>(half ? x * 2 : x) * channels;
++                row[x * 4] = raw[src]; row[x * 4 + 1] = raw[src + 1]; row[x * 4 + 2] = raw[src + 2];
++                row[x * 4 + 3] = channels == 4 ? raw[src + 3] : 255;
++            }
++            paxStoreImageRow(*image, std::move(row));
++        }
++        std::copy(raw.begin() + 1, raw.end(), previous.begin());
++        if (status == MZ_STREAM_END && y + 1 != h) return nonstd::make_unexpected("PNG ended before final row");
++    }
++    if (status != MZ_STREAM_END) {
++        uint8_t extra; stream.next_out = &extra; stream.avail_out = 1;
++        status = mz_inflate(&stream, MZ_FINISH);
++        if (status != MZ_STREAM_END || stream.avail_out != 1)
++            return nonstd::make_unexpected("PNG pixel length or checksum mismatch");
++    }
++    return image;
++}
+diff --git a/source/runtime/collision.cpp b/source/runtime/collision.cpp
+index 43fe6e3..bf67fe0 100644
+--- a/source/runtime/collision.cpp
++++ b/source/runtime/collision.cpp
+@@ -16,7 +16,7 @@ std::shared_ptr<CollisionMask> collision::generateCollisionMask(Sprite *sprite,
+     }
+ 
+     ImageData imgData = imgFind->second->getPixels();
+-    if (!imgData.pixels) return nullptr;
++    if (!imgData.hasPixels()) return nullptr;
+ 
+     auto mask = std::make_shared<CollisionMask>();
+     mask->width = imgData.width / scaleFactor;
+@@ -35,7 +35,7 @@ std::shared_ptr<CollisionMask> collision::generateCollisionMask(Sprite *sprite,
+ 
+     for (int y = 0; y < (int)mask->height; y++) {
+         for (int x = 0; x < (int)mask->width; x++) {
+-            const uint32_t px = pixels[(y * scaleFactor) * imgData.width + (x * scaleFactor)];
++            const uint32_t px = reinterpret_cast<const uint32_t *>(imgData.rowData(y * scaleFactor))[x * scaleFactor];
+ #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+             const uint8_t alpha = px & 0xFF;
+ #else
+@@ -59,7 +59,7 @@ std::shared_ptr<CollisionMask> collision::generateCollisionMask(Sprite *sprite,
+ 
+     for (int y = 0; y < (int)mask->height; y++) {
+         for (int x = 0; x < (int)mask->width; x++) {
+-            const uint32_t px = pixels[(y * scaleFactor) * imgData.width + (x * scaleFactor)];
++            const uint32_t px = reinterpret_cast<const uint32_t *>(imgData.rowData(y * scaleFactor))[x * scaleFactor];
+ #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+             const uint8_t alpha = px & 0xFF;
+ #else
+diff --git a/source/runtime/runtime.cpp b/source/runtime/runtime.cpp
+index d1608f9..e8f572f 100644
+--- a/source/runtime/runtime.cpp
++++ b/source/runtime/runtime.cpp
+@@ -939,6 +939,11 @@ void Scratch::loadCurrentCostumeImage(Sprite *sprite) {
+             static_cast<size_t>(active->currentCostume) < active->costumes.size())
+             needed.insert(active->costumes[active->currentCostume].fullName);
+     }
++    // Collision masks also retain their image. Discard inactive masks before
++    // evicting bitmaps so old backdrops really release their pixel storage.
++    for (auto *owner : sprites)
++        for (auto &entry : owner->costumes)
++            if (!needed.count(entry.fullName)) entry.collisionMask.reset();
+     for (auto cached = costumeImages.begin(); cached != costumeImages.end();) {
+         if (!needed.count(cached->first)) cached = costumeImages.erase(cached);
+         else ++cached;

@@ -9,7 +9,9 @@
       "patches/0004-pax-list-alignment.patch",
       "patches/0005-pax-stream-targets.patch",
       "patches/0006-pax-asset-memory.patch",
-      "patches/0007-pax-compact-values.patch"
+      "patches/0007-pax-compact-values.patch",
+      "patches/0008-pax-image-scanlines.patch",
+      "patches/0009-pax-audio-errors-and-clock.patch"
     ]
   },
   "lunasvg": {

@@ -1,9 +1,11 @@
 #include "pax_port.h"
+#include <miniz.h>
 #include <runtime.hpp>
 #include <render.hpp>
 #include <unzip.hpp>
 #include <input.hpp>
 #include <audio.hpp>
+#include <audiostack.hpp>
 #include <filesystem>
 #include <chrono>
 #include <thread>
@@ -24,7 +26,21 @@ static int noTouch(int*,int*){return 0;}
 static int noKey(pax_keyboard_event_t*){return 0;}
 extern int pax_host_run();
 void testEditor();
+static std::string rowPngFixture(int w,int h,int channels,bool solid=false,bool badAdler=false) {
+ std::vector<unsigned char> raw;std::vector<unsigned char> previous(w*channels),row(w*channels);
+ auto paeth=[](int a,int b,int c){int p=a+b-c,pa=abs(p-a),pb=abs(p-b),pc=abs(p-c);return pa<=pb&&pa<=pc?a:pb<=pc?b:c;};
+ for(int y=0;y<h;y++){for(int x=0;x<w;x++){row[x*channels]=solid?17:x%256;row[x*channels+1]=solid?31:y%256;row[x*channels+2]=solid?63:(x+y)%256;if(channels==4)row[x*channels+3]=solid?128:(x*3+y)%256;}
+  int filter=y%5;raw.push_back(filter);for(int x=0;x<w*channels;x++){int a=x>=channels?row[x-channels]:0,b=previous[x],c=x>=channels?previous[x-channels]:0;int predicted=filter==1?a:filter==2?b:filter==3?(a+b)/2:filter==4?paeth(a,b,c):0;raw.push_back((unsigned char)(row[x]-predicted));}previous=row;
+ }
+ mz_ulong n=mz_compressBound(raw.size());std::string compressed(n,'\0');assert(mz_compress2((unsigned char*)compressed.data(),&n,raw.data(),raw.size(),6)==MZ_OK);compressed.resize(n);if(badAdler)compressed.back()^=1;
+ auto u32=[](std::string &v,uint32_t x){for(int shift:{24,16,8,0})v.push_back((x>>shift)&255);};
+ std::string out("\x89PNG\r\n\x1a\n",8);
+ auto chunk=[&](const char *type,const std::string &data){u32(out,data.size());size_t at=out.size();out.append(type,4);out+=data;u32(out,mz_crc32(0,(const unsigned char*)out.data()+at,data.size()+4));};
+ std::string header;u32(header,w);u32(header,h);header.push_back(8);header.push_back(channels==4?6:2);header.append(3,'\0');chunk("IHDR",header);
+ chunk("IDAT",compressed.substr(0,compressed.size()/2));chunk("IDAT",compressed.substr(compressed.size()/2));chunk("IEND","");return out;
+}
 int main(){
+ setvbuf(stdout,nullptr,_IONBF,0);
  app_services_t svc{};svc.abi_version=1;svc.log_printf=printf;svc.log_vprintf=vprintf;svc.delay_ms=delay;svc.get_time_us=clockUs;svc.mem_alloc=malloc;svc.mem_calloc=calloc;svc.mem_realloc=realloc;svc.mem_free=free;svc.mem_caps_alloc=[](size_t n,uint32_t)->void*{return malloc(n);};svc.file_stat=statFile;svc.file_mkdir=mkdirFile;svc.input_gamepad_read=pad;svc.touch_read=noTouch;svc.input_keyboard_read=noKey;svc.display_write_frame_custom=frame;svc.display_get_size=[](int*w,int*h){*w=480;*h=360;};svc.audio_init=[](int rate){assert(rate==48000);};svc.audio_submit=submit;
  svc.file_open=[](const char*p,const char*m)->void*{return fopen(p,m);};
  svc.file_close=[](void*f){return fclose((FILE*)f);};
@@ -122,6 +138,13 @@ int main(){
  pax_update_project_clock();assert(BlockExecutor::timer.getTimeMs()>=20);
  BlockExecutor::timer.start();assert(BlockExecutor::timer.getTimeMs()==0);
  puts("PASS Scratch frame clock reset/read and independent wait timers");
+ static int64_t audioNow;static int silenceRemaining;
+ svc.get_time_us=[](){return audioNow;};audioNow=1000000;assert(SoundPlayer::init());silenceRemaining=44100*6;
+ auto silence=new SoundStream("timing-stall",[](SoundStream*,float *out,int count){int n=std::min(count,silenceRemaining);std::fill(out,out+n,0.f);silenceRemaining-=n;return n;},1,44100);Mixer::streams["timing-stall"]=silence;
+ int elapsed=0;while(Mixer::isSoundPlaying("timing-stall")&&elapsed<9000){int advance=elapsed==250||elapsed==2000?1500:10;audioNow+=advance*1000;elapsed+=advance;pax_audio_pump();}
+ assert(elapsed>=5900&&elapsed<=6100);assert(silenceRemaining==0);SoundPlayer::deinit();svc.get_time_us=clockUs;
+ puts("PASS six-second sound remains within 100ms of wall time through 1.5-second interpreter stalls");
+
  // Real Scratch zero-viewport SVGs are valid blank costumes, not failures.
  const std::string blankSvg="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"0\" height=\"0\" viewBox=\"0 0 0 0\"></svg>";
  auto writeSvg=[](const char *name,const std::string &data){auto path=OS::getRomFSLocation()+name;FILE *f=fopen(path.c_str(),"wb");assert(f);fwrite(data.data(),1,data.size(),f);fclose(f);};
@@ -138,6 +161,24 @@ int main(){
  for(int i=0;i<23*17*scale*scale;i++){unsigned a=src[i*4+3],r=src[i*4+2],g=src[i*4+1],b=src[i*4];if(a>0&&a<255){r=r*255/a;g=g*255/a;b=b*255/a;}assert(dst[i*4]==r&&dst[i*4+1]==g&&dst[i*4+2]==b&&dst[i*4+3]==a);}}
  }
  puts("PASS direct SVG rasterization and resize match every reference pixel, including antialiasing and alpha");
+ for(int channels:{3,4}){auto png=rowPngFixture(600,129,channels);writeSvg("pax-rows.png",png);
+  {auto loaded=createImageFromFile("pax-rows.png",false);assert(loaded);auto pixels=loaded.value()->getPixels();assert(pixels.scanlines);assert(pixels.width==600&&pixels.height==129);
+   for(int y=0;y<129;y++)for(int x=0;x<600;x++){auto row=pixels.rowData(y);assert(row[x*4]==x%256&&row[x*4+1]==y%256&&row[x*4+2]==(x+y)%256&&row[x*4+3]==(channels==4?(x*3+y)%256:255));assert(loaded.value()->getAlphaAt(x,y)==row[x*4+3]);}
+   auto sub=loaded.value()->getPixels({17,9,4,5});assert(sub.rowData(2)[0]==17&&sub.rowData(2)[1]==11);
+  }
+  {auto loaded=createImageFromFile("pax-rows.png",false,true);assert(loaded);assert(loaded.value()->getWidth()==300&&loaded.value()->getHeight()==64);auto p=loaded.value()->getPixels();assert(p.rowData(3)[4]==2&&p.rowData(3)[5]==6);}
+  png.back()^=1;writeSvg("pax-bad-crc.png",png);assert(!createImageFromFile("pax-bad-crc.png",false));
+  writeSvg("pax-bad-adler.png",rowPngFixture(600,129,channels,false,true));assert(!createImageFromFile("pax-bad-adler.png",false));
+  png.resize(png.size()-10);writeSvg("pax-truncated.png",png);assert(!createImageFromFile("pax-truncated.png",false));
+ }
+ writeSvg("pax-solid-rows.png",rowPngFixture(960,720,4,true));{auto loaded=createImageFromFile("pax-solid-rows.png",false);assert(loaded);auto p=loaded.value()->getPixels();assert(p.scanlines->rows.front()==p.scanlines->rows.back());assert(p.rowData(719)[3836]==17&&p.rowData(719)[3839]==128);}
+ auto largeSvg=alphaSvg;largeSvg.replace(largeSvg.find("width=\"23\""),10,"width=\"600\"");largeSvg.replace(largeSvg.find("height=\"17\""),11,"height=\"400\"");writeSvg("pax-large.svg",largeSvg);
+ {auto loaded=createImageFromFile("pax-large.svg",false);assert(loaded);auto doc=lunasvg::Document::loadFromData(largeSvg);for(int scale:{1,2}){assert(loaded.value()->resizeSVG(scale));auto ref=doc->renderToBitmap(600*scale,400*scale);auto p=loaded.value()->getPixels();assert(p.scanlines);int maxAlpha=0,maxComposite=0;
+ for(int y=0;y<400*scale;y++)for(int x=0;x<600*scale;x++){auto src=ref.data()+(y*600*scale+x)*4;auto dst=p.rowData(y)+x*4;int a=src[3],r=src[2],g=src[1],b=src[0];if(a>0&&a<255){r=r*255/a;g=g*255/a;b=b*255/a;}maxAlpha=std::max(maxAlpha,abs(int(dst[3])-a));int expected[]={r,g,b};for(int c=0;c<3;c++)for(int bg:{0,255}){int actual=(int(dst[c])*dst[3]+bg*(255-dst[3]))/255;int reference=(expected[c]*a+bg*(255-a))/255;maxComposite=std::max(maxComposite,abs(actual-reference));}}
+ printf("SVG bands scale=%d maximum alpha difference=%d composited channel difference=%d/255\n",scale,maxAlpha,maxComposite);assert(maxAlpha<=2&&maxComposite<=3);}}
+ puts("PASS large PNG scanlines preserve RGB/RGBA, five filters, split IDAT, subrects and half quality; CRC, Adler and truncation are rejected");
+ puts("PASS identical PNG rows share exact pixels; large SVG bands and resize retain antialiasing within bounded rasterizer rounding");
+
 
  assert(Scratch::initializeRuntime());
  Unzip::filePath=OS::getScratchFolderLocation()+"PAX Demo.sb3";assert(Unzip::load());assert(Scratch::sprites.size()==3);assert(!Scratch::sb3InRam);
