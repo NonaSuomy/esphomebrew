@@ -230,7 +230,16 @@ class PaxEmulator {
         trap = null;
         let scheduled = false;
         const started = performance.now();
-        m.check(u._uc_emu_start(m.handle, BigInt(t.pc), 0xffffffffn, 0n, 100000));
+        try {
+          m.check(u._uc_emu_start(m.handle, BigInt(t.pc), 0xffffffffn, 0n, 100000));
+        } catch (error) {
+          try {
+            error.message +=
+                ` (guest PC 0x${m.reg(u.RISCV_REG_PC).toString(16)}, task ${this.current})`;
+          } catch {
+          }
+          throw error;
+        }
         const cpuMs = performance.now() - started;
         this.stats.cpu_ms += cpuMs;
         this.stats.max_cpu_batch_ms = Math.max(this.stats.max_cpu_batch_ms, cpuMs);

@@ -290,6 +290,25 @@ async function startEmulated() {
       module.FS.writeFile(launcher.target, bytes);
     } else {
       const path = '/sd/roms/pax/' + app.name + '.pax';
+      if (app.managed && module.FS.analyzePath(path).exists) {
+        const existing = module.FS.readFile(path);
+        const hash = Array
+                         .from(new Uint8Array(await crypto.subtle.digest('SHA-256', existing)),
+                               value => value.toString(16).padStart(2, '0'))
+                         .join('');
+        if (hash !== app.sha256) {
+          const metadata = await (await fetch('pax-apps/' + app.name + '.json')).json();
+          const installer = new PaxBrowserHost(module, $('canvas'), log);
+          installer.install = {state : 1, done : 0, total : app.size, status : ''};
+          await installer.installApp({
+            ...app,
+            title : metadata.title,
+            version : metadata.version,
+            url : new URL(app.url, location.href).href
+          });
+          log(`Updated managed ${app.name}; previous files preserved in /sd/.pax-backups/`);
+        }
+      }
       if (!module.FS.analyzePath(path).exists) {
         module.FS.writeFile(path, bytes);
         const r = await fetch('pax-apps/' + app.name + '.json');

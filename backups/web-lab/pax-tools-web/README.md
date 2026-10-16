@@ -52,10 +52,12 @@ This checks split HTTP headers and POST bodies, response size/header framing, TL
 
 ## Original binary checks
 
-Unicorn.js 2.1.4 is pinned to Git commit `560284c59c11c8d6c94d537f4354339f069ddcdf`. Its source checkout is `pax-tools/upstream/unicorn-js/`. Staging verifies the npm package integrity and exposes its live WASM heap for bounded memory transfers. The original binary payload and ABI layout remain unchanged.
+Unicorn.js 2.1.4 uses upstream base commit `560284c59c11c8d6c94d537f4354339f069ddcdf` and pinned core `8028ec436f2d9376525352dd38ed9ed6b9f6be10`. Its maintained PAX fork is `pax-tools/upstream/unicorn-js/`. The `pax-helper-temporaries.patch` fix releases paired helper-call temporaries after emitting each call, preventing translated-block temporary-table overflow. The engine is built from the committed fork through `build_emulator.py`, with source, compiler, patch and binary hashes recorded in the ignored cache and published build manifest. The original PAX payload and ABI layout remain unchanged.
 
 ```sh
+python3 pax-tools/web/build_emulator.py --jobs 4
 python3 pax-tools/web/stage_emulator.py
+node pax-tools/web/test_riscv.cjs
 node pax-tools/web/test_emulator.cjs touchtest
 node pax-tools/web/test_emulator.cjs launcher
 # After building launcher_ui with pax-recipe/build-launcher.sh:
@@ -79,4 +81,6 @@ node pax-tools/web/test_emulator.cjs doom
 
 On the development computer, 100 full 960x600 rendering updates took 1439 ms before and 308 ms after. One hundred 48x44 updates took 584 ms before and 2.5 ms after. These service benchmarks include scaling and color conversion; the test checks byte-identical output, fractional scaling, clipping, swapped pixels and direct framebuffer writes. The original Doom boot plus eight frames took 58.2 seconds before and 42.8 seconds after in the recorded runs. Whole-app performance still depends on emulated CPU work and guest timing. Reports include elapsed time, CPU execution time and the largest CPU batch.
 
-The 16-frame generated NES ROM and ZIP tests pass. A longer 120-frame stress run exposes a WASM memory access error in both the previous and optimized runtimes. This remains an unresolved long-session limitation. Results and logs are recorded in `validation/browser-performance.json` at the workspace root.
+The previous npm engine failed a longer NES run because its helper adapter leaked temporary-register slots. The corrected source build passes the ROM-free 180-division regression and a 360-frame River City Ransom run with generated audio. Historic performance results remain in `validation/browser-performance.json`; the fix is recorded in `validation/browser-nes-fix.json` at the workspace root.
+
+The local Web Lab includes the current NES 0.6.1 binary. Its boot manifest marks NES as managed: a different installed copy is replaced with the verified bundled build and preserved under `/sd/.pax-backups/`. ROM files are preserved. The browser ROM selector reads `/sd/roms/nes/`. To test a local ROM without adding it to Git, set `PAX_TEST_ROM` to its filesystem path when running `test_emulator.cjs nes`.

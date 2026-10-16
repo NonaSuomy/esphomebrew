@@ -70,8 +70,12 @@ const canvas = {
   getContext : () => ({
     createImageData : (w, h) => ({data : new Uint8ClampedArray(w * h * 4)}),
     putImageData : image => {
-      if (image.data.some((v, i) => i % 4 !== 3 && v !== 0))
+      if (image.data.some((v, i) => i % 4 !== 3 && v !== 0)) {
         coloredFrames++;
+        if (process.env.PAX_TEST_CAPTURE &&
+            coloredFrames === Number(process.env.PAX_TEST_FRAMES || 3))
+          fs.writeFileSync(process.env.PAX_TEST_CAPTURE, image.data);
+      }
     }
   }),
   addEventListener() {},
@@ -99,8 +103,15 @@ const canvas = {
     };
     global.fetch = async url => new Response(
         String(url).endsWith('.json') ? JSON.stringify({...info, file : 'touchtest.pax'}) : bytes);
+    const old = Buffer.from(bytes);
+    old[old.length - 1] ^= 1;
+    const oldHash = crypto.createHash('sha256').update(old).digest('hex');
+    module.FS.writeFile('/sd/roms/pax/touchtest.pax', old);
     host.install = {state : 1, done : 0, total : bytes.length, status : ''};
     await host.installApp(info);
+    assert.deepEqual(
+        Buffer.from(module.FS.readFile('/sd/.pax-backups/' + oldHash + '/touchtest.pax')), old,
+        'Updating an app must preserve its previous binary');
     assert.deepEqual(Buffer.from(module.FS.readFile('/sd/roms/pax/touchtest.pax')), bytes);
     assert.equal(host.install.state, 2);
     const before = module.FS.readFile('/sd/roms/pax/touchtest.pax');
@@ -116,7 +127,8 @@ const canvas = {
   if (target.startsWith('nes')) {
     name = 'nes';
     module.FS.mkdirTree('/sd/roms/nes');
-    const compressed = target === 'nes-zip', extension = compressed ? 'zip' : 'nes', data = rom();
+    const compressed = target === 'nes-zip', extension = compressed ? 'zip' : 'nes',
+          data = process.env.PAX_TEST_ROM ? fs.readFileSync(process.env.PAX_TEST_ROM) : rom();
     module.FS.writeFile('/sd/roms/nes/test.' + extension, compressed ? zip(data) : data);
     module.FS.writeFile('/sd/roms/pax/nes.rom', '/sd/roms/nes/test.' + extension + '\n');
   }
@@ -160,7 +172,7 @@ const canvas = {
       host.quit = true;
     return result;
   };
-  const u = await require(ROOT + '/pax-dev/web/unicorn_riscv.js')(),
+  const u = await require(process.env.PAX_CPU_JS || ROOT + '/pax-dev/web/unicorn_riscv.js')(),
         fields = JSON.parse(fs.readFileSync(ROOT + '/pax-dev/web/pax-abi.json')),
         cpu = new PaxEmulator(u, fields, host);
   const timeout =
