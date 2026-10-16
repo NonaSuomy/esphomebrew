@@ -34,11 +34,11 @@
   {
     "id": "nano",
     "title": "ESP32-P4-NANO",
-    "subtitle": "HDMI monitor or TV, Ethernet or C6 Wi-Fi",
+    "subtitle": "10.1-inch touchscreen or HDMI, C6 Wi-Fi or Ethernet",
     "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-NANO-details-intro-23027e78f7ed1654d68fc7e5bdc4362a.webp",
     "status": "Untested",
     "experimental": true,
-    "note": "Requires the EBYTE ECA20-MHA1-I (GSV1172), configured for two-lane DSI input, and a correctly wired adapter. The 720p/1080p profiles use Ethernet; the extra Wi-Fi profile requires the C6 interface on your exact PCB. Use a USB keyboard or gamepad. Audio uses the board codec; HDMI audio is not configured. Chip revision: 0/1; production rev3 needs a separate build.",
+    "note": "Select the display fitted to your NANO. The 10.1-inch JD9365/GT911 profile uses onboard C6 Wi-Fi and the panel I2C power controller at 0x45. HDMI profiles require the EBYTE ECA20-MHA1-I (GSV1172) with two-lane input and a correctly wired adapter. HDMI 720p/1080p use Ethernet; nano-wifi uses C6 Wi-Fi. Audio uses the board codec; HDMI audio is not configured. Chip revision: 0/1; production rev3 needs a separate build. All NANO profiles are untested.",
     "profiles": [
       [
         "nano720",
@@ -51,6 +51,10 @@
       [
         "nano-wifi",
         "720p60 with onboard C6 Wi-Fi (experimental)"
+      ],
+      [
+        "nano-lcd101",
+        "10.1-inch touchscreen, 1280 x 800, C6 Wi-Fi (untested)"
       ]
     ],
     "manufacturer": "Waveshare"
