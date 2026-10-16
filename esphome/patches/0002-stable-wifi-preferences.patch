@@ -1,0 +1,17 @@
+diff --git a/esphome/components/wifi/wifi_component.cpp b/esphome/components/wifi/wifi_component.cpp
+index 694e61647..272cb0662 100644
+--- a/esphome/components/wifi/wifi_component.cpp
++++ b/esphome/components/wifi/wifi_component.cpp
+@@ -662,7 +662,12 @@ void WiFiComponent::start() {
+   ESP_LOGCONFIG(TAG, "Starting");
+   this->last_connected_ = millis();
+ 
++  // PAX boards can retain credentials across configuration/version changes.
++#ifdef PAX_WIFI_PREFERENCE_KEY
++  uint32_t hash = PAX_WIFI_PREFERENCE_KEY;
++#else
+   uint32_t hash = this->has_sta() ? App.get_config_version_hash() : 88491487UL;
++#endif
+ 
+   this->pref_ = global_preferences->make_preference<wifi::SavedWifiSettings>(hash, true);
+ #ifdef USE_WIFI_FAST_CONNECT

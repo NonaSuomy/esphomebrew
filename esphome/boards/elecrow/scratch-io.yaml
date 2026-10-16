@@ -1,5 +1,11 @@
 # Elecrow onboard I/O exposed as named PAX channels. Shared I2C bus is owned by aio.yaml.
 # GPIO2/7 are reserved by the hosted radio; see scratch-local-inputs.yaml for non-radio setups.
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [esp32_rmt_led_strip]
+
 sensor:
   - platform: ultrasonic
     trigger_pin: GPIO13
@@ -115,6 +121,7 @@ light:
     bit1_low: 700ns
     reset_low: 300us
     channel_colors: WRGB
+    color_interlock: true
     rmt_symbols: 192
     default_transition_length: 0s
     internal: true
@@ -210,7 +217,7 @@ number:
     initial_value: 0
     restore_value: false
     set_action:
-      - lambda: 'id(scratch_rgbw).turn_on().set_red(x/100.0f).perform();'
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_red(x/100.0f).perform();'
   - platform: template
     id: scratch_led_green_output
     internal: true
@@ -221,7 +228,7 @@ number:
     initial_value: 0
     restore_value: false
     set_action:
-      - lambda: 'id(scratch_rgbw).turn_on().set_green(x/100.0f).perform();'
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_green(x/100.0f).perform();'
   - platform: template
     id: scratch_led_blue_output
     internal: true
@@ -232,7 +239,7 @@ number:
     initial_value: 0
     restore_value: false
     set_action:
-      - lambda: 'id(scratch_rgbw).turn_on().set_blue(x/100.0f).perform();'
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_blue(x/100.0f).perform();'
   - platform: template
     id: scratch_led_white_output
     internal: true
@@ -243,7 +250,7 @@ number:
     initial_value: 0
     restore_value: false
     set_action:
-      - lambda: 'id(scratch_rgbw).turn_on().set_white(x/100.0f).perform();'
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_white(x/100.0f).perform();'
 
 pax_loader:
   ambient_light_sensor: scratch_lux

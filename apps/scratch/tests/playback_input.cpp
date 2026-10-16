@@ -88,7 +88,8 @@ int main(int argc,char **argv){
   // Native speech contents are additionally checked in the exported graph.
   assert(face);
   for(auto name:{"LED","Relay","Servo","Sound","Mic","Display","Camera"}){
-   click(name);run(250);
+   // Check the 500 ms relay while it is still active, allowing for slow frames.
+   click(name);run(50);
    if(present&&(std::string(name)=="Relay"||std::string(name)=="Servo"||std::string(name)=="Mic")){
     assert(val("hw_busy")=="1");click(name);run(50); // repeat must not cancel cleanup
    }

@@ -1,4 +1,11 @@
 # Hardware package; include packages/pax-base.yaml and pax-audio.yaml from the entry point.
+# Retain the preference slot used by the existing Elecrow firmware. Do not tie
+# runtime Wi-Fi credentials to the YAML hash; firmware updates must retain them.
+esphome:
+  platformio_options:
+    build_flags:
+      - -DPAX_WIFI_PREFERENCE_KEY=0x7a054ed1UL
+
 esp_ldo:
   - channel: 3
     voltage: 2.5V

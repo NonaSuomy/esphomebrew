@@ -7,6 +7,10 @@ Generate with: python3 tests/make_hardware_demo.py
 import copy
 import hashlib
 import html
+import io
+import math
+import struct
+import wave
 import json
 from pathlib import Path
 import sys
@@ -176,7 +180,28 @@ def costume(data, name, width, height):
 stage['costumes'] = [costume(svg, 'Hardware dashboard', 480,360)]
 # The request worker lives on Stage, so its sound belongs to Stage too.
 stage['sounds'] = copy.deepcopy(face['sounds'])
-stage['volume'] = 40
+# Original short melody: normalized harmonic tone with soft attack/release.
+rate = 22050
+samples = []
+for frequency, duration in [(523.25,.18),(659.25,.18),(783.99,.18),(1046.50,.32),
+                            (783.99,.16),(659.25,.16),(523.25,.38)]:
+    count = round(rate * duration)
+    for index in range(count):
+        envelope = min(1, index / (rate * .005), (count - 1 - index) / (rate * .025))
+        phase = 2 * math.pi * frequency * index / rate
+        tone = (math.sin(phase) + .2 * math.sin(2 * phase)) / 1.2
+        samples.append(round(19660 * envelope * tone))
+    samples.extend([0] * round(rate * .03))
+buffer = io.BytesIO()
+with wave.open(buffer, 'wb') as wav:
+    wav.setparams((1, 2, rate, 0, 'NONE', 'not compressed'))
+    wav.writeframes(struct.pack('<' + 'h' * len(samples), *samples))
+tune = buffer.getvalue()
+digest = hashlib.md5(tune).hexdigest()
+assets[digest + '.wav'] = tune
+stage['sounds'].append(dict(assetId=digest, name='pax-tune', md5ext=digest+'.wav',
+                            dataFormat='wav', rate=rate, sampleCount=len(samples)))
+stage['volume'] = 85
 
 worker_actions = []
 
@@ -220,10 +245,10 @@ add_button('Servo','3',173,-122,
     [status('Servo: forward 60% for 1 second'),node('paxio_servo',{'VALUE':60}),wait(1),node('paxio_servo',{'VALUE':0}),wait(.3),status('Servo: reverse 60% for 1 second'),node('paxio_servo',{'VALUE':-60}),wait(1),node('paxio_servo',{'VALUE':0}),status('Servo finished; stopped (0%)')],
     'servo','Continuous servo: +60% forward for one second, neutral pause, -60% reverse for one second, then stop at 0%. Levels are speed/direction, not degrees; positional revisions move instead.')
 add_button('Sound','4',-175,-154,
-    [setvar('hw_speaker',read('speaker_enabled')),write('speaker_enabled',1),wait(.25),status('Speaker: playing three beeps'),
-     node('sound_playuntildone',{'SOUND_MENU':node('sound_sounds_menu',fields={'SOUND_MENU':['beep',None]})}),
-     wait(.15),node('sound_playuntildone',{'SOUND_MENU':node('sound_sounds_menu',fields={'SOUND_MENU':['beep',None]})}),wait(.15),node('sound_playuntildone',{'SOUND_MENU':node('sound_sounds_menu',fields={'SOUND_MENU':['beep',None]})}),wait(.4),write('speaker_enabled',var('hw_speaker')),status('Beeps finished; speaker setting restored')],
-    'speaker_enabled','Enable the amplifier, allow startup, play three bundled 440Hz beeps at 40% Scratch volume, allow buffered audio to drain, then restore speaker enable. Master volume must be above zero.')
+    [setvar('hw_speaker',read('speaker_enabled')),write('speaker_enabled',1),wait(.25),status('Speaker: playing PAX tune'),
+     node('sound_playuntildone',{'SOUND_MENU':node('sound_sounds_menu',fields={'SOUND_MENU':['pax-tune',None]})}),
+     wait(.4),write('speaker_enabled',var('hw_speaker')),status('Tune finished; speaker setting restored')],
+    'speaker_enabled','Enable the amplifier, allow startup, play an original short tune at 85% Scratch volume, allow buffered audio to drain, then restore speaker enable. Master volume must be above zero.')
 add_button('Mic','5',-59,-154,
     [setvar('hw_mic',read('microphone_enabled')),node('paxio_microphone',{'VALUE':1}),setvar('hw_page',5),
      status('Microphone: speak or clap for 8 seconds'),wait(8),node('paxio_microphone',{'VALUE':var('hw_mic')}),
