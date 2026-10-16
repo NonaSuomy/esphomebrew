@@ -1,6 +1,8 @@
 #define PAX_APP_SIDE 1
 #include "font.h"
 #include "psram_app.h"
+#include "relay.h"
+#include "relay_http.h"
 #include "rfb.h"
 
 static const app_services_t *svc;
@@ -15,6 +17,14 @@ static int64_t menu_since, two_since, last_input, last_draw;
 static char host[128], port_text[6] = "5900", password[9];
 static const char *status = "Enter your desktop's VNC host and password";
 static unsigned prev_pad;
+static relay_t relay;
+static int relay_active, relay_listener = -1, relay_peer = -1, listen_requested,
+                         relay_requested;
+static uint16_t *relay_pixels;
+static unsigned relay_touch_signature;
+static void relay_session(int request_vnc);
+static void relay_inputs(int x, int y, int touched);
+
 static size_t length(const char *s) {
   size_t n = 0;
   while (s[n])
@@ -104,6 +114,10 @@ static void draw_home(void) {
   fill(0, 0, sw, sh, 0x1084);
   int scale = sw >= 640 ? 2 : 1;
   text(18, 15, "DESKTOP / VNC", scale, 0x8e7f);
+  if (sw >= 640) {
+    button(sw - 302, 6, 140, 34, "LISTEN", selected == 6);
+    button(sw - 154, 6, 140, 34, "VIA RELAY", selected == 7);
+  }
   text(18, sh - 21, status, 1, 0xc618);
   int fh = (sh - 100) / 8;
   if (fh < 27)
@@ -304,9 +318,20 @@ static void activate(int item) {
     save_host();
   if (item == 5)
     quit = 1;
+  if (item == 6)
+    listen_requested = 1;
+  if (item == 7)
+    relay_requested = 1;
   dirty = 1;
 }
 static void home_touch(int x, int y) {
+  if (sw >= 640 && y >= 6 && y < 40) {
+    if (x >= sw - 302 && x < sw - 162)
+      activate(6);
+    else if (x >= sw - 154 && x < sw - 14)
+      activate(7);
+    return;
+  }
   int fh = (sh - 100) / 8;
   if (fh < 27)
     fh = 27;
@@ -375,11 +400,11 @@ static void poll_input(void) {
     menu_since = 0;
   if (!connected && sock < 0) {
     if (pressed & (1u << PAX_INPUT_DOWN)) {
-      selected = (selected + 1) % 6;
+      selected = (selected + 1) % 8;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_UP)) {
-      selected = (selected + 5) % 6;
+      selected = (selected + 7) % 8;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_A))
@@ -388,6 +413,12 @@ static void poll_input(void) {
       quit = 1;
   }
   int x = 0, y = 0, touched = svc->touch_read ? svc->touch_read(&x, &y) : 0;
+  if (relay_active) {
+    relay_inputs(x, y, touched);
+    touch_before = touched;
+    in_input = 0;
+    return;
+  }
   if (connected) {
     pax_touch_point_t points[2];
     int multi = svc->touch_read_points ? svc->touch_read_points(points, 2) : 0;
@@ -452,7 +483,7 @@ static void poll_input(void) {
         if (event.key == 27)
           quit = 1;
         else if (event.key == 9) {
-          selected = (selected + 1) % 6;
+          selected = (selected + 1) % 8;
           dirty = 1;
         } else if (event.key == 13) {
           if (selected < 2) {
@@ -578,6 +609,251 @@ static void session(void) {
   two_since = 0;
   dirty = 1;
 }
+/* The app owns this listener only while relay mode is open. */
+static int relay_receive(void *ctx, void *data, size_t n) {
+  (void)ctx;
+  return svc->net_tcp_recv(relay_peer, data, (int)n);
+}
+static int relay_send(void *ctx, const void *data, size_t n) {
+  (void)ctx;
+  return svc->net_tcp_send(relay_peer, data, (int)n);
+}
+static int64_t relay_now(void *ctx) {
+  (void)ctx;
+  return svc->get_time_us();
+}
+static int relay_yield(void *ctx) {
+  (void)ctx;
+  if (!in_input && svc->get_time_us() - last_input > 8000)
+    poll_input();
+  return quit || back;
+}
+static void relay_audio(void *ctx, const uint8_t *pcm, size_t n,
+                        unsigned channels, unsigned rate) {
+  (void)ctx;
+  static unsigned old_rate;
+  if (!svc->audio_init || !svc->audio_submit)
+    return;
+  if (old_rate != rate) {
+    svc->audio_init((int)rate);
+    old_rate = rate;
+  }
+  short stereo[512];
+  size_t frame = channels * 2;
+  while (n && !quit && !back) {
+    unsigned count = n / frame;
+    if (count > 256)
+      count = 256;
+    for (unsigned i = 0; i < count; i++) {
+      stereo[i * 2] = (int16_t)((unsigned)pcm[i * frame] |
+                                (unsigned)pcm[i * frame + 1] << 8);
+      stereo[i * 2 + 1] = channels == 2
+                              ? (int16_t)((unsigned)pcm[i * frame + 2] |
+                                          (unsigned)pcm[i * frame + 3] << 8)
+                              : stereo[i * 2];
+    }
+    svc->audio_submit(stereo, (int)count);
+    pcm += count * frame;
+    n -= count * frame;
+    relay_yield(0);
+  }
+}
+static void relay_inputs(int x, int y, int touched) {
+  if (relay_peer < 0) {
+    if (svc->input_keyboard_read) {
+      pax_keyboard_event_t event;
+      while (svc->input_keyboard_read(&event))
+        if (event.down && event.key == 27)
+          back = 1;
+    }
+    return;
+  }
+  pax_touch_point_t points[5];
+  int count = svc->touch_read_points ? svc->touch_read_points(points, 5) : 0;
+  if (count < 0)
+    count = 0;
+  if (count > 5)
+    count = 5;
+  if (!count && touched) {
+    points[0] = (pax_touch_point_t){(int16_t)x, (int16_t)y, 0};
+    count = 1;
+  }
+  if (count >= 2) {
+    if (!two_since)
+      two_since = last_input;
+    if (last_input - two_since > 1500000)
+      back = 1;
+  } else
+    two_since = 0;
+  int ids[5], xs[5], ys[5];
+  unsigned signature = 2166136261u;
+  signature = (signature ^ (unsigned)count) * 16777619u;
+  for (int i = 0; i < count; i++) {
+    ids[i] = points[i].id;
+    xs[i] = points[i].x;
+    ys[i] = points[i].y;
+    if (xs[i] < 0)
+      xs[i] = 0;
+    if (ys[i] < 0)
+      ys[i] = 0;
+    if (xs[i] >= sw)
+      xs[i] = sw - 1;
+    if (ys[i] >= sh)
+      ys[i] = sh - 1;
+    signature = (signature ^ (unsigned)ids[i]) * 16777619u;
+    signature = (signature ^ (unsigned)xs[i]) * 16777619u;
+    signature = (signature ^ (unsigned)ys[i]) * 16777619u;
+  }
+  if (relay.input_enabled && signature != relay_touch_signature) {
+    relay_touch_signature = signature;
+    if (relay_touch(&relay, ids, xs, ys, (unsigned)count))
+      back = 1;
+  }
+  if (svc->input_mouse_read) {
+    int dx = 0, dy = 0, buttons = 0;
+    if (svc->input_mouse_read(&dx, &dy, &buttons)) {
+      mouse_buttons = buttons;
+      if (relay_mouse(&relay, dx, dy, 0, (unsigned)buttons))
+        back = 1;
+    }
+  }
+  if (svc->input_mouse_scroll_read) {
+    int wheel = 0;
+    if (svc->input_mouse_scroll_read(&wheel) && wheel)
+      if (relay_mouse(&relay, 0, 0, wheel, (unsigned)mouse_buttons))
+        back = 1;
+  }
+  if (svc->input_keyboard_read) {
+    pax_keyboard_event_t event;
+    int budget = 32;
+    while (budget-- && svc->input_keyboard_read(&event))
+      if (relay_key(&relay, event.key, event.down))
+        back = 1;
+  }
+}
+static void relay_wait_screen(void) {
+  fill(0, 0, sw, sh, 0x1084);
+  text(18, 30, "SVP RELAY / PORT 5000", 2, 0x8e7f);
+  text(18, 80, "WAITING FOR HOME ASSISTANT", sw >= 640 ? 2 : 1, 0xffff);
+  text(18, 125, "Panel address: this ESP32-P4", 1, 0xc618);
+  text(18, 150, "Stream port: 5000", 1, 0xc618);
+  text(18, 180, "Configure the panel in SVP Relay, then send a dashboard", 1,
+       0xc618);
+  text(18, 200, "or request VNC with VIA RELAY on the connection screen.", 1,
+       0xc618);
+  text(18, sh - 42, "Hold MENU 3 s: exit. Shared menu > Desktop: disconnect.",
+       1, 0xc618);
+  text(18, sh - 21, status, 1, 0xffff);
+  svc->display_flush();
+  dirty = 0;
+}
+static int relay_pump(void) {
+  if (quit || back)
+    return 1;
+  poll_input();
+  if (quit || back)
+    return 1;
+  if (relay_peer < 0) {
+    int accepted = svc->net_tcp_accept(relay_listener, 0, 0);
+    if (accepted >= 0) {
+      relay_peer = accepted;
+      relay_io_t io = {0,       relay_receive, relay_send,  allocate,
+                       release, relay_now,     relay_yield, relay_audio};
+      if (relay_open(&relay, io, relay_pixels, (unsigned)sw, (unsigned)sh)) {
+        status = relay.error;
+        svc->net_udp_close(relay_peer);
+        relay_peer = -1;
+        back = 1;
+        return 1;
+      }
+      relay_touch_signature = 0;
+      status = "Relay connected; waiting for picture";
+      dirty = 1;
+      svc->log_printf("[desktop] SVP relay sender connected on port 5000\n");
+    } else if (accepted != -2) {
+      status = "Relay listener failed";
+      back = 1;
+      return 1;
+    }
+  }
+  if (relay_peer >= 0) {
+    if (relay_step(&relay)) {
+      status = relay.error;
+      svc->net_udp_close(relay_peer);
+      relay_peer = -1;
+      relay_close(&relay);
+      dirty = 1;
+    } else if (relay.changed) {
+      dirty = 1;
+      relay.changed = 0;
+    }
+  }
+  if (dirty && svc->get_time_us() - last_draw > 33000) {
+    if (relay_peer >= 0 && relay.frame_ready) {
+      for (size_t i = 0; i < (size_t)sw * sh; i++)
+        screen[i] = relay_pixels[i];
+      relay_draw_cursor(&relay, screen);
+      svc->display_flush();
+      dirty = 0;
+    } else
+      relay_wait_screen();
+    last_draw = svc->get_time_us();
+  }
+  return quit || back;
+}
+static void relay_session(int request_vnc) {
+  listen_requested = relay_requested = 0;
+  back = 0;
+  if (!svc->net_tcp_listen || !svc->net_tcp_accept) {
+    status = "Update PAX firmware: TCP listener services are missing";
+    return;
+  }
+  if (request_vnc && (!host[0] || !port_number())) {
+    status = "Enter the VNC computer host, port and password first";
+    return;
+  }
+  relay_pixels = svc->mem_alloc((size_t)sw * sh * 2);
+  if (!relay_pixels) {
+    status = "Not enough memory for relay picture";
+    return;
+  }
+  zero(relay_pixels, (size_t)sw * sh * 2);
+  relay_listener = svc->net_tcp_listen(RELAY_PORT);
+  if (relay_listener < 0) {
+    svc->mem_free(relay_pixels);
+    relay_pixels = 0;
+    status = "Cannot listen on port 5000 (already in use?)";
+    return;
+  }
+  relay_active = connected = 1;
+  two_since = 0;
+  status = "Relay listener ready";
+  relay_wait_screen();
+  if (request_vnc) {
+    const char *error =
+        relay_start_vnc(svc, host, port_number(), password, relay_pump);
+    zero(password, sizeof password);
+    if (error) {
+      status = error;
+      back = 1;
+    }
+  }
+  while (!relay_pump())
+    svc->delay_ms(2);
+  if (relay_peer >= 0) {
+    svc->net_udp_close(relay_peer);
+    relay_peer = -1;
+  }
+  relay_close(&relay);
+  svc->net_udp_close(relay_listener);
+  relay_listener = -1;
+  svc->mem_free(relay_pixels);
+  relay_pixels = 0;
+  relay_active = connected = 0;
+  back = 0;
+  two_since = 0;
+  dirty = 1;
+}
 static void menu_action(void *context, uint32_t action, int32_t direction) {
   (void)context;
   (void)direction;
@@ -586,19 +862,35 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
     zero(&page, sizeof page);
     copy(page.title, "Desktop", sizeof page.title);
     copy(page.status,
-         connected ? "VNC session connected" : "Desktop connection",
+         relay_active ? "SVP Relay receiver"
+         : connected  ? "VNC session connected"
+                      : "Desktop connection",
          sizeof page.status);
-    page.count = 1;
+    page.count = connected ? 1 : 3;
     page.items[0].action = 1;
     copy(page.items[0].label,
          connected ? "Disconnect desktop" : "Exit desktop app",
          sizeof page.items[0].label);
+    if (!connected) {
+      page.items[1].action = 2;
+      copy(page.items[1].label, "Listen for SVP Relay",
+           sizeof page.items[1].label);
+      page.items[2].action = 3;
+      copy(page.items[2].label, "Connect VNC via relay",
+           sizeof page.items[2].label);
+    }
     svc->game_menu_set_page(&page);
   } else if (action == 1) {
     if (connected)
       back = 1;
     else
       quit = 1;
+    svc->game_menu_close();
+  } else if (action == 2 || action == 3) {
+    if (action == 2)
+      listen_requested = 1;
+    else
+      relay_requested = 1;
     svc->game_menu_close();
   }
 }
@@ -646,6 +938,11 @@ app_entry(const app_services_t *services) {
         copy(port_text, p, sizeof port_text);
       }
       copy(host, arg, sizeof host);
+      if (length(arg) == 5 && arg[0] == 'r' && arg[1] == 'e' && arg[2] == 'l' &&
+          arg[3] == 'a' && arg[4] == 'y') {
+        listen_requested = 1;
+        host[0] = 0;
+      }
     }
   }
   while (!quit) {
@@ -654,6 +951,9 @@ app_entry(const app_services_t *services) {
     poll_input();
     if (connect_requested)
       session();
+    if (listen_requested || relay_requested)
+      relay_session(relay_requested);
+
     svc->delay_ms(10);
   }
   if (svc->game_menu_register)

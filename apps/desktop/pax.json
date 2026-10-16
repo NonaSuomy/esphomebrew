@@ -1,11 +1,13 @@
 {
   "name": "desktop",
-  "title": "Desktop (VNC)",
-  "version": "0.1.0",
-  "description": "View and control a computer desktop over VNC with touch, USB mouse and keyboard.",
+  "title": "Desktop (VNC / SVP Relay)",
+  "version": "0.2.0",
+  "description": "Direct VNC or SVP Relay desktop/dashboard receiver with touch, mouse, keyboard and JPEG decoding.",
   "category": "Tool",
-  "about": "A standalone PAX VNC viewer inspired by the Desktop page in lvgl_media.yaml. Connect to a VNC server using a hostname, port and optional classic VNC password. The desktop fits the panel while preserving its aspect ratio. Supports RFB 3.3/3.7/3.8, RGB565, Raw, CopyRect, Hextile and desktop resizing. Save Host remembers the address on SD, never the password. Use the shared Desktop menu or hold two fingers for 1.5 seconds to disconnect. Hold Menu for 3 seconds to exit. Requires network-enabled PAX firmware. VNC traffic is unencrypted: use a trusted LAN or a VPN. SPICE, audio, clipboard sharing and USB redirection are not included. Hardware validation pending.",
+  "about": "Connect directly to VNC, or choose LISTEN to receive SVP Relay baseline JPEG pictures on TCP port 5000. Compatible with SVP Relay 0.9.42 panel handshakes, cursor shapes/positions, keyboard/mouse/touch input, statistics, probes and PCM dashboard sound. VIA RELAY asks Home Assistant to start a VNC desktop using the computer fields and the URL/token in /sd/roms/desktop/relay.conf. No firmware change is required on current PAX loaders. Configure the panel address and stream port 5000 in SVP Relay. Receiver runs only while this app is open in relay mode. No AVI/video-file receiver, SPICE main/audio/USB channels or USB redirection. Use a trusted LAN; receiver traffic has no authentication or encryption. Hardware validation pending.",
   "controls": [
+    "LISTEN: receive SVP Relay pictures on port 5000",
+    "VIA RELAY: request a relay VNC desktop (relay.conf needed)",
     "Touch keyboard or USB keyboard: enter host and password",
     "Enter: next field / connect; Tab: next control",
     "Touch desktop: left click and drag",
@@ -46,12 +48,17 @@
       "files": [
         "main.c",
         "rfb.c",
-        "vnc_auth.c"
+        "vnc_auth.c",
+        "relay.c",
+        "relay_jpeg.c",
+        "relay_http.c",
+        "jpeg/tjpgd.c"
       ]
     }
   ],
   "install_recipe": "install-recipe.json",
   "ldflags": [
     "-lgcc"
-  ]
+  ],
+  "changelog": "0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client."
 }

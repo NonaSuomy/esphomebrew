@@ -3,9 +3,11 @@
   "app": "desktop",
   "mode": "self-contained",
   "archive_dir": "/sd/roms/desktop/incoming",
-  "folders": ["/sd/roms/desktop/"],
+  "folders": [
+    "/sd/roms/desktop/"
+  ],
   "requires": [],
-  "instructions": "No game data is needed. Start a VNC server on the computer, allow its VNC port through the LAN firewall, then enter the computer's hostname or IPv4 address and VNC port (usually 5900). Select classic VNC password authentication. Set a desktop size near the panel resolution for better speed. Connect the ESP32-P4 to the same network. SPICE-only endpoints are not supported. Use a trusted LAN or VPN: this app's VNC connection is unencrypted. SAVE HOST writes only the address and port to /sd/roms/desktop/connection.txt; the password is never saved. The first eight password characters are used by classic VNC authentication.",
+  "instructions": "No game data is needed. LISTEN opens the SVP Relay JPEG desktop/dashboard receiver on TCP port 5000 while this app is open. In Home Assistant SVP Relay select this ESPHome device, set its reachable panel address, and enter stream port 5000 manually. Audio player is optional for pictures; select a real audio entity only if needed. Dashboard URL is optional. VIA RELAY requests a VNC desktop using the computer host/port/password fields. It needs /sd/roms/desktop/relay.conf with two lines: Home Assistant origin URL (http://host:8123 or certificate-verified https://host), then a Home Assistant long-lived access token. This is not a worker token. Protect this secret file. CONNECT remains direct VNC. SAVE HOST stores only the computer address and port, never the VNC password. Receiver traffic and direct VNC are unencrypted; use a trusted LAN. Full AVI/video playback and SPICE main/audio/USB channels are not supported. See apps/desktop/README.md for details.",
   "media": [],
   "sources": []
 }
