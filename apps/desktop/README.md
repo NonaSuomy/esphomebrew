@@ -1,6 +1,6 @@
 # Desktop: direct VNC and SVP Relay
 
-`desktop.pax` 0.3.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
+`desktop.pax` 0.3.1 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
 itself. **LISTEN** receives SVP Relay desktop/dashboard JPEG pictures on TCP
 port **5000**. **VIA RELAY** asks Home Assistant to start a VNC desktop and feed
 it to that receiver. These modes use the current PAX firmware's service table;
@@ -53,8 +53,10 @@ A displayed HA login page means the relay's browser authentication needs finishi
 
 Keep the app open in relay mode. The TCP listener is not active on the firmware's
 three-button screen or while the app is in direct VNC mode. The receiver accepts
-one sender; if it disconnects, LISTEN waits for another. A sender silent for
-30 seconds is dropped; normal relay heartbeats keep it alive.
+one sender; if it disconnects, LISTEN waits for another. Before its first picture, the sender has up to 30 minutes of silence for the
+relay's initial Chromium installation/startup. After pictures begin, a sender
+silent for 30 seconds is dropped; normal relay heartbeats keep it alive.
+You can leave the receiver or exit the app during either wait.
 
 The relay's video/movie/camera pipeline sends **AVI streams**, which this app
 cannot play. Supported receiver traffic is baseline JPEG desktop/dashboard

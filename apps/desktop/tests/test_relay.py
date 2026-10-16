@@ -139,6 +139,11 @@ class RelayTests(unittest.TestCase):
             self.assertEqual(self.feed(data),-1)
             self.assertTrue(self.lib.test_relay_error(self.state))
     def test_silent_sender_timeout(self):
+        self.lib.test_relay_time(self.state,30000001);self.assertEqual(self.drain(),0)
+        self.lib.test_relay_time(self.state,1800000001);self.assertEqual(self.drain(),-1)
+    def test_streaming_sender_timeout_after_stats_reset(self):
+        self.feed(packet(0x20,x=1)+packet(3,self.jpeg(),w=64,h=48))
+        self.lib.test_relay_time(self.state,1000001);self.assertEqual(self.drain(),0)
         self.lib.test_relay_time(self.state,30000001);self.assertEqual(self.drain(),-1)
     def test_fragmented_headers_payloads_and_backpressure(self):
         data=packet(0x22,x=9)+packet(3,self.jpeg('green'),w=64,h=48)

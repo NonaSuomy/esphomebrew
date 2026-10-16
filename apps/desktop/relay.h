@@ -30,6 +30,7 @@ typedef struct {
   unsigned input_enabled, stats_enabled, frame_ready, changed;
   unsigned cursor_w, cursor_h, hot_x, hot_y, pointer_x, pointer_y;
   unsigned frames, skipped, bytes, audio_bytes, decode_ms;
+  unsigned picture_received;
   unsigned modifiers;
   int64_t last_rx, last_stats;
   const char *error;

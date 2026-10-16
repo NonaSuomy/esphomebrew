@@ -1,7 +1,7 @@
 {
   "name": "desktop",
   "title": "Desktop (VNC / SVP Relay)",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Direct VNC or SVP Relay desktop/dashboard receiver with touch, mouse, keyboard and JPEG decoding.",
   "category": "Tool",
   "about": "Connect directly to VNC, or choose LISTEN to receive SVP Relay baseline JPEG pictures on TCP port 5000. Compatible with SVP Relay 0.9.42 panel handshakes, cursor shapes/positions, keyboard/mouse/touch input, statistics, probes and PCM dashboard sound. VIA RELAY asks Home Assistant to start a VNC desktop using the computer fields and the URL/token in /sd/roms/desktop/relay.conf. No firmware change is required on current PAX loaders. Configure the panel address and stream port 5000 in SVP Relay. Receiver runs only while this app is open in relay mode. No AVI/video-file receiver, SPICE main/audio/USB channels or USB redirection. Use a trusted LAN; receiver traffic has no authentication or encryption. JPEG receiver and network probes validated on ESP32-P4. Dashboard login and speaker output still require deployment validation.",
@@ -62,5 +62,5 @@
   "ldflags": [
     "-lgcc"
   ],
-  "changelog": "0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client."
+  "changelog": "0.3.1: allow Chromium cold startup before the first dashboard picture.\n0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client."
 }

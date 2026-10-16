@@ -124,6 +124,7 @@ static int packet(relay_t *r) {
     }
     r->decode_ms += (unsigned)((r->io.now(r->io.context) - before) / 1000);
     r->frames++;
+    r->picture_received = 1;
     r->frame_ready = 1;
     r->changed = 1;
   } else if (type == 0x21)
@@ -205,7 +206,10 @@ int relay_step(relay_t *r) {
     }
   }
   int64_t now = r->io.now(r->io.context);
-  if (now - r->last_rx > 30000000)
+  /* The relay opens TCP before its first Chromium install/start (up to 30 min).
+   * Once pictures start, its normal heartbeat must keep the connection alive. */
+  int64_t idle_limit = r->picture_received ? 30000000LL : 1800000000LL;
+  if (now - r->last_rx > idle_limit)
     return fail(r, "Relay sender timed out");
   if (r->stats_enabled && now - r->last_stats >= 1000000) {
     uint8_t b[46] = {'M', 11};
