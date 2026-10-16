@@ -34,7 +34,8 @@ for key,file in profiles.items():
   report['profiles'].append({'key':key,'yaml':file,'target':'host','resolved_sha256':digest(c)})
   continue
  # 400 MHz must never be paired with the early P4 silicon target.
- frequency=str(n['esp32'].get('cpu_frequency','360MHz')).upper().replace(' ','')
+ default_clock='400MHz' if n['esp32'].get('engineering_sample') is False else '360MHz'
+ frequency=str(n['esp32'].get('cpu_frequency',default_clock)).upper().replace(' ','')
  if frequency=='400MHZ':
   assert n['esp32'].get('engineering_sample') is False,key
   assert str(n['esp32']['framework']['sdkconfig_options'].get('CONFIG_ESP32P4_REV_MIN_300','n')).lower()=='y',key
