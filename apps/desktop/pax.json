@@ -1,0 +1,57 @@
+{
+  "name": "desktop",
+  "title": "Desktop (VNC)",
+  "version": "0.1.0",
+  "description": "View and control a computer desktop over VNC with touch, USB mouse and keyboard.",
+  "category": "Tool",
+  "about": "A standalone PAX VNC viewer inspired by the Desktop page in lvgl_media.yaml. Connect to a VNC server using a hostname, port and optional classic VNC password. The desktop fits the panel while preserving its aspect ratio. Supports RFB 3.3/3.7/3.8, RGB565, Raw, CopyRect, Hextile and desktop resizing. Save Host remembers the address on SD, never the password. Use the shared Desktop menu or hold two fingers for 1.5 seconds to disconnect. Hold Menu for 3 seconds to exit. Requires network-enabled PAX firmware. VNC traffic is unencrypted: use a trusted LAN or a VPN. SPICE, audio, clipboard sharing and USB redirection are not included. Hardware validation pending.",
+  "controls": [
+    "Touch keyboard or USB keyboard: enter host and password",
+    "Enter: next field / connect; Tab: next control",
+    "Touch desktop: left click and drag",
+    "USB mouse: move, left/right/middle click and scroll",
+    "USB keyboard: send keys to the desktop",
+    "Hold two fingers 1.5 s: disconnect",
+    "Shared menu > Desktop: disconnect",
+    "Hold Menu 3 s: exit to launcher"
+  ],
+  "canvas": true,
+  "publish": false,
+  "dev_build": true,
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
+    "path": "components/psram_app_loader"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "includes": [
+    "local:apps/desktop"
+  ],
+  "cflags": [
+    "-std=c11",
+    "-Os",
+    "-ffreestanding",
+    "-fno-common",
+    "-fno-tree-loop-distribute-patterns",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-Wall",
+    "-Wextra",
+    "-Werror"
+  ],
+  "groups": [
+    {
+      "dir": "local:apps/desktop",
+      "files": [
+        "main.c",
+        "rfb.c",
+        "vnc_auth.c"
+      ]
+    }
+  ],
+  "install_recipe": "install-recipe.json",
+  "ldflags": [
+    "-lgcc"
+  ]
+}

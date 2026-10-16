@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "app": "desktop",
+  "mode": "self-contained",
+  "archive_dir": "/sd/roms/desktop/incoming",
+  "folders": ["/sd/roms/desktop/"],
+  "requires": [],
+  "instructions": "No game data is needed. Start a VNC server on the computer, allow its VNC port through the LAN firewall, then enter the computer's hostname or IPv4 address and VNC port (usually 5900). Select classic VNC password authentication. Set a desktop size near the panel resolution for better speed. Connect the ESP32-P4 to the same network. SPICE-only endpoints are not supported. Use a trusted LAN or VPN: this app's VNC connection is unencrypted. SAVE HOST writes only the address and port to /sd/roms/desktop/connection.txt; the password is never saved. The first eight password characters are used by classic VNC authentication.",
+  "media": [],
+  "sources": []
+}

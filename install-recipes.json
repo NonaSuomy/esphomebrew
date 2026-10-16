@@ -28,6 +28,13 @@
     "requirements": 5
   },
   {
+    "app": "desktop",
+    "path": "apps/desktop/install-recipe.json",
+    "mode": "self-contained",
+    "download_choices": 0,
+    "requirements": 0
+  },
+  {
     "app": "doom",
     "path": "apps/doom/install-recipe.json",
     "mode": "download",
