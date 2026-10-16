@@ -179,7 +179,7 @@
     "photo": "https://devices.esphome.io/_astro/guition_jc_esp32_p4_m3_dev.D0zgi97b_Z2hNAYu.webp",
     "status": "Untested",
     "experimental": true,
-    "note": "Select the display attached to your M3. The 10.1-inch JD9365/GT911 option follows the supplied ESP-Tab10.1 example: 270-degree landscape rotation, IP101 Ethernet DHCP, I2C7/8 panel power/backlight at 0x45, SD LDO4 at 2.7 V and speaker amplifier GPIO53. The HDMI option requires an ECA20-MHA1-I bridge and a correctly wired adapter, and uses C6 Wi-Fi. The touchscreen image uses the reference 400 MHz setting, which ESPHome flags as experimental and may fail to boot on early chips. Check the exact board wiring before installing. USB Serial/JTAG programming. Chip revision: 0/1; production rev3 needs a separate build. All M3 variants are untested.",
+    "note": "Select the display attached to your M3. The 10.1-inch JD9365/GT911 option follows the supplied ESP-Tab10.1 example: 270-degree landscape rotation, IP101 Ethernet DHCP, I2C7/8 panel power/backlight at 0x45, SD LDO4 at 2.7 V and speaker amplifier GPIO53. The HDMI option requires an ECA20-MHA1-I bridge and a correctly wired adapter, and uses C6 Wi-Fi. The early revision 0/1 touchscreen image runs at 360 MHz. 400 MHz requires revision 3.0/X and a separate firmware target. Check the exact board wiring before installing. USB Serial/JTAG programming. Chip revision: 0/1; production rev3 needs a separate build. All M3 variants are untested.",
     "profiles": [
       [
         "m3-hdmi720",
