@@ -14,5 +14,6 @@
   "m3-hdmi720": "esp32-p4-m3-hdmi720-pax-web.yaml",
   "espressif-ev": "esp32-p4-espressif-ev-pax-web.yaml",
   "olimex": "esp32-p4-olimex-pax-web.yaml",
-  "firebeetle2": "esp32-p4-firebeetle2-pax-web.yaml"
+  "firebeetle2": "esp32-p4-firebeetle2-pax-web.yaml",
+  "nano-lcd101": "esp32-p4-nano-lcd101-pax-web.yaml"
 }

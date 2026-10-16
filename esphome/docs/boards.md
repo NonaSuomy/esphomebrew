@@ -73,3 +73,21 @@ Source references and immutable Git revisions: [board-sources.json](../board-sou
 | DFRobot | firebeetle2 | FireBeetle2 ESP32-P4 DFR1172 + ECA20-MHA1-I HDMI720p60, Wi-Fi | No speaker output; PDM microphone omitted; active-low SD power45; powered USB hub |
 
 See [manufacturer pinouts](pinouts.md) for signals, source schematics, connector scope and silicon revisions. These combinations are experimental and require hardware testing. Bare-board DSI outputs do not imply support for every compatible FPC display; select exact panel or bridge timings.
+
+## NANO display variants
+
+Select **Waveshare > ESP32-P4-NANO**, then choose the display profile. The **10.1-inch touchscreen, 1280 x 800, C6 Wi-Fi** option joins the existing HDMI profiles. All NANO variants remain **untested** on hardware. This profile targets early chip revisions 0/1; revision 3 requires a separate build.
+
+Build from the workspace root:
+
+```sh
+./pax-tools/build-firmware.sh compile nano-lcd101
+```
+
+Entry point: `esp32-p4-nano-lcd101-pax-web.yaml`. Hardware: `boards/waveshare/nano-lcd101.yaml`. Panel configuration: `displays/nano-lcd101.yaml`. The common PAX base, audio and three-button UI packages are reused.
+
+The supplied JD9365/GT911 screen is native 800 x 1280, displayed in 1280 x 800 landscape. Display power and touch share GPIO7/GPIO8 I2C at 400 kHz. The power controller at 0x45 receives 0x11 then 0x17 at register 0x95; register 0x96 controls brightness. LDO3 supplies DSI at 2.5 V. SD uses slot0; hosted C6 Wi-Fi uses slot1. No HDMI bridge is needed.
+
+This ESPHome tree accepts rotation on `display` rather than `lvgl`. `nano_lcd101_adapter.h` adapts PAX app and overlay transfers for this panel only, leaving other boards unchanged. GT911 swaps axes and mirrors Y for landscape coordinates. The adapter uses an additional PSRAM transfer buffer, up to 2 MB at full panel size. Validate all four touch corners, SD, Wi-Fi, brightness and audio on the real unit before marking it tested.
+
+Public installation uses serial Wi-Fi provisioning. After installation, open `http://DEVICE_IP:8080/pax` to install the SD starter. The downloadable flash kit contains the merged factory image, checksum, instructions, source references and SD starter files. Do not flash a NANO image on an Elecrow board.
