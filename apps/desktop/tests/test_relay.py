@@ -86,10 +86,28 @@ class RelayTests(unittest.TestCase):
         ids=(C.c_int*2)(3,4);xs=(C.c_int*2)(12,25);ys=(C.c_int*2)(15,30)
         self.lib.relay_touch(self.state,ids,xs,ys,2);self.drain()
         b=self.output()[before:]
-        self.assertEqual(b[:13],b'K'+struct.pack('<BHHBBIB',255,7,4,0,1,ord('a'),0))
-        self.assertEqual(b[13:26],b'K'+struct.pack('<BHHBBIB',255,7,4,0,0,ord('a'),0))
-        self.assertEqual(b[26:33],b'P'+struct.pack('<hhbB',-5,12,-1,2))
-        self.assertEqual(b[33:],b'T\x02'+struct.pack('<BHHBHH',3,12,15,4,25,30))
+        self.assertEqual(b,
+            b'K'+struct.pack('<BHHBBIB',255,7,4,0,1,ord('a'),0)+
+            b'X'+struct.pack('<I',ord('a'))+
+            b'K'+struct.pack('<BHHBBIB',255,7,4,0,0,ord('a'),0)+
+            b'P'+struct.pack('<hhbB',-5,12,-1,2)+
+            b'T\x02'+struct.pack('<BHHBHH',3,12,15,4,25,30))
+    def test_dashboard_text_and_shortcuts(self):
+        self.feed(packet(0x21,x=1))
+        before=len(self.output())
+        for key in (' ', 'A', '!'):
+            self.lib.relay_key(self.state,ord(key),1)
+            self.lib.relay_key(self.state,ord(key),0)
+        self.drain();b=self.output()[before:]
+        self.assertEqual(len(b),3*31)
+        for index,key in enumerate((' ', 'A', '!')):
+            self.assertEqual(b[index*31+13:index*31+18],b'X'+struct.pack('<I',ord(key)))
+        for modifier in (132,133): # Alt and Ctrl shortcuts must not insert text.
+            self.lib.relay_key(self.state,modifier,1)
+            self.lib.relay_key(self.state,ord('a'),1)
+            self.lib.relay_key(self.state,ord('a'),0)
+            self.lib.relay_key(self.state,modifier,0)
+        self.drain();self.assertEqual(len(self.output())-before-len(b),8*13)
     def test_special_keys_modifiers(self):
         self.feed(packet(0x21,x=1));self.lib.relay_key(self.state,133,1);self.lib.relay_key(self.state,153,1);self.drain()
         b=self.output()[26:]

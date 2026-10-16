@@ -344,7 +344,16 @@ int relay_key(relay_t *r, int key, int down) {
   b[7] = !!down;
   if (key >= 32 && key <= 126)
     put32(b + 8, (unsigned)key);
-  return queue(r, b, sizeof b);
+  if (queue(r, b, sizeof b))
+    return -1;
+  /* Browser dashboards consume X text; VNC consumes K codepoints and ignores X.
+   */
+  if (down && key >= 32 && key <= 126 && !(r->modifiers & (2u | 4u | 8u))) {
+    uint8_t text[5] = {'X', 0, 0, 0, 0};
+    put32(text + 1, (unsigned)key);
+    return queue(r, text, sizeof text);
+  }
+  return 0;
 }
 void relay_draw_cursor(const relay_t *r, uint16_t *canvas) {
   for (unsigned y = 0; y < r->cursor_h; y++)

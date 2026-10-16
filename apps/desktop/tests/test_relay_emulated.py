@@ -33,7 +33,7 @@ async def run(args, temporary):
     encoder={'io':io,'JPEG_QUALITIES':wire.JPEG_QUALITIES}
     exec(compile(ast.Module(body=nodes,type_ignores=[]),'installed desktop_jpeg','exec'),encoder)
     caster=types.SimpleNamespace(desktop_jpeg=encoder['desktop_jpeg'])
-    seen={'keys':[], 'mouse':[], 'touch':[], 'echo':[], 'stats':[], 'requests':[]}
+    seen={'text':[], 'keys':[], 'mouse':[], 'touch':[], 'echo':[], 'stats':[], 'requests':[]}
     errors=[]
     link=None
 
@@ -53,6 +53,7 @@ async def run(args, temporary):
             panel=types.SimpleNamespace(name='PAX desktop',address='127.0.0.1',port=5000,tap_to_stop=False,sample_rate='device')
             link=link_module.PanelLink(panel,lambda _:None,
                 on_key=lambda *values:seen['keys'].append(values),
+                on_text=lambda value:seen['text'].append(value),
                 on_pointer=lambda *values:seen['mouse'].append(values),
                 on_touch=lambda values:seen['touch'].append(values),
                 on_echo=lambda value:seen['echo'].append(value),
@@ -121,6 +122,7 @@ async def run(args, temporary):
         assert len(seen['requests'])==1,seen
         assert 321 in seen['echo'],seen
         assert any(key[5]==ord('a') and key[4] for key in seen['keys']),seen
+        assert 'a' in seen['text'],seen
         assert seen['mouse'] and any(points for points in seen['touch']),seen
         assert seen['stats'],seen
         image=Image.open(out/'screen.ppm')

@@ -22,6 +22,7 @@ static int relay_active, relay_listener = -1, relay_peer = -1, listen_requested,
                          relay_requested;
 static uint16_t *relay_pixels;
 static unsigned relay_touch_signature;
+static int dashboard_mode;
 static void relay_session(int request_vnc);
 static void relay_inputs(int x, int y, int touched);
 
@@ -115,6 +116,7 @@ static void draw_home(void) {
   int scale = sw >= 640 ? 2 : 1;
   text(18, 15, "DESKTOP / VNC", scale, 0x8e7f);
   if (sw >= 640) {
+    button(sw - 450, 6, 140, 34, "DASHBOARD", selected == 8);
     button(sw - 302, 6, 140, 34, "LISTEN", selected == 6);
     button(sw - 154, 6, 140, 34, "VIA RELAY", selected == 7);
   }
@@ -318,15 +320,25 @@ static void activate(int item) {
     save_host();
   if (item == 5)
     quit = 1;
-  if (item == 6)
+  if (item == 6) {
+    dashboard_mode = 0;
     listen_requested = 1;
-  if (item == 7)
+  }
+  if (item == 7) {
+    dashboard_mode = 0;
     relay_requested = 1;
+  }
+  if (item == 8) {
+    dashboard_mode = 1;
+    listen_requested = 1;
+  }
   dirty = 1;
 }
 static void home_touch(int x, int y) {
   if (sw >= 640 && y >= 6 && y < 40) {
-    if (x >= sw - 302 && x < sw - 162)
+    if (x >= sw - 450 && x < sw - 310)
+      activate(8);
+    else if (x >= sw - 302 && x < sw - 162)
       activate(6);
     else if (x >= sw - 154 && x < sw - 14)
       activate(7);
@@ -400,11 +412,11 @@ static void poll_input(void) {
     menu_since = 0;
   if (!connected && sock < 0) {
     if (pressed & (1u << PAX_INPUT_DOWN)) {
-      selected = (selected + 1) % 8;
+      selected = (selected + 1) % 9;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_UP)) {
-      selected = (selected + 7) % 8;
+      selected = (selected + 8) % 9;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_A))
@@ -483,7 +495,7 @@ static void poll_input(void) {
         if (event.key == 27)
           quit = 1;
         else if (event.key == 9) {
-          selected = (selected + 1) % 8;
+          selected = (selected + 1) % 9;
           dirty = 1;
         } else if (event.key == 13) {
           if (selected < 2) {
@@ -733,7 +745,9 @@ static void relay_inputs(int x, int y, int touched) {
 }
 static void relay_wait_screen(void) {
   fill(0, 0, sw, sh, 0x1084);
-  text(18, 30, "SVP RELAY / PORT 5000", 2, 0x8e7f);
+  text(18, 30,
+       dashboard_mode ? "DASHBOARD / PORT 5000" : "SVP RELAY / PORT 5000", 2,
+       0x8e7f);
   text(18, 80, "WAITING FOR HOME ASSISTANT", sw >= 640 ? 2 : 1, 0xffff);
   text(18, 125, "Panel address: this ESP32-P4", 1, 0xc618);
   text(18, 150, "Stream port: 5000", 1, 0xc618);
@@ -741,6 +755,17 @@ static void relay_wait_screen(void) {
        0xc618);
   text(18, 200, "or request VNC with VIA RELAY on the connection screen.", 1,
        0xc618);
+  if (dashboard_mode) {
+    text(18, 240, "SVP Relay > this panel > Configure > Settings", 1, 0x8e7f);
+    text(18, 265, "Set Dashboard shown while nothing plays to your path/URL.",
+         1, 0xc618);
+    text(18, 290, "Example only: /lovelace/0. Save while this screen is open.",
+         1, 0xc618);
+    text(18, 315, "Finish the relay's dashboard-user login setup for HA pages.",
+         1, 0xc618);
+    text(18, 340, "Shared menu > Desktop: Refresh page (F5) / Browser Back.", 1,
+         0xc618);
+  }
   text(18, sh - 42, "Hold MENU 3 s: exit. Shared menu > Desktop: disconnect.",
        1, 0xc618);
   text(18, sh - 21, status, 1, 0xffff);
@@ -866,18 +891,31 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
          : connected  ? "VNC session connected"
                       : "Desktop connection",
          sizeof page.status);
-    page.count = connected ? 1 : 3;
+    page.count = relay_active ? 3 : connected ? 1 : 4;
     page.items[0].action = 1;
     copy(page.items[0].label,
          connected ? "Disconnect desktop" : "Exit desktop app",
          sizeof page.items[0].label);
-    if (!connected) {
+    if (relay_active) {
+      page.items[1].action = 4;
+      copy(page.items[1].label, "Refresh page (F5)",
+           sizeof page.items[1].label);
+      page.items[2].action = 5;
+      copy(page.items[2].label, "Browser Back (Alt+Left)",
+           sizeof page.items[2].label);
+      if (relay_peer < 0 || !relay.input_enabled) {
+        page.items[1].flags = PAX_GAME_MENU_ITEM_DISABLED;
+        page.items[2].flags = PAX_GAME_MENU_ITEM_DISABLED;
+      }
+    } else if (!connected) {
       page.items[1].action = 2;
       copy(page.items[1].label, "Listen for SVP Relay",
            sizeof page.items[1].label);
       page.items[2].action = 3;
       copy(page.items[2].label, "Connect VNC via relay",
            sizeof page.items[2].label);
+      page.items[3].action = 6;
+      copy(page.items[3].label, "Show dashboard", sizeof page.items[3].label);
     }
     svc->game_menu_set_page(&page);
   } else if (action == 1) {
@@ -886,11 +924,29 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
     else
       quit = 1;
     svc->game_menu_close();
-  } else if (action == 2 || action == 3) {
-    if (action == 2)
-      listen_requested = 1;
-    else
+  } else if (action == 2 || action == 3 || action == 6) {
+    dashboard_mode = action == 6;
+    if (action == 3)
       relay_requested = 1;
+    else
+      listen_requested = 1;
+    svc->game_menu_close();
+  } else if ((action == 4 || action == 5) && relay_active && relay_peer >= 0 &&
+             relay.input_enabled) {
+    int error = 0;
+    if (action == 4) {
+      error = relay_key(&relay, 139, 1) || relay_key(&relay, 139, 0);
+    } else {
+      const int alt_held = (relay.modifiers & 4u) != 0;
+      if (!alt_held)
+        error = relay_key(&relay, 132, 1);
+      error |= relay_key(&relay, PAX_KEY_LEFT, 1);
+      error |= relay_key(&relay, PAX_KEY_LEFT, 0);
+      if (!alt_held)
+        error |= relay_key(&relay, 132, 0);
+    }
+    if (error)
+      back = 1;
     svc->game_menu_close();
   }
 }
@@ -938,6 +994,15 @@ app_entry(const app_services_t *services) {
         copy(port_text, p, sizeof port_text);
       }
       copy(host, arg, sizeof host);
+      static const char dashboard_arg[] = "dashboard";
+      unsigned equal = length(arg) == sizeof dashboard_arg - 1;
+      for (unsigned i = 0; equal && i < sizeof dashboard_arg - 1; i++)
+        equal = arg[i] == dashboard_arg[i];
+      if (equal) {
+        dashboard_mode = 1;
+        listen_requested = 1;
+        host[0] = 0;
+      }
       if (length(arg) == 5 && arg[0] == 'r' && arg[1] == 'e' && arg[2] == 'l' &&
           arg[3] == 'a' && arg[4] == 'y') {
         listen_requested = 1;

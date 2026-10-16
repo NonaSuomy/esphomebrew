@@ -1,6 +1,6 @@
 # Desktop: direct VNC and SVP Relay
 
-`desktop.pax` 0.2.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
+`desktop.pax` 0.3.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
 itself. **LISTEN** receives SVP Relay desktop/dashboard JPEG pictures on TCP
 port **5000**. **VIA RELAY** asks Home Assistant to start a VNC desktop and feed
 it to that receiver. These modes use the current PAX firmware's service table;
@@ -19,11 +19,37 @@ no firmware change or new `simple_video_player` component is needed.
    media-player entity if you want the relay to route sound through that entity;
    leave the audio-output selectors empty unless the device actually provides
    the described `audio_router` select. The app does not invent those entities.
-6. A dashboard URL is optional. Set its color scheme explicitly to Light or Dark
-   if the device has no Dashboard theme select. The integration renders a
-   configured dashboard while idle and sends its JPEG pictures to LISTEN mode.
-   A modest pictures-per-second value is useful initially: JPEG decoding here is
-   software, and performance on physical hardware has not been measured.
+6. For the dashboard setup, follow the steps below.
+
+## Show your Home Assistant dashboard
+
+1. Open **DASHBOARD** on the app's connection screen (or shared menu > Desktop >
+   Show dashboard). It opens the same port 5000 receiver as LISTEN and shows setup
+   hints. The app receives a page rendered by the relay; it does not run Chromium.
+2. In Home Assistant, open **Settings > Devices & services > SVP Relay**, configure
+   **ESP32-P4 PAX Quick Launcher**, then choose **Settings**.
+3. Set **Dashboard shown while nothing plays** to `/lovelace/default_view`.
+   For this installation, the full URL is
+   `http://10.42.42.52:8123/lovelace/default_view`.
+4. Start with **Dashboard JPEG quality 60** and **Dashboard pictures per second 1**.
+   Set the color scheme explicitly to Light or Dark if no Dashboard theme select
+   is available. Leave the dashboard browser retention setting at your preference.
+5. Save while the receiver is open. Complete the relay's **dashboard access**
+   setup if prompted: choose an existing Home Assistant user and finish its login.
+   This browser session belongs to the relay, independently of your normal browser.
+   No HA token file is needed on the ESP32 just to receive dashboard pictures.
+6. The relay shows this dashboard when no video, desktop or test is using the
+   panel. If it previously tried while port 5000 was closed, save/reload its entry
+   once the app is listening. A test finishing also resumes the idle dashboard.
+7. Touch to operate cards; use a USB mouse/keyboard as needed. Shared menu >
+   Desktop provides **Refresh page (F5)** and **Browser Back (Alt+Left)** after
+   the relay subscribes to input. Browser typing sends separate text messages.
+
+The relay needs Chromium on its Home Assistant host or configured worker.
+Its README describes automatic Chromium setup for HAOS/container installs and
+system Chromium for other hosts. If the panel stays on its waiting screen after
+saving, check SVP Relay's Home Assistant logs for dashboard login/Chromium errors.
+A displayed HA login page means the relay's browser authentication needs finishing.
 
 Keep the app open in relay mode. The TCP listener is not active on the firmware's
 three-button screen or while the app is in direct VNC mode. The receiver accepts
@@ -71,6 +97,7 @@ the computer host/port; it never saves the VNC password or writes `relay.conf`.
 
 - Connection screen: touch/on-screen keyboard or USB keyboard; Tab moves among
   fields/buttons, Enter advances through the fields then connects directly.
+- **DASHBOARD**: receive the configured idle dashboard, with setup hints.
 - **LISTEN**: receive relay pictures; no HA token is required just to receive.
 - **VIA RELAY**: request a relay VNC desktop using the fields and `relay.conf`.
 - Touch in relay mode: contacts and release go to the relay; VNC turns these into
@@ -82,7 +109,8 @@ the computer host/port; it never saves the VNC password or writes `relay.conf`.
 - Hold Menu 3 s to exit to the launcher. The loader's synthetic Menu+X close
   control is supported too.
 
-An app can open the receiver with `app_open("desktop", "relay", 1)`.
+An app can open the receiver with `app_open("desktop", "relay", 1)` or
+`app_open("desktop", "dashboard", 1)` for dashboard setup mode.
 A `computer.local:5900` launch argument still prefills the direct-VNC fields.
 
 ## Direct VNC
@@ -103,7 +131,7 @@ Wire support includes:
   and a 1 MiB maximum JPEG packet; no firmware ABI changes.
 - JPEG type 3, input subscription 0x21, cursor shape/position 0x23/0x24,
   PCM 0x10, statistics 0x20, echo 0x22, heartbeat and throughput probe fill 0x7E.
-- Touch `T`, keyboard `K`, pointer `P`, echo `R` and statistics `M` responses.
+- Touch `T`, keyboard `K` and browser text `X`, pointer `P`, echo `R` and statistics `M` responses.
 - Bounded parser work, payload/cursor limits, rectangle/JPEG dimension validation,
   partial reads/writes, outgoing backpressure and cancellation during decoding.
 
@@ -117,7 +145,7 @@ unencrypted, so expose it only to a trusted network.
 ## Build and validation
 
 From the PAX workspace, run `./pax-recipe/build-modules.sh desktop`.
-The development build stays `publish: false` pending hardware validation.
+The development build stays `publish: false` while dashboard deployment and speaker validation remain in progress.
 
 From `pax-modules`, run the protocol tests:
 
@@ -129,7 +157,8 @@ The C smoke tests in `tests/` exercise the full direct app, JPEG decode and HTTP
 command path under AddressSanitizer/UndefinedBehaviorSanitizer. Compile with
 `-DPAX_APP_SIDE=1` and `-I ../pax-esphome/components/pax_loader`; the full app uses
 `main.c` via `native_smoke.c` plus `rfb.c`, `vnc_auth.c`, `relay.c`,
-`relay_jpeg.c`, `relay_http.c` and `jpeg/tjpgd.c`. The JPEG smoke accepts a saved
+`relay_jpeg.c`, `relay_http.c` and `jpeg/tjpgd.c`. `tests/dashboard_smoke.c` checks dashboard entry, disconnected controls, F5 and
+Alt+Left (including an already held Alt modifier). The JPEG smoke accepts a saved
 udisp JPEG packet; the HTTP smoke uses mock services and no real credentials.
 In sandbox/ptrace environments, use `ASAN_OPTIONS=detect_leaks=0`; allocation
 cleanup is also checked explicitly.
@@ -148,8 +177,11 @@ not contact your real Home Assistant. PAX's desktop TCP listener binds loopback
 only. The emulator integration tests require permission to open loopback sockets.
 The existing `tests/test_emulated.py` covers direct VNC.
 
-Validated 2026-10-16: 23 protocol tests; sanitized native app, JPEG and HTTP smoke
+Validated 2026-10-16: protocol tests; sanitized native app, JPEG and HTTP smoke
 tests; desktop TCP service tests; compiled RV32 receiver with the installed relay
 encoder/parser (JPEG colors, cursor, keyboard/mouse/touch, echo, statistics and
-API-start ordering). Direct VNC regression tests also pass. Physical ESP32-P4,
-real Home Assistant deployment and speaker performance remain untested.
+API-start ordering). Direct VNC regression tests also pass. Physical ESP32-P4 receives and displays the relay test pictures: 1024x600 at
+about 2.0 fps at quality 60, 1.7 fps at 75 and 1.5 fps at 90; the network probe
+reported 2.1 Mbit/s and 53 ms echo. Red test indicators reflect the relay
+performance thresholds. Real dashboard authentication and speaker performance
+remain deployment checks.
