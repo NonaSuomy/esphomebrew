@@ -1,0 +1,17 @@
+{
+  "name": "PAX jc1060-iwy",
+  "version": "2026.10.16",
+  "new_install_prompt_erase": true,
+  "new_install_improv_wait_time": 60,
+  "builds": [
+    {
+      "chipFamily": "ESP32-P4",
+      "parts": [
+        {
+          "path": "../firmware/pax-jc1060-iwy.factory.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}
