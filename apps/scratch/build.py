@@ -47,7 +47,9 @@ if host:
  if r.returncode:sys.exit(r.returncode)
  r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(root/'tests/cloud.cpp'),'-o',str(out/'cloud-test.o')]);
  if r.returncode:sys.exit(r.returncode)
- cmd=[cxx,*objs,str(out/'test.o'),str(out/'editor-test.o'),str(out/'cloud-test.o'),'-Wl,--gc-sections','-o',str(out/'scratch-test')]
+ r=subprocess.run([cxx,*flags,*includes,'-std=gnu++17','-c',str(root/'tests/picker.cpp'),'-o',str(out/'picker-test.o')]);
+ if r.returncode:sys.exit(r.returncode)
+ cmd=[cxx,*objs,str(out/'test.o'),str(out/'editor-test.o'),str(out/'cloud-test.o'),str(out/'picker-test.o'),'-Wl,--gc-sections','-o',str(out/'scratch-test')]
 else:
  import importlib.util
  spec=importlib.util.spec_from_file_location('pax_builder',str(workspace/'pax-modules/tools/build_pax.py'));builder=importlib.util.module_from_spec(spec);sys.modules[spec.name]=builder;spec.loader.exec_module(builder)

@@ -1,7 +1,7 @@
 {
   "name": "scratch",
   "title": "Scratch Blocks",
-  "version": "0.4.16",
+  "version": "0.4.17",
   "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",

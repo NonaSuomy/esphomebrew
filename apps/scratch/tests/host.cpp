@@ -26,6 +26,7 @@ static int noTouch(int*,int*){return 0;}
 static int noKey(pax_keyboard_event_t*){return 0;}
 extern int pax_host_run();
 void testEditor();
+void testProjectPicker(app_services_t&);
 void testCloud();
 static std::string rowPngFixture(int w,int h,int channels,int solid=0,bool badAdler=false) {
  std::vector<unsigned char> raw;std::vector<unsigned char> previous(w*channels),row(w*channels);
@@ -251,5 +252,6 @@ int main(){
  static int keyStage=0;
  svc.input_keyboard_read=[](pax_keyboard_event_t *e){if(keyStage==0&&frames>=1){*e={PAX_KEY_DOWN,1};keyStage++;return 1;}if(keyStage==1){*e={PAX_KEY_DOWN,0};keyStage++;return 1;}if(keyStage==2&&frames>=2){*e={PAX_KEY_ENTER,1};keyStage++;return 1;}if(keyStage==3){*e={PAX_KEY_ENTER,0};keyStage++;return 1;}return 0;};
  keyboardUiTest=true;frames=0;OS::toExit=false;assert(pax_host_run()==0);assert(Unzip::filePath.find("Z Keyboard Demo.sb3")!=std::string::npos);assert(keyStage==4);puts("PASS keyboard arrows and short Enter tap select the second project");
+ testProjectPicker(svc);
  return 0;
 }

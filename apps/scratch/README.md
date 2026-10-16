@@ -134,3 +134,7 @@ Unrotated opaque/alpha images map horizontal source coordinates once per draw an
 Long immediate/warp block chains yield a resumable interpreter slice after the next 64-block time check exceeds four milliseconds, allowing the main runtime to service input/audio/networking. This bounds chains rather than changing Scratch wait durations or benchmark timing checks. A single expensive block or display transfer can still delay input.
 
 The Elecrow firmware must keep its GPIO25 servo at 50 Hz on LEDC channel 2 (timer 1), with the 30 kHz GPIO20 LCD backlight on channel 0 (timer 0). Automatically allocating adjacent channels 0/1 makes the outputs share a timer and can replace the servo frequency with the backlight frequency. Updating the PAX app alone cannot repair that timer conflict.
+
+## Project picker (0.4.17)
+
+The opening SB3 picker sizes its rows to the canvas (11 rows at 1024x600; eight at 800x480), shows the visible range and total project count, and has a vertical scrollbar. Use the mouse wheel or drag/click the scrollbar to reveal additional files. Clicking a filename edits that exact project; pointer actions take priority over coincident controller confirmation. Arrows retain a visible selection, Enter or Play runs it, and E or Edit edits it. Long filenames use the available screen width before truncating.
