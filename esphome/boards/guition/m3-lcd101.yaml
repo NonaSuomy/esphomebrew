@@ -51,7 +51,7 @@ audio_dac:
 esp32:
   flash_size: 16MB
   engineering_sample: true
-  cpu_frequency: 400MHz
+  cpu_frequency: 360MHz
 
 speaker:
 - platform: i2s_audio

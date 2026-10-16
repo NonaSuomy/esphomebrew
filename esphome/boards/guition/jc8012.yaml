@@ -11,6 +11,8 @@ i2c:
   sda: GPIO07
   scl: GPIO08
   frequency: 400kHz
+  sda_pullup_enabled: false
+  scl_pullup_enabled: false
 i2s_audio:
 - id: i2s_output
   i2s_lrclk_pin: GPIO10
@@ -61,6 +63,7 @@ esp32_hosted:
 esp32:
   flash_size: 16MB
   engineering_sample: true
+  cpu_frequency: 360MHz
 esp_ldo:
 - channel: 3
   voltage: 2.5V
@@ -77,11 +80,14 @@ light:
   id: display_backlight
   internal: true
   restore_mode: ALWAYS_ON
+  gamma_correct: 1.0
+  default_transition_length: 0s
 display:
 - platform: mipi_dsi
   id: main_display
   transform: disabled
   model: JC8012P4A1
+  rotation: 180
   reset_pin: GPIO27
   update_interval: never
   auto_clear_enabled: false
@@ -103,3 +109,7 @@ external_components:
   - gsl3680
 pax_loader:
   touchscreen_id: touch_panel
+
+esphome:
+  platformio_options:
+    board_build.flash_mode: dio

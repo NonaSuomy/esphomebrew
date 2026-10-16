@@ -16,5 +16,6 @@
   "olimex": "esp32-p4-olimex-pax-web.yaml",
   "firebeetle2": "esp32-p4-firebeetle2-pax-web.yaml",
   "nano-lcd101": "esp32-p4-nano-lcd101-pax-web.yaml",
-  "m3-lcd101": "esp32-p4-m3-lcd101-pax-web.yaml"
+  "m3-lcd101": "esp32-p4-m3-lcd101-pax-web.yaml",
+  "jc1060-iwy": "esp32-p4-jc1060-iwy-pax-web.yaml"
 }

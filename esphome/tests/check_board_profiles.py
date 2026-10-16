@@ -33,6 +33,11 @@ for key,file in profiles.items():
   assert n['pax_desktop']['id']=='pax_runtime',key
   report['profiles'].append({'key':key,'yaml':file,'target':'host','resolved_sha256':digest(c)})
   continue
+ # 400 MHz must never be paired with the early P4 silicon target.
+ frequency=str(n['esp32'].get('cpu_frequency','360MHz')).upper().replace(' ','')
+ if frequency=='400MHZ':
+  assert n['esp32'].get('engineering_sample') is False,key
+  assert str(n['esp32']['framework']['sdkconfig_options'].get('CONFIG_ESP32P4_REV_MIN_300','n')).lower()=='y',key
  loader=n['pax_loader'];sd=n['sd_mmc_card']
  assert loader['canvas_width']<=loader['panel_width'] and loader['canvas_height']<=loader['panel_height'],key
  assert sd['id']==loader['sd_mmc_id']=='sd_card',key
@@ -53,6 +58,17 @@ for key,file in profiles.items():
   assert n['touchscreen'][0]['transform']=={'swap_xy':True,'mirror_y':False,'mirror_x':True},key
   assert n['ethernet']['type']=='IP101' and 'esp32_hosted' not in n and 'wifi' not in n,key
   assert n['switch'][0]['pin']['number']=='GPIO53' and n['esp_ldo'][1]['voltage']=='2.7V',key
+ if key in ('jc8012','jc1060','jc1060-iwy'):
+  assert n['light'][0]['gamma_correct']==1.0 and str(n['light'][0]['default_transition_length'])=='0s',key
+ if key=='jc8012':
+  assert n['display'][0]['rotation']==180 and not n['i2c'][0]['sda_pullup_enabled'] and not n['i2c'][0]['scl_pullup_enabled'],key
+ if key=='jc1060-iwy':
+  assert n['display'][0]['reset_pin']=='GPIO0' and n['switch'][0]['pin']['number']=='GPIO11',key
+  assert n['esp_ldo'][1]['voltage']=='2.7V' and n['ethernet']['type']=='IP101' and 'wifi' not in n,key
+  assert 'reset_pin' not in n['touchscreen'][0] and 'interrupt_pin' not in n['touchscreen'][0],key
+  assert 'hsync_pulse_width' not in n['display'][0] and not n['i2c'][0]['sda_pullup_enabled'],key
+ if key=='jc1060':
+  assert n['display'][0]['reset_pin']=='GPIO5' and n['switch'][0]['pin']['number']=='GPIO20',key
  # Every button fits its physical screen and has a usable hit target.
  for widget in n['lvgl']['pages'][0]['widgets']:
   if 'button' in widget:

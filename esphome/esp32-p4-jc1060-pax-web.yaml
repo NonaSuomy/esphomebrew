@@ -28,7 +28,7 @@ esphome:
   name_add_mac_suffix: true
   project:
     name: nonasuomy.pax
-    version: "2026.10.11"
+    version: "2026.10.16"
 
 wifi:
   ap:

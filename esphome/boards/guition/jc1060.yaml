@@ -77,6 +77,8 @@ light:
   id: display_backlight
   internal: true
   restore_mode: ALWAYS_ON
+  gamma_correct: 1.0
+  default_transition_length: 0s
 display:
 - platform: mipi_dsi
   id: main_display
@@ -96,3 +98,6 @@ touchscreen:
   interrupt_pin: GPIO21
 pax_loader:
   touchscreen_id: touch_panel
+
+packages:
+  pax_presentation: !include ../../displays/jc1060-pax-native.yaml
