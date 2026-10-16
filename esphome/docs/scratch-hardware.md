@@ -66,3 +66,9 @@ The local `components/esp32_rmt_led_strip` preserves the user's working `esphome
 Runtime Wi-Fi credentials are stored in flash preferences, **not** in `/sd/roms/pax/settings.json`. ESPHome originally keyed them by the YAML/version hash, causing firmware changes to select a different slot. `patches/0002-stable-wifi-preferences.patch` (apply in `dependencies/esphome`) lets Elecrow pin its existing preference key via `PAX_WIFI_PREFERENCE_KEY=0x7a054ed1UL`. This is the old 0x8ed96a5e configuration hash extended with version `2026.9.0-dev`, preserving the installed firmware's credential slot without copying passwords onto SD. Keep this key stable for future updates. Erasing flash or flashing different partition layouts can still remove preferences.
 
 PAX-Fun-Demo's Sound button plays a bundled original C-major melody at 85% Scratch project volume, with amplifier startup/drain pauses and speaker-enable restoration. It respects the device master volume. Servo and display PWM remain on separate timers.
+
+## Hosted-radio SPI build ordering
+
+On ESP-IDF 6.1, ESP-Hosted SPI transactions using the PSRAM mempool require `SPI_TRANS_DMA_USE_PSRAM` alongside `SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL`. Without it, SPI reports `TX addr&len not align to 1, or not dma_capable`, the hosted transport fails, and `esp_wifi_init` returns `ESP_FAIL` before association or DHCP.
+
+The pre-script alone is insufficient on a managed-component refresh: CMake can replace the hosted source after the script patches it. `tools/idf61_compat.py` registers a pre-compile action on the specific hosted SPI object and makes that object depend on the compatibility script. The source is repaired after refresh and before compilation. `tests/check_hosted_spi_build_hook.py` reproduces this ordering and checks idempotence. Keep the compiled transaction flags at `0x1800` for the configured PSRAM path; a source-only inspection does not establish that the fix is in the image.
