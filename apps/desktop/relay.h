@@ -33,11 +33,22 @@ typedef struct {
   unsigned picture_received;
   unsigned modifiers;
   int64_t last_rx, last_stats;
+  unsigned wire_mode; /* 0 detection, 1 udisp, 2 AVI */
+  unsigned avi_need, avi_depth, avi_streams, avi_current, avi_video, avi_audio;
+  unsigned avi_kind[2], avi_lists[8], avi_movi, avi_retain;
+  unsigned avi_chunk_active, avi_chunk_pad, avi_pad, avi_width, avi_height;
+  unsigned avi_channels, avi_rate, avi_period, avi_started, avi_frame_count;
+  unsigned avi_eof, avi_ending, avi_stop, avi_paused;
+  uint8_t avi_id[4];
+  uint64_t avi_ends[8], avi_offset, avi_samples;
+  int64_t avi_epoch, avi_next, avi_pause_at;
   const char *error;
 } relay_t;
 int relay_open(relay_t *, relay_io_t, uint16_t *, unsigned, unsigned);
 void relay_close(relay_t *);
-int relay_step(relay_t *); /* bounded work; negative on a closed/bad sender */
+int relay_step(relay_t *); /* 0 running, 1 media finished/stopped, -1 error */
+void relay_media_pause(relay_t *, int paused);
+void relay_media_stop(relay_t *);
 int relay_touch(relay_t *, const int *ids, const int *xs, const int *ys,
                 unsigned count);
 int relay_mouse(relay_t *, int dx, int dy, int wheel, unsigned buttons);

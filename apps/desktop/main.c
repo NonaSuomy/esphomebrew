@@ -22,7 +22,7 @@ static int relay_active, relay_listener = -1, relay_peer = -1, listen_requested,
                          relay_requested;
 static uint16_t *relay_pixels;
 static unsigned relay_touch_signature;
-static int dashboard_mode;
+static int dashboard_mode, media_mode, relay_muted;
 static void relay_session(int request_vnc);
 static void relay_inputs(int x, int y, int touched);
 
@@ -115,6 +115,8 @@ static void draw_home(void) {
   fill(0, 0, sw, sh, 0x1084);
   int scale = sw >= 640 ? 2 : 1;
   text(18, 15, "DESKTOP / VNC", scale, 0x8e7f);
+  if (sw >= 800)
+    button(sw - 598, 6, 140, 34, "VIDEO/AUDIO", selected == 9);
   if (sw >= 640) {
     button(sw - 450, 6, 140, 34, "DASHBOARD", selected == 8);
     button(sw - 302, 6, 140, 34, "LISTEN", selected == 6);
@@ -314,6 +316,7 @@ static void save_host(void) {
 }
 static int connect_requested;
 static void activate(int item) {
+  media_mode = item == 9;
   if (item == 3)
     connect_requested = 1;
   if (item == 4)
@@ -328,6 +331,10 @@ static void activate(int item) {
     dashboard_mode = 0;
     relay_requested = 1;
   }
+  if (item == 9) {
+    dashboard_mode = 0;
+    listen_requested = 1;
+  }
   if (item == 8) {
     dashboard_mode = 1;
     listen_requested = 1;
@@ -336,7 +343,9 @@ static void activate(int item) {
 }
 static void home_touch(int x, int y) {
   if (sw >= 640 && y >= 6 && y < 40) {
-    if (x >= sw - 450 && x < sw - 310)
+    if (sw >= 800 && x >= sw - 598 && x < sw - 458)
+      activate(9);
+    else if (x >= sw - 450 && x < sw - 310)
       activate(8);
     else if (x >= sw - 302 && x < sw - 162)
       activate(6);
@@ -412,11 +421,11 @@ static void poll_input(void) {
     menu_since = 0;
   if (!connected && sock < 0) {
     if (pressed & (1u << PAX_INPUT_DOWN)) {
-      selected = (selected + 1) % 9;
+      selected = (selected + 1) % 10;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_UP)) {
-      selected = (selected + 8) % 9;
+      selected = (selected + 9) % 10;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_A))
@@ -495,7 +504,7 @@ static void poll_input(void) {
         if (event.key == 27)
           quit = 1;
         else if (event.key == 9) {
-          selected = (selected + 1) % 9;
+          selected = (selected + 1) % 10;
           dirty = 1;
         } else if (event.key == 13) {
           if (selected < 2) {
@@ -664,6 +673,9 @@ static void relay_audio(void *ctx, const uint8_t *pcm, size_t n,
                                           (unsigned)pcm[i * frame + 3] << 8)
                               : stereo[i * 2];
     }
+    if (relay_muted)
+      for (unsigned i = 0; i < count * 2; i++)
+        stereo[i] = 0;
     svc->audio_submit(stereo, (int)count);
     pcm += count * frame;
     n -= count * frame;
@@ -739,15 +751,26 @@ static void relay_inputs(int x, int y, int touched) {
     pax_keyboard_event_t event;
     int budget = 32;
     while (budget-- && svc->input_keyboard_read(&event))
-      if (relay_key(&relay, event.key, event.down))
+      if (relay.wire_mode == 2) {
+        if (!event.down)
+          continue;
+        if (event.key == ' ')
+          relay_media_pause(&relay, !relay.avi_paused);
+        if (event.key == 27)
+          relay_media_stop(&relay);
+        if (event.key == 'm' || event.key == 'M')
+          relay_muted = !relay_muted;
+      } else if (relay_key(&relay, event.key, event.down))
         back = 1;
   }
 }
 static void relay_wait_screen(void) {
   fill(0, 0, sw, sh, 0x1084);
   text(18, 30,
-       dashboard_mode ? "DASHBOARD / PORT 5000" : "SVP RELAY / PORT 5000", 2,
-       0x8e7f);
+       media_mode       ? "VIDEO / AUDIO / PORT 5000"
+       : dashboard_mode ? "DASHBOARD / PORT 5000"
+                        : "SVP RELAY / PORT 5000",
+       2, 0x8e7f);
   text(18, 80, "WAITING FOR HOME ASSISTANT", sw >= 640 ? 2 : 1, 0xffff);
   text(18, 125, "Panel address: this ESP32-P4", 1, 0xc618);
   text(18, 150, "Stream port: 5000", 1, 0xc618);
@@ -765,6 +788,18 @@ static void relay_wait_screen(void) {
          1, 0xc618);
     text(18, 340, "Shared menu > Desktop: Refresh page (F5) / Browser Back.", 1,
          0xc618);
+  }
+  if (media_mode) {
+    text(18, 240,
+         "Send media to this panel's SVP Relay player in Home Assistant.", 1,
+         0x8e7f);
+    text(18, 265, "Stream: AVI / MJPEG video + 16-bit PCM audio (Auto or PCM).",
+         1, 0xc618);
+    text(18, 290, "Start at 2 video frames/s, JPEG q:v 15 for this connection.",
+         1, 0xc618);
+    text(18, 315, "Shared menu: Pause / Resume, Stop media, Mute / Unmute.", 1,
+         0xc618);
+    text(18, 340, "USB keyboard: Space pause; Esc stop; M mute.", 1, 0xc618);
   }
   text(18, sh - 42, "Hold MENU 3 s: exit. Shared menu > Desktop: disconnect.",
        1, 0xc618);
@@ -866,6 +901,11 @@ static void relay_session(int request_vnc) {
   while (!relay_pump())
     svc->delay_ms(2);
   if (relay_peer >= 0) {
+    if (relay.wire_mode == 2 && !relay.avi_ending) {
+      relay_media_stop(&relay);
+      for (unsigned i = 0; i < 50 && relay_step(&relay) == 0; i++)
+        svc->delay_ms(2);
+    }
     svc->net_udp_close(relay_peer);
     relay_peer = -1;
   }
@@ -891,12 +931,25 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
          : connected  ? "VNC session connected"
                       : "Desktop connection",
          sizeof page.status);
-    page.count = relay_active ? 3 : connected ? 1 : 4;
+    page.count = relay_active ? (relay.wire_mode == 2 ? 4 : 3)
+                 : connected  ? 1
+                              : 5;
     page.items[0].action = 1;
     copy(page.items[0].label,
          connected ? "Disconnect desktop" : "Exit desktop app",
          sizeof page.items[0].label);
-    if (relay_active) {
+    if (relay_active && relay.wire_mode == 2) {
+      page.items[1].action = 8;
+      copy(page.items[1].label,
+           relay.avi_paused ? "Resume media" : "Pause media",
+           sizeof page.items[1].label);
+      page.items[2].action = 9;
+      copy(page.items[2].label, "Stop media (return to dashboard)",
+           sizeof page.items[2].label);
+      page.items[3].action = 10;
+      copy(page.items[3].label, relay_muted ? "Unmute media" : "Mute media",
+           sizeof page.items[3].label);
+    } else if (relay_active) {
       page.items[1].action = 4;
       copy(page.items[1].label, "Refresh page (F5)",
            sizeof page.items[1].label);
@@ -916,6 +969,9 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
            sizeof page.items[2].label);
       page.items[3].action = 6;
       copy(page.items[3].label, "Show dashboard", sizeof page.items[3].label);
+      page.items[4].action = 7;
+      copy(page.items[4].label, "Video / Audio via relay",
+           sizeof page.items[4].label);
     }
     svc->game_menu_set_page(&page);
   } else if (action == 1) {
@@ -924,12 +980,22 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
     else
       quit = 1;
     svc->game_menu_close();
-  } else if (action == 2 || action == 3 || action == 6) {
+  } else if (action == 2 || action == 3 || action == 6 || action == 7) {
     dashboard_mode = action == 6;
+    media_mode = action == 7;
     if (action == 3)
       relay_requested = 1;
     else
       listen_requested = 1;
+    svc->game_menu_close();
+  } else if (action >= 8 && action <= 10 && relay_active && relay_peer >= 0 &&
+             relay.wire_mode == 2) {
+    if (action == 8)
+      relay_media_pause(&relay, !relay.avi_paused);
+    if (action == 9)
+      relay_media_stop(&relay);
+    if (action == 10)
+      relay_muted = !relay_muted;
     svc->game_menu_close();
   } else if ((action == 4 || action == 5) && relay_active && relay_peer >= 0 &&
              relay.input_enabled) {

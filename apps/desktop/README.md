@@ -1,6 +1,6 @@
 # Desktop: direct VNC and SVP Relay
 
-`desktop.pax` 0.3.1 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
+`desktop.pax` 0.4.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
 itself. **LISTEN** receives SVP Relay desktop/dashboard JPEG pictures on TCP
 port **5000**. **VIA RELAY** asks Home Assistant to start a VNC desktop and feed
 it to that receiver. These modes use the current PAX firmware's service table;
@@ -58,10 +58,42 @@ relay's initial Chromium installation/startup. After pictures begin, a sender
 silent for 30 seconds is dropped; normal relay heartbeats keep it alive.
 You can leave the receiver or exit the app during either wait.
 
-The relay's video/movie/camera pipeline sends **AVI streams**, which this app
-cannot play. Supported receiver traffic is baseline JPEG desktop/dashboard
-pictures, cursor packets and dashboard PCM audio, not every SVP Relay media mode.
-The relay's full SPICE main/input/audio/USB channels are also not implemented.
+## Video with sound through SVP Relay
+
+1. Load the updated app, then choose **VIDEO/AUDIO** (shared menu > Desktop >
+   Video / Audio via relay on smaller screens). All relay entry points accept
+   both AVI media and dashboard/desktop JPEG packets on port 5000.
+2. In Home Assistant's SVP Relay settings for this panel, start with **Frames per
+   second 2**, **JPEG quality (ffmpeg -q:v) 15**, and **Sound codec Auto or PCM**.
+   Auto selects PCM from this receiver's advertised codec mask. Keep dashboard
+   quality/fps separate: those settings do not control video playback.
+3. Open the panel's **SVP Relay media player** in Home Assistant and choose video
+   from its media browser, or call `media_player.play_media` for that entity with
+   a reachable video URL and `media_content_type: video/mp4` (use the source's real
+   type). The relay runs ffmpeg, scales/letterboxes the source for the canvas and
+   sends MJPEG video plus PCM sound together. The source need not already be AVI.
+4. Sound embedded in this video plays through the ESP32's PAX speaker services.
+   No separate HA Audio player entity is needed for embedded AVI sound. The HA
+   **Audio player** selector still controls audio-only/announcement routing;
+   this app does not create an ESPHome media-player API entity for those actions.
+5. During AVI playback, shared menu > Desktop offers **Pause/Resume**, **Stop
+   media (return to dashboard)** and **Mute/Unmute**. USB keyboard: **Space**,
+   **Esc**, **M**. Pause stops reading the stream and uses TCP backpressure; sound
+   already queued in the speaker may finish before the pause becomes silent.
+   Use the shared menu's volume control for speaker volume.
+6. Normal completion reports `E 1`; Stop reports `E 0`, then closes the sender
+   connection and keeps the receiver open. The relay can restore the idle
+   dashboard. Disconnect desktop exits the receiver instead.
+
+Supported AVI payloads are baseline MJPEG with 16-bit little-endian PCM, mono or
+stereo at 8–48 kHz, with finite or ffmpeg's endless RIFF/movi headers. PCM is the
+only advertised AVI audio codec: manually forcing MP3/FLAC produces a clear
+unsupported-format error. Parser buffers are bounded; partial reads, odd-byte
+padding, nested LIST bounds, invalid dimensions, truncated EOF and playback
+clocks are checked. Late video pictures may be skipped to catch up with sound.
+Decoding is software: the earlier 1024x600 benchmark measured about 2 fps, so this
+is a low-frame-rate playback option. Full SPICE main/audio/USB channels remain
+unimplemented.
 
 ## Start a VNC desktop through the relay
 
@@ -99,6 +131,7 @@ the computer host/port; it never saves the VNC password or writes `relay.conf`.
 
 - Connection screen: touch/on-screen keyboard or USB keyboard; Tab moves among
   fields/buttons, Enter advances through the fields then connects directly.
+- **VIDEO/AUDIO**: receive relay video and embedded PCM sound.
 - **DASHBOARD**: receive the configured idle dashboard, with setup hints.
 - **LISTEN**: receive relay pictures; no HA token is required just to receive.
 - **VIA RELAY**: request a relay VNC desktop using the fields and `relay.conf`.
@@ -185,5 +218,11 @@ encoder/parser (JPEG colors, cursor, keyboard/mouse/touch, echo, statistics and
 API-start ordering). Direct VNC regression tests also pass. Physical ESP32-P4 receives and displays the relay test pictures: 1024x600 at
 about 2.0 fps at quality 60, 1.7 fps at 75 and 1.5 fps at 90; the network probe
 reported 2.1 Mbit/s and 53 ms echo. Red test indicators reflect the relay
-performance thresholds. Real dashboard authentication and speaker performance
-remain deployment checks.
+performance thresholds. The Home Assistant dashboard was subsequently authenticated and displayed on
+the physical ESP32-P4. AVI video and speaker validation are recorded separately
+when tested; emulator results do not prove physical speaker output.
+
+The `test_avi.py` tests include real ffmpeg AVI pipe output, PCM mono/stereo,
+finite/endless RIFF, pause clocks, explicit stop/completion and malformed streams.
+`test_avi_emulated.py` runs the compiled RV32 app with the installed relay's actual
+`AviSender` and ffmpeg, verifying picture pixels and nonzero PCM submissions.

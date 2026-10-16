@@ -11,11 +11,12 @@ typedef struct {
   unsigned calls, send_calls, blocks, yields, audio_size, audio_rate,
       audio_channels;
   int64_t now;
+  int eof;
 } test_t;
 static int receive(void *ctx, void *out, size_t n) {
   test_t *t = ctx;
-  if (++t->calls % 7 == 0 || t->incoming_used == t->incoming_len)
-    return -2;
+  if (++t->calls % 7 == 0) return -2;
+  if (t->incoming_used == t->incoming_len) return t->eof ? 0 : -2;
   if (n > 37)
     n = 37;
   if (n > t->incoming_len - t->incoming_used)
@@ -110,3 +111,9 @@ unsigned test_relay_audio_size(void *ctx) {
   return ((test_t *)ctx)->audio_size;
 }
 unsigned test_relay_yields(void *ctx) { return ((test_t *)ctx)->yields; }
+
+void test_relay_eof(void *ctx) { ((test_t *)ctx)->eof = 1; }
+void test_relay_pause(void *ctx, int paused) { relay_media_pause(&((test_t *)ctx)->r, paused); }
+void test_relay_stop(void *ctx) { relay_media_stop(&((test_t *)ctx)->r); }
+unsigned test_relay_audio_rate(void *ctx) { return ((test_t *)ctx)->audio_rate; }
+unsigned test_relay_audio_channels(void *ctx) { return ((test_t *)ctx)->audio_channels; }
