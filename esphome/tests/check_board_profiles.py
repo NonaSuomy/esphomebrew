@@ -47,6 +47,12 @@ for key,file in profiles.items():
   assert n['display'][0]['rotation']==90 and loader['panel_width']==1280 and loader['panel_height']==800,key
   assert n['touchscreen'][0]['transform']=={'swap_xy':True,'mirror_y':True},key
   assert n['i2c_device'][0]['address']==0x45 and n['sd_mmc_card']['slot']==0,key
+ if key=='m3-lcd101':
+  assert n['display'][0]['model']=='WAVESHARE-P4-NANO-10.1',key
+  assert n['display'][0]['rotation']==270 and loader['panel_width']==1280 and loader['panel_height']==800,key
+  assert n['touchscreen'][0]['transform']=={'swap_xy':True,'mirror_y':False,'mirror_x':True},key
+  assert n['ethernet']['type']=='IP101' and 'esp32_hosted' not in n and 'wifi' not in n,key
+  assert n['switch'][0]['pin']['number']=='GPIO53' and n['esp_ldo'][1]['voltage']=='2.7V',key
  # Every button fits its physical screen and has a usable hit target.
  for widget in n['lvgl']['pages'][0]['widgets']:
   if 'button' in widget:

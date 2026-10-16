@@ -62,7 +62,8 @@
     "DFRobot FireBeetle 2 is specifically ESP32-P4 SKU DFR1172, not its C5/C6/S3 relatives.",
     "All three profiles use active-low GPIO45 SD power from PMOS gate wiring.",
     "Olimex and FireBeetle HDMI profiles require ECA20-MHA1-I with a board-specific adapter; no onboard audio or HDMI audio.",
-    "NANO 10.1-inch JD9365/GT911: user-supplied configuration 2026-10-16; GPIO7/8 I2C at 400 kHz, panel power/backlight at 0x45 registers 0x95/0x96, LDO3 2.5 V. Existing pinned WAVESHARE-P4-NANO-10.1 model, native 800x1280 rotated to 1280x800. Hardware untested."
+    "NANO 10.1-inch JD9365/GT911: user-supplied configuration 2026-10-16; GPIO7/8 I2C at 400 kHz, panel power/backlight at 0x45 registers 0x95/0x96, LDO3 2.5 V. Existing pinned WAVESHARE-P4-NANO-10.1 model, native 800x1280 rotated to 1280x800. Hardware untested.",
+    "M3 10.1-inch display variant: user-supplied ESP-Tab10.1-Demo YAML 2026-10-16. Native 800x1280 JD9365 rotated 270 degrees, GT911 swap_xy/mirror_x, IP101 Ethernet GPIO31/52/50/51 address1, 16MB DIO flash at 400MHz, LDO3 2.5V and LDO4 2.7V, GPIO53 speaker amplifier. Hardware untested; does not alter the HDMI M3 profile."
   ],
   "documents": [
     {

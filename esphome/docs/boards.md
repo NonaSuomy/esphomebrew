@@ -91,3 +91,17 @@ The supplied JD9365/GT911 screen is native 800 x 1280, displayed in 1280 x 800 l
 This ESPHome tree accepts rotation on `display` rather than `lvgl`. `nano_lcd101_adapter.h` adapts PAX app and overlay transfers for this panel only, leaving other boards unchanged. GT911 swaps axes and mirrors Y for landscape coordinates. The adapter uses an additional PSRAM transfer buffer, up to 2 MB at full panel size. Validate all four touch corners, SD, Wi-Fi, brightness and audio on the real unit before marking it tested.
 
 Public installation uses serial Wi-Fi provisioning. After installation, open `http://DEVICE_IP:8080/pax` to install the SD starter. The downloadable flash kit contains the merged factory image, checksum, instructions, source references and SD starter files. Do not flash a NANO image on an Elecrow board.
+
+## M3 10.1-inch touchscreen variant
+
+Choose **Guition > ESP32-P4-M3-Dev > 10.1-inch touchscreen, 1280 x 800, Ethernet**. This untested variant follows the user-supplied ESP-Tab10.1-Demo wiring. It is separate from the existing M3 HDMI/C6 Wi-Fi profile. Verify your exact PCB against the pins below.
+
+Build from the workspace root with `./pax-tools/build-firmware.sh compile m3-lcd101`. Entry point: `esp32-p4-m3-lcd101-pax-web.yaml`. Hardware: `boards/guition/m3-lcd101.yaml`. Panel: `displays/m3-lcd101.yaml`.
+
+The JD9365 panel is native 800 x 1280 with 270-degree landscape presentation, GT911 axis swap and mirror X. I2C GPIO7/8 at 400 kHz connects the touch controller and 0x45 power/backlight controller. Display setup priority is 790. LDO3 supplies 2.5 V and SD LDO4 supplies 2.7 V. SD retains the existing M3 one-bit GPIO43/44/39 slot0 wiring. IP101 Ethernet uses MDC31, MDIO52, external clock50, power51 and PHY address1. This variant uses Ethernet DHCP, with Wi-Fi disabled, as in the supplied example.
+
+Flash is 16 MB in DIO mode and CPU frequency is 400 MHz, matching the supplied reference. ESPHome flags 400 MHz as experimental and warns that early P4 chips may fail to boot at this frequency; reduce it to 360 MHz if needed during hardware testing. The profile retains the early revision 0/1 target; production revision 3 needs a separate configuration. The public image includes no private API key, OTA password or saved network credentials.
+
+PAX keeps its existing 48 kHz stereo codec/mixer/resampler chain. The speaker amplifier is enabled on GPIO53 for audible app output; the example's ALWAYS_OFF setting would mute it. ES8311 remains at 0x18, with I2S MCLK13, BCLK12, LRCLK10 and DOUT9. GPIO11 is microphone data in the supplied reference and is not used as amplifier control here. Microphone capture and the unused SPI GPIO4/0/1 bus are not enabled by the PAX launcher.
+
+The pinned ESPHome tree does not provide the example's `light: platform: mipi_dsi`. The profile instead uses the established 0x45 I2C power sequence and 0x96 brightness register. `m3_lcd101_adapter.h` rotates app frames and overlays to match LVGL and touch without changing the NANO or HDMI paths. Its transfer buffer uses up to 2 MB of additional PSRAM. Hardware validation must cover all four touch corners, brightness, SD, Ethernet, USB input and audio before this option is marked tested.
