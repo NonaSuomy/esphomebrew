@@ -22,3 +22,33 @@ Apply it from the `pax-esphome` directory of the full PAX source installer.
 The flash kit contains the updated M3 configuration and panel adapter for reference.
 The installer build-info record contains the binary SHA-256 and source revisions.
 Other boards' firmware images are unchanged by this publication.
+
+## Hosted Wi-Fi wiring in this build
+
+Both network interfaces are enabled. Ethernet is preferred, and Wi-Fi remains
+available when the cable is disconnected. Provision Wi-Fi through serial Improv
+or the `PAX Network Setup` fallback access point. The public image contains no
+saved station credentials.
+
+```yaml
+esp32_hosted:
+  active_high: true
+  variant: ESP32C6
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  use_psram: true
+  type: sdio
+  slot: 1
+
+network:
+  priority:
+    - ethernet
+    - wifi
+```
+
+The SD card uses slot 0, separate from the hosted Wi-Fi SDIO slot 1.
