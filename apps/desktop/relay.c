@@ -236,6 +236,9 @@ static int avi_chunk(relay_t *r) {
     if (r->payload_size) {
       if (r->avi_frame_count && now - r->avi_next > (int64_t)r->avi_period) {
         r->skipped++;
+        /* Backpressure can add a fixed delay. Rebase after dropping this frame
+         * so that subsequent pictures do not remain permanently late. */
+        r->avi_next = now;
       } else {
         if (relay_jpeg(
                 r, r->payload, r->payload_size, (r->width - r->avi_width) / 2,

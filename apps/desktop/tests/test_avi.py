@@ -70,6 +70,15 @@ class AviTests(base.RelayTests):
     def test_avi_reject_parent_overflow(self):
         data=bytearray(avi(self.jpeg()));struct.pack_into('<I',data,4,8)
         self.assertEqual(self.feed(bytes(data)),-1)
+    def test_avi_recovers_after_late_frame(self):
+        data=avi(self.jpeg('red'),endless=True)
+        self.assertEqual(self.feed(data),0)
+        self.lib.test_relay_time(self.state,1200000)
+        self.feed(chunk(b'00dc',self.jpeg('blue'))+chunk(b'00dc',self.jpeg('green')))
+        self.assertGreater(self.pixels()[0]>>11,28) # blue was late and dropped
+        self.lib.test_relay_time(self.state,1700000);self.assertEqual(self.drain(),0)
+        self.assertGreater((self.pixels()[0]>>5)&63,25)
+        self.assertLess(self.pixels()[0]>>11,4)
     def test_real_ffmpeg_pipe(self):
         data=subprocess.check_output(['ffmpeg','-hide_banner','-loglevel','error',
             '-f','lavfi','-i','color=c=red:s=64x48:r=2:d=1',

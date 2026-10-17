@@ -226,3 +226,11 @@ The `test_avi.py` tests include real ffmpeg AVI pipe output, PCM mono/stereo,
 finite/endless RIFF, pause clocks, explicit stop/completion and malformed streams.
 `test_avi_emulated.py` runs the compiled RV32 app with the installed relay's actual
 `AviSender` and ffmpeg, verifying picture pixels and nonzero PCM submissions.
+
+Hardware check, 2026-10-16: Home Assistant's SVP Relay fetched a local MP4 test,
+transcoded it to AVI and the ESP32-P4 displayed its MJPEG test picture. Speaker
+logs report 48 kHz stereo, running/unmuted and complete PCM writes. The diagnostic
+audio capture contains the expected 440 Hz tone. Normal completion returned the
+panel to its Home Assistant dashboard. Local speaker audibility remains a user
+check; diagnostic capture proves the PCM path, not the acoustic output. The
+0.4.1 timing fix rebases a late frame's clock so later pictures can recover.
