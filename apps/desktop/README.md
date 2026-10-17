@@ -1,10 +1,44 @@
 # Desktop: direct VNC and SVP Relay
 
-`desktop.pax` 0.5.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
+`desktop.pax` 0.6.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
 itself. **LISTEN** receives SVP Relay desktop/dashboard JPEG pictures on TCP
 port **5000**. **VIA RELAY** asks Home Assistant to start a VNC desktop and feed
 it to that receiver. These modes use the current PAX firmware's service table;
-no firmware change or new `simple_video_player` component is needed.
+no new `simple_video_player` component is needed. The optional on-panel media browser requires the firmware bridge described below.
+
+## Browse and play media on the panel
+
+Choose **MEDIA** on the connection screen or **shared menu > Desktop > Media browser**.
+**HA** lists Home Assistant media sources; tap a folder, then an audio or video file.
+**SD** lists supported files beneath `/sd/media`. **UP**, **LOAD**, **PREV** and
+**NEXT** navigate folders, refresh and change pages. Arrow keys move the selection;
+Enter opens it, Backspace goes up, Escape closes the browser, and the mouse wheel
+scrolls. Gamepad: arrows select/page, A opens, B goes up, X switches HA/SD, Y reloads, Start pauses/resumes, Select stops and L toggles mute. The bitmap font substitutes `?` for non-ASCII
+title characters; file IDs retain their original UTF-8 bytes.
+
+Music keeps the list visible. Video switches to the 512x300 receiver canvas.
+**VIEW/CLOSE** returns to the picture; reopen Media browser through the shared menu.
+The footer offers **PAUSE/RESUME**, **STOP** and **MUTE/UNMUTE**. Its pause/mute
+labels track commands sent from this app; external HA changes are not synchronized.
+
+The bridge uses the existing ESPHome native API connection, with no HA token on SD.
+Add `packages/pax-media-browser.yaml` to the firmware and set
+`pax_media_relay_entity` to the SVP Relay media player and `pax_media_ha_address`
+to Home Assistant's IPv4 address. The private three-button profile includes it.
+The ESPHome integration must allow the device to perform Home Assistant actions.
+Audio-only files need the relay's **Audio player** set to **PAX Audio**, from the
+optional `packages/pax-media-player.yaml` package. Keep the app open while playing
+video or an SD file. The relay performs decoding/transcoding; video performance
+is unchanged from 0.5.0 and still needs optimization.
+
+For SD media, use MP3, FLAC, WAV, MP4/M4V, AVI, MJPEG or MJPG files. The firmware
+exposes only the currently selected file to the configured HA address on TCP 5001,
+using an opaque temporary URL and HTTP range requests. The next selection revokes
+the previous URL. Commands on that port accept loopback connections only. Put
+files in `/sd/media` or its subfolders; other SD directories are excluded.
+Limit each SD folder to 256 media files/subfolders and each file to 2 GiB.
+HA pages contain at most 32 entries; navigation history is limited to 16 folders.
+Picture viewing, playlists, artwork and seek controls are not implemented yet.
 
 ## Configure the panel in SVP Relay
 
@@ -214,7 +248,7 @@ The C smoke tests in `tests/` exercise the full direct app, JPEG decode and HTTP
 command path under AddressSanitizer/UndefinedBehaviorSanitizer. Compile with
 `-DPAX_APP_SIDE=1` and `-I ../pax-esphome/components/pax_loader`; the full app uses
 `main.c` via `native_smoke.c` plus `rfb.c`, `vnc_auth.c`, `relay.c`,
-`relay_jpeg.c`, `relay_http.c` and `jpeg/tjpgd.c`. `tests/dashboard_smoke.c` checks dashboard entry, disconnected controls, F5 and
+`relay_jpeg.c`, `relay_http.c`, `audio_buffer.c`, `media_client.c` and `jpeg/tjpgd.c`. `tests/dashboard_smoke.c` checks dashboard entry, disconnected controls, F5 and
 Alt+Left (including an already held Alt modifier). The JPEG smoke accepts a saved
 udisp JPEG packet; the HTTP smoke uses mock services and no real credentials.
 In sandbox/ptrace environments, use `ASAN_OPTIONS=detect_leaks=0`; allocation
@@ -270,3 +304,5 @@ playback stalls. This is improved low-frame-rate playback; occasional stalls
 and corresponding audio gaps remain. The test used 5 fps, ffmpeg JPEG quality
 15 and mono 16 kHz PCM. Dashboard regression, the compiled real-sender video
 test, 34 protocol tests and firmware configuration validation passed.
+
+`tests/media_client_smoke.c` checks Unicode/truncated JSON, paging bounds, SD sorting/filtering, fragmented HTTP, request escaping and cancellation. The firmware `tests/media_bridge_protocol.cpp` checks HTTP framing, range requests and SD path boundaries.

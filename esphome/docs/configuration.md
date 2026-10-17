@@ -87,3 +87,18 @@ this player does not add an on-panel cover-art interface.
 The earlier quiet tone was not heard by the user. A subsequent spoken FLAC
 announcement through SVP Relay was replayed on 2026-10-17 and the user confirmed
 it was clearly audible. Player state alone does not verify acoustic output.
+
+## Optional on-panel media browser
+
+The Desktop 0.6.0 PAX app can browse Home Assistant media and `/sd/media` through
+`packages/pax-media-browser.yaml`. Set `pax_media_relay_entity` to the SVP Relay
+media player entity and `pax_media_ha_address` to HA's IPv4 address. Enable HA
+actions in the device's existing ESPHome integration. This uses the native API,
+without storing an HA token on SD. The private three-button profile includes it.
+
+The bridge accepts app commands on loopback TCP 5001. The configured HA address
+can fetch only the selected SD file via an opaque expiring URL, with HTTP ranges;
+other remote addresses and remote commands are rejected. Keep media beneath
+`/sd/media`; use subfolders with at most 256 entries and files no larger than
+2 GiB. Music playback needs an Audio player in SVP Relay; the optional PAX Audio
+package provides one. See `apps/desktop/README.md` for browser controls.

@@ -1,6 +1,7 @@
 #define PAX_APP_SIDE 1
 #include "audio_buffer.h"
 #include "font.h"
+#include "media_client.h"
 #include "psram_app.h"
 #include "relay.h"
 #include "relay_http.h"
@@ -26,6 +27,13 @@ static unsigned relay_touch_signature;
 static int dashboard_mode, media_mode, relay_muted;
 static audio_buffer_t audio_buffer;
 static int native_w, native_h;
+static int browser_active, browser_requested, browser_action, browser_busy,
+    browser_cancel;
+static int relay_pump(void);
+static void browser_draw(void);
+static void browser_inputs(unsigned, int, int, int);
+static void browser_run(void);
+static void browser_free(void);
 static void relay_session(int request_vnc);
 static void relay_inputs(int x, int y, int touched);
 
@@ -118,6 +126,8 @@ static void draw_home(void) {
   fill(0, 0, sw, sh, 0x1084);
   int scale = sw >= 640 ? 2 : 1;
   text(18, 15, "DESKTOP / VNC", scale, 0x8e7f);
+  if (sw >= 1000)
+    button(240, 6, 140, 34, "MEDIA", selected == 10);
   if (sw >= 800)
     button(sw - 598, 6, 140, 34, "VIDEO/AUDIO", selected == 9);
   if (sw >= 640) {
@@ -319,7 +329,12 @@ static void save_host(void) {
 }
 static int connect_requested;
 static void activate(int item) {
-  media_mode = item == 9;
+  media_mode = item == 9 || item == 10;
+  if (item == 10) {
+    browser_requested = 1;
+    dashboard_mode = 0;
+    listen_requested = 1;
+  }
   if (item == 3)
     connect_requested = 1;
   if (item == 4)
@@ -346,7 +361,9 @@ static void activate(int item) {
 }
 static void home_touch(int x, int y) {
   if (sw >= 640 && y >= 6 && y < 40) {
-    if (sw >= 800 && x >= sw - 598 && x < sw - 458)
+    if (sw >= 1000 && x >= 240 && x < 380)
+      activate(10);
+    else if (sw >= 800 && x >= sw - 598 && x < sw - 458)
       activate(9);
     else if (x >= sw - 450 && x < sw - 310)
       activate(8);
@@ -424,11 +441,11 @@ static void poll_input(void) {
     menu_since = 0;
   if (!connected && sock < 0) {
     if (pressed & (1u << PAX_INPUT_DOWN)) {
-      selected = (selected + 1) % 10;
+      selected = (selected + 1) % 11;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_UP)) {
-      selected = (selected + 9) % 10;
+      selected = (selected + 10) % 11;
       dirty = 1;
     }
     if (pressed & (1u << PAX_INPUT_A))
@@ -438,7 +455,10 @@ static void poll_input(void) {
   }
   int x = 0, y = 0, touched = svc->touch_read ? svc->touch_read(&x, &y) : 0;
   if (relay_active) {
-    relay_inputs(x, y, touched);
+    if (browser_active)
+      browser_inputs(pressed, x, y, touched);
+    else
+      relay_inputs(x, y, touched);
     touch_before = touched;
     in_input = 0;
     return;
@@ -507,7 +527,7 @@ static void poll_input(void) {
         if (event.key == 27)
           quit = 1;
         else if (event.key == 9) {
-          selected = (selected + 1) % 10;
+          selected = (selected + 1) % 11;
           dirty = 1;
         } else if (event.key == 13) {
           if (selected < 2) {
@@ -652,13 +672,16 @@ static int relay_yield(void *ctx) {
     poll_input();
   return quit || back;
 }
-static int audio_cancel(void *ctx) { return relay_yield(ctx) || relay.avi_stop; }
+static int audio_cancel(void *ctx) {
+  return relay_yield(ctx) || relay.avi_stop;
+}
 static void relay_audio(void *ctx, const uint8_t *pcm, size_t n,
                         unsigned channels, unsigned rate) {
   (void)ctx;
   if (audio_buffer.task) {
     if (audio_buffer_write(&audio_buffer, pcm, n, channels, rate, audio_cancel,
-                           0) && !relay.avi_stop)
+                           0) &&
+        !relay.avi_stop)
       back = 1;
     return;
   }
@@ -873,7 +896,9 @@ static int relay_pump(void) {
     }
   }
   if (dirty && svc->get_time_us() - last_draw > 33000) {
-    if (relay_peer >= 0 && relay.frame_ready) {
+    if (browser_active)
+      browser_draw();
+    else if (relay_peer >= 0 && relay.frame_ready) {
       for (size_t i = 0; i < (size_t)sw * sh; i++)
         screen[i] = relay_pixels[i];
       relay_draw_cursor(&relay, screen);
@@ -894,11 +919,13 @@ static void media_canvas(int small) {
     if (!svc->display_set_canvas(sw / 2, sh / 2)) {
       sw /= 2;
       sh /= 2;
-      if (svc->display_set_scale) svc->display_set_scale(2.0f, 2.0f);
+      if (svc->display_set_scale)
+        svc->display_set_scale(2.0f, 2.0f);
     } else
       native_w = native_h = 0;
   } else if (!small && native_w) {
-    if (svc->display_set_scale) svc->display_set_scale(1.0f, 1.0f);
+    if (svc->display_set_scale)
+      svc->display_set_scale(1.0f, 1.0f);
     svc->display_set_canvas(native_w, native_h);
     sw = native_w;
     sh = native_h;
@@ -938,6 +965,10 @@ static void relay_session(int request_vnc) {
     svc->log_printf("[desktop] Audio task unavailable; using direct feed\n");
   audio_buffer_mute(&audio_buffer, relay_muted);
   relay_active = connected = 1;
+  browser_active = browser_requested;
+  browser_requested = 0;
+  if (browser_active)
+    browser_action = 1;
   two_since = 0;
   status = "Relay listener ready";
   relay_wait_screen();
@@ -950,8 +981,10 @@ static void relay_session(int request_vnc) {
       back = 1;
     }
   }
-  while (!relay_pump())
+  while (!relay_pump()) {
+    browser_run();
     svc->delay_ms(2);
+  }
   if (relay_peer >= 0) {
     if (relay.wire_mode == 2 && !relay.avi_ending) {
       relay_media_stop(&relay);
@@ -968,10 +1001,18 @@ static void relay_session(int request_vnc) {
   svc->mem_free(relay_pixels);
   relay_pixels = 0;
   relay_active = connected = 0;
-  if (!quit) media_canvas(0);
+  browser_active = browser_action = 0;
+  if (!quit)
+    media_canvas(0);
   back = 0;
   two_since = 0;
   dirty = 1;
+}
+#include "media_ui.inc"
+static void browser_free(void) {
+  if (browser)
+    svc->mem_free(browser);
+  browser = 0;
 }
 static void menu_action(void *context, uint32_t action, int32_t direction) {
   (void)context;
@@ -985,9 +1026,9 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
          : connected  ? "VNC session connected"
                       : "Desktop connection",
          sizeof page.status);
-    page.count = relay_active ? (relay.wire_mode == 2 ? 4 : 3)
+    page.count = relay_active ? (relay.wire_mode == 2 ? 5 : 4)
                  : connected  ? 1
-                              : 5;
+                              : 6;
     page.items[0].action = 1;
     copy(page.items[0].label,
          connected ? "Disconnect desktop" : "Exit desktop app",
@@ -1027,7 +1068,26 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
       copy(page.items[4].label, "Video / Audio via relay",
            sizeof page.items[4].label);
     }
+    if (relay_active || !connected) {
+      unsigned index = page.count - 1;
+      page.items[index].action = 11;
+      copy(page.items[index].label,
+           browser_active ? "Show playback" : "Media browser (HA / SD)",
+           sizeof page.items[index].label);
+    }
     svc->game_menu_set_page(&page);
+  } else if (action == 11) {
+    if (relay_active) {
+      browser_active = !browser_active;
+      browser_action = browser_active ? 1 : 0;
+      dirty = 1;
+    } else if (!connected) {
+      browser_requested = 1;
+      media_mode = 1;
+      dashboard_mode = 0;
+      listen_requested = 1;
+    }
+    svc->game_menu_close();
   } else if (action == 1) {
     if (connected)
       back = 1;
@@ -1118,6 +1178,11 @@ app_entry(const app_services_t *services) {
         copy(port_text, p, sizeof port_text);
       }
       copy(host, arg, sizeof host);
+      if (length(arg) == 5 && arg[0] == 'm' && arg[1] == 'e' && arg[2] == 'd' &&
+          arg[3] == 'i' && arg[4] == 'a') {
+        browser_requested = media_mode = listen_requested = 1;
+        host[0] = 0;
+      }
       static const char dashboard_arg[] = "dashboard";
       unsigned equal = length(arg) == sizeof dashboard_arg - 1;
       for (unsigned i = 0; equal && i < sizeof dashboard_arg - 1; i++)
@@ -1151,6 +1216,7 @@ app_entry(const app_services_t *services) {
     svc->net_udp_close(sock);
   rfb_close(&remote);
   zero(password, sizeof password);
+  browser_free();
   svc->mem_free(xmap);
   xmap = 0;
   return 0;

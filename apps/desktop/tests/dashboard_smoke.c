@@ -26,13 +26,13 @@ int main(void) {
   svc = &api;
   relay.io.now = relay_now;
   menu_action(NULL, 0, 0);
-  assert(captured.count == 5 && captured.items[3].action == 6);
+  assert(captured.count == 6 && captured.items[3].action == 6);
   menu_action(NULL, 6, 0);
   assert(dashboard_mode && listen_requested && closed == 1);
   relay_active = 1;
   relay_peer = -1;
   menu_action(NULL, 0, 0);
-  assert(captured.count == 3 &&
+  assert(captured.count == 4 &&
          captured.items[1].flags == PAX_GAME_MENU_ITEM_DISABLED);
   relay_peer = 7;
   relay.input_enabled = 1;
@@ -54,13 +54,27 @@ int main(void) {
   assert(usage(0) == 0x50 && usage(1) == 0x50);
   relay.wire_mode = 2;
   menu_action(NULL, 0, 0);
-  assert(captured.count == 4 && captured.items[1].action == 8);
+  assert(captured.count == 5 && captured.items[1].action == 8);
   menu_action(NULL, 8, 0);
   assert(relay.avi_paused);
   menu_action(NULL, 10, 0);
   assert(relay_muted);
   menu_action(NULL, 9, 0);
   assert(relay.avi_stop);
+  api.mem_alloc = malloc;
+  api.mem_free = free;
+  browser_inputs(1u << PAX_INPUT_X, 0, 0, 0);
+  assert(browser_action == 3);
+  browser->sd = 1;
+  browser_inputs(1u << PAX_INPUT_X, 0, 0, 0);
+  assert(browser_action == 2);
+  browser_inputs(1u << PAX_INPUT_START, 0, 0, 0);
+  assert(browser_action == 8);
+  browser_inputs(1u << PAX_INPUT_SELECT, 0, 0, 0);
+  assert(browser_action == 9);
+  browser_inputs(1u << PAX_INPUT_L, 0, 0, 0);
+  assert(browser_action == 10);
+  browser_free();
   puts("Dashboard menu: entry, disconnected guards, F5 and Alt+Left passed");
   return 0;
 }

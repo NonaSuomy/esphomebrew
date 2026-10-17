@@ -4,6 +4,8 @@ substitutions:
   idf_compat_script: !env_var PAX_IDF_COMPAT
   device_name: esp32-p4-elecrow-pax-quick
   friendly_name: "ESP32-P4 PAX Quick Launcher"
+  pax_media_relay_entity: media_player.esp32_p4_pax_quick_launcher_player
+  pax_media_ha_address: "10.42.42.52"
   launcher_network_url: "http://10.20.30.158:8000/launcher_ui.pax"
   launcher_github_url: "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/launcher_ui.pax"
 
@@ -14,6 +16,7 @@ packages:
   hardware: !include boards/elecrow/aio.yaml
   pax_audio: !include packages/pax-audio.yaml
   pax_media_player: !include packages/pax-media-player.yaml
+  pax_media_browser: !include packages/pax-media-browser.yaml
 
 wifi:
   ssid: !secret pax_hosted_wifi_ssid
