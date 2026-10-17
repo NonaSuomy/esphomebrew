@@ -1,6 +1,6 @@
 # Desktop: direct VNC and SVP Relay
 
-`desktop.pax` 0.4.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
+`desktop.pax` 0.5.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
 itself. **LISTEN** receives SVP Relay desktop/dashboard JPEG pictures on TCP
 port **5000**. **VIA RELAY** asks Home Assistant to start a VNC desktop and feed
 it to that receiver. These modes use the current PAX firmware's service table;
@@ -61,10 +61,12 @@ You can leave the receiver or exit the app during either wait.
 ## Video with sound through SVP Relay
 
 1. Load the updated app, then choose **VIDEO/AUDIO** (shared menu > Desktop >
-   Video / Audio via relay on smaller screens). All relay entry points accept
-   both AVI media and dashboard/desktop JPEG packets on port 5000.
+   Video / Audio via relay on smaller screens). Video/Audio mode uses a half-size canvas (512×300 on this 1024×600 board),
+   upscaled by the firmware, and advertises mono 16 kHz sound. Dashboard/Listen
+   keep the native canvas and stereo 48 kHz handshake. Both accept AVI/JPEG on
+   port 5000, but Video/Audio is the intended low-bandwidth playback mode.
 2. In Home Assistant's SVP Relay settings for this panel, start with **Frames per
-   second 2**, **JPEG quality (ffmpeg -q:v) 15**, and **Sound codec Auto or PCM**.
+   second 5**, **JPEG quality (ffmpeg -q:v) 15**, and **Sound codec Auto or PCM**.
    Auto selects PCM from this receiver's advertised codec mask. Keep dashboard
    quality/fps separate: those settings do not control video playback.
 3. Open the panel's **SVP Relay media player** in Home Assistant and choose video
@@ -85,14 +87,21 @@ You can leave the receiver or exit the app during either wait.
    connection and keeps the receiver open. The relay can restore the idle
    dashboard. Disconnect desktop exits the receiver instead.
 
+A dedicated audio task consumes a bounded stereo PCM ring independently of
+JPEG decoding. The ring starts after a short prefill, feeds silence on underrun
+instead of repeatedly stopping the speaker, and keeps queued samples while
+paused. It drains at normal EOF and is flushed on Stop; the task is deleted
+before its ring is freed. Mono conversion occurs before enqueueing.
+
 Supported AVI payloads are baseline MJPEG with 16-bit little-endian PCM, mono or
 stereo at 8–48 kHz, with finite or ffmpeg's endless RIFF/movi headers. PCM is the
 only advertised AVI audio codec: manually forcing MP3/FLAC produces a clear
 unsupported-format error. Parser buffers are bounded; partial reads, odd-byte
 padding, nested LIST bounds, invalid dimensions, truncated EOF and playback
 clocks are checked. Late video pictures may be skipped to catch up with sound.
-Decoding is software: the earlier 1024x600 benchmark measured about 2 fps, so this
-is a low-frame-rate playback option. Full SPICE main/audio/USB channels remain
+Decoding is software: the earlier 1024x600 benchmark measured about 2 fps at the full resolution. Video/Audio mode reduces decoding and
+network load, with an initial target of 5 fps. This remains a low-frame-rate
+playback option. Full SPICE main/audio/USB channels remain
 unimplemented.
 
 ## Start a VNC desktop through the relay
@@ -234,3 +243,17 @@ audio capture contains the expected 440 Hz tone. Normal completion returned the
 panel to its Home Assistant dashboard. Local speaker audibility remains a user
 check; diagnostic capture proves the PCM path, not the acoustic output. The
 0.4.1 timing fix rebases a late frame's clock so later pictures can recover.
+
+The initial 1024×600/stereo 48 kHz hardware test was too slow and the user heard
+clicking despite valid PCM writes. Version 0.5.0 therefore uses a 512×300 video
+canvas, mono 16 kHz negotiation, and a separately paced audio task with prefill.
+The native threaded audio test covers conversion, pacing, pause, mute and task
+cleanup under ASan/UBSan. The RV32 integration test checks the real sender's
+512×300/mono/16 kHz negotiation and nonzero audio with a running guest audio task.
+
+Physical 0.5.0 check, 2026-10-16: the user confirmed faster picture motion with
+the 512×300 mode and a steady speaker tone, with brief interruptions when
+playback stalls. This is improved low-frame-rate playback; occasional stalls
+and corresponding audio gaps remain. The test used 5 fps, ffmpeg JPEG quality
+15 and mono 16 kHz PCM. Dashboard regression, the compiled real-sender video
+test, 34 protocol tests and firmware configuration validation passed.

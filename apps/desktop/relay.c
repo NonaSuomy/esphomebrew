@@ -44,6 +44,10 @@ static int flush(relay_t *r) {
 }
 int relay_open(relay_t *r, relay_io_t io, uint16_t *pixels, unsigned w,
                unsigned h) {
+  return relay_open_format(r, io, pixels, w, h, 48000, 2);
+}
+int relay_open_format(relay_t *r, relay_io_t io, uint16_t *pixels, unsigned w,
+                      unsigned h, unsigned rate, unsigned channels) {
   /* The owning app calls close before reusing a receiver. */
   uint8_t *raw = (uint8_t *)r;
   for (size_t i = 0; i < sizeof *r; i++)
@@ -69,6 +73,14 @@ int relay_open(relay_t *r, relay_io_t io, uint16_t *pixels, unsigned w,
   r->pointer_y = h / 2;
   uint8_t greeting[29] = {'C', 16, 'V', 0, 0,   0,  0, 0,  0, 0,   0, 0,   'A',
                           48,  0,  'N', 2, 'L', 48, 0, 48, 0, 'F', 1, 'S', 1};
+  if (rate < 8000 || rate > 48000 || rate % 50 ||
+      (channels != 1 && channels != 2)) {
+    relay_close(r);
+    return fail(r, "Invalid receiver audio format");
+  }
+  greeting[13] = greeting[18] = greeting[20] = rate / 1000;
+  greeting[14] = greeting[19] = greeting[21] = (rate % 1000) / 50;
+  greeting[16] = channels;
   put16(greeting + 3, w);
   put16(greeting + 5, h);
   put32(greeting + 8, RELAY_JPEG_LIMIT);

@@ -1,10 +1,10 @@
 {
   "name": "desktop",
   "title": "Desktop (VNC / SVP Relay)",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "VNC, Home Assistant dashboards and SVP Relay MJPEG video with PCM sound.",
   "category": "Tool",
-  "about": "Connect directly to VNC, or choose LISTEN to receive SVP Relay baseline JPEG pictures on TCP port 5000. Compatible with SVP Relay 0.9.42 panel handshakes, cursor shapes/positions, keyboard/mouse/touch input, statistics, probes and PCM dashboard sound. VIA RELAY asks Home Assistant to start a VNC desktop using the computer fields and the URL/token in /sd/roms/desktop/relay.conf. No firmware change is required on current PAX loaders. Configure the panel address and stream port 5000 in SVP Relay. Receiver runs only while this app is open in relay mode. AVI media reception supports baseline MJPEG video with 16-bit PCM mono/stereo sound, pause/resume, stop/end reporting and mute. MP3/FLAC in AVI and SPICE main/audio/USB channels are not implemented. Use a trusted LAN; receiver traffic has no authentication or encryption. JPEG receiver and network probes validated on ESP32-P4. Home Assistant dashboard display validated on hardware; AVI picture display and PCM speaker submissions validated on ESP32-P4.",
+  "about": "Connect directly to VNC, or choose LISTEN to receive SVP Relay baseline JPEG pictures on TCP port 5000. Compatible with SVP Relay 0.9.42 panel handshakes, cursor shapes/positions, keyboard/mouse/touch input, statistics, probes and PCM dashboard sound. VIA RELAY asks Home Assistant to start a VNC desktop using the computer fields and the URL/token in /sd/roms/desktop/relay.conf. No firmware change is required on current PAX loaders. Configure the panel address and stream port 5000 in SVP Relay. Receiver runs only while this app is open in relay mode. AVI media reception supports baseline MJPEG video with 16-bit PCM mono/stereo sound, pause/resume, stop/end reporting and mute. MP3/FLAC in AVI and SPICE main/audio/USB channels are not implemented. Use a trusted LAN; receiver traffic has no authentication or encryption. JPEG receiver and network probes validated on ESP32-P4. Home Assistant dashboard display validated on hardware; AVI picture display and PCM speaker submissions validated on ESP32-P4. Version 0.5.0 Video/Audio uses a 512x300 canvas on the 1024x600 panel, mono 16 kHz PCM and a dedicated buffered audio task. Hardware feedback confirms faster pictures and a steady tone, with occasional stall-related audio gaps.",
   "controls": [
     "VIDEO/AUDIO: receive relay AVI video with PCM sound",
     "Shared menu: Pause/Resume, Stop media, Mute/Unmute",
@@ -57,7 +57,8 @@
         "relay.c",
         "relay_jpeg.c",
         "relay_http.c",
-        "jpeg/tjpgd.c"
+        "jpeg/tjpgd.c",
+        "audio_buffer.c"
       ]
     }
   ],
@@ -65,5 +66,5 @@
   "ldflags": [
     "-lgcc"
   ],
-  "changelog": "0.4.1: recover picture timing after audio/network backpressure.\n0.4.0: SVP Relay AVI/MJPEG video and PCM audio, playback timing, pause/stop/mute and end reporting.\n0.3.1: allow Chromium cold startup before the first dashboard picture.\n0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client."
+  "changelog": "0.5.0: buffered audio on a dedicated task; 512x300 video canvas and mono 16 kHz negotiation for P4 playback.\n0.4.1: recover picture timing after audio/network backpressure.\n0.4.0: SVP Relay AVI/MJPEG video and PCM audio, playback timing, pause/stop/mute and end reporting.\n0.3.1: allow Chromium cold startup before the first dashboard picture.\n0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client."
 }

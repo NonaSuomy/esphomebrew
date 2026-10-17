@@ -1,4 +1,5 @@
 #define PAX_APP_SIDE 1
+#include "audio_buffer.h"
 #include "font.h"
 #include "psram_app.h"
 #include "relay.h"
@@ -23,6 +24,8 @@ static int relay_active, relay_listener = -1, relay_peer = -1, listen_requested,
 static uint16_t *relay_pixels;
 static unsigned relay_touch_signature;
 static int dashboard_mode, media_mode, relay_muted;
+static audio_buffer_t audio_buffer;
+static int native_w, native_h;
 static void relay_session(int request_vnc);
 static void relay_inputs(int x, int y, int touched);
 
@@ -649,9 +652,16 @@ static int relay_yield(void *ctx) {
     poll_input();
   return quit || back;
 }
+static int audio_cancel(void *ctx) { return relay_yield(ctx) || relay.avi_stop; }
 static void relay_audio(void *ctx, const uint8_t *pcm, size_t n,
                         unsigned channels, unsigned rate) {
   (void)ctx;
+  if (audio_buffer.task) {
+    if (audio_buffer_write(&audio_buffer, pcm, n, channels, rate, audio_cancel,
+                           0) && !relay.avi_stop)
+      back = 1;
+    return;
+  }
   static unsigned old_rate;
   if (!svc->audio_init || !svc->audio_submit)
     return;
@@ -754,12 +764,16 @@ static void relay_inputs(int x, int y, int touched) {
       if (relay.wire_mode == 2) {
         if (!event.down)
           continue;
-        if (event.key == ' ')
+        if (event.key == ' ') {
           relay_media_pause(&relay, !relay.avi_paused);
+          audio_buffer_pause(&audio_buffer, relay.avi_paused);
+        }
         if (event.key == 27)
           relay_media_stop(&relay);
-        if (event.key == 'm' || event.key == 'M')
+        if (event.key == 'm' || event.key == 'M') {
           relay_muted = !relay_muted;
+          audio_buffer_mute(&audio_buffer, relay_muted);
+        }
       } else if (relay_key(&relay, event.key, event.down))
         back = 1;
   }
@@ -774,10 +788,16 @@ static void relay_wait_screen(void) {
   text(18, 80, "WAITING FOR HOME ASSISTANT", sw >= 640 ? 2 : 1, 0xffff);
   text(18, 125, "Panel address: this ESP32-P4", 1, 0xc618);
   text(18, 150, "Stream port: 5000", 1, 0xc618);
-  text(18, 180, "Configure the panel in SVP Relay, then send a dashboard", 1,
-       0xc618);
-  text(18, 200, "or request VNC with VIA RELAY on the connection screen.", 1,
-       0xc618);
+  text(18, 180,
+       media_mode ? "Home Assistant: send video to this SVP Relay player."
+                  : "Configure the panel in SVP Relay, then send a dashboard",
+       1, 0xc618);
+  text(18, 200,
+       media_mode ? "512x300 video / mono 16 kHz / PCM / buffered audio."
+                  : "or request VNC with VIA RELAY on the connection screen.",
+       1, 0xc618);
+  if (media_mode && sh < 420)
+    text(18, 225, "Menu: Pause / Stop / Mute. Space / Esc / M.", 1, 0xc618);
   if (dashboard_mode) {
     text(18, 240, "SVP Relay > this panel > Configure > Settings", 1, 0x8e7f);
     text(18, 265, "Set Dashboard shown while nothing plays to your path/URL.",
@@ -789,13 +809,13 @@ static void relay_wait_screen(void) {
     text(18, 340, "Shared menu > Desktop: Refresh page (F5) / Browser Back.", 1,
          0xc618);
   }
-  if (media_mode) {
+  if (media_mode && sh >= 420) {
     text(18, 240,
          "Send media to this panel's SVP Relay player in Home Assistant.", 1,
          0x8e7f);
     text(18, 265, "Stream: AVI / MJPEG video + 16-bit PCM audio (Auto or PCM).",
          1, 0xc618);
-    text(18, 290, "Start at 2 video frames/s, JPEG q:v 15 for this connection.",
+    text(18, 290, "Start at 5 video frames/s, JPEG q:v 15 for this connection.",
          1, 0xc618);
     text(18, 315, "Shared menu: Pause / Resume, Stop media, Mute / Unmute.", 1,
          0xc618);
@@ -819,7 +839,9 @@ static int relay_pump(void) {
       relay_peer = accepted;
       relay_io_t io = {0,       relay_receive, relay_send,  allocate,
                        release, relay_now,     relay_yield, relay_audio};
-      if (relay_open(&relay, io, relay_pixels, (unsigned)sw, (unsigned)sh)) {
+      if (relay_open_format(&relay, io, relay_pixels, (unsigned)sw,
+                            (unsigned)sh, media_mode ? 16000 : 48000,
+                            media_mode ? 1 : 2)) {
         status = relay.error;
         svc->net_udp_close(relay_peer);
         relay_peer = -1;
@@ -837,7 +859,9 @@ static int relay_pump(void) {
     }
   }
   if (relay_peer >= 0) {
-    if (relay_step(&relay)) {
+    int result = relay_step(&relay);
+    if (result) {
+      audio_buffer_finish(&audio_buffer, result > 0 && !relay.avi_stop);
       status = relay.error;
       svc->net_udp_close(relay_peer);
       relay_peer = -1;
@@ -861,6 +885,27 @@ static int relay_pump(void) {
   }
   return quit || back;
 }
+static void media_canvas(int small) {
+  if (!svc->display_set_canvas)
+    return;
+  if (small && sw >= 800) {
+    native_w = sw;
+    native_h = sh;
+    if (!svc->display_set_canvas(sw / 2, sh / 2)) {
+      sw /= 2;
+      sh /= 2;
+      if (svc->display_set_scale) svc->display_set_scale(2.0f, 2.0f);
+    } else
+      native_w = native_h = 0;
+  } else if (!small && native_w) {
+    if (svc->display_set_scale) svc->display_set_scale(1.0f, 1.0f);
+    svc->display_set_canvas(native_w, native_h);
+    sw = native_w;
+    sh = native_h;
+    native_w = native_h = 0;
+  }
+  screen = svc->display_get_framebuffer();
+}
 static void relay_session(int request_vnc) {
   listen_requested = relay_requested = 0;
   back = 0;
@@ -872,9 +917,12 @@ static void relay_session(int request_vnc) {
     status = "Enter the VNC computer host, port and password first";
     return;
   }
+  if (media_mode)
+    media_canvas(1);
   relay_pixels = svc->mem_alloc((size_t)sw * sh * 2);
   if (!relay_pixels) {
     status = "Not enough memory for relay picture";
+    media_canvas(0);
     return;
   }
   zero(relay_pixels, (size_t)sw * sh * 2);
@@ -883,8 +931,12 @@ static void relay_session(int request_vnc) {
     svc->mem_free(relay_pixels);
     relay_pixels = 0;
     status = "Cannot listen on port 5000 (already in use?)";
+    media_canvas(0);
     return;
   }
+  if (audio_buffer_open(&audio_buffer, svc))
+    svc->log_printf("[desktop] Audio task unavailable; using direct feed\n");
+  audio_buffer_mute(&audio_buffer, relay_muted);
   relay_active = connected = 1;
   two_since = 0;
   status = "Relay listener ready";
@@ -909,12 +961,14 @@ static void relay_session(int request_vnc) {
     svc->net_udp_close(relay_peer);
     relay_peer = -1;
   }
+  audio_buffer_close(&audio_buffer);
   relay_close(&relay);
   svc->net_udp_close(relay_listener);
   relay_listener = -1;
   svc->mem_free(relay_pixels);
   relay_pixels = 0;
   relay_active = connected = 0;
+  if (!quit) media_canvas(0);
   back = 0;
   two_since = 0;
   dirty = 1;
@@ -990,12 +1044,16 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
     svc->game_menu_close();
   } else if (action >= 8 && action <= 10 && relay_active && relay_peer >= 0 &&
              relay.wire_mode == 2) {
-    if (action == 8)
+    if (action == 8) {
       relay_media_pause(&relay, !relay.avi_paused);
+      audio_buffer_pause(&audio_buffer, relay.avi_paused);
+    }
     if (action == 9)
       relay_media_stop(&relay);
-    if (action == 10)
+    if (action == 10) {
       relay_muted = !relay_muted;
+      audio_buffer_mute(&audio_buffer, relay_muted);
+    }
     svc->game_menu_close();
   } else if ((action == 4 || action == 5) && relay_active && relay_peer >= 0 &&
              relay.input_enabled) {

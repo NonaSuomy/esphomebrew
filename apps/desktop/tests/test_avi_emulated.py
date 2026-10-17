@@ -14,14 +14,16 @@ async def run(a,tmp):
  env=os.environ.copy();env['PYTHONPATH']=str(a.workspace/'pax-tools/desktop');env['SDL_AUDIODRIVER']='dummy'
  proc=await asyncio.create_subprocess_exec(str(a.workspace/'pax-tools/python-desktop/bin/python'),str(a.workspace/'pax-tools/desktop/host.py'),'emulated','--pax',str(a.pax),'--headless','--seconds','7','--sd-root',str(sd),'--input-script',str(events),'--report',str(out/'report.json'),'--screenshot',str(out/'screen.ppm'),stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.PIPE,env=env)
  panel=types.SimpleNamespace(name='PAX AVI test',address='127.0.0.1',port=5000,tap_to_stop=False,sample_rate='device')
- sender=module.AviSender('ffmpeg',panel,module.AviJob(str(clip),'Test tone/video',fps=2,quality=15,audio_codec='auto'),lambda:None)
+ sender=module.AviSender('ffmpeg',panel,module.AviJob(str(clip),'Test tone/video',fps=5,quality=15,audio_codec='auto'),lambda:None)
  try:
   await asyncio.sleep(1.5);await sender.start()
+  assert sender._link.picture.upright==(512,300),sender._link.picture
+  assert sender._link.rate==16000 and sender._link.channels==1
   stdout,stderr=await asyncio.wait_for(proc.communicate(),50);(out/'host.log').write_bytes(stdout+stderr)
   assert proc.returncode==0,stderr.decode()[-3000:]
   report=json.loads((out/'report.json').read_text());assert report['error'] is None,report
   assert report['audio_frames']>10000 and report['audio']['nonzero_blocks']>0,report
-  image=Image.open(out/'screen.ppm');pixel=image.getpixel((500,300));assert pixel[0]>200 and pixel[1]<40,pixel
+  image=Image.open(out/'screen.ppm');pixel=image.getpixel((image.width//2,image.height//2));assert pixel[0]>200 and pixel[1]<40,pixel
   image.save(out/'screen.png')
   print(json.dumps({'sender':'installed SVP Relay AviSender + ffmpeg','mode':'compiled RV32 app','frames':report['frames'],'audio_frames':report['audio_frames'],'nonzero_audio_blocks':report['audio']['nonzero_blocks'],'sample_rate':report['audio']['sample_rate'],'pixel_rgb':pixel},indent=2))
  finally:

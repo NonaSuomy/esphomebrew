@@ -45,6 +45,8 @@ typedef struct {
   const char *error;
 } relay_t;
 int relay_open(relay_t *, relay_io_t, uint16_t *, unsigned, unsigned);
+int relay_open_format(relay_t *, relay_io_t, uint16_t *, unsigned, unsigned,
+                      unsigned rate, unsigned channels);
 void relay_close(relay_t *);
 int relay_step(relay_t *); /* 0 running, 1 media finished/stopped, -1 error */
 void relay_media_pause(relay_t *, int paused);
