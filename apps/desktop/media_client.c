@@ -652,16 +652,33 @@ int media_sd_list(const app_services_t *s, const char *path, unsigned offset,
     return fail(error, "SD browser stays inside /sd/media");
   if (contains(path, "..") || size(path) > 512)
     return fail(error, "Invalid SD media folder");
-  if (!s->dir_open || !s->dir_read || !s->dir_close)
+  const int streaming = s->dir_open && s->dir_read && s->dir_close;
+  if (!streaming && !s->file_list_dir)
     return fail(error, "Update firmware: directory services are missing");
   if (s->file_mkdir)
     s->file_mkdir("/sd/media");
-  void *dir = s->dir_open(path);
-  if (!dir)
+  void *dir = streaming ? s->dir_open(path) : 0;
+  char *packed = streaming ? 0 : s->mem_alloc(131072);
+  int packed_count = 0;
+  size_t packed_at = 0;
+  if ((!streaming && !packed) || (streaming && !dir))
     return fail(error, "Could not open /sd/media; check the SD card");
+  if (!streaming) {
+    packed_count = s->file_list_dir(path, packed, 131072);
+    if (packed_count < 0 || packed_count > 256) {
+      s->mem_free(packed);
+      return fail(error,
+                  packed_count < 0
+                      ? "Could not read the SD folder"
+                      : "SD folder has more than 256 entries; use subfolders");
+    }
+  }
   entry_t *entries = s->mem_alloc(256 * sizeof *entries);
   if (!entries) {
-    s->dir_close(dir);
+    if (streaming)
+      s->dir_close(dir);
+    if (packed)
+      s->mem_free(packed);
     return fail(error, "Not enough memory to list SD media");
   }
   unsigned count = 0, seen = 0;
@@ -669,7 +686,34 @@ int media_sd_list(const app_services_t *s, const char *path, unsigned offset,
   for (;;) {
     char name[256];
     int is_dir = 0;
-    int n = s->dir_read(dir, name, sizeof name, &is_dir);
+    int n;
+    if (streaming)
+      n = s->dir_read(dir, name, sizeof name, &is_dir);
+    else if (!packed_count)
+      n = 0;
+    else {
+      size_t start = packed_at;
+      while (packed_at < 131072 && packed[packed_at])
+        ++packed_at;
+      size_t length = packed_at - start;
+      if (packed_at == 131072 || !length)
+        n = -1;
+      else {
+        is_dir = packed[packed_at - 1] == '/';
+        if (is_dir)
+          --length;
+        if (length >= sizeof name)
+          n = -1;
+        else {
+          for (size_t i = 0; i < length; i++)
+            name[i] = packed[start + i];
+          name[length] = 0;
+          n = 1;
+        }
+        ++packed_at;
+        --packed_count;
+      }
+    }
     if (n < 0) {
       result = fail(error, "Could not read the SD folder");
       break;
@@ -703,7 +747,10 @@ int media_sd_list(const app_services_t *s, const char *path, unsigned offset,
     entries[at].dir = is_dir;
     ++count;
   }
-  s->dir_close(dir);
+  if (streaming)
+    s->dir_close(dir);
+  if (packed)
+    s->mem_free(packed);
   if (!result) {
     clear(out, sizeof *out);
     out->total = count;

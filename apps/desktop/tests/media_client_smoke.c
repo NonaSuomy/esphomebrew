@@ -77,6 +77,14 @@ static void response_body(const char *body) {
   sent = received = 0;
   clock_us = 0;
 }
+static int packed_dir(const char *p, char *out, int cap) {
+  assert(!strcmp(p, "/sd/media"));
+  const char data[] =
+      "z.MP3\0folder/\0a.mp4\0ignore.txt\0.hidden.mp3\0A.flac\0";
+  assert(cap >= (int)sizeof data);
+  memcpy(out, data, sizeof data);
+  return 6;
+}
 int main(void) {
   const char *good =
       "{\"ok\":true,\"title\":\"M\\u00e9dia "
@@ -116,6 +124,13 @@ int main(void) {
   assert(!strcmp(listing.items[3].id, "/sd/media/z.MP3"));
   assert(media_sd_list(&s, "/sd/roms", 0, &listing, error, NULL) < 0);
   assert(media_sd_list(&s, "/sd/media", 5, &listing, error, NULL) < 0);
+  s.dir_open = 0;
+  s.dir_read = 0;
+  s.dir_close = 0;
+  s.file_list_dir = packed_dir;
+  assert(media_sd_list(&s, "/sd/media", 0, &listing, error, NULL) == 0);
+  assert(listing.count == 4 && listing.items[0].directory);
+  assert(!strcmp(listing.items[3].id, "/sd/media/z.MP3"));
   s.net_resolve = resolve;
   s.net_tcp_connect = connect_tcp;
   s.net_poll = poll_fd;

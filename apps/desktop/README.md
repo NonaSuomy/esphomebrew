@@ -36,7 +36,7 @@ exposes only the currently selected file to the configured HA address on TCP 500
 using an opaque temporary URL and HTTP range requests. The next selection revokes
 the previous URL. Commands on that port accept loopback connections only. Put
 files in `/sd/media` or its subfolders; other SD directories are excluded.
-Limit each SD folder to 256 media files/subfolders and each file to 2 GiB.
+Limit each SD folder to 256 entries and each file to 2 GiB.
 HA pages contain at most 32 entries; navigation history is limited to 16 folders.
 Picture viewing, playlists, artwork and seek controls are not implemented yet.
 
