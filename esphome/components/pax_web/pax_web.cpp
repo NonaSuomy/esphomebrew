@@ -9,6 +9,8 @@
 #include "freertos/idf_additions.h"
 #include "pax_web_assets.h"
 #include "pax_web_starter.h"
+#include "pax_web_host.h"
+#include <lwip/sockets.h>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -134,10 +136,35 @@ void PaxWeb::report_(const char *message) {
 }
 bool PaxWeb::allowed_host_(httpd_req_t *req) {
   const std::string host = header(req, "Host", 128);
-  const std::string suffix = port_ == 80 ? "" : ":" + std::to_string(port_);
   const std::string name = App.get_name() + ".local";
-  if (host == name + suffix || (port_ == 80 && host == name + ":80"))
+  if (host_matches(host, name, port_))
     return true;
+  // network::get_ip_addresses() describes the preferred interface only.
+  // On dual-network boards the browser can reach us through another one.
+  // Trust the local endpoint of this accepted socket, never a client header.
+  sockaddr_storage local{};
+  socklen_t length = sizeof local;
+  if (::getsockname(httpd_req_to_sockfd(req),
+                    reinterpret_cast<sockaddr *>(&local), &length) == 0) {
+    char address[network::IP_ADDRESS_BUFFER_SIZE];
+    bool ipv6 = false;
+    const void *raw = nullptr;
+    if (local.ss_family == AF_INET)
+      raw = &reinterpret_cast<const sockaddr_in *>(&local)->sin_addr;
+#if LWIP_IPV6
+    else if (local.ss_family == AF_INET6) {
+      raw = &reinterpret_cast<const sockaddr_in6 *>(&local)->sin6_addr;
+      ipv6 = true;
+    }
+#endif
+    if (raw && ::inet_ntop(local.ss_family, raw, address, sizeof address)) {
+      const std::string value = ipv6
+                                    ? "[" + std::string(address) + "]"
+                                    : std::string(address);
+      if (host_matches(host, value, port_))
+        return true;
+    }
+  }
   for (const auto &ip : network::get_ip_addresses()) {
     if (!ip.is_set())
       continue;
@@ -145,7 +172,7 @@ bool PaxWeb::allowed_host_(httpd_req_t *req) {
     ip.str_to(text);
     const std::string value =
         ip.is_ip6() ? "[" + std::string(text) + "]" : std::string(text);
-    if (host == value + suffix || (port_ == 80 && host == value + ":80"))
+    if (host_matches(host, value, port_))
       return true;
   }
   return false;
