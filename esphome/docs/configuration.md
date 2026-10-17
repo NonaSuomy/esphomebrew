@@ -83,3 +83,7 @@ verified on the ESP32-P4. The initial speaker startup failure was traced to
 internal DMA memory pressure and corrected with the allocation settings above.
 SVP Relay controls whether its idle dashboard is shown during music/cover art;
 this player does not add an on-panel cover-art interface.
+
+The earlier quiet tone was not heard by the user. A subsequent spoken FLAC
+announcement through SVP Relay was replayed on 2026-10-17 and the user confirmed
+it was clearly audible. Player state alone does not verify acoustic output.
