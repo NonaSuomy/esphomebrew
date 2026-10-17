@@ -1,10 +1,10 @@
 {
-  "built_at": "2026-10-16",
+  "built_at": "2026-10-17",
   "repositories": {
-    "pax-esphome": "483365c44c7e1cb633c8f183a2e689f4a4e6eef9",
+    "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
     "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-    "pax-tools": "51ceec2c6a6bfbf37648f6bd2412e0061e7ee8be",
-    "pax-modules": "9af706147fc0af527a85f599826632091908a5fd"
+    "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
+    "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
   },
   "firmware": [
     {
@@ -210,12 +210,16 @@
       }
     },
     {
-      "built_at": "2026-10-16",
+      "built_at": "2026-10-17",
       "cpu_frequency_mhz": 360,
       "board": "m3-lcd101",
+      "network_priority": [
+        "ethernet",
+        "wifi"
+      ],
       "yaml": "esp32-p4-m3-lcd101-pax-web.yaml",
-      "bytes": 1824768,
-      "sha256": "9fd61d26fcf1e5623cb514cd1f8ec91329b984cdab936940f8a098b753f072a2",
+      "bytes": 2078528,
+      "sha256": "306743cbe843694e5d2d581cd12f275183534805e8f4a5d423df8a2f2a7d50c1",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -224,10 +228,10 @@
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
       "repositories": {
-        "pax-esphome": "1d57215b6665d73adf6f0e1db431abdb2d2d0b0e",
+        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
         "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "51ceec2c6a6bfbf37648f6bd2412e0061e7ee8be",
-        "pax-modules": "9af706147fc0af527a85f599826632091908a5fd"
+        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
+        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
       }
     },
     {

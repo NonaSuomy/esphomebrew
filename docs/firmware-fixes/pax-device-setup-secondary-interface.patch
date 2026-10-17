@@ -1,0 +1,101 @@
+diff --git a/components/pax_web/pax_web.cpp b/components/pax_web/pax_web.cpp
+index 52e4ec5..de47a78 100644
+--- a/components/pax_web/pax_web.cpp
++++ b/components/pax_web/pax_web.cpp
+@@ -9,6 +9,8 @@
+ #include "freertos/idf_additions.h"
+ #include "pax_web_assets.h"
+ #include "pax_web_starter.h"
++#include "pax_web_host.h"
++#include <lwip/sockets.h>
+ #include <algorithm>
+ #include <cstdio>
+ #include <cstring>
+@@ -134,10 +136,35 @@ void PaxWeb::report_(const char *message) {
+ }
+ bool PaxWeb::allowed_host_(httpd_req_t *req) {
+   const std::string host = header(req, "Host", 128);
+-  const std::string suffix = port_ == 80 ? "" : ":" + std::to_string(port_);
+   const std::string name = App.get_name() + ".local";
+-  if (host == name + suffix || (port_ == 80 && host == name + ":80"))
++  if (host_matches(host, name, port_))
+     return true;
++  // network::get_ip_addresses() describes the preferred interface only.
++  // On dual-network boards the browser can reach us through another one.
++  // Trust the local endpoint of this accepted socket, never a client header.
++  sockaddr_storage local{};
++  socklen_t length = sizeof local;
++  if (::getsockname(httpd_req_to_sockfd(req),
++                    reinterpret_cast<sockaddr *>(&local), &length) == 0) {
++    char address[network::IP_ADDRESS_BUFFER_SIZE];
++    bool ipv6 = false;
++    const void *raw = nullptr;
++    if (local.ss_family == AF_INET)
++      raw = &reinterpret_cast<const sockaddr_in *>(&local)->sin_addr;
++#if LWIP_IPV6
++    else if (local.ss_family == AF_INET6) {
++      raw = &reinterpret_cast<const sockaddr_in6 *>(&local)->sin6_addr;
++      ipv6 = true;
++    }
++#endif
++    if (raw && ::inet_ntop(local.ss_family, raw, address, sizeof address)) {
++      const std::string value = ipv6
++                                    ? "[" + std::string(address) + "]"
++                                    : std::string(address);
++      if (host_matches(host, value, port_))
++        return true;
++    }
++  }
+   for (const auto &ip : network::get_ip_addresses()) {
+     if (!ip.is_set())
+       continue;
+@@ -145,7 +172,7 @@ bool PaxWeb::allowed_host_(httpd_req_t *req) {
+     ip.str_to(text);
+     const std::string value =
+         ip.is_ip6() ? "[" + std::string(text) + "]" : std::string(text);
+-    if (host == value + suffix || (port_ == 80 && host == value + ":80"))
++    if (host_matches(host, value, port_))
+       return true;
+   }
+   return false;
+diff --git a/components/pax_web/pax_web_host.h b/components/pax_web/pax_web_host.h
+new file mode 100644
+index 0000000..70440ae
+--- /dev/null
++++ b/components/pax_web/pax_web_host.h
+@@ -0,0 +1,12 @@
++#pragma once
++#include <cstdint>
++#include <string>
++
++namespace esphome::pax_web {
++// address must come from the device, not Host/Origin or forwarded headers.
++inline bool host_matches(const std::string &host, const std::string &address,
++                         uint16_t port) {
++  return host == address + ":" + std::to_string(port) ||
++         (port == 80 && host == address);
++}
++} // namespace esphome::pax_web
+diff --git a/tests/web_host_smoke.cpp b/tests/web_host_smoke.cpp
+new file mode 100644
+index 0000000..e72a5d1
+--- /dev/null
++++ b/tests/web_host_smoke.cpp
+@@ -0,0 +1,17 @@
++#include "../components/pax_web/pax_web_host.h"
++#include <cassert>
++#include <iostream>
++using esphome::pax_web::host_matches;
++int main() {
++  assert(host_matches("10.13.37.159:8080", "10.13.37.159", 8080));
++  assert(host_matches("esp32-p4-elecrow-pax-quick.local:8080", "esp32-p4-elecrow-pax-quick.local", 8080));
++  assert(host_matches("[fd00::42]:8080", "[fd00::42]", 8080));
++  assert(host_matches("10.13.37.159", "10.13.37.159", 80));
++  assert(host_matches("10.13.37.159:80", "10.13.37.159", 80));
++  for (const auto &host : {"evil.example:8080", "10.13.37.159.evil.example:8080", "10.13.37.159", "10.13.37.159:80", "10.13.37.159:8080@evil.example", "10.13.37.159:8080/", "10.13.37.159:8080,evil.example"})
++    assert(!host_matches(host, "10.13.37.159", 8080));
++  // Reaching Wi-Fi does not require its IP to be the preferred Ethernet IP.
++  assert(!host_matches("10.13.37.159:8080", "10.20.30.158", 8080));
++  assert(host_matches("10.13.37.159:8080", "10.13.37.159", 8080));
++  std::cout << "Device Host checks: secondary interface, mDNS, IPv6, ports and hostile names passed\n";
++}
