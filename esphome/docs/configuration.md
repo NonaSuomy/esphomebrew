@@ -8,6 +8,7 @@ The layers are:
 | --- | --- | --- |
 | Shared firmware | `packages/pax-base.yaml` | ESP-IDF options, PSRAM, components, controls, runtime and three-button UI |
 | Optional audio | `packages/pax-audio.yaml` | Mixer and resamplers; the board supplies `speaker_output` |
+| Home Assistant audio player | `packages/pax-media-player.yaml` | Music and announcements on separate mixer inputs alongside PAX |
 | Optional brightness | `packages/pax-backlight.yaml` | Brightness setting; the board supplies `display_backlight` |
 | Hardware | `boards/<manufacturer>/<board>.yaml` | Flash/revision, GPIOs, SD bus, codec, power, display and touch |
 | Display combinations | `displays/hdmi720.yaml`, `displays/hdmi1080.yaml` | Shared ECA20-MHA1-I bridge timings, independent of board GPIOs |
@@ -52,3 +53,33 @@ The JC8012 touch component is vendored from `kvj/esphome` at the revision in `co
 ## Desktop preview
 
 The [SDL2 desktop profile](desktop-sdl.md) is built with `./pax-tools/build-firmware.sh run desktop`. Its screen comes from `packages/pax-three-button-ui.yaml`, also included by `pax-base.yaml`. It previews shared LVGL controls on the computer; ESP32-P4 PAX app binaries still need the device runtime.
+
+## Music and announcements with SVP Relay
+
+The Elecrow three-button profile includes `packages/pax-media-player.yaml` and
+exposes **PAX Audio**, a normal ESPHome speaker media player. Other audio-capable
+profiles can opt in by including this package after `pax-audio.yaml`.
+
+In Home Assistant, configure the SVP Relay panel, open Settings, and select the
+ESPHome device's **PAX Audio** entity under **Audio player**. Keep the relay's
+own Player entity as the target for media browsing/playback; do not select it
+as its own Audio player. Audio-only media sources (including MP3s) then use the
+native speaker media player, while video keeps its embedded PCM sound through
+`desktop.pax`. No SVP Relay source changes are needed.
+
+Home Assistant converts audio to the advertised mono 16 kHz FLAC format. The
+player has a 256 KiB encoded stream buffer and PSRAM decoder/resampler task stacks.
+The optional package lowers the normal malloc internal-memory preference threshold
+to 1 KiB, leaving internal DMA memory for I2S while the PAX display is active. Regular music
+uses a third mixer input so it does not change the PAX application's input
+format or volume. Announcements use the separate announcement input. Playback,
+pause, stop, volume, mute and announcements are available through Home Assistant;
+this does not add an on-panel music browser or queue/cover-art screen.
+
+Device check, 2026-10-17: the user confirmed audible MP3 playback through
+SVP Relay with the PAX receiver open. Pause/resume and stop state transitions,
+volume/mute round trips, and a finite FLAC announcement returning to idle were
+verified on the ESP32-P4. The initial speaker startup failure was traced to
+internal DMA memory pressure and corrected with the allocation settings above.
+SVP Relay controls whether its idle dashboard is shown during music/cover art;
+this player does not add an on-panel cover-art interface.

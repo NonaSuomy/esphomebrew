@@ -13,6 +13,7 @@ packages:
   pax_base: !include packages/pax-base.yaml
   hardware: !include boards/elecrow/aio.yaml
   pax_audio: !include packages/pax-audio.yaml
+  pax_media_player: !include packages/pax-media-player.yaml
 
 wifi:
   ssid: !secret pax_hosted_wifi_ssid

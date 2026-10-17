@@ -104,6 +104,19 @@ network load, with an initial target of 5 fps. This remains a low-frame-rate
 playback option. Full SPICE main/audio/USB channels remain
 unimplemented.
 
+## Standalone music and announcements
+
+The Elecrow three-button firmware can expose **PAX Audio** by including
+`packages/pax-media-player.yaml`. This is a firmware feature alongside the app;
+updating `desktop.pax` alone does not add the ESPHome media-player entity.
+In SVP Relay's panel Settings, choose that device's **PAX Audio** as **Audio
+player**, then send MP3/music media sources to the relay's own Player entity.
+Home Assistant transcodes them to the native player's advertised mono 16 kHz
+FLAC format. Music and announcements use separate mixer paths from PAX video
+sound, so the dashboard can remain visible. Playback, pause, stop, volume and
+mute are controlled from Home Assistant. An on-panel music library/queue UI
+is not included by this firmware bridge.
+
 ## Start a VNC desktop through the relay
 
 The relay's configuration screen registers the panel; it does not itself choose

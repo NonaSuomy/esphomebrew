@@ -1,0 +1,40 @@
+# Optional Home Assistant music/announcement player alongside PAX applications.
+# Keep regular network audio on its own mixer input: PAX owns media_mixing_input.
+# Keep HTTP/decoder allocations above 1 KiB in PSRAM, leaving internal DMA
+# memory for the I2S channel while the PAX display and network are active.
+esp32:
+  framework:
+    sdkconfig_options:
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "1024"
+
+speaker:
+  - id: !extend mixing_speaker
+    source_speakers:
+      - id: network_media_mixing_input
+        timeout: never
+  - platform: resampler
+    id: network_media_resampling_speaker
+    task_stack_in_psram: true
+    output_speaker: network_media_mixing_input
+    sample_rate: 48000
+    bits_per_sample: 16
+  - id: !extend announcement_resampling_speaker
+    task_stack_in_psram: true
+
+media_player:
+  - platform: speaker
+    id: pax_audio_player
+    name: "PAX Audio"
+    buffer_size: 262144
+    task_stack_in_psram: true
+    volume_initial: 50%
+    announcement_pipeline:
+      speaker: announcement_resampling_speaker
+      format: FLAC
+      sample_rate: 16000
+      num_channels: 1
+    media_pipeline:
+      speaker: network_media_resampling_speaker
+      format: FLAC
+      sample_rate: 16000
+      num_channels: 1
