@@ -1,6 +1,6 @@
 {
   "name": "PAX nano1080",
-  "version": "2026.10.11",
+  "version": "2026.10.18",
   "new_install_prompt_erase": true,
   "new_install_improv_wait_time": 60,
   "builds": [
