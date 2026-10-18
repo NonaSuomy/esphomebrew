@@ -1,0 +1,98 @@
+# User 101-tab-dev.yaml, 2026-10-18: same 270-degree JD9365/GT911 mapping.
+# Reuse the tested M3 pixel-rotation adapter; board wiring stays separate.
+esphome:
+  includes:
+    - m3_lcd101_adapter.h
+  on_boot:
+    priority: -200
+    then:
+      - lambda: |-
+          static esphome::pax_m3::LandscapePanel panel(id(main_display));
+          id(pax_runtime)->set_display(&panel);
+
+display:
+  - platform: mipi_dsi
+    setup_priority: 790
+    model: WAVESHARE-P4-NANO-10.1
+    id: main_display
+    rotation: 270
+    transform: disabled
+    show_test_card: false
+    auto_clear_enabled: false
+    update_interval: never
+    color_depth: 16
+    pixel_mode: 16
+    byte_order: little_endian
+    color_order: RGB
+
+touchscreen:
+  - platform: gt911
+    i2c_id: bsp2_bus
+    id: touch_panel
+    display: main_display
+    update_interval: 100ms
+    transform:
+      swap_xy: true
+      mirror_y: false
+      mirror_x: true
+
+i2c_device:
+  - id: display_i2c
+    address: 0x45
+    i2c_id: bsp2_bus
+
+globals:
+  - id: display_init_done
+    restore_value: false
+    type: bool
+    initial_value: 'false'
+
+output:
+  - platform: template
+    id: display_backlight_output
+    type: float
+    write_action:
+      - lambda: |-
+          if (id(display_init_done))
+            id(display_i2c).write_byte(0x96, static_cast<uint8_t>(state * 255));
+
+light:
+  - platform: monochromatic
+    id: display_backlight
+    name: Display Backlight
+    output: display_backlight_output
+    default_transition_length: 0ms
+    flash_transition_length: 0ms
+    gamma_correct: 1.0
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      then:
+        - if:
+            condition:
+              lambda: return !id(display_init_done);
+            then:
+              - lambda: |-
+                  ESP_LOGI("display_power", "Initializing Waveshare Module Dev Kit 10.1-inch display power");
+                  id(display_i2c).write_byte(0x95, 0x11);
+                  id(display_i2c).write_byte(0x95, 0x17);
+                  id(display_i2c).write_byte(0x96, 0x00);
+              - delay: 100ms
+              - globals.set:
+                  id: display_init_done
+                  value: 'true'
+        - lambda: |-
+            const auto brightness = id(display_backlight).current_values.get_brightness();
+            id(display_i2c).write_byte(0x96, static_cast<uint8_t>(brightness * 255));
+    on_turn_off:
+      then:
+        - lambda: id(display_i2c).write_byte(0x96, 0x00);
+
+lvgl:
+  displays: main_display
+  touchscreens: touch_panel
+  update_interval: 13ms
+  buffer_size: 50%
+  full_refresh: false
+
+pax_loader:
+  touchscreen_id: touch_panel

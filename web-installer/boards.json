@@ -60,6 +60,22 @@
     "manufacturer": "Waveshare"
   },
   {
+    "id": "module-devkit",
+    "manufacturer": "Waveshare",
+    "title": "ESP32-P4-Module-DEV-KIT",
+    "subtitle": "10.1-inch touchscreen, Ethernet + Wi-Fi",
+    "photo": "images/waveshare-module-devkit.jpg",
+    "status": "Untested",
+    "experimental": true,
+    "note": "Module Dev Kit with the supplied 10.1-inch JD9365/GT911 panel: 1280x800 landscape, 270-degree rotation and I2C panel power at 0x45. Ethernet DHCP with ESP32-C6 SDIO Wi-Fi fallback, four-bit SD and ES8311 speaker. Use the USB-to-UART programming port; select USB host jumpers as documented by Waveshare. 16MB flash, early P4 revision 0/1 at 360 MHz; rev3 needs a separate target. Display, touch, storage, networking and audio await hardware testing.",
+    "profiles": [
+      [
+        "module-devkit-lcd101",
+        "10.1-inch, 1280 x 800, Ethernet + Wi-Fi (untested)"
+      ]
+    ]
+  },
+  {
     "id": "waveshare",
     "title": "Waveshare ESP32-P4-WIFI6",
     "subtitle": "7-inch DSI touchscreen \u00b7 Wi-Fi",

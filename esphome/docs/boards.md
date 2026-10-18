@@ -4,8 +4,8 @@ The three buttons are on-screen Storage / Network / GitHub Store. Touch and USB 
 
 | Manufacturer | Board key | YAML | Status |
 | --- | --- | --- | --- |
-| Elecrow | elecrow | esp32-p4-elecrow-pax-3button.yaml | Current Elecrow AIO target, tested on our device |
-| Waveshare | nano | esp32-p4-nano-pax-3button.yaml | NANO + ECA20-MHA1-I HDMI 720p60, Ethernet; hardware test pending |
+| Elecrow | elecrow | esp32-p4-elecrow-pax-3button.yaml | Current Elecrow AIO target; existing device functionality tested, dual-network failover pending |
+| Waveshare | nano | esp32-p4-nano-pax-3button.yaml | NANO + ECA20-MHA1-I HDMI 720p60, Ethernet and Wi-Fi; hardware test pending |
 | Waveshare | nano1080 | esp32-p4-nano-pax-hdmi1080.yaml | Same board/bridge at 1080p30; hardware test pending |
 | Waveshare | waveshare7b | esp32-p4-waveshare-7b-pax-3button.yaml | Integrated ESP32-P4-WIFI6-Touch-LCD-7B, rev3; hardware untested |
 | Waveshare | waveshare | esp32-p4-waveshare-pax-3button.yaml | ESP32-P4-WIFI6 + 7-inch 1024×600 DSI panel; hardware untested |
@@ -23,11 +23,11 @@ For each additional board, create a hardware package under `boards/<manufacturer
 
 The [GSV1172 driver investigation](gsv1172-driver.md) records the module's optional R4 reset and R11/R12 I2C connections, stock firmware timing, and the vendor register information needed for a configurable ESP-IDF driver.
 
-NANO is 16 MB flash / 32 MB PSRAM. Ethernet IP101 uses MDC31, MDIO52, power51, external clock50 and PHY address1. SD uses CLK43/CMD44/D039/power45, slot1, one-bit mode. ES8311 audio and USB input use the NANO board connections; no touchscreen, panel reset or backlight GPIO is configured.
+NANO is 16 MB flash / 32 MB PSRAM. Ethernet IP101 uses MDC31, MDIO52, power51, external clock50 and PHY address1. SD uses CLK43/CMD44/D039/power45, slot0, one-bit mode. ES8311 audio and USB input use the NANO board connections; no touchscreen, panel reset or backlight GPIO is configured.
 
 EBYTE ECA20-MHA1-I uses GSV1172, not LT8912B. The owner confirmed two-lane input support on 2026-10-11. Its firmware must accept two lanes, RGB888 and the chosen timing. The NANO and bridge connectors are not presumed pin-compatible: use a correctly mapped adapter, proper power and common ground. The video-only MIPI mode skips LCD DCS reset/initialization. 720p60 and 1080p30 use 74.25 MHz pixel clocks and 1000 Mbps per lane. 1080p60 is not provided. HDMI audio is not configured; audio goes through the NANO ES8311 output.
 
-The PAX app canvas remains 1024×600, centered on the larger HDMI panel, to preserve module memory budgets and compatibility. USB pointer bounds cover the whole panel. NANO Wi-Fi is not enabled in these profiles; Ethernet DHCP and OTA are used. Monitor output, Ethernet PHY startup, storage, controls and audio require an actual hardware test.
+The PAX app canvas remains 1024×600, centered on the larger HDMI panel, to preserve module memory budgets and compatibility. USB pointer bounds cover the whole panel. NANO profiles enable both Ethernet and C6 Wi-Fi, with Ethernet first in the network priority list. Monitor output, Ethernet PHY startup, storage, controls and audio require an actual hardware test.
 
 References: https://docs.waveshare.com/ESP32-P4-NANO and https://files.waveshare.com/wiki/ESP32-P4-NANO/ESP32-P4-NANO-schematic.pdf and https://www.cdebyte.com/products/ECA20-MHA1-I/7
 
@@ -47,14 +47,14 @@ All active profiles include the central PAX base. New profiles have configuratio
 
 | Manufacturer | Build key | Hardware combination | Main differences |
 | --- | --- | --- | --- |
-| Waveshare | nano-wifi | NANO + ECA20-MHA1-I HDMI 720p60, C6 Wi-Fi | SD slot0, hosted SDIO slot1, LDO4 passthrough; existing Ethernet aliases retain their settings |
+| Waveshare | nano-wifi | NANO + ECA20-MHA1-I HDMI 720p60, Ethernet and C6 Wi-Fi | SD slot0, hosted SDIO slot1, LDO4 passthrough; all NANO aliases now prefer Ethernet with Wi-Fi fallback |
 | Waveshare | eth-hdmi720 | ESP32-P4-ETH + ECA20-MHA1-I HDMI 720p60 | IP101 Ethernet, 32MB flash per vendor, SD slot1, ES8311 audio |
 | Waveshare | waveshare4b | WIFI6-Touch-LCD-4B, 720x720 | ST7703 panel model, LCD reset27, inverted PWM26 and enable33, touch reset23, SD power45 |
 | M5Stack | tab5 | Original Tab5 ILI9881C + GT911, 720x1280 | C6 SDIO12/13/11/10/9/8/reset15; I2C31/32; expander display/touch reset and USB/Wi-Fi/amp power; ES8388 LINE1 |
 | Guition | jc1060 | JC1060P470, 1024x600 | Panel reset5 and H-sync20, GT911 reset22/interrupt21, PWM23, amp20, ES8311 |
 | Guition | jc4880 | JC4880P443C_I_W, 480x800 | ST7701, panel reset5, GT911 reset3 in polling mode, PWM23, amp11, SD LDO4 passthrough with no GPIO45 power control |
 | Guition | jc8012 | JC8012P4A1, 800x1280 | JD9365, panel reset27, GSL3680 reset22/interrupt21 and mirror Y, PWM23, amp20, pinned touch driver |
-| Guition | m3-hdmi720 | ESP32-P4-M3-Dev + ECA20-MHA1-I HDMI 720p60 | C6 SDIO, USB Serial/JTAG, amp11, ES8311, SD LDO4 passthrough; GPIO45 power resistor is NC in the reference |
+| Guition | m3-hdmi720 | ESP32-P4-M3-Dev + ECA20-MHA1-I HDMI 720p60 | Ethernet and C6 SDIO Wi-Fi, USB Serial/JTAG, amp11, ES8311, SD LDO4 passthrough; GPIO45 power resistor is NC in the reference |
 
 These new profiles target early rev0/1 silicon (`engineering_sample: true`), following the supplied panel examples and original board revisions. Production rev3 needs a separately compiled override. Tab5 ST7123/ST7121 revisions are not covered by the original Tab5 profile. Bare ETH and M3 boards have no implied default LCD: the provided combinations explicitly select the HDMI module already used by our NANO setup, and need their own correctly wired adapters. HDMI sound is not configured.
 
@@ -98,7 +98,7 @@ Choose **Guition > ESP32-P4-M3-Dev > 10.1-inch touchscreen, 1280 x 800, Ethernet
 
 Build from the workspace root with `./pax-tools/build-firmware.sh compile m3-lcd101`. Entry point: `esp32-p4-m3-lcd101-pax-web.yaml`. Hardware: `boards/guition/m3-lcd101.yaml`. Panel: `displays/m3-lcd101.yaml`.
 
-The JD9365 panel is native 800 x 1280 with 270-degree landscape presentation, GT911 axis swap and mirror X. I2C GPIO7/8 at 400 kHz connects the touch controller and 0x45 power/backlight controller. Display setup priority is 790. LDO3 supplies 2.5 V and SD LDO4 supplies 2.7 V. SD retains the existing M3 one-bit GPIO43/44/39 slot0 wiring. IP101 Ethernet uses MDC31, MDIO52, external clock50, power51 and PHY address1. This variant uses Ethernet DHCP, with Wi-Fi disabled, as in the supplied example.
+The JD9365 panel is native 800 x 1280 with 270-degree landscape presentation, GT911 axis swap and mirror X. I2C GPIO7/8 at 400 kHz connects the touch controller and 0x45 power/backlight controller. Display setup priority is 790. LDO3 supplies 2.5 V and SD LDO4 supplies 2.7 V. SD retains the existing M3 one-bit GPIO43/44/39 slot0 wiring. IP101 Ethernet uses MDC31, MDIO52, external clock50, power51 and PHY address1. This variant enables Ethernet DHCP and C6 Wi-Fi together, preferring Ethernet.
 
 Flash is 16 MB in DIO mode. This early revision 0/1 profile runs at 360 MHz. The reference 400 MHz setting requires revision 3.0/X hardware and a separate revision 3 firmware target. The profile retains the early revision 0/1 target; production revision 3 needs a separate configuration. The public image includes no private API key, OTA password or saved network credentials.
 
@@ -117,3 +117,49 @@ JC1060 keeps the reference native display/touch orientation. `jc1060_native_adap
 Both Guition profiles use immediate, linear backlight control. PAX retains its 48 kHz stereo audio chain, 15% LVGL buffer and controlled display updates to preserve app memory and avoid competing refreshes. The demo's alarm player, missing FLAC asset, microphone capture and idle sleep are not part of the launcher. Its RX8130 write action references an undeclared RTC, so the new profile keeps PAX SNTP without adding an unverified RTC. The local timezone is retained rather than adopting the demo's Europe/Berlin setting. Public images do not include the example's private API key.
 
 All configurations remain hardware untested. Validate display orientation, all touch corners, brightness, SD voltage, USB input, networking and speaker output on the exact PCB. P4 revision 0/1 profiles run at 360 MHz; 400 MHz is reserved for explicit revision 3.0/X targets.
+
+## Ethernet and Wi-Fi together
+
+The Elecrow AIO, Waveshare NANO (720p, 1080p, Wi-Fi alias and 10.1-inch), Guition M3 (HDMI and 10.1-inch), JC1060P470_I_W_Y and Espressif Function EV profiles include `packages/pax-network-dual.yaml`. Both interfaces are enabled at boot. Ethernet is preferred; outgoing traffic and reported addresses fall back to Wi-Fi when the cable is disconnected and return to Ethernet when it reconnects. Existing connections may need to reconnect after an address change. Neither interface reboots the device just because its own connection is down.
+
+Public profiles use the setup hotspot or Improv for Wi-Fi provisioning and contain no station credentials. Elecrow AIO keeps full-duplex SPI Wi-Fi on reset2, CS14, CLK15, MOSI7, MISO9, ready10 and handshake11; it does not include the SDIO helper. Existing private Elecrow credentials remain in secrets.yaml. The NANO SD card now uses slot 0, leaving hosted Wi-Fi on slot 1. The M3 and JC1060 I_W_Y use the same confirmed hosted C6 pinout. The shared launcher uses the pinned built-in Ethernet component because the older external copy rejects simultaneous Wi-Fi.
+
+Olimex and Waveshare ETH remain Ethernet-only because their current hardware references have no onboard Wi-Fi. M5Stack Tab5 and FireBeetle 2 remain Wi-Fi-only because these profiles have no confirmed Ethernet PHY. Other display-board references retain their existing networking until the exact Ethernet wiring is confirmed. All boards other than Elecrow remain hardware untested; dual-interface failover also needs a physical cable-unplug test on Elecrow.
+
+To test failover, first provision Wi-Fi and confirm the device page opens without an Ethernet cable. Plug in Ethernet and look for `Default interface:` in the serial log, then open the Ethernet address reported by the device. Unplug the cable and confirm the Wi-Fi address works again. A browser tab or download using the old address may need to reconnect. Repeat with a restart while only one connection is available, and confirm SD reads still work on SDIO Wi-Fi boards.
+
+## Waveshare ESP32-P4-Module-DEV-KIT, 10.1-inch
+
+Build key `module-devkit-lcd101` targets the Module Dev Kit in the supplied product
+photo, with the JD9365/GT911 10.1-inch panel from `101-tab-dev.yaml`. It is a separate
+board option from NANO, WIFI6 and Guition M3. Hardware testing is pending.
+
+Run `./pax-tools/build-firmware.sh compile module-devkit-lcd101`. The entry point is
+`esp32-p4-module-devkit-lcd101-pax-web.yaml`; board and display packages are under
+`boards/waveshare/` and `displays/` with the same key. Native 800x1280 scanout is
+presented as 1280x800 at 270 degrees. The established `m3_lcd101_adapter.h` is reused
+because its frame/crop transform matches this exact display/touch orientation;
+GT911 swaps axes and mirrors X. I2C7/8 at 400kHz carries GT911, ES8311 at 0x18 and
+panel power/backlight at 0x45 (registers 0x95/0x96). LDO3 is 2.5 V; LDO4 is 2.7 V.
+
+Four-bit SD uses CLK43/CMD44/D0=39/D1=40/D2=41/D3=42, slot 0. The official schematic
+shows GPIO45 controlling the SD supply through an active-low PMOS, so its power
+control is inverted. Hosted C6 uses reset54, CLK18/CMD19/D0=14/D1=15/D2=16/D3=17 on
+slot 1 with PSRAM enabled. IP101 Ethernet uses MDC31/MDIO52/clock50/reset51 and
+PHY address1. Both interfaces stay enabled, preferring Ethernet and falling back
+to provisioned Wi-Fi. Setup supports IP addresses and `.local` names on port 8080.
+
+The ES8311 speaker uses MCLK13/BCLK12/LRCLK10/DOUT9 and amplifier enable GPIO53,
+with the existing PAX 48 kHz stereo mixer/resampler chain. The example's microphone,
+USB-UART test writers, MQTT, remote storage and account settings are not included.
+Public firmware contains no saved private credentials. UART0 logs and serial Wi-Fi
+provisioning use the board's USB-to-UART port. Set its USB host jumpers according
+to the vendor instructions for USB input devices.
+
+16MB DIO flash and early P4 rev0/1 at 360 MHz follow the supplied YAML. Revision3
+needs its own firmware target. Test display orientation, all four touch corners,
+brightness, SD writes, Ethernet/Wi-Fi failover, USB input and speaker on the exact
+hardware before marking this option tested.
+
+Sources: user-supplied `101-tab-dev.yaml` and product photo; [official board documentation](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT)
+and [schematic](https://files.waveshare.com/wiki/ESP32-P4-Module-DEV-KIT/ESP32-P4-Module-DEV-KIT.pdf).

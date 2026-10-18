@@ -39,6 +39,17 @@ for key,file in profiles.items():
  if frequency=='400MHZ':
   assert n['esp32'].get('engineering_sample') is False,key
   assert str(n['esp32']['framework']['sdkconfig_options'].get('CONFIG_ESP32P4_REV_MIN_300','n')).lower()=='y',key
+ if 'ethernet' in n and 'wifi' in n:
+  assert n['network']['priority']==['ethernet','wifi'],key
+  assert n['wifi'].get('enable_on_boot',True) and n['ethernet'].get('enable_on_boot',True),key
+  assert str(n['wifi']['reboot_timeout'])=='0s',key
+ dual_profiles={'elecrow','elecrow-web','nano','nano1080','nano-wifi','nano-lcd101','m3-hdmi720','m3-lcd101','jc1060-iwy','espressif-ev','module-devkit-lcd101'}
+ if key in dual_profiles:assert 'ethernet' in n and 'wifi' in n,key
+ if key in ('elecrow','elecrow-web'):
+  hosted=n['esp32_hosted']
+  assert hosted['type']=='spi', 'Elecrow AIO requires full-duplex SPI Wi-Fi'
+  assert {pin:hosted[pin] for pin in ('reset_pin','cs_pin','clk_pin','mosi_pin','miso_pin','data_ready_pin','handshake_pin')}=={
+   'reset_pin':'GPIO2','cs_pin':'GPIO14','clk_pin':'GPIO15','mosi_pin':'GPIO7','miso_pin':'GPIO9','data_ready_pin':'GPIO10','handshake_pin':'GPIO11'},key
  loader=n['pax_loader'];sd=n['sd_mmc_card']
  assert loader['canvas_width']<=loader['panel_width'] and loader['canvas_height']<=loader['panel_height'],key
  assert sd['id']==loader['sd_mmc_id']=='sd_card',key
@@ -57,15 +68,25 @@ for key,file in profiles.items():
   assert n['display'][0]['model']=='WAVESHARE-P4-NANO-10.1',key
   assert n['display'][0]['rotation']==270 and loader['panel_width']==1280 and loader['panel_height']==800,key
   assert n['touchscreen'][0]['transform']=={'swap_xy':True,'mirror_y':False,'mirror_x':True},key
-  assert n['ethernet']['type']=='IP101' and 'esp32_hosted' not in n and 'wifi' not in n,key
+  assert n['ethernet']['type']=='IP101' and 'esp32_hosted' in n and 'wifi' in n,key
   assert n['switch'][0]['pin']['number']=='GPIO53' and n['esp_ldo'][1]['voltage']=='2.7V',key
+ if key=='module-devkit-lcd101':
+  assert n['display'][0]['model']=='WAVESHARE-P4-NANO-10.1' and n['display'][0]['rotation']==270,key
+  assert (loader['panel_width'],loader['panel_height'])==(1280,800),key
+  assert n['touchscreen'][0]['transform']=={'swap_xy':True,'mirror_y':False,'mirror_x':True},key
+  assert n['sd_mmc_card']['mode_1bit'] is False and n['sd_mmc_card']['slot']==0,key
+  assert [n['sd_mmc_card'][p] for p in ('clk_pin','cmd_pin','data0_pin','data1_pin','data2_pin','data3_pin')]==['GPIO43','GPIO44','GPIO39','GPIO40','GPIO41','GPIO42'],key
+  assert n['sd_mmc_card']['power_ctrl_pin']=={'number':'GPIO45','inverted':True},key
+  assert n['esp_ldo'][1]['voltage']=='2.7V' and n['switch'][0]['pin']['number']=='GPIO53',key
+  assert n['esp32_hosted']['reset_pin']=='GPIO54' and n['esp32_hosted']['slot']==1,key
+  assert n['i2c_device'][0]['address']==0x45 and n['logger']['hardware_uart']=='UART0',key
  if key in ('jc8012','jc1060','jc1060-iwy'):
   assert n['light'][0]['gamma_correct']==1.0 and str(n['light'][0]['default_transition_length'])=='0s',key
  if key=='jc8012':
   assert n['display'][0]['rotation']==180 and not n['i2c'][0]['sda_pullup_enabled'] and not n['i2c'][0]['scl_pullup_enabled'],key
  if key=='jc1060-iwy':
   assert n['display'][0]['reset_pin']=='GPIO0' and n['switch'][0]['pin']['number']=='GPIO11',key
-  assert n['esp_ldo'][1]['voltage']=='2.7V' and n['ethernet']['type']=='IP101' and 'wifi' not in n,key
+  assert n['esp_ldo'][1]['voltage']=='2.7V' and n['ethernet']['type']=='IP101' and 'wifi' in n,key
   assert 'reset_pin' not in n['touchscreen'][0] and 'interrupt_pin' not in n['touchscreen'][0],key
   assert 'hsync_pulse_width' not in n['display'][0] and not n['i2c'][0]['sda_pullup_enabled'],key
  if key=='jc1060':

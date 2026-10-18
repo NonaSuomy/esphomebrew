@@ -1,9 +1,9 @@
 {
   "built_at": "2026-10-18",
   "repositories": {
-    "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
+    "pax-esphome": "e73abaada0118d5ca1faacf62672b0c7c8e6d2f3",
     "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-    "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
+    "pax-tools": "f07cd5a84154c27822d667029f17470142d52ffd",
     "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
   },
   "firmware": [
@@ -449,6 +449,31 @@
         "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
         "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
         "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
+        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
+      }
+    },
+    {
+      "built_at": "2026-10-18",
+      "cpu_frequency_mhz": 360,
+      "board": "module-devkit-lcd101",
+      "network_priority": [
+        "ethernet",
+        "wifi"
+      ],
+      "yaml": "esp32-p4-module-devkit-lcd101-pax-web.yaml",
+      "bytes": 2085712,
+      "sha256": "230e6db3bb6730217e77d2062f1682ca0b4495b720ae71e620a92ad5f56f993c",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false,
+      "serial_sd_upload": true,
+      "serial_sd_transfer_tested": false,
+      "browser_store_install": true,
+      "repositories": {
+        "pax-esphome": "e73abaada0118d5ca1faacf62672b0c7c8e6d2f3",
+        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
+        "pax-tools": "f07cd5a84154c27822d667029f17470142d52ffd",
         "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
       }
     }

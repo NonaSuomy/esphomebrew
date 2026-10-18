@@ -1,0 +1,80 @@
+# ESP32-P4-Module-DEV-KIT + supplied 10.1-inch JD9365/GT911 reference.
+# User YAML and official Waveshare schematic; hardware testing pending.
+packages:
+  networking: !include ../../packages/pax-network-dual.yaml
+  hosted_wifi: !include ../../packages/pax-hosted-c6-sdio.yaml
+  panel: !include ../../displays/module-devkit-lcd101.yaml
+  backlight: !include ../../packages/pax-backlight.yaml
+
+esp_ldo:
+- channel: 3
+  voltage: 2.5V
+- channel: 4
+  voltage: 2.7V
+
+sd_mmc_card:
+  id: sd_card
+  clk_pin: GPIO43
+  cmd_pin: GPIO44
+  data0_pin: GPIO39
+  data1_pin: GPIO40
+  data2_pin: GPIO41
+  data3_pin: GPIO42
+  mode_1bit: false
+  slot: 0
+  power_ctrl_pin:
+    number: GPIO45
+    inverted: true
+
+i2c:
+- id: bsp2_bus
+  sda: GPIO07
+  scl: GPIO08
+  frequency: 400kHz
+
+switch:
+- platform: gpio
+  pin:
+    number: GPIO53
+    inverted: false
+  name: Speaker Enable
+  id: speaker_enable
+  internal: true
+  restore_mode: ALWAYS_ON
+
+i2s_audio:
+- id: i2s_output
+  i2s_lrclk_pin: GPIO10
+  i2s_bclk_pin: GPIO12
+  i2s_mclk_pin: GPIO13
+
+audio_dac:
+- platform: es8311
+  id: speaker_codec
+  i2c_id: bsp2_bus
+  address: 24
+  sample_rate: 48000
+  bits_per_sample: 16bit
+  use_mclk: true
+
+esp32:
+  flash_size: 16MB
+  engineering_sample: true
+  cpu_frequency: 360MHz
+
+speaker:
+- platform: i2s_audio
+  id: speaker_output
+  i2s_audio_id: i2s_output
+  dac_type: external
+  i2s_dout_pin: GPIO9
+  audio_dac: speaker_codec
+  channel: stereo
+  buffer_duration: 100ms
+  timeout: 5s
+  bits_per_sample: 16bit
+  sample_rate: 48000
+
+esphome:
+  platformio_options:
+    board_build.flash_mode: dio
