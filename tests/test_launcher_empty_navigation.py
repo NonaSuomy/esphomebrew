@@ -20,7 +20,7 @@ class EmptyNavigationTests(unittest.TestCase):
         source=(ROOT/'apps/launcher_ui/main.c').read_text()
         poll=source.index('static bool poll_controller(void)')
         start=source.index('  } else if (g_toolbar_focus >= 0) {',poll)
-        end=source.index('  if (g_detail_index < 0) {',start)
+        end=source.index('  if (g_detail_index < 0',start)
         routing=source[start:end].replace('  } else if','  if',1)
         defines='\n'.join(re.findall(r'^#define (?:SOURCE_\w+|VISIBLE_ROWS|ARCHIVE_LEVEL_SEARCH)\s+[^\n]+',source,re.M))
         program=r'''

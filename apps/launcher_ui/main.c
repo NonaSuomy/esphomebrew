@@ -302,6 +302,9 @@ static int g_mouse_buttons;
 static bool g_mouse_cursor_seen;
 static volatile int g_mouse_wheel_pending;
 static lv_obj_t *g_list;
+static lv_obj_t *g_list_scrollbar;
+static lv_obj_t *g_list_scrollbar_thumb;
+static int g_list_scrollbar_height;
 static lv_obj_t *g_settings_panel;
 static lv_obj_t *g_detail_info_view;
 static lv_obj_t *g_count_label;
@@ -5372,6 +5375,36 @@ static void append_wifi_summary(char *out, size_t capacity, const pax_wifi_statu
   if(status->security[0]){append_text(out,capacity," | ");append_text(out,capacity,status->security);}
 }
 
+/* The list recycles five row objects, so its scrollbar follows the logical
+ * viewport rather than LVGL's physical child bounds. */
+static int list_scrollbar_thumb_height(void)
+{
+  if (g_view_count <= VISIBLE_ROWS) return g_list_scrollbar_height;
+  int height = g_list_scrollbar_height * VISIBLE_ROWS / g_view_count;
+  if (height < ui_px(22)) height = ui_px(22);
+  if (height > g_list_scrollbar_height) height = g_list_scrollbar_height;
+  return height;
+}
+
+static void update_list_scrollbar(void)
+{
+  if (g_list_scrollbar == NULL || g_list_scrollbar_thumb == NULL) return;
+  /* Filtering can change overflow without rebuilding the row widgets. */
+  if (g_list != NULL)
+    lv_obj_set_style_pad_right(g_list, lv_obj_get_style_pad_left(g_list, LV_PART_MAIN) +
+        (g_view_count > VISIBLE_ROWS ? ui_px(16) : 0), LV_PART_MAIN);
+  if (g_view_count <= VISIBLE_ROWS) {
+    lv_obj_add_flag(g_list_scrollbar, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+  lv_obj_clear_flag(g_list_scrollbar, LV_OBJ_FLAG_HIDDEN);
+  const int height = list_scrollbar_thumb_height();
+  const int travel = g_list_scrollbar_height - height;
+  const int max_first = g_view_count - VISIBLE_ROWS;
+  lv_obj_set_height(g_list_scrollbar_thumb, height);
+  lv_obj_set_y(g_list_scrollbar_thumb, travel * g_first_visible / max_first);
+}
+
 static int update_selection_on_host(void *arg)
 {
   (void)arg;
@@ -5429,6 +5462,7 @@ static int update_selection_on_host(void *arg)
     else
       lv_obj_clear_state(g_archive_up_button, LV_STATE_DISABLED);
   }
+  update_list_scrollbar();
   char visible_names[VISIBLE_ROWS][LIST_LABEL_BYTES];
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     const int view_index = g_first_visible + row;
@@ -5600,6 +5634,33 @@ static int update_selection_on_host(void *arg)
     if (focused != NULL) lv_obj_scroll_to_view(focused, LV_ANIM_OFF);
   }
   return 0;
+}
+
+static void list_scrollbar_event(lv_event_t *event)
+{
+  const lv_event_code_t code = lv_event_get_code(event);
+  lv_indev_t *indev = lv_indev_active();
+  if ((code != LV_EVENT_PRESSED && code != LV_EVENT_PRESSING) ||
+      indev == NULL || lv_indev_get_type(indev) != LV_INDEV_TYPE_POINTER ||
+      g_view_count <= VISIBLE_ROWS) return;
+  lv_point_t point;
+  lv_area_t area;
+  lv_indev_get_point(indev, &point);
+  lv_obj_get_coords(g_list_scrollbar, &area);
+  const int height = list_scrollbar_thumb_height();
+  const int travel = g_list_scrollbar_height - height;
+  if (travel <= 0) return;
+  int offset = point.y - area.y1 - height / 2;
+  if (offset < 0) offset = 0;
+  if (offset > travel) offset = travel;
+  const int max_first = g_view_count - VISIBLE_ROWS;
+  const int first = (offset * max_first + travel / 2) / travel;
+  if (first == g_first_visible) return;
+  g_first_visible = first;
+  if (g_selected < first) g_selected = first;
+  if (g_selected >= first + VISIBLE_ROWS) g_selected = first + VISIBLE_ROWS - 1;
+  g_toolbar_focus = -1;
+  (void)update_selection_on_host(NULL);
 }
 
 static void list_touch_event(lv_event_t *event)
@@ -5821,6 +5882,8 @@ static int build_ui_on_host(void *arg)
     g_labels[row] = NULL;
     g_list_detail_labels[row] = NULL;
   }
+  g_list_scrollbar = NULL;
+  g_list_scrollbar_thumb = NULL;
   g_settings_panel = NULL;
   g_detail_info_view = NULL;
   __atomic_store_n(&g_mouse_wheel_pending, 0, __ATOMIC_RELAXED);
@@ -7014,6 +7077,8 @@ static int build_ui_on_host(void *arg)
   lv_obj_set_style_border_color(g_list, lv_color_hex(COL_MUTED), LV_PART_MAIN);
   lv_obj_set_style_border_width(g_list, 1, LV_PART_MAIN);
   lv_obj_set_style_pad_all(g_list, list_pad, LV_PART_MAIN);
+  if (g_view_count > VISIBLE_ROWS)
+    lv_obj_set_style_pad_right(g_list, list_pad + ui_px(16), LV_PART_MAIN);
   lv_obj_set_style_pad_row(g_list, list_gap, LV_PART_MAIN);
   lv_obj_set_flex_flow(g_list, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_scrollbar_mode(g_list, LV_SCROLLBAR_MODE_OFF);
@@ -7056,6 +7121,29 @@ static int build_ui_on_host(void *arg)
     lv_obj_set_style_text_align(details, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
     update_list_row_text(row, index, index >= 0 ? host_names[row] : "");
   }
+  /* A separate track keeps native scrolling disabled for recycled rows. */
+  const int scrollbar_width = ui_px(10);
+  g_list_scrollbar_height = list_h - 2 * list_pad;
+  g_list_scrollbar = lv_obj_create(screen);
+  lv_obj_remove_style_all(g_list_scrollbar);
+  lv_obj_set_pos(g_list_scrollbar, g_canvas_w - margin - list_pad - scrollbar_width,
+                 list_y + list_pad);
+  lv_obj_set_size(g_list_scrollbar, scrollbar_width, g_list_scrollbar_height);
+  lv_obj_set_style_bg_color(g_list_scrollbar, lv_color_hex(COL_MUTED), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(g_list_scrollbar, LV_OPA_40, LV_PART_MAIN);
+  lv_obj_set_style_radius(g_list_scrollbar, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+  lv_obj_clear_flag(g_list_scrollbar, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(g_list_scrollbar, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(g_list_scrollbar, list_scrollbar_event, LV_EVENT_PRESSED, NULL);
+  lv_obj_add_event_cb(g_list_scrollbar, list_scrollbar_event, LV_EVENT_PRESSING, NULL);
+  g_list_scrollbar_thumb = lv_obj_create(g_list_scrollbar);
+  lv_obj_remove_style_all(g_list_scrollbar_thumb);
+  lv_obj_set_width(g_list_scrollbar_thumb, scrollbar_width);
+  lv_obj_set_style_bg_color(g_list_scrollbar_thumb, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(g_list_scrollbar_thumb, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_radius(g_list_scrollbar_thumb, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+  lv_obj_clear_flag(g_list_scrollbar_thumb, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
+  update_list_scrollbar();
   if (g_keyboard_open) {
     /* Keep the native keyboard in the same PAX display tree so the loader's
      * full-frame renderer composites it with the launcher instead of leaving
@@ -7229,6 +7317,8 @@ static int teardown_ui_on_host(void *arg)
   }
   g_count_label = NULL;
   g_list = NULL;
+  g_list_scrollbar = NULL;
+  g_list_scrollbar_thumb = NULL;
   g_settings_panel = NULL;
   g_detail_info_view = NULL;
   __atomic_store_n(&g_mouse_wheel_pending, 0, __ATOMIC_RELAXED);
