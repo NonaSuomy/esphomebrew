@@ -1,5 +1,7 @@
 # Experimental hardware; see docs/boards.md.
 packages:
+  networking: !include ../../packages/pax-network-dual.yaml
+  hosted_wifi: !include ../../packages/pax-hosted-c6-sdio.yaml
   panel: !include ../../displays/m3-lcd101.yaml
   backlight: !include ../../packages/pax-backlight.yaml
 

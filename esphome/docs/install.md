@@ -38,11 +38,11 @@ The included sources and scripts have been validated on the development host. A 
 
 ## If the Wi-Fi coprocessor does not connect
 
-ESP32-P4 has no built-in radio. Its ESP32-C6 must already run compatible ESP-Hosted firmware for the configured transport (Elecrow SPI, Waveshare SDIO). Uploading the P4 YAML does not itself flash the C6. If boot logs show hosted RPC/transport failures, check the board's C6 firmware and wiring before retrying P4 OTA. Use the board manufacturer's C6 flashing procedure and the [ESPHome hosted firmware/update documentation](https://esphome.io/components/update/esp32_hosted/) to choose a compatible image; the exact new-board coprocessor recovery procedure has not been tested here. Serial P4 installation is still available independently of Wi-Fi.
+ESP32-P4 has no built-in radio. Its ESP32-C6 must already run compatible ESP-Hosted firmware for the configured transport (Elecrow SPI, Waveshare SDIO). Uploading the P4 YAML does not itself flash the C6. Once compatible C6 firmware is running, [PAX Settings can update it from SD, USB or a web URL](C6-UPDATES.md). If boot logs show hosted RPC/transport failures, check the board's C6 firmware and wiring before retrying P4 OTA. Use the board manufacturer's C6 flashing procedure and the [ESPHome hosted firmware/update documentation](https://esphome.io/components/update/esp32_hosted/) to choose a compatible image; the exact new-board coprocessor recovery procedure has not been tested here. Serial P4 installation is still available independently of Wi-Fi.
 
 ## Browser installation and public firmware
 
-Open https://nonasuomy.github.io/esphomebrew/install/ in a desktop browser with Web Serial support. Select your exact board/display, connect its programming USB port, acknowledge the hardware-test status, then click Connect & install. Public Wi-Fi builds use Improv Serial provisioning and a temporary setup hotspot; they contain no station credentials. The C6 still requires compatible ESP-Hosted firmware. NANO uses Ethernet DHCP. Download the SD starter or the selected board flash kit on that page.
+Open https://nonasuomy.github.io/esphomebrew/install/ in a desktop browser with Web Serial support. Select your exact board/display, connect its programming USB port, acknowledge the hardware-test status, then click Connect & install. Public Wi-Fi builds use Improv Serial provisioning and a temporary setup hotspot; they contain no station credentials. The C6 still requires compatible ESP-Hosted firmware. Dual-network boards prefer Ethernet DHCP and automatically fall back to provisioned Wi-Fi. Both interfaces remain enabled. Download the SD starter or the selected board flash kit on that page.
 
 To rebuild the public installer locally:
 ```sh

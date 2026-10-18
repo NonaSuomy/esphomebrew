@@ -146,3 +146,6 @@ pax_loader:
   touchscreen_id: touch_panel
 logger:
   hardware_uart: USB_SERIAL_JTAG
+
+packages:
+  networking: !include ../../packages/pax-network-dual.yaml

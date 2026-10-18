@@ -35,7 +35,7 @@ external_components:
   - source:
       type: local
       path: dependencies/esphome/config/components
-    components: [font, lvgl, sd_mmc_card, usb_hidx, ethernet, i2s_audio, ledc, mipi_dsi]
+    components: [font, lvgl, sd_mmc_card, usb_hidx, i2s_audio, ledc, mipi_dsi]
   - source:
       type: local
       path: components

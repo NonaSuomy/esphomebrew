@@ -1,5 +1,6 @@
 # NANO 10.1-inch panel with hosted C6 Wi-Fi. Hardware untested.
 packages:
+  networking: !include ../../packages/pax-network-dual.yaml
   panel: !include ../../displays/nano-lcd101.yaml
   backlight: !include ../../packages/pax-backlight.yaml
 

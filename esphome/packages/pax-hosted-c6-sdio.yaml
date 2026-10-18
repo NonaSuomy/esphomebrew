@@ -1,0 +1,14 @@
+# Confirmed NANO, M3 and JC1060 I_W_Y C6 wiring. SD card must use slot 0.
+esp32_hosted:
+  variant: ESP32C6
+  type: sdio
+  use_psram: true
+  active_high: true
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  slot: 1

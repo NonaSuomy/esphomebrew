@@ -59,6 +59,7 @@ def get_loader_sdk() -> Path:
         shutil.copy2(source, target)
     shutil.copy2(source.parent / "pax_theme_profile.h", LOADER_SDK_DIR / "pax_theme_profile.h")
     shutil.copy2(source.parent / "pax_wifi_settings.h", LOADER_SDK_DIR / "pax_wifi_settings.h")
+    shutil.copy2(source.parent / "pax_c6_update.h", LOADER_SDK_DIR / "pax_c6_update.h")
     return LOADER_SDK_DIR
 
 

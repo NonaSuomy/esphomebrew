@@ -1,4 +1,4 @@
-# NANO Ethernet hardware. HDMI panel timing is a separate package.
+# NANO Ethernet and Wi-Fi hardware. HDMI panel timing is a separate package.
 esp_ldo:
   - channel: 3
     voltage: 2.5V
@@ -13,7 +13,7 @@ sd_mmc_card:
   cmd_pin: GPIO44
   data0_pin: GPIO39
   mode_1bit: true
-  slot: 1
+  slot: 0
   power_ctrl_pin: GPIO45
 
 
@@ -87,3 +87,7 @@ ethernet:
   phy_addr: 1
 
 
+
+packages:
+  networking: !include ../../packages/pax-network-dual.yaml
+  hosted_wifi: !include ../../packages/pax-hosted-c6-sdio.yaml

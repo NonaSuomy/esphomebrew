@@ -70,6 +70,7 @@ struct psram_app {
 };
 
 #include "pax_wifi_stream.h"
+#include "pax_c6_update.h"
 
 namespace esphome {
 namespace pax_loader {
@@ -1908,6 +1909,7 @@ void PaxLoader::process_ui_call_() {
 void PaxLoader::loop() {
   this->update_hardware_();
   pax_wifi::loop();
+  pax_c6::loop();
   // Tiny active profile: refresh independently of the running app and keep the
   // raw overlays in the same theme as the launcher without adding SDK services.
   static int64_t last_theme_check=0;
@@ -8411,6 +8413,7 @@ int PaxLoader::svc_storage_status_get(int32_t storage, pax_storage_status_t *out
 }
 
 int PaxLoader::svc_storage_set_mounted(int32_t storage, int32_t mounted) {
+  if (pax_c6::busy()) return -1;
   if (storage < 0 || storage >= PAX_STORAGE_COUNT || PaxLoader::active_ == nullptr)
     return -1;
   const char *path = storage == PAX_STORAGE_SD ? "/sdcard" : "/usb0";
@@ -9452,6 +9455,8 @@ int PaxLoader::svc_file_zip_extract_first_impl(
 }
 
 void *PaxLoader::svc_file_open(const char *path, const char *mode) {
+  if(path && std::strcmp(path,PAX_C6_UPDATE_FILE)==0)
+    return own_pax_file(pax_c6::open(mode));
   if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
     return own_pax_file(pax_wifi::open(mode));
   const std::string mapped = runtime_path(path);

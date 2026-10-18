@@ -10,13 +10,15 @@ The layers are:
 | Optional audio | `packages/pax-audio.yaml` | Mixer and resamplers; the board supplies `speaker_output` |
 | Home Assistant audio player | `packages/pax-media-player.yaml` | Music and announcements on separate mixer inputs alongside PAX |
 | Optional brightness | `packages/pax-backlight.yaml` | Brightness setting; the board supplies `display_backlight` |
+| Dual networking | `packages/pax-network-dual.yaml` | Confirmed IP101 wiring, Ethernet-first routing and provisionable Wi-Fi fallback |
+| Shared C6 SDIO | `packages/pax-hosted-c6-sdio.yaml` | NANO, M3 and JC1060 I_W_Y hosted wiring on slot 1 |
 | Hardware | `boards/<manufacturer>/<board>.yaml` | Flash/revision, GPIOs, SD bus, codec, power, display and touch |
 | Display combinations | `displays/hdmi720.yaml`, `displays/hdmi1080.yaml` | Shared ECA20-MHA1-I bridge timings, independent of board GPIOs |
 | Device entry point | `esp32-p4-*-pax-*.yaml` | Device name, package selection, canvas/button geometry and Wi-Fi provisioning |
 | Build aliases | `profiles.json` | One registry used by `build-firmware.sh` |
 | Provenance | `board-sources.json` | Source revisions, schematics and unresolved hardware differences |
 
-The existing Elecrow and Waveshare filenames and build aliases continue to work. Public `*-web` entry points contain a setup hotspot and use Improv to provision Wi-Fi after flashing. Private `*-3button` Wi-Fi profiles use `secrets.yaml`. Ethernet profiles do not require Wi-Fi credentials. Staging checks the complete local include closure so credentials in a shared package cannot slip into a public image.
+The existing Elecrow and Waveshare filenames and build aliases continue to work. Public `*-web` entry points contain a setup hotspot and use Improv to provision Wi-Fi after flashing. Private `*-3button` Wi-Fi profiles use `secrets.yaml`. Ethernet-only profiles do not require Wi-Fi credentials. Dual-network profiles operate over Ethernet without Wi-Fi provisioning; provision Wi-Fi to enable wireless fallback. Staging checks the complete local include closure so credentials in a shared package cannot slip into a public image.
 
 The original `esp32-p4-elecrow-pax.yaml` is a legacy full-launcher reference. It is not in the active build registry. Do not add new shared features there.
 
@@ -38,7 +40,7 @@ After network setup, replace the serial port with the device IP for OTA. Use the
 
 Create a hardware package under its manufacturer's directory. Keep the common component IDs: `main_display`, `sd_card`, `usb_storage`, `usb_hidx_component`, `pax_runtime` and `lvgl_component`. Touch profiles use `touch_panel`; audio profiles provide `speaker_output`; brightness profiles provide `display_backlight`.
 
-Select only verified GPIOs and a known panel model or exact timings. Set flash capacity and `engineering_sample` for the actual chip revision. Keep the SD card on slot 0 when hosted Wi-Fi uses SDIO slot 1. HDMI profiles explicitly disable LVGL touchscreen auto-discovery. Smaller native panels use an even canvas that fits the panel; unchanged apps that assume 800x480 or larger may need their own screen adaptation.
+Select only verified GPIOs and a known panel model or exact timings. Set flash capacity and `engineering_sample` for the actual chip revision. Keep the SD card on slot 0 when hosted Wi-Fi uses SDIO slot 1. Include `pax-network-dual.yaml` only when both interfaces and the IP101 pinout are confirmed. Its `network.priority` is Ethernet first, followed by Wi-Fi. Both interfaces stay enabled, and Wi-Fi connection loss does not reboot the device while Ethernet is available. HDMI profiles explicitly disable LVGL touchscreen auto-discovery. Smaller native panels use an even canvas that fits the panel; unchanged apps that assume 800x480 or larger may need their own screen adaptation.
 
 Create a thin entry point that includes the base and hardware packages. Add audio and brightness only when supported. Set `panel_width`, `panel_height`, `canvas_width`, `canvas_height` and `pointer_dimensions`. The button size and positions are substitutions, so portrait panels can stack the three buttons without duplicating their callbacks. Add the alias to `profiles.json` and record sources and scope in `board-sources.json` and `docs/boards.md`.
 

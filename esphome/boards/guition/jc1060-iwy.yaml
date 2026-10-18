@@ -101,6 +101,8 @@ pax_loader:
   touchscreen_id: touch_panel
 
 packages:
+  networking: !include ../../packages/pax-network-dual.yaml
+  hosted_wifi: !include ../../packages/pax-hosted-c6-sdio.yaml
   pax_presentation: !include ../../displays/jc1060-pax-native.yaml
 
 esphome:

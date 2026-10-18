@@ -1,0 +1,24 @@
+# Both interfaces remain enabled so Ethernet loss can fall back to Wi-Fi.
+# Include only on boards with confirmed Ethernet and hosted Wi-Fi wiring.
+network:
+  priority:
+    - ethernet
+    - wifi
+
+wifi:
+  reboot_timeout: 0s
+  ap:
+    ssid: "PAX Network Setup"
+    password: "pax-setup"
+
+ethernet:
+  type: IP101
+  mdc_pin: GPIO31
+  mdio_pin: GPIO52
+  power_pin: GPIO51
+  clk:
+    mode: CLK_EXT_IN
+    pin: GPIO50
+  phy_addr: 1
+
+captive_portal:

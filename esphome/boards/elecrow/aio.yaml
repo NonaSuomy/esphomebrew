@@ -199,4 +199,5 @@ pax_loader:
   adc_button_sensor: pax_adc_buttons
 
 packages:
+  networking: !include ../../packages/pax-network-dual.yaml
   scratch_io: !include scratch-io.yaml
