@@ -1,5 +1,7 @@
 #pragma once
 #include "pax_wifi_settings.h"
+#include "pax_wifi_backup.h"
+#include "esphome/core/log.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -12,6 +14,43 @@ namespace pax_wifi {
 static portMUX_TYPE lock=portMUX_INITIALIZER_UNLOCKED;
 static pax_wifi_request_t pending{};
 static bool queued=false;
+static constexpr const char *BACKUP="/sdcard/roms/pax/wifi.bin";
+/* Called only from the main loop after SD mounts. The SD copy is the startup
+ * recovery source, including after an erase or a different firmware build. */
+static void maintain_backup(esphome::wifi::WiFiComponent *wifi, bool changing, bool user_apply) {
+ static int64_t next=0;static bool restored=false;
+ if(user_apply)restored=true;
+ int64_t now=esp_timer_get_time();if(now<next || changing)return;next=now+5000000;
+ struct stat info{};if(stat("/sdcard",&info)!=0 || !S_ISDIR(info.st_mode))return;
+ pax_wifi_request_t saved{};
+ bool present=pax_wifi_backup::load(BACKUP,saved);
+ bool recovered=false;
+ if(!present){recovered=pax_wifi_backup::load("/sdcard/roms/pax/wifi.bin.prev",saved) ||
+   pax_wifi_backup::load("/sdcard/roms/pax/wifi.bin.tmp",saved);present=recovered;}
+ if(!restored){
+  restored=true;
+  if(present && !user_apply){
+   auto current=wifi->get_sta();
+   if(current.get_ssid()!=saved.ssid || current.get_password()!=saved.password){
+    wifi->disable();wifi->save_wifi_sta(saved.ssid,saved.password);wifi->enable();
+    ESP_LOGI("pax_wifi","Restored Wi-Fi settings from SD");
+   }
+  }
+ }
+ // Only back up a proven connection, never a failed or still staged change.
+ char connected[33]={0};wifi->wifi_ssid_to(connected);auto current=wifi->get_sta();
+ if(wifi->is_connected() && current.get_ssid()==connected && connected[0]){
+  pax_wifi_request_t request{};request.magic=PAX_WIFI_SETTINGS_MAGIC;request.replace_password=1;
+  std::strncpy(request.ssid,current.get_ssid().c_str(),32);std::strncpy(request.password,current.get_password().c_str(),64);
+  if(recovered || !present || std::strcmp(saved.ssid,request.ssid) || std::strcmp(saved.password,request.password)){
+   mkdir("/sdcard/roms",0700);mkdir("/sdcard/roms/pax",0700);
+   if(pax_wifi_backup::save(BACKUP,request))ESP_LOGI("pax_wifi","Backed up working Wi-Fi settings to SD");
+   else ESP_LOGW("pax_wifi","Could not save Wi-Fi backup to SD; will retry");
+  }
+  pax_wifi_wipe(&request,sizeof(request));
+ }
+ pax_wifi_wipe(&saved,sizeof(saved));
+}
 static pax_wifi_status_t snapshot{PAX_WIFI_SETTINGS_MAGIC,0,0,{0},0,0,{0}};
 struct Stream { bool writing; size_t offset; pax_wifi_request_t request; pax_wifi_status_t response; };
 static ssize_t read(void *cookie,char *out,size_t count){auto *s=static_cast<Stream *>(cookie);size_t n=std::min(static_cast<size_t>(count),sizeof(s->response)-s->offset);std::memcpy(out,reinterpret_cast<char *>(&s->response)+s->offset,n);s->offset+=n;return n;}
@@ -41,6 +80,7 @@ static void loop(){
  static bool changing=false;static int64_t deadline=0;static esphome::wifi::WiFiAP previous,target;
  pax_wifi_request_t request{};bool apply=false;
  portENTER_CRITICAL(&lock);if(queued){request=pending;pax_wifi_wipe(&pending,sizeof(pending));queued=false;apply=true;}portEXIT_CRITICAL(&lock);
+ maintain_backup(wifi,changing,apply);
  if(apply){previous=wifi->get_sta();target=esphome::wifi::WiFiAP{};target.set_ssid(request.ssid);target.set_password(request.replace_password ? esphome::StringRef(request.password) : previous.get_password());
   wifi->disable();wifi->set_sta(target);wifi->enable();deadline=esp_timer_get_time()+45000000;changing=true;
   pax_wifi_wipe(&request,sizeof(request));
