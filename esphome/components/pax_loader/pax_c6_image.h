@@ -5,12 +5,13 @@
 namespace pax_c6 {
 // Validate a raw ESP-IDF C6 application, including all segments, checksum and
 // appended SHA-256. Factory/merged binaries and standalone BT apps are rejected.
-inline bool validate_image(FILE *file, uint32_t &size, char *version, size_t capacity) {
+template<class Progress> bool validate_image(FILE *file, uint32_t &size, char *version, size_t capacity, Progress progress) {
   using esphome::pax_loader::data::Sha256;
   if (!file || fseek(file, 0, SEEK_END)) return false;
   long length = ftell(file);
   if (length < 288 || length > 4 * 1024 * 1024 || fseek(file, 0, SEEK_SET)) return false;
   size = static_cast<uint32_t>(length);
+  progress(0,size);
   uint8_t header[24];
   if (fread(header, 1, 24, file) != 24 || header[0] != 0xe9 || !header[1] || header[1] > 16 ||
       header[12] != 13 || header[13] != 0 || header[23] != 1) return false;
@@ -30,11 +31,12 @@ inline bool validate_image(FILE *file, uint32_t &size, char *version, size_t cap
         if (n < 256 || buffer[0] != 0x32 || buffer[1] != 0x54 || buffer[2] != 0xcd || buffer[3] != 0xab ||
             !memchr(buffer + 16, 0, 32) || !memchr(buffer + 48, 0, 32) ||
             strcmp(reinterpret_cast<char *>(buffer + 48), "network_adapter")) return false;
-        snprintf(version, capacity, "%s", reinterpret_cast<char *>(buffer + 16));
+        snprintf(version, capacity, "%.31s", reinterpret_cast<char *>(buffer + 16));
       }
       first = false; hash.update(buffer, n);
       for (size_t i = 0; i < n; i++) checksum ^= buffer[i];
       offset += n; remaining -= n;
+      progress(offset,size);
     }
     if (segment == 0 && first) return false;
   }
@@ -46,6 +48,9 @@ inline bool validate_image(FILE *file, uint32_t &size, char *version, size_t cap
   std::string expected(64, '0');
   for (unsigned i = 0; i < 32; i++) { expected[i*2] = hex[buffer[i] >> 4]; expected[i*2+1] = hex[buffer[i] & 15]; }
   return hash.hex() == expected && fseek(file, 0, SEEK_SET) == 0;
+}
+inline bool validate_image(FILE *file, uint32_t &size, char *version, size_t capacity) {
+  return validate_image(file,size,version,capacity,[](uint32_t,uint32_t){});
 }
 // Transport returns 0 on success. Finalize an opened handle on failure, but
 // never activate an incomplete transfer. Kept portable for fault-injection tests.

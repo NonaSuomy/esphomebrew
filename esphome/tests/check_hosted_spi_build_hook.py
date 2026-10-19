@@ -13,6 +13,7 @@ class BuildEnvironment:
         self.project = project
         self.actions = []
         self.dependencies = []
+        self.middleware = []
 
     def subst(self, value):
         return value.replace("$PROJECT_DIR", str(self.project))
@@ -23,6 +24,9 @@ class BuildEnvironment:
     def AddPreAction(self, target, callback):
         self.actions.append((target, callback))
 
+    def AddBuildMiddleware(self, callback, pattern):
+        self.middleware.append((callback, pattern))
+
     def GetExtraScripts(self, phase):
         assert phase == "pre"
         return [str(SCRIPT)]
@@ -32,8 +36,12 @@ class BuildEnvironment:
 
 
 class SourceNode:
-    def __init__(self, path):
+    def __init__(self, path, source_path=None):
         self.path = path
+        self.source_path = source_path
+
+    def srcnode(self):
+        return SourceNode(self.source_path) if self.source_path else self
 
     def get_abspath(self):
         return str(self.path)
@@ -54,6 +62,15 @@ with tempfile.TemporaryDirectory() as folder:
     # CMake refreshes the component after the pre-script has already run.
     source.write_text(ORIGINAL)
     callback([target], [SourceNode(source)], env)
+    assert "t.flags |= SPI_TRANS_DMA_USE_PSRAM;" in source.read_text()
+    assert "t.flags &= ~SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;" in source.read_text()
+    assert len(env.middleware)==1
+    middleware,pattern=env.middleware[0]
+    assert pattern=="*port_esp_hosted_host_spi.c"
+    source.write_text(ORIGINAL)
+    node=SourceNode(project/".pioenvs/variant/port_esp_hosted_host_spi.c",source)
+    assert middleware(env,node) is node
+    assert "t.flags &= ~SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;" in source.read_text()
     assert "t.flags |= SPI_TRANS_DMA_USE_PSRAM;" in source.read_text()
     unchanged = source.stat().st_mtime_ns
     callback([target], [SourceNode(source)], env)

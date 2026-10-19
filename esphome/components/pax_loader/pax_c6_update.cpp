@@ -8,6 +8,7 @@
 #include "esp_hosted_host_fw_ver.h"
 #include "esp_http_client.h"
 #include "esp_timer.h"
+#include "esphome/core/log.h"
 #ifdef USE_OTA_ROLLBACK
 #include "esp_ota_ops.h"
 #endif
@@ -38,6 +39,7 @@ static bool copy_source(const char *source) {
   bool web = !strncmp(source, "http://", 7) || !strncmp(source, "https://", 8);
   FILE *input = nullptr;
   esp_http_client_handle_t client = nullptr;
+  uint32_t total = 0;
   if (web) {
     esp_http_client_config_t config{};
     config.url = source; config.timeout_ms = 15000; config.disable_auto_redirect = true;
@@ -52,7 +54,7 @@ static bool copy_source(const char *source) {
       int64_t length = esp_http_client_fetch_headers(client);
       int code = esp_http_client_get_status_code(client);
       if (length > MAX_SIZE || length < 0) break;
-      if (code == 200) { connected = true; break; }
+      if (code == 200) { total=static_cast<uint32_t>(length); connected = true; break; }
       if (code < 300 || code >= 400 || esp_http_client_set_redirection(client) != ESP_OK) break;
       esp_http_client_close(client);
     }
@@ -65,6 +67,9 @@ static bool copy_source(const char *source) {
       return false;
     input = fopen(path.c_str(), "rb");
     if (!input) return false;
+    struct stat info{};
+    if(fstat(fileno(input),&info) || info.st_size<=0 || info.st_size>MAX_SIZE){fclose(input);return false;}
+    total=static_cast<uint32_t>(info.st_size);
   }
   mkdir("/sdcard/roms", 0775); mkdir("/sdcard/roms/pax", 0775);
   FILE *output = fopen(STAGE, "wb");
@@ -80,7 +85,7 @@ static bool copy_source(const char *source) {
     }
     if (count + n > MAX_SIZE || fwrite(buffer, 1, n, output) != static_cast<size_t>(n)) { ok = false; break; }
     count += n;
-    report(PAX_C6_BUSY, "Staging firmware on SD card", count);
+    report(PAX_C6_BUSY, "Copying firmware to staging file", count,total);
     vTaskDelay(1);
   }
   if (output && fclose(output)) ok = false;
@@ -91,12 +96,21 @@ static bool copy_source(const char *source) {
 static void worker(void *arg) {
   auto *request = static_cast<pax_c6_request_t *>(arg);
   const bool prepare = request->command == PAX_C6_PREPARE;
+  ESP_LOGI("pax_c6","%s requested",prepare ? "Verification" : "Installation");
   bool ok = !prepare || copy_source(request->source);
   char source[512]; memcpy(source, request->source, sizeof(source));
   free(request);
   FILE *file = ok ? fopen(STAGE, "rb") : nullptr;
   uint32_t size = 0; char version[32]{};
-  if (!ok || !validate_image(file, size, version, sizeof(version))) {
+  int64_t last_yield=0;
+  auto verification_progress=[&last_yield](uint32_t done,uint32_t total){
+    int64_t now=esp_timer_get_time();
+    if(done==0 || now-last_yield>=20000){
+      report(PAX_C6_BUSY,"Verifying C6 image integrity",done,total);
+      vTaskDelay(1);last_yield=now;
+    }
+  };
+  if (!ok || !validate_image(file, size, version, sizeof(version),verification_progress)) {
     if (file) fclose(file);
     remove(STAGE);
     report(PAX_C6_ERROR, "Invalid/incomplete C6 network_adapter image, source unavailable, or SD full");
@@ -114,7 +128,10 @@ static void worker(void *arg) {
       remove(STAGE);
       report(PAX_C6_ERROR, "Firmware version is incompatible with this P4 ESP-Hosted library");
     } else {
+      report(PAX_C6_BUSY,"Image verified; checking C6 connection",size,size);
+      ESP_LOGI("pax_c6","Image verified (%lu bytes); querying C6",static_cast<unsigned long>(size));
       esp_err_t result = esp_hosted_get_coprocessor_fwversion(&current);
+      ESP_LOGI("pax_c6","C6 version query: %s",esp_err_to_name(result));
       if (result != ESP_OK) {
         remove(STAGE);
         report(PAX_C6_ERROR, "C6 not responding; initial/recovery flashing requires USB/UART");

@@ -32,6 +32,9 @@ static void rehash(std::vector<uint8_t> &b) {
 int main(){
  static_assert(sizeof(pax_c6_request_t)==520);static_assert(sizeof(pax_c6_status_t)==176);
  auto b=image();assert(valid(b));
+ FILE *progress_file=file(b);uint32_t image_size=0,last_done=0,calls=0;char version[32];
+ assert(pax_c6::validate_image(progress_file,image_size,version,sizeof(version),[&](uint32_t done,uint32_t total){assert(total==b.size() && done>=last_done && done<=total);last_done=done;calls++;}));
+ assert(calls>=2 && last_done>0);fclose(progress_file);
  for(size_t i=0;i<b.size();i++){auto damaged=b;damaged[i]^=1;assert(!valid(damaged));}
  for(size_t n=0;n<b.size();n++){auto truncated=b;truncated.resize(n);assert(!valid(truncated));}
  auto wrong_chip=b;wrong_chip[12]=18;rehash(wrong_chip);assert(!valid(wrong_chip));

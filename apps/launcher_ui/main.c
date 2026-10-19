@@ -181,6 +181,8 @@ static char g_c6_checked_source[512];
 static pax_c6_status_t g_c6_status;
 static bool g_c6_available;
 static lv_obj_t *g_c6_labels[4];
+static lv_obj_t *g_c6_progress;
+static uint32_t g_c6_last_state;
 static int g_keyboard_focus;
 static int g_toolbar_focus = -1;
 static int g_pending_key;
@@ -3875,6 +3877,15 @@ static void request_c6_update(uint32_t command) {
   refresh_c6_status();
 }
 
+static bool consume_c6_action(void)
+{
+  if(g_open_index!=-71 && g_open_index!=-72)return false;
+  uint32_t command=g_open_index==-71 ? PAX_C6_PREPARE : PAX_C6_INSTALL;
+  g_open_index=-1;
+  request_c6_update(command);
+  return true;
+}
+
 static void refresh_wifi_settings(bool load)
 {
   g_wifi_available=false;
@@ -4750,6 +4761,44 @@ static void settings_slider_event(lv_event_t *event)
   g_settings_dirty = true;
 }
 
+static uint32_t c6_progress_percent(const pax_c6_status_t *status)
+{
+  uint64_t percent=status->total ? (uint64_t)status->done*100U/status->total : 0;
+  return percent>100 ? 100 : (uint32_t)percent;
+}
+
+/* Refresh independently of focus changes so a long verification keeps
+ * updating the bar without rebuilding or closing the Settings page. */
+static int update_c6_progress_on_host(void *unused)
+{
+  (void)unused;
+  if(!g_settings_mode || !g_c6_progress)return 0;
+  refresh_c6_status();
+  for(int i=0;i<3;i++)if(g_settings_focus_widgets[31+i]){
+    bool enabled=g_c6_available && g_c6_status.state!=PAX_C6_BUSY && g_c6_status.state!=PAX_C6_REBOOTING;
+    if(i==2)enabled=enabled && g_c6_status.state==PAX_C6_READY && strcmp(g_c6_source,g_c6_checked_source)==0;
+    if(enabled)lv_obj_clear_state(g_settings_focus_widgets[31+i],LV_STATE_DISABLED);else lv_obj_add_state(g_settings_focus_widgets[31+i],LV_STATE_DISABLED);
+  }
+  if(g_c6_labels[0])lv_label_set_text(g_c6_labels[0],g_c6_source);
+  if(g_c6_labels[1])lv_label_set_text(g_c6_labels[1],g_c6_available && g_c6_status.state==PAX_C6_BUSY ? "WORKING..." : "CHECK FIRMWARE");
+  if(g_c6_progress){
+    uint32_t percent=c6_progress_percent(&g_c6_status);
+    lv_bar_set_value(g_c6_progress,(int)percent,LV_ANIM_OFF);
+    lv_obj_set_style_bg_color(g_c6_progress,lv_color_hex(g_c6_status.state==PAX_C6_ERROR ? COL_ERROR : COL_ACCENT),LV_PART_INDICATOR);
+  }
+  if(g_c6_labels[3]){
+    char text[220];copy_text(text,sizeof(text),g_c6_available ? g_c6_status.message : "Requires P4 ESP-Hosted firmware");
+    append_text(text,sizeof(text)," | ");
+    if(g_c6_status.total){append_uint(text,sizeof(text),c6_progress_percent(&g_c6_status));append_text(text,sizeof(text),"% | ");}
+    append_uint(text,sizeof(text),g_c6_status.done);append_text(text,sizeof(text)," / ");append_uint(text,sizeof(text),g_c6_status.total);append_text(text,sizeof(text)," bytes");
+    lv_label_set_text(g_c6_labels[3],text);
+  }
+  if(g_c6_available && g_c6_status.state==PAX_C6_BUSY && g_c6_last_state!=PAX_C6_BUSY && g_c6_labels[3])
+    lv_obj_scroll_to_view(g_c6_labels[3],LV_ANIM_OFF);
+  g_c6_last_state=g_c6_status.state;
+  return 0;
+}
+
 static int update_device_status_on_host(void *unused)
 {
   (void)unused;
@@ -5619,18 +5668,7 @@ static int update_selection_on_host(void *arg)
     const char *value=i==0 ? g_network_url : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RETRYING PREVIOUS WI-FI" : "APPLY WI-FI");
     lv_label_set_text(g_network_extra_labels[i],value);
   }
-  for(int i=0;i<3;i++)if(g_settings_focus_widgets[31+i]){
-    bool enabled=g_c6_available && g_c6_status.state!=PAX_C6_BUSY && g_c6_status.state!=PAX_C6_REBOOTING;
-    if(i==2)enabled=enabled && g_c6_status.state==PAX_C6_READY && strcmp(g_c6_source,g_c6_checked_source)==0;
-    if(enabled)lv_obj_clear_state(g_settings_focus_widgets[31+i],LV_STATE_DISABLED);else lv_obj_add_state(g_settings_focus_widgets[31+i],LV_STATE_DISABLED);
-  }
-  if(g_c6_labels[0])lv_label_set_text(g_c6_labels[0],g_c6_source);
-  if(g_c6_labels[1])lv_label_set_text(g_c6_labels[1],g_c6_available && g_c6_status.state==PAX_C6_BUSY ? "WORKING..." : "CHECK FIRMWARE");
-  if(g_c6_labels[3]){
-    char text[220];copy_text(text,sizeof(text),g_c6_available ? g_c6_status.message : "Requires P4 ESP-Hosted firmware");
-    append_text(text,sizeof(text)," | ");append_uint(text,sizeof(text),g_c6_status.done);append_text(text,sizeof(text)," / ");append_uint(text,sizeof(text),g_c6_status.total);append_text(text,sizeof(text)," bytes");
-    lv_label_set_text(g_c6_labels[3],text);
-  }
+  (void)update_c6_progress_on_host(NULL);
   if (g_network_dhcp_label != NULL)
     lv_label_set_text(g_network_dhcp_label, g_network_config.dhcp_enabled ? "ON" : "OFF");
   if (g_network_status_label != NULL) {
@@ -5665,7 +5703,7 @@ static int update_selection_on_host(void *arg)
   }
   if (g_settings_message_label != NULL)
     lv_label_set_text(g_settings_message_label, g_settings_message);
-  if (g_settings_mode) {
+  if (g_settings_mode && !(g_c6_available && g_c6_status.state==PAX_C6_BUSY)) {
     lv_obj_t *focused = g_settings_focus >= 0 && g_settings_focus < SETTINGS_FOCUS_COUNT ?
                         g_settings_focus_widgets[g_settings_focus] : NULL;
     if (focused != NULL) lv_obj_scroll_to_view(focused, LV_ANIM_OFF);
@@ -5957,6 +5995,7 @@ static int build_ui_on_host(void *arg)
   g_network_dhcp_label = NULL;
   g_network_apply_button = NULL;
   for(int i=0;i<4;i++){g_network_extra_labels[i]=NULL;g_c6_labels[i]=NULL;}
+  g_c6_progress=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;
   g_archive_auth_status_label = NULL;
@@ -6344,7 +6383,7 @@ static int build_ui_on_host(void *arg)
       else if(row==34)visual_row=33;
       else if(row==28 || row==29)visual_row+=2;
       if(row>=36)visual_row=row;
-      if(row==29)visual_row=42;
+      if(row==29)visual_row=43;
       row_y[row] = first_row_y + step_y * visual_row;
       /* Keep the extra breathing room after the Archive S3 status even
        * though the five Storage rows now precede the network settings. */
@@ -6685,7 +6724,15 @@ static int build_ui_on_host(void *arg)
       lv_obj_set_width(g_c6_labels[i],control_w-ui_px(12));lv_label_set_long_mode(g_c6_labels[i],LV_LABEL_LONG_DOT);
       lv_obj_set_style_text_font(g_c6_labels[i],&lv_font_montserrat_14,LV_PART_MAIN);lv_obj_center(g_c6_labels[i]);
     }
-    g_c6_labels[3]=settings_text(panel,"C6 firmware: use an image matching this board's SPI/SDIO wiring",label_x,row_y[39],content_w-label_x-ui_px(8),&lv_font_montserrat_14,true);
+    g_c6_progress=lv_bar_create(panel);
+    lv_obj_set_pos(g_c6_progress,label_x,row_y[39]+ui_px(6));
+    lv_obj_set_size(g_c6_progress,content_w-label_x-ui_px(8),ui_px(10));
+    lv_bar_set_range(g_c6_progress,0,100);
+    lv_obj_set_style_bg_color(g_c6_progress,lv_color_hex(COL_PANEL),LV_PART_MAIN);
+    lv_obj_set_style_bg_color(g_c6_progress,lv_color_hex(COL_ACCENT),LV_PART_INDICATOR);
+    g_c6_labels[3]=settings_text(panel,"C6 firmware: use an image matching this board's SPI/SDIO wiring",label_x,row_y[39]+step_y,content_w-label_x-ui_px(8),&lv_font_montserrat_14,true);
+    lv_obj_set_height(g_c6_labels[3],ui_px(48));
+    lv_label_set_long_mode(g_c6_labels[3],LV_LABEL_LONG_WRAP);
     g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[29],
                                               content_w-ui_px(12),&lv_font_montserrat_14,true);
 
@@ -7394,6 +7441,7 @@ static int teardown_ui_on_host(void *arg)
   g_network_dhcp_label = NULL;
   g_network_apply_button = NULL;
   for(int i=0;i<4;i++){g_network_extra_labels[i]=NULL;g_c6_labels[i]=NULL;}
+  g_c6_progress=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;
   for (int i = 0; i < 4; i++) g_network_value_labels[i] = NULL;
@@ -8009,6 +8057,7 @@ int app_entry(const app_services_t *svc)
   while (g_open_index == -1) {
       const bool keyboard_changed = poll_usb_keyboard();
       const bool selection_changed = poll_controller();
+      if(consume_c6_action())(void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
       const int wheel = __atomic_exchange_n(&g_mouse_wheel_pending, 0, __ATOMIC_ACQ_REL);
       if (wheel != 0)
         (void)svc->ui_call_sync(mouse_scroll_on_host, (void *)(intptr_t)wheel, 1000);
@@ -8035,6 +8084,7 @@ int app_entry(const app_services_t *svc)
       }
       if ((uint32_t)(now_ms - last_status_update_ms) >= 1000) {
         (void)svc->ui_call_sync(update_device_status_on_host, NULL, 1000);
+        (void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
         last_status_update_ms = now_ms;
       }
       if (detail_mode && g_install_state == 1 && g_svc->store_install_status != NULL) {
@@ -8050,8 +8100,20 @@ int app_entry(const app_services_t *svc)
         (void)svc->ui_call_sync(update_selection_on_host, NULL, 1000);
         last_progress_update_ms = now_ms;
       }
-      if (svc->ui_call_sync(pump_ui_on_host, NULL, 1000) != 0)
+      const int pump_result=svc->ui_call_sync(pump_ui_on_host,NULL,3000);
+      if(pump_result==-2 || pump_result==-3){
+        /* A busy host/SD/RPC task can delay a queued UI call. Keep the
+         * launcher alive and retry instead of treating that as app exit. */
+        svc->delay_ms(20);
+        continue;
+      }
+      if(pump_result!=0){
+        svc->log_printf("launcher_ui: UI pump failed: %d\n",pump_result);
         break;
+      }
+      /* C6 jobs are asynchronous. Consume their actions here rather than
+       * tearing down and recreating every LVGL object during verification. */
+      if(consume_c6_action())(void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
       svc->delay_ms((int)g_next_handler_ms);
     }
 
