@@ -13,6 +13,8 @@ The P4 calls the same `esp_hosted_slave_ota_begin/write/end/activate` APIs used 
 
 A responsive, compatible ESP-Hosted C6 with OTA partitions is required. This cannot perform an initial flash or recover a C6 that no longer communicates; use USB/UART for those cases. Copying a file to the card does not automatically flash it. ESPHome JSON manifests and automatic update checks are not accepted by this direct-image field.
 
-Validation: configuration validation, P4 build and launcher build; host-side corruption, truncation and simulated begin/write/end/activate failures. No device has been flashed or hardware behavior verified for this updater.
+Validation: configuration validation, P4 build and launcher build; host-side corruption, truncation and simulated begin/write/end/activate failures. These checks do not establish hardware OTA success; C6 OTA activation has not been tested.
 
 Implementation reference: local ESPHome `dependencies/esphome/esphome/components/esp32_hosted/update/esp32_hosted_update.cpp`, and [ESPHome ESP32 Hosted update documentation](https://esphome.io/components/update/esp32_hosted/).
+
+Verification does not activate or reboot the C6. A verified image may reach 100% while the status says it is checking the C6 connection. UI bridge delays are retried so a slow SD/RPC operation does not close the launcher. The IDF 6.1 hosted SPI adapter enables PSRAM DMA and allows alignment buffers; its patch is reapplied after CMake refreshes managed components.

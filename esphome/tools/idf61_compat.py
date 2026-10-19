@@ -107,29 +107,9 @@ for managed_root in managed_roots:
 # IDF 6.1 requires an explicit transaction flag for external DMA buffers.
 # Patch again immediately before this translation unit compiles: ESP-IDF's
 # CMake/component refresh can replace managed sources after this pre-script.
-def patch_hosted_spi_source(spi_source):
-    if not spi_source.exists():
-        return
-    source = spi_source.read_text()
-    marker = "    t.flags |= SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;"
-    addition = """
-#if defined(SPI_TRANS_DMA_USE_PSRAM)
-    /* IDF 6.1 validates DMA capability and cache-line length alignment.
-     * Permit its bounce buffer when a hosted pool buffer needs realignment. */
-    t.flags &= ~SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;
-#if CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM
-    t.flags |= SPI_TRANS_DMA_USE_PSRAM;
-#endif
-#endif"""
-    old_addition = """
-#if CONFIG_ESP_HOSTED_MEMPOOL_PREFER_SPIRAM && defined(SPI_TRANS_DMA_USE_PSRAM)
-    t.flags |= SPI_TRANS_DMA_USE_PSRAM;
-#endif"""
-    source = source.replace(old_addition, "")
-    if marker in source and addition not in source:
-        spi_source.write_text(source.replace(marker, marker + addition, 1))
-        print("IDF 6.1 compatibility: enabled hosted SPI PSRAM DMA transactions")
-
+from runpy import run_path
+compat_directory = next(Path(path).parent for path in env.GetExtraScripts("pre") if Path(path).name == "idf61_compat.py")
+patch_hosted_spi_source = run_path(str(compat_directory / "hosted_spi_dma.py"))["patch_hosted_spi_source"]
 
 for managed_root in managed_roots:
     patch_hosted_spi_source(managed_root / "espressif__esp_hosted" / "host" / "port" / "esp" /
@@ -150,8 +130,8 @@ def patch_hosted_spi_before_compile(target, source, env):
     patch_hosted_spi_source(Path(source[0].srcnode().get_abspath()))
 
 
-hosted_spi_object = env.File("$BUILD_DIR/managed_components/espressif__esp_hosted/host/port/esp/"
-                             "freertos/src/port_esp_hosted_host_spi.c.o")
+hosted_spi_object = env.File(env.subst("$BUILD_DIR/managed_components/espressif__esp_hosted/host/port/esp/"
+                             "freertos/src/port_esp_hosted_host_spi.c.o"))
 env.AddPreAction(hosted_spi_object, patch_hosted_spi_before_compile)
 # Rebuild this object when the compatibility script itself changes, too.
 for compat_script in env.GetExtraScripts("pre"):

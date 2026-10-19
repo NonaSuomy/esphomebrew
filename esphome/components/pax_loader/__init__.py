@@ -1,3 +1,4 @@
+from pathlib import Path
 from esphome import automation
 import esphome.codegen as cg
 import esphome.config_validation as cv
@@ -315,6 +316,11 @@ if hasattr(socket, "consume_sockets"):
 
 
 async def to_code(config):
+    # CMake can refresh ESP-Hosted after pre scripts run. Apply the DMA
+    # adaptation after framework configuration, before object signatures.
+    hosted_post = Path(__file__).resolve().parents[2] / "tools" / "hosted_spi_post.py"
+    if hosted_post.is_file():
+        cg.add_platformio_option("extra_scripts", [f"post:{hosted_post}"])
     # esp_http_client is intentionally omitted from ESPHome's default P4
     # component set. Pull it in here because network PAX loading uses it
     # directly, and enable the IDF TLS component for HTTPS URLs.

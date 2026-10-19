@@ -16,7 +16,7 @@ class BuildEnvironment:
         self.middleware = []
 
     def subst(self, value):
-        return value.replace("$PROJECT_DIR", str(self.project))
+        return value.replace("$PROJECT_DIR", str(self.project)).replace("$BUILD_DIR", str(self.project / ".pioenvs/test"))
 
     def File(self, path):
         return path
@@ -28,8 +28,8 @@ class BuildEnvironment:
         self.middleware.append((callback, pattern))
 
     def GetExtraScripts(self, phase):
-        assert phase == "pre"
-        return [str(SCRIPT)]
+        assert phase in ("pre", "post")
+        return [str(SCRIPT if phase == "pre" else SCRIPT.with_name("hosted_spi_post.py"))]
 
     def Depends(self, target, source):
         self.dependencies.append((target, source))
@@ -57,7 +57,7 @@ with tempfile.TemporaryDirectory() as folder:
     assert "t.flags |= SPI_TRANS_DMA_USE_PSRAM;" in source.read_text()
     assert len(env.actions) == 1
     target, callback = env.actions[0]
-    assert target == "$BUILD_DIR/" + RELATIVE_SOURCE + ".o"
+    assert target == str(project/".pioenvs/test"/RELATIVE_SOURCE)+".o"
     assert env.dependencies == [(target, str(SCRIPT.resolve()))]
     # CMake refreshes the component after the pre-script has already run.
     source.write_text(ORIGINAL)
@@ -70,6 +70,12 @@ with tempfile.TemporaryDirectory() as folder:
     source.write_text(ORIGINAL)
     node=SourceNode(project/".pioenvs/variant/port_esp_hosted_host_spi.c",source)
     assert middleware(env,node) is node
+    assert "t.flags &= ~SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;" in source.read_text()
+    assert "t.flags |= SPI_TRANS_DMA_USE_PSRAM;" in source.read_text()
+    # The framework may bypass project-source middleware; the post script
+    # must repair freshly downloaded sources before dependency signatures.
+    source.write_text(ORIGINAL)
+    runpy.run_path(str(SCRIPT.with_name("hosted_spi_post.py")), init_globals={"env":env,"Import":lambda name:None})
     assert "t.flags &= ~SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;" in source.read_text()
     assert "t.flags |= SPI_TRANS_DMA_USE_PSRAM;" in source.read_text()
     unchanged = source.stat().st_mtime_ns
