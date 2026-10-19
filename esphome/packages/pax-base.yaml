@@ -243,6 +243,11 @@ time:
     servers:
       - 0.pool.ntp.org
       - 1.pool.ntp.org
+    on_time_sync:
+      then:
+        - lambda: |-
+            ESP_LOGI("pax_clock", "Time synchronized: %s",
+                     id(sntp_time).now().strftime("%Y-%m-%d %H:%M:%S").c_str());
 
 
 improv_serial:
@@ -339,6 +344,8 @@ esp32:
       CONFIG_ESP_TASK_LOOP_STACK_SIZE: "16384"
       CONFIG_LWIP_SOCKET: "y"
       CONFIG_LWIP_MAX_SOCKETS: "16"
+      # Match both configured time servers; IDF otherwise defaults to one slot.
+      CONFIG_LWIP_SNTP_MAX_SERVERS: "2"
       CONFIG_MBEDTLS_CERTIFICATE_BUNDLE: "y"
       CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL: "y"
       CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_CROSS_SIGNED_VERIFY: "y"

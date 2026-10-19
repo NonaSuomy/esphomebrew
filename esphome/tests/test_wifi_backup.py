@@ -24,7 +24,7 @@ class WifiBackupTests(unittest.TestCase):
     def test_startup_restore_and_connected_backup(self):
         import json
         stream = (ROOT / "components/pax_loader/pax_wifi_stream.h").read_text()
-        function = stream[stream.index("static void maintain_backup"):stream.index("static pax_wifi_status_t")]
+        function = stream[stream.index("static void maintain_backup"):stream.index("// Discard SNTP")]
         with tempfile.TemporaryDirectory() as folder:
             card = Path(folder) / "card"
             function = function.replace("/sdcard", str(card))

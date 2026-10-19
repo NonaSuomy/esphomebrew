@@ -9,6 +9,9 @@
 #include "esphome/components/wifi/wifi_component.h"
 #ifdef ESP_PLATFORM
 #include "esp_wifi.h"
+#if defined(SNTP_SERVER_COUNT)
+#include "esp_sntp.h"
+#endif
 #endif
 namespace pax_wifi {
 static portMUX_TYPE lock=portMUX_INITIALIZER_UNLOCKED;
@@ -51,6 +54,20 @@ static void maintain_backup(esphome::wifi::WiFiComponent *wifi, bool changing, b
  }
  pax_wifi_wipe(&saved,sizeof(saved));
 }
+// Discard SNTP's offline retry backoff as soon as Wi-Fi has an IP.
+// The ESP-IDF wrapper schedules the restart on the TCP/IP task.
+static void refresh_time_after_reconnect(bool connected) {
+#if defined(USE_ESP32) && defined(SNTP_SERVER_COUNT)
+ static bool was_connected=false;
+ if(connected && !was_connected){
+  if(esp_sntp_restart())ESP_LOGI("pax_clock","Wi-Fi connected; requesting time sync");
+  else ESP_LOGW("pax_clock","Time sync service not initialized");
+ }
+ was_connected=connected;
+#else
+ (void)connected;
+#endif
+}
 static pax_wifi_status_t snapshot{PAX_WIFI_SETTINGS_MAGIC,0,0,{0},0,0,{0}};
 struct Stream { bool writing; size_t offset; pax_wifi_request_t request; pax_wifi_status_t response; };
 static ssize_t read(void *cookie,char *out,size_t count){auto *s=static_cast<Stream *>(cookie);size_t n=std::min(static_cast<size_t>(count),sizeof(s->response)-s->offset);std::memcpy(out,reinterpret_cast<char *>(&s->response)+s->offset,n);s->offset+=n;return n;}
@@ -90,6 +107,7 @@ static void loop(){
   if(wifi->is_connected() && target.get_ssid()==ssid){wifi->save_wifi_sta(target.get_ssid(),target.get_password());changing=false;status=2;}
   else if(esp_timer_get_time()>=deadline){wifi->disable();wifi->set_sta(previous);wifi->enable();changing=false;status=-1;}
  }
+ refresh_time_after_reconnect(wifi->is_connected());
  static int64_t last_refresh=-1000000;
  const int64_t now=esp_timer_get_time();
  if(!status && now-last_refresh<1000000)return;
