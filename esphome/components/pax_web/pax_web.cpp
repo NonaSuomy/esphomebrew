@@ -1,5 +1,7 @@
 #include "pax_web.h"
 #include "esp_random.h"
+#include "esp_heap_caps.h"
+#include "esphome/components/pax_loader/pax_data.h"
 #ifdef USE_IMPROV_SERIAL
 #include "esphome/components/improv_serial/improv_serial_component.h"
 #endif
@@ -87,6 +89,9 @@ void PaxWeb::dump_config() {
   ESP_LOGCONFIG(TAG, "PAX SD setup: port %u, path /pax", port_);
 }
 void PaxWeb::loop() {
+  if (snapshot_state_.load() >= 2 && uint32_t(millis() - snapshot_access_) > 120000) {
+    heap_caps_free(snapshot_pixels_); snapshot_pixels_ = nullptr; snapshot_state_ = 0;
+  }
 #ifdef USE_IMPROV_SERIAL
   if (!serial_bound_ && serial_queue_ != nullptr && improv_serial::global_improv_serial_component != nullptr) {
     improv_serial::global_improv_serial_component->set_vendor_handler(
@@ -326,6 +331,64 @@ void PaxWeb::starter_task_(void *context) {
   self->starter_task_handle_ = nullptr;
   vTaskDeleteWithCaps(nullptr);
 }
+// Improv vendor 0x74 extensions: op + session ID, plus offset for reads.
+// Polling keeps logs out of the image and bounds main-loop UART work.
+void PaxWeb::snapshot_task_(void *context) {
+  auto *self = static_cast<PaxWeb *>(context);
+  bool ok = self->loader_->capture_screenshot(self->snapshot_pixels_, self->snapshot_width_, self->snapshot_height_);
+  if (ok) {
+    pax_loader::data::Sha256 hash;
+    size_t size = size_t(self->snapshot_width_) * self->snapshot_height_ * 2;
+    const auto *pixels = reinterpret_cast<const uint8_t *>(self->snapshot_pixels_);
+    for (size_t offset=0;offset<size;offset+=65536) {
+      hash.update(pixels+offset,std::min<size_t>(65536,size-offset));vTaskDelay(1);
+    }
+    const auto hex = hash.hex();
+    auto digit = [](char c) { return c <= '9' ? c-'0' : c-'a'+10; };
+    for (unsigned i=0;i<32;i++)self->snapshot_sha_[i] = (digit(hex[i*2])<<4) | digit(hex[i*2+1]);
+  }
+  self->snapshot_state_ = ok ? 2 : 3;
+  vTaskDeleteWithCaps(nullptr);
+}
+std::vector<uint8_t> PaxWeb::snapshot_command_(std::span<const uint8_t> payload) {
+  auto error = [](const char *message) {
+    std::vector<uint8_t> out{0x74, 1};out.insert(out.end(), message, message + std::strlen(message));return out;
+  };
+  if (payload.size() != 5 && payload.size() != 9) return error("Invalid screenshot request");
+  const uint8_t op = payload[0];
+  uint32_t id = 0;for (unsigned i=0;i<4;i++) id |= uint32_t(payload[i+1]) << (i*8);
+  if (op < 1 || op > 4 || payload.size() != (op == 3 ? 9U : 5U)) return error("Invalid screenshot operation");
+  int state = snapshot_state_.load();
+  if (op == 1 && (state == 0 || (state != 1 && id != snapshot_id_))) {
+    heap_caps_free(snapshot_pixels_);snapshot_pixels_ = nullptr;
+    snapshot_id_ = id;snapshot_state_ = 1;snapshot_access_ = millis();
+    if (xTaskCreatePinnedToCoreWithCaps(snapshot_task_, "pax_snapshot", 8192, this, 4, nullptr,
+        0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) snapshot_state_ = 3;
+    state = snapshot_state_.load();
+  }
+  if (id != snapshot_id_ || state == 0) return error("Screenshot session unavailable");
+  snapshot_access_ = millis();
+  if (op == 4 && state != 1) {
+    heap_caps_free(snapshot_pixels_);snapshot_pixels_=nullptr;snapshot_state_=0;
+    std::vector<uint8_t> out{0x74,0,op};for(unsigned i=0;i<4;i++)out.push_back(id>>(8*i));return out;
+  }
+  if (state == 3) return error("Screenshot unavailable: no canvas, display busy, or out of memory");
+  std::vector<uint8_t> out{0x74, uint8_t(state == 1 && op != 1 ? 2 : 0), op};
+  auto append = [&out](uint32_t n, unsigned bytes) {for(unsigned i=0;i<bytes;i++)out.push_back(n>>(8*i));};
+  append(id,4);
+  if (op == 1 || state == 1) return out;
+  const uint32_t size = uint32_t(snapshot_width_) * snapshot_height_ * 2;
+  if (op == 2) {
+    append(snapshot_width_,2);append(snapshot_height_,2);append(size,4);
+    out.insert(out.end(),snapshot_sha_,snapshot_sha_+32);
+  } else if (op == 3) {
+    uint32_t offset=0;for(unsigned i=0;i<4;i++)offset |= uint32_t(payload[i+5])<<(8*i);
+    if(offset>=size)return error("Screenshot offset out of range");
+    append(offset,4);const auto *pixels=reinterpret_cast<const uint8_t *>(snapshot_pixels_);
+    out.insert(out.end(),pixels+offset,pixels+offset+std::min<uint32_t>(240,size-offset));
+  }
+  return out;
+}
 // Executed on the main loop via Improv, so storage ownership changes here.
 std::vector<uint8_t> PaxWeb::serial_command_(uint8_t command, std::span<const uint8_t> payload) {
   auto reply = [command](uint8_t status, const char *text) {
@@ -333,7 +396,10 @@ std::vector<uint8_t> PaxWeb::serial_command_(uint8_t command, std::span<const ui
     out.insert(out.end(), text, text + std::min<size_t>(std::strlen(text), 180));
     return out;
   };
-  if (command == 0x74) return reply(0, "PAXSD1");
+  if (command == 0x74) {
+    if (!payload.empty()) return snapshot_command_(payload);
+    return reply(0, "PAXSD1");
+  }
   if (command == 0x75) { close_requested_ = true; return reply(0, "Closing app"); }
   if (command == 0x73) { serial_abort_ = true; return reply(0, "Cancelling transfer"); }
   if (command == 0x72) {

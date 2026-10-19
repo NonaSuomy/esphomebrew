@@ -6324,12 +6324,10 @@ void PaxLoader::screen_stream_task_() {
 // another size; logical orientation, the same RGB565 layout as the PAXFB01
 // thumbnails), the menu, or an empty 0x0 packet. The copy lives in PSRAM only
 // while it is sent.
-bool PaxLoader::send_screenshot_(int client_fd) {
-  static uint32_t screenshot_sequence = 0;
-  uint16_t *copy = nullptr;
-  uint16_t width = 0;
-  uint16_t height = 0;
-  size_t bytes = 0;
+bool PaxLoader::capture_screenshot(uint16_t *&copy, uint16_t &width, uint16_t &height) {
+  copy = nullptr; width = height = 0;
+  if (this->screenshot_capture_lock_.test_and_set()) return false;
+  struct CaptureGuard { std::atomic_flag &flag; ~CaptureGuard() { flag.clear(); } } guard{this->screenshot_capture_lock_};
   if (this->launched_ && !this->pax_loading_ && this->framebuffer_ != nullptr) {
     // The app draws without this lock; holding it keeps a flush (and its
     // rotation into the panel buffer) or a canvas switch from running during
@@ -6379,7 +6377,6 @@ bool PaxLoader::send_screenshot_(int client_fd) {
       }
       width = static_cast<uint16_t>(canvas_w);
       height = static_cast<uint16_t>(canvas_h);
-      bytes = frame_bytes;
     }
     if (locked)
       xSemaphoreGiveRecursive(this->display_mutex_);
@@ -6400,12 +6397,19 @@ bool PaxLoader::send_screenshot_(int client_fd) {
       copy = this->menu_shot_;
       width = this->menu_shot_w_;
       height = this->menu_shot_h_;
-      bytes = static_cast<size_t>(width) * height * sizeof(uint16_t);
       this->menu_shot_ = nullptr;
       this->menu_shot_ready_ = false;
     }
   }
 #endif
+  return copy != nullptr && width != 0 && height != 0;
+}
+
+bool PaxLoader::send_screenshot_(int client_fd) {
+  static uint32_t screenshot_sequence = 0;
+  uint16_t *copy = nullptr, width = 0, height = 0;
+  this->capture_screenshot(copy, width, height);
+  const size_t bytes = static_cast<size_t>(width) * height * sizeof(uint16_t);
   ScreenStreamHeader header{{'P','A','P','P','S','S','0','1'}, width, height, static_cast<uint32_t>(bytes),
                             ++screenshot_sequence};
   bool ok = send_screen_stream_bytes(client_fd, &header, sizeof(header));

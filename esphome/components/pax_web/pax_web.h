@@ -25,6 +25,12 @@ protected:
   esp_err_t serve_(httpd_req_t *req);
   static int read_(void *context, uint8_t *buffer, size_t size);
   static void starter_task_(void *context);
+  static void snapshot_task_(void *context);
+  std::vector<uint8_t> snapshot_command_(std::span<const uint8_t> payload);
+  std::atomic<int> snapshot_state_{0}; // idle, capturing, ready, failed
+  uint16_t *snapshot_pixels_{nullptr}, snapshot_width_{0}, snapshot_height_{0};
+  uint32_t snapshot_id_{0}, snapshot_access_{0};
+  uint8_t snapshot_sha_[32]{};
   static void serial_task_(void *context);
   static int serial_read_(void *context, uint8_t *buffer, size_t size);
   std::vector<uint8_t> serial_command_(uint8_t command, std::span<const uint8_t> payload);

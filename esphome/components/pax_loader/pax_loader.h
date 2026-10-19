@@ -139,6 +139,8 @@ class PaxLoader : public Component {
   // The web component reserves storage on the main loop before doing I/O on its worker.
   bool begin_web_transfer();
   void end_web_transfer();
+  // Worker-only snapshot; caller owns the returned heap_caps allocation.
+  bool capture_screenshot(uint16_t *&copy, uint16_t &width, uint16_t &height);
   using WebRead = int (*)(void *, uint8_t *, size_t);
   esp_err_t receive_web_file(const std::string &path, uint32_t size, const std::string &sha256,
                              WebRead read, void *context);
@@ -840,6 +842,7 @@ class PaxLoader : public Component {
   volatile bool stream_frame_ready_{false};
   volatile bool stream_client_connected_{false};
   volatile bool stream_enabled_{false};
+  std::atomic_flag screenshot_capture_lock_ = ATOMIC_FLAG_INIT;
   volatile bool screenshot_requested_{false};
   // With no app running, a screenshot is the LVGL menu: the main loop (the
   // LVGL thread) snapshots the active screen into this RGB565 buffer and the
