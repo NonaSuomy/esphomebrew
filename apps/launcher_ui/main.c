@@ -4342,6 +4342,8 @@ static void load_list_title(int index)
 
 /* Prefer visible rows, then finish the rest so title searches cover the
  * whole catalog without delaying the first usable list. */
+static bool g_metadata_pending;
+static uint32_t g_metadata_last_flush;
 static bool load_visible_metadata(void)
 {
   if(g_catalog_loading || g_settings_mode || g_detail_index>=0 || g_source==SOURCE_ARCHIVE)return false;
@@ -4353,21 +4355,17 @@ static bool load_visible_metadata(void)
   }
   if(index<0)for(int i=0;i<g_app_count;i++)if(!g_title_attempted[i]){index=i;break;}
   if(index<0)return false;
-  const int selected=selected_record_index();
   if(g_item_source[index]==SOURCE_STORAGE && g_svc->file_stat)
     g_list_stats_valid[index]=stat_async(g_paths[index],&g_list_stats[index])==0 && !g_list_stats[index].is_dir;
   if(g_discard_io)return false;
   load_list_title(index);
   if(g_discard_io)return false;
-  apply_filter();
-  for(int i=0;i<g_view_count;i++)if(g_visible_indices[i]==selected){g_selected=i;break;}
-  if(g_selected<g_first_visible)g_first_visible=g_selected;
-  if(g_selected>=g_first_visible+VISIBLE_ROWS)g_first_visible=g_selected-VISIBLE_ROWS+1;
   return true;
 }
 
 static void load_apps(void)
 {
+  g_metadata_pending=false;
   memset(g_list_stats_valid,0,sizeof(g_list_stats_valid));
   memset(g_title_attempted,0,sizeof(g_title_attempted));
   g_catalog_generation=__atomic_load_n(&g_navigation_generation,__ATOMIC_ACQUIRE);
@@ -4428,8 +4426,38 @@ static void disp_flush_cb(lv_display_t *display, const lv_area_t *area, uint8_t 
   lv_display_flush_ready(display);
 }
 
+static bool g_syncing_search;
+static unsigned g_ui_builds, g_row_updates, g_label_updates, g_button_updates;
+static unsigned g_keyboard_transitions, g_metadata_flushes;
+static lv_obj_t *g_footer_label;
+static int g_keyboard_layout=-1, g_last_settings_focus=-1;
+typedef struct {lv_obj_t *object;bool selected;} ButtonAppearance;
+static ButtonAppearance g_button_appearance[128];
+static unsigned g_button_appearance_count;
+
+static void label_text_changed(lv_obj_t *label, const char *text)
+{
+  if(label && (!lv_label_get_text(label) || strcmp(lv_label_get_text(label),text)!=0)){
+    lv_label_set_text(label,text);g_label_updates++;
+  }
+}
+static void label_number_changed(lv_obj_t *label, int number, const char *suffix)
+{
+  char text[40];lv_snprintf(text,sizeof(text),"%d%s",number,suffix);
+  label_text_changed(label,text);
+}
+
 static void style_button(lv_obj_t *button, bool selected)
 {
+  /* Reset with the display: object addresses must never survive deletion. */
+  unsigned index=0;
+  while(index<g_button_appearance_count && g_button_appearance[index].object!=button)index++;
+  if(index<g_button_appearance_count && g_button_appearance[index].selected==selected)return;
+  if(index<128){
+    g_button_appearance[index]=(ButtonAppearance){button,selected};
+    if(index==g_button_appearance_count)g_button_appearance_count++;
+  }
+  g_button_updates++;
   lv_obj_set_style_radius(button, 8, LV_PART_MAIN);
   lv_obj_set_style_bg_color(button, lv_color_hex(selected ? COL_SELECTED : COL_PANEL), LV_PART_MAIN);
   lv_obj_set_style_border_color(button, lv_color_hex(selected ? COL_ACCENT : COL_MUTED), LV_PART_MAIN);
@@ -4688,7 +4716,7 @@ static int build_rom_picker_overlay(lv_obj_t *screen)
 
 static void search_value_event(lv_event_t *event)
 {
-  if (lv_event_get_code(event) != LV_EVENT_VALUE_CHANGED || g_search_area == NULL) return;
+  if (g_syncing_search || lv_event_get_code(event) != LV_EVENT_VALUE_CHANGED || g_search_area == NULL) return;
   copy_text(g_search_text, sizeof(g_search_text), lv_textarea_get_text(g_search_area));
   if (g_settings_mode && (g_network_edit_field >= 0 || g_archive_auth_edit_field >= 0)) return;
   if (g_source == SOURCE_ARCHIVE && g_archive_level == ARCHIVE_LEVEL_SEARCH) {
@@ -4702,9 +4730,8 @@ static void search_value_event(lv_event_t *event)
 static void search_click_event(lv_event_t *event)
 {
   if (lv_event_get_code(event) != LV_EVENT_CLICKED) return;
-  /* Keep the text field itself as the touch target; opening the keyboard by
-   * rebuilding after the click avoids stacking a second LVGL keyboard object
-   * over the app list and gives controller focus to its first key. */
+  /* The entry task shows the page's existing keyboard after the click and
+   * gives controller focus to its first key. */
   g_keyboard_focus = 0;
   g_toolbar_focus = 7;
   play_ui_sound(PAX_UI_SOUND_CONFIRM, 0);
@@ -5494,35 +5521,40 @@ static void restore_launcher_resume_state(void)
   g_favorites_mode = favorites != 0;
 }
 
+typedef struct {
+  bool valid, details;
+  int width, unit;
+  char name[LIST_LABEL_BYTES], info[120];
+} RowAppearance;
+static RowAppearance g_row_appearance[VISIBLE_ROWS];
 static void update_list_row_text(int row, int index, const char *name)
 {
-  lv_obj_t *label = g_labels[row];
-  lv_obj_t *details = g_list_detail_labels[row];
-  lv_label_set_text(label, name);
-  lv_obj_update_layout(g_buttons[row]);
-  const int width = lv_obj_get_content_width(g_buttons[row]);
-  const int inset = ui_px(8);
-  int detail_width = 0;
-  if (g_list_file_details && index >= 0) {
-    char text[120];
-    pax_list_details_units(text, sizeof(text), g_list_stats_valid[index] ? &g_list_stats[index] : NULL,g_size_unit);
-    const lv_font_t *detail_font = g_ui_scale >= 1.5f ? &lv_font_montserrat_20 : &lv_font_montserrat_12;
-    lv_obj_set_style_text_font(details, detail_font, LV_PART_MAIN);
-    lv_label_set_text(details, text);
-    lv_point_t size;
-    lv_text_get_size(&size, text, detail_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-    detail_width = size.x;
-    if (detail_width > width * 3 / 5) detail_width = width * 3 / 5;
-    lv_obj_set_width(details, detail_width);
-    lv_obj_clear_flag(details, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_align(details, LV_ALIGN_RIGHT_MID, -inset, 0);
-  } else {
-    lv_obj_add_flag(details, LV_OBJ_FLAG_HIDDEN);
-  }
-  int name_width = width - 2 * inset - (detail_width ? detail_width + inset : 0);
-  if (name_width < 1) name_width = 1;
-  lv_obj_set_width(label, name_width);
-  lv_obj_align(label, LV_ALIGN_LEFT_MID, inset, 0);
+  lv_obj_t *label=g_labels[row], *details=g_list_detail_labels[row];
+  char text[120]="";
+  const bool show=g_list_file_details && index>=0;
+  if(show)pax_list_details_units(text,sizeof(text),g_list_stats_valid[index] ? &g_list_stats[index] : NULL,g_size_unit);
+  const int width=lv_obj_get_content_width(g_buttons[row]);
+  RowAppearance *cache=&g_row_appearance[row];
+  if(cache->valid && cache->width==width && cache->details==show && cache->unit==g_size_unit &&
+     !strcmp(cache->name,name) && !strcmp(cache->info,text))return;
+  g_row_updates++;
+  cache->valid=true;cache->width=width;cache->details=show;cache->unit=g_size_unit;
+  copy_text(cache->name,sizeof(cache->name),name);copy_text(cache->info,sizeof(cache->info),text);
+  label_text_changed(label,name);
+  const int inset=ui_px(8);
+  int detail_width=0;
+  if(show){
+    const lv_font_t *font=g_ui_scale>=1.5f ? &lv_font_montserrat_20 : &lv_font_montserrat_12;
+    lv_obj_set_style_text_font(details,font,LV_PART_MAIN);
+    label_text_changed(details,text);
+    lv_point_t size;lv_text_get_size(&size,text,font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+    detail_width=size.x;if(detail_width>width*3/5)detail_width=width*3/5;
+    lv_obj_set_width(details,detail_width);lv_obj_clear_flag(details,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_align(details,LV_ALIGN_RIGHT_MID,-inset,0);
+  }else lv_obj_add_flag(details,LV_OBJ_FLAG_HIDDEN);
+  int name_width=width-2*inset-(detail_width ? detail_width+inset : 0);
+  lv_obj_set_width(label,name_width>0 ? name_width : 1);
+  lv_obj_align(label,LV_ALIGN_LEFT_MID,inset,0);
 }
 
 static void append_wifi_summary(char *out, size_t capacity, const pax_wifi_status_t *status)
@@ -5551,9 +5583,10 @@ static void update_list_scrollbar(void)
 {
   if (g_list_scrollbar == NULL || g_list_scrollbar_thumb == NULL) return;
   /* Filtering can change overflow without rebuilding the row widgets. */
-  if (g_list != NULL)
-    lv_obj_set_style_pad_right(g_list, lv_obj_get_style_pad_left(g_list, LV_PART_MAIN) +
-        (g_view_count > VISIBLE_ROWS ? ui_px(16) : 0), LV_PART_MAIN);
+  if (g_list != NULL){
+    const int pad=lv_obj_get_style_pad_left(g_list,LV_PART_MAIN)+(g_view_count>VISIBLE_ROWS ? ui_px(16) : 0);
+    if(lv_obj_get_style_pad_right(g_list,LV_PART_MAIN)!=pad)lv_obj_set_style_pad_right(g_list,pad,LV_PART_MAIN);
+  }
   if (g_view_count <= VISIBLE_ROWS) {
     lv_obj_add_flag(g_list_scrollbar, LV_OBJ_FLAG_HIDDEN);
     return;
@@ -5566,9 +5599,44 @@ static void update_list_scrollbar(void)
   lv_obj_set_y(g_list_scrollbar_thumb, travel * g_first_visible / max_first);
 }
 
+static void sync_search_context(void)
+{
+  if(!g_search_area)return;
+  g_syncing_search=true;
+  char search_placeholder[96];
+  if (g_source == SOURCE_ARCHIVE && g_archive_level == ARCHIVE_LEVEL_SEARCH) {
+    copy_text(search_placeholder, sizeof(search_placeholder), "Search collection: ");
+    append_text(search_placeholder, sizeof(search_placeholder), g_archive_collection);
+  } else {
+    copy_text(search_placeholder, sizeof(search_placeholder), "Search apps");
+  }
+  if (g_settings_mode && g_archive_auth_edit_field == 0)
+    copy_text(search_placeholder, sizeof(search_placeholder), "Archive.org email");
+  else if (g_settings_mode && g_archive_auth_edit_field == 1)
+    copy_text(search_placeholder, sizeof(search_placeholder), "Archive.org password");
+  else if (g_settings_mode && g_archive_auth_edit_field == 2)
+    copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 access key");
+  else if (g_settings_mode && g_archive_auth_edit_field == 3)
+    copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 secret key");
+  if(g_settings_mode && g_network_edit_field>=4)copy_text(search_placeholder,sizeof(search_placeholder),g_network_edit_field==4 ? "http://computer-ip:8000/" : g_network_edit_field==5 ? "Wi-Fi network name" : g_network_edit_field==6 ? "New Wi-Fi password; blank for open" : "C6 .bin: /sd/firmware/... or https://...");
+  lv_textarea_set_max_length(g_search_area,g_network_edit_field==5 ? 32 : g_network_edit_field==6 ? 64 : sizeof(g_search_text)-1);
+  if(!lv_textarea_get_placeholder_text(g_search_area) || strcmp(lv_textarea_get_placeholder_text(g_search_area),search_placeholder))lv_textarea_set_placeholder_text(g_search_area, search_placeholder);
+  if(strcmp(lv_textarea_get_text(g_search_area),g_search_text))lv_textarea_set_text(g_search_area, g_search_text);
+  bool secret=g_settings_mode && (g_archive_auth_edit_field==1 || g_archive_auth_edit_field==3 || g_network_edit_field==6);
+  if(lv_textarea_get_password_mode(g_search_area)!=secret)lv_textarea_set_password_mode(g_search_area,secret);
+  g_syncing_search=false;
+ }
+static void sync_keyboard_layout(void);
+
 static int update_selection_on_host(void *arg)
 {
   (void)arg;
+  sync_search_context();
+  sync_keyboard_layout();
+  if(g_footer_label && !g_settings_mode && g_detail_index<0){
+    char footer[160];lv_snprintf(footer,sizeof(footer),"%s   L/R SOURCE   Y STAR   START FAV   SELECT SETTINGS",g_favorites_mode ? "FAVORITES" : source_label(g_source));
+    label_text_changed(g_footer_label,footer);
+  }
   if (g_detail_index >= 0) {
     const bool source_focus = g_toolbar_focus >= 0 && g_toolbar_focus < SOURCE_COUNT;
     for (int i = 0; i < SOURCE_COUNT; i++) {
@@ -5579,7 +5647,7 @@ static int update_selection_on_host(void *arg)
       if (g_detail_buttons[i] != NULL)
         style_button(g_detail_buttons[i], !source_focus && i == g_detail_focus);
       if (g_detail_button_labels[i] != NULL)
-        lv_label_set_text(g_detail_button_labels[i], detail_action_text(i));
+        label_text_changed(g_detail_button_labels[i], detail_action_text(i));
       if (g_detail_buttons[i] != NULL) {
         if ((i == 1 && g_detail_is_remote && !g_detail_install_valid) ||
             (i == 2 && !g_detail_is_installed))
@@ -5589,7 +5657,7 @@ static int update_selection_on_host(void *arg)
       }
     }
     if (g_detail_status_label != NULL)
-      lv_label_set_text(g_detail_status_label, g_install_status);
+      label_text_changed(g_detail_status_label, g_install_status);
     if (g_detail_progress != NULL) {
       const int percent = g_install_total == 0 ? 0 :
           (int)(((uint64_t)g_install_done * 100U) / g_install_total);
@@ -5624,6 +5692,7 @@ static int update_selection_on_host(void *arg)
       lv_obj_clear_state(g_archive_up_button, LV_STATE_DISABLED);
   }
   update_list_scrollbar();
+  if(g_list)lv_obj_update_layout(g_list);
   char visible_names[VISIBLE_ROWS][LIST_LABEL_BYTES];
   for (int row = 0; row < VISIBLE_ROWS; row++) {
     const int view_index = g_first_visible + row;
@@ -5641,9 +5710,9 @@ static int update_selection_on_host(void *arg)
     }
   }
   if (g_count_label != NULL)
-    lv_label_set_text_fmt(g_count_label, "%d APPS", g_view_count);
+    label_number_changed(g_count_label,g_view_count," APPS");
   if (g_archive_status_label != NULL)
-    lv_label_set_text(g_archive_status_label, g_archive_status);
+    label_text_changed(g_archive_status_label, g_archive_status);
   if (g_archive_progress != NULL) {
     const int percent = g_install_total == 0 ? 0 :
         (int)(((uint64_t)g_install_done * 100U) / g_install_total);
@@ -5655,20 +5724,20 @@ static int update_selection_on_host(void *arg)
       const char *message = g_catalog_loading ? "LOADING APPS... YOU CAN SWITCH SOURCES" : g_catalog_failed ? "SEARCH FAILED - CHECK STATUS OR REFRESH" :
           (g_favorites_mode ? "NO FAVORITES YET - PRESS Y ON AN APP" :
            (g_search_text[0] != '\0' ? "NO SEARCH MATCHES" : "NO APPS FOUND"));
-      lv_label_set_text(g_empty_label, message);
+      label_text_changed(g_empty_label, message);
       lv_obj_clear_flag(g_empty_label, LV_OBJ_FLAG_HIDDEN);
     }
   }
   if (g_volume_slider != NULL) {
     lv_slider_set_value(g_volume_slider, g_volume_level, LV_ANIM_OFF);
-    if (g_volume_value != NULL) lv_label_set_text_fmt(g_volume_value, "%d%%", g_volume_level);
+    if (g_volume_value != NULL) label_number_changed(g_volume_value,g_volume_level,"%");
     lv_obj_set_style_border_color(g_volume_slider,
         lv_color_hex(g_settings_focus == 0 ? COL_ACCENT : COL_MUTED), LV_PART_MAIN);
     lv_obj_set_style_border_width(g_volume_slider, g_settings_focus == 0 ? 2 : 1, LV_PART_MAIN);
   }
   if (g_brightness_slider != NULL) {
     lv_slider_set_value(g_brightness_slider, g_brightness_level, LV_ANIM_OFF);
-    if (g_brightness_value != NULL) lv_label_set_text_fmt(g_brightness_value, "%d%%", g_brightness_level);
+    if (g_brightness_value != NULL) label_number_changed(g_brightness_value,g_brightness_level,"%");
     lv_obj_set_style_border_color(g_brightness_slider,
         lv_color_hex(g_settings_focus == 1 ? COL_ACCENT : COL_MUTED), LV_PART_MAIN);
     lv_obj_set_style_border_width(g_brightness_slider, g_settings_focus == 1 ? 2 : 1, LV_PART_MAIN);
@@ -5702,12 +5771,13 @@ static int update_selection_on_host(void *arg)
     else lv_obj_clear_state(g_list_switches[option],LV_STATE_CHECKED);
     lv_obj_set_style_border_color(g_list_switches[option],lv_color_hex(g_settings_focus==22+option ? COL_ACCENT : COL_MUTED),LV_PART_MAIN);
   }
-  if(g_size_value_label)lv_label_set_text(g_size_value_label,pax_size_unit_name(g_size_unit));
-  if(g_sort_value_label)lv_label_set_text(g_sort_value_label,pax_sort_name(g_sort_mode));
+  if(g_theme_value_label)label_text_changed(g_theme_value_label,g_theme.name);
+  if(g_size_value_label)label_text_changed(g_size_value_label,pax_size_unit_name(g_size_unit));
+  if(g_sort_value_label)label_text_changed(g_sort_value_label,pax_sort_name(g_sort_mode));
   if (g_auto_brightness_button != NULL) {
     style_button(g_auto_brightness_button, g_settings_focus == 2);
     if (g_auto_brightness_state_label != NULL)
-      lv_label_set_text(g_auto_brightness_state_label, g_auto_brightness_enabled ? "ON" : "OFF");
+      label_text_changed(g_auto_brightness_state_label, g_auto_brightness_enabled ? "ON" : "OFF");
   }
   if (g_background_dropdown != NULL) {
     lv_obj_set_style_border_color(g_background_dropdown,
@@ -5719,45 +5789,46 @@ static int update_selection_on_host(void *arg)
       if (g_background_index >= 0 && g_background_index < g_background_count) {
         const char *name = g_background_paths[g_background_index];
         for (const char *p = name; *p != '\0'; p++) if (*p == '/') name = p + 1;
-        lv_label_set_text(g_background_value_label, name);
+        label_text_changed(g_background_value_label, name);
       } else {
-        lv_label_set_text(g_background_value_label, "None");
+        label_text_changed(g_background_value_label, "None");
       }
     }
   }
+  if(g_archive_collection_value_label)label_text_changed(g_archive_collection_value_label,g_archive_collection);
   if (g_archive_collection_button != NULL)
     style_button(g_archive_collection_button, g_settings_focus == 4);
   if (g_archive_email_value_label != NULL)
-    lv_label_set_text(g_archive_email_value_label,
+    label_text_changed(g_archive_email_value_label,
                       g_archive_email[0] != '\0' ? g_archive_email : "Select to enter email");
   if (g_archive_password_value_label != NULL)
-    lv_label_set_text(g_archive_password_value_label,
+    label_text_changed(g_archive_password_value_label,
                       g_archive_password[0] != '\0' ? "********" : "Select to enter password");
   update_archive_s3_credential_display();
   if (g_archive_s3_status_label != NULL) {
-    lv_label_set_text(g_archive_s3_status_label, g_archive_s3_status);
+    label_text_changed(g_archive_s3_status_label, g_archive_s3_status);
     const uint32_t status_color = has_prefix(g_archive_s3_status, "S3 keys verified") ? COL_OK :
         (has_prefix(g_archive_s3_status, "S3 key check was not accepted") ||
          has_prefix(g_archive_s3_status, "S3 keys rejected") ? COL_ERROR : COL_MUTED);
     lv_obj_set_style_text_color(g_archive_s3_status_label, lv_color_hex(status_color), LV_PART_MAIN);
   }
   if (g_archive_auth_status_label != NULL)
-    lv_label_set_text(g_archive_auth_status_label, g_archive_auth_status);
+    label_text_changed(g_archive_auth_status_label, g_archive_auth_status);
   if (g_archive_login_button != NULL) {
     style_button(g_archive_login_button, g_settings_focus == 7);
     if (g_archive_login_button_label != NULL)
-      lv_label_set_text(g_archive_login_button_label, g_archive_authenticated ? "SIGN OUT" : "SIGN IN");
+      label_text_changed(g_archive_login_button_label, g_archive_authenticated ? "SIGN OUT" : "SIGN IN");
   }
   static uint32_t last_wifi_refresh=0;
   uint32_t wifi_now=tick_cb();
   if(wifi_now-last_wifi_refresh>=1000){refresh_wifi_settings(false);refresh_c6_status();last_wifi_refresh=wifi_now;}
   for(int i=0;i<4;i++)if(g_network_extra_labels[i]){
     const char *value=i==0 ? g_network_url : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RETRYING PREVIOUS WI-FI" : "APPLY WI-FI");
-    lv_label_set_text(g_network_extra_labels[i],value);
+    label_text_changed(g_network_extra_labels[i],value);
   }
   (void)update_c6_progress_on_host(NULL);
   if (g_network_dhcp_label != NULL)
-    lv_label_set_text(g_network_dhcp_label, g_network_config.dhcp_enabled ? "ON" : "OFF");
+    label_text_changed(g_network_dhcp_label, g_network_config.dhcp_enabled ? "ON" : "OFF");
   if (g_network_status_label != NULL) {
     char address[20];
     char network_summary[256];
@@ -5768,7 +5839,7 @@ static int update_selection_on_host(void *arg)
     if(g_network_live.network_type==PAX_NETWORK_WIFI && g_network_live.connected && g_wifi_available){
       append_wifi_summary(network_summary,sizeof(network_summary),&g_wifi_status);
     }
-    lv_label_set_text(g_network_status_label, network_summary);
+    label_text_changed(g_network_status_label, network_summary);
   }
   uint32_t network_values[4] = {g_network_config.ipv4, g_network_config.netmask,
                                 g_network_config.gateway, g_network_config.dns};
@@ -5776,24 +5847,24 @@ static int update_selection_on_host(void *arg)
     if (g_network_value_labels[i] == NULL) continue;
     char address[20];
     ipv4_to_text(network_values[i], address, sizeof(address));
-    lv_label_set_text(g_network_value_labels[i], address);
+    label_text_changed(g_network_value_labels[i], address);
   }
   for (int i = 0; i < PAX_STORAGE_COUNT; i++) {
     if (g_storage_status_labels[i] != NULL) {
       char summary[120];
       format_storage_status(i, summary, sizeof(summary));
-      lv_label_set_text(g_storage_status_labels[i], summary);
+      label_text_changed(g_storage_status_labels[i], summary);
     }
     if (g_storage_button_labels[i] != NULL)
-      lv_label_set_text(g_storage_button_labels[i],
+      label_text_changed(g_storage_button_labels[i],
           g_storage_status[i].mounted ? "EJECT" : "MOUNT");
   }
   if (g_settings_message_label != NULL)
-    lv_label_set_text(g_settings_message_label, g_settings_message);
+    label_text_changed(g_settings_message_label, g_settings_message);
   if (g_settings_mode && !(g_c6_available && g_c6_status.state==PAX_C6_BUSY)) {
     lv_obj_t *focused = g_settings_focus >= 0 && g_settings_focus < SETTINGS_FOCUS_COUNT ?
                         g_settings_focus_widgets[g_settings_focus] : NULL;
-    if (focused != NULL) lv_obj_scroll_to_view(focused, LV_ANIM_OFF);
+    if (focused != NULL && g_last_settings_focus!=g_settings_focus){lv_obj_scroll_to_view(focused, LV_ANIM_OFF);g_last_settings_focus=g_settings_focus;}
   }
   return 0;
 }
@@ -6043,8 +6114,104 @@ static int mouse_scroll_on_host(void *arg)
   return 1;
 }
 
+static void ensure_keyboard(lv_obj_t *screen)
+{
+  if(g_keyboard)return;
+    g_keyboard = lv_keyboard_create(screen);
+    if (g_keyboard != NULL) {
+      g_svc->log_printf("launcher_ui: keyboard created; screen=%dx%d initial=%dx%d\n",
+                        lv_obj_get_width(screen), lv_obj_get_height(screen),
+                        lv_obj_get_width(g_keyboard), lv_obj_get_height(g_keyboard));
+      lv_obj_set_size(g_keyboard, g_canvas_w - 2 * ui_px(8), ui_px(100));
+      /* lv_keyboard_create() aligns itself to the parent's bottom edge.
+       * Clear that inherited alignment before applying an explicit position;
+       * otherwise LVGL interprets keyboard_y as a bottom-alignment offset and
+       * places the keyboard below the screen. */
+      lv_obj_set_align(g_keyboard, LV_ALIGN_DEFAULT);
+      lv_obj_set_pos(g_keyboard, ui_px(8), g_canvas_h-ui_px(100)-ui_px(4));
+      /* LVGL stores position/size as style values and resolves object coords
+       * during layout. Force that pass before rendering the first keyboard
+       * frame; otherwise the fresh button-matrix can remain at 0x0 until a
+       * later layout event, leaving only the list's reserved blank area. */
+      lv_obj_update_layout(screen);
+      lv_obj_move_foreground(g_keyboard);
+      lv_keyboard_set_textarea(g_keyboard, g_search_area);
+      lv_keyboard_set_mode(g_keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
+      lv_keyboard_set_popovers(g_keyboard, false);
+      lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_BG), LV_PART_MAIN);
+      lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_60, LV_PART_MAIN);
+      lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
+      lv_obj_set_style_border_width(g_keyboard, 1, LV_PART_MAIN);
+      lv_obj_set_style_radius(g_keyboard, ui_px(5), LV_PART_MAIN);
+      lv_obj_set_style_pad_all(g_keyboard, ui_px(2), LV_PART_MAIN);
+      lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_PANEL), LV_PART_ITEMS);
+      lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_70, LV_PART_ITEMS);
+      lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_MUTED), LV_PART_ITEMS);
+      lv_obj_set_style_border_width(g_keyboard, 1, LV_PART_ITEMS);
+      lv_obj_set_style_radius(g_keyboard, ui_px(3), LV_PART_ITEMS);
+      lv_obj_set_style_text_color(g_keyboard, lv_color_hex(COL_TEXT), LV_PART_ITEMS);
+      lv_obj_set_style_text_opa(g_keyboard, LV_OPA_COVER, LV_PART_ITEMS);
+      lv_obj_set_style_text_font(g_keyboard, &lv_font_montserrat_20, LV_PART_ITEMS);
+      lv_obj_set_style_pad_row(g_keyboard, ui_px(2), LV_PART_MAIN);
+      lv_obj_set_style_pad_column(g_keyboard, ui_px(2), LV_PART_MAIN);
+      lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_SELECTED),
+                                LV_PART_ITEMS | LV_STATE_FOCUSED);
+      lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_90,
+                               LV_PART_ITEMS | LV_STATE_FOCUSED);
+      lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_ACCENT),
+                                    LV_PART_ITEMS | LV_STATE_FOCUSED);
+      lv_obj_set_style_text_color(g_keyboard, lv_color_hex(COL_TEXT),
+                                  LV_PART_ITEMS | LV_STATE_FOCUSED);
+      lv_obj_add_event_cb(g_keyboard, keyboard_value_event, LV_EVENT_VALUE_CHANGED, NULL);
+      lv_obj_add_event_cb(g_keyboard, keyboard_close_event, LV_EVENT_READY, NULL);
+      lv_obj_add_event_cb(g_keyboard, keyboard_close_event, LV_EVENT_CANCEL, NULL);
+      /* LVGL 9.5's text keyboard map has 40 focusable keys across four rows. */
+      if (g_keyboard_focus < 0 || g_keyboard_focus >= 40) g_keyboard_focus = 0;
+      lv_buttonmatrix_set_selected_button(g_keyboard, (uint32_t)g_keyboard_focus);
+      lv_obj_add_state(g_keyboard, LV_STATE_FOCUSED);
+      lv_obj_add_flag(g_keyboard, LV_OBJ_FLAG_HIDDEN);
+      g_svc->log_printf("launcher_ui: native keyboard visible=%d at (%d,%d) %dx%d; focus=%d\n",
+                        lv_obj_is_visible(g_keyboard) ? 1 : 0,
+                        lv_obj_get_x(g_keyboard), lv_obj_get_y(g_keyboard),
+                        lv_obj_get_width(g_keyboard), lv_obj_get_height(g_keyboard),
+                        g_keyboard_focus);
+    }
+ }
+
+static void sync_keyboard_layout(void)
+{
+  if(!g_keyboard || g_keyboard_layout==(int)g_keyboard_open)return;
+  if(g_keyboard_layout>=0)g_keyboard_transitions++;
+  g_keyboard_layout=g_keyboard_open;
+  if(g_keyboard_open){
+    lv_obj_clear_flag(g_keyboard,LV_OBJ_FLAG_HIDDEN);lv_obj_move_foreground(g_keyboard);
+    lv_buttonmatrix_set_selected_button(g_keyboard,(uint32_t)g_keyboard_focus);
+  }else lv_obj_add_flag(g_keyboard,LV_OBJ_FLAG_HIDDEN);
+  if(g_footer_label){if(g_keyboard_open)lv_obj_add_flag(g_footer_label,LV_OBJ_FLAG_HIDDEN);else lv_obj_clear_flag(g_footer_label,LV_OBJ_FLAG_HIDDEN);}
+  if(g_archive_status_label){if(g_keyboard_open)lv_obj_add_flag(g_archive_status_label,LV_OBJ_FLAG_HIDDEN);else lv_obj_clear_flag(g_archive_status_label,LV_OBJ_FLAG_HIDDEN);}
+  if(g_archive_progress){if(g_keyboard_open)lv_obj_add_flag(g_archive_progress,LV_OBJ_FLAG_HIDDEN);else lv_obj_clear_flag(g_archive_progress,LV_OBJ_FLAG_HIDDEN);}
+  const int list_y=ui_px(24)+ui_px(30)+ui_px(5),pad=ui_px(5),gap=ui_px(4);
+  const int keyboard_y=g_canvas_h-ui_px(100)-ui_px(4);
+  if(g_settings_panel){
+    const int bottom=g_keyboard_open ? keyboard_y-ui_px(4) : g_canvas_h-ui_px(10);
+    lv_obj_set_height(g_settings_panel,bottom-(ui_px(24)+ui_px(30)+ui_px(7)));
+  }
+  if(g_list){
+    const int bottom=g_keyboard_open ? keyboard_y-ui_px(4) : (g_source==SOURCE_ARCHIVE ? g_canvas_h-ui_px(34) : g_canvas_h-ui_px(24)-ui_px(5));
+    const int height=bottom-list_y,row=(height-2*pad-(VISIBLE_ROWS-1)*gap)/VISIBLE_ROWS;
+    lv_obj_set_height(g_list,height);g_list_scrollbar_height=height-2*pad;
+    if(g_list_scrollbar)lv_obj_set_height(g_list_scrollbar,g_list_scrollbar_height);
+    g_list_touch_row_step=(row>ui_px(25) ? row : ui_px(25))+gap;
+    for(int i=0;i<VISIBLE_ROWS;i++)if(g_buttons[i])lv_obj_set_height(g_buttons[i],row>ui_px(25) ? row : ui_px(25));
+    memset(g_row_appearance,0,sizeof(g_row_appearance));update_list_scrollbar();
+  }
+}
+
 static int build_ui_on_host(void *arg)
 {
+  g_ui_builds++;g_button_appearance_count=0;
+  memset(g_row_appearance,0,sizeof(g_row_appearance));
+  g_keyboard_layout=-1;g_last_settings_focus=-1;g_footer_label=NULL;
   (void)arg;
   char host_names[VISIBLE_ROWS][LIST_LABEL_BYTES];
   /* load_apps() already fetched and parsed this source on the PAX worker.
@@ -6338,27 +6505,7 @@ static int build_ui_on_host(void *arg)
   lv_obj_set_style_pad_bottom(g_search_area, 0, LV_PART_MAIN);
   lv_obj_set_style_pad_left(g_search_area, ui_px(5), LV_PART_MAIN);
   lv_obj_set_style_pad_right(g_search_area, ui_px(5), LV_PART_MAIN);
-  char search_placeholder[96];
-  if (g_source == SOURCE_ARCHIVE && g_archive_level == ARCHIVE_LEVEL_SEARCH) {
-    copy_text(search_placeholder, sizeof(search_placeholder), "Search collection: ");
-    append_text(search_placeholder, sizeof(search_placeholder), g_archive_collection);
-  } else {
-    copy_text(search_placeholder, sizeof(search_placeholder), "Search apps");
-  }
-  if (g_settings_mode && g_archive_auth_edit_field == 0)
-    copy_text(search_placeholder, sizeof(search_placeholder), "Archive.org email");
-  else if (g_settings_mode && g_archive_auth_edit_field == 1)
-    copy_text(search_placeholder, sizeof(search_placeholder), "Archive.org password");
-  else if (g_settings_mode && g_archive_auth_edit_field == 2)
-    copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 access key");
-  else if (g_settings_mode && g_archive_auth_edit_field == 3)
-    copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 secret key");
-  if(g_settings_mode && g_network_edit_field>=4)copy_text(search_placeholder,sizeof(search_placeholder),g_network_edit_field==4 ? "http://computer-ip:8000/" : g_network_edit_field==5 ? "Wi-Fi network name" : g_network_edit_field==6 ? "New Wi-Fi password; blank for open" : "C6 .bin: /sd/firmware/... or https://...");
-  lv_textarea_set_max_length(g_search_area,g_network_edit_field==5 ? 32 : g_network_edit_field==6 ? 64 : sizeof(g_search_text)-1);
-  lv_textarea_set_placeholder_text(g_search_area, search_placeholder);
-  lv_textarea_set_text(g_search_area, g_search_text);
-  lv_textarea_set_password_mode(g_search_area,
-      g_settings_mode && (g_archive_auth_edit_field == 1 || g_archive_auth_edit_field == 3 || g_network_edit_field == 6));
+  sync_search_context();
   lv_obj_set_style_bg_color(g_search_area, lv_color_hex(COL_BG), LV_PART_MAIN);
   lv_obj_set_style_bg_opa(g_search_area, (lv_opa_t)140, LV_PART_MAIN);
   lv_obj_set_style_border_color(g_search_area, lv_color_hex(COL_MUTED), LV_PART_MAIN);
@@ -6835,53 +6982,11 @@ static int build_ui_on_host(void *arg)
     g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[29],
                                               content_w-ui_px(12),&lv_font_montserrat_14,true);
 
-    if (g_keyboard_open) {
-      g_keyboard = lv_keyboard_create(screen);
-      if (g_keyboard != NULL) {
-        lv_obj_set_size(g_keyboard, g_canvas_w - 2 * margin, keyboard_height);
-        lv_obj_set_align(g_keyboard, LV_ALIGN_DEFAULT);
-        lv_obj_set_pos(g_keyboard, margin, keyboard_y);
-        lv_obj_update_layout(screen);
-        lv_obj_move_foreground(g_keyboard);
-        lv_keyboard_set_textarea(g_keyboard, g_search_area);
-        lv_keyboard_set_mode(g_keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
-        lv_keyboard_set_popovers(g_keyboard, false);
-        lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_BG), LV_PART_MAIN);
-        lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_60, LV_PART_MAIN);
-        lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
-        lv_obj_set_style_border_width(g_keyboard, 1, LV_PART_MAIN);
-        lv_obj_set_style_radius(g_keyboard, ui_px(5), LV_PART_MAIN);
-        lv_obj_set_style_pad_all(g_keyboard, ui_px(2), LV_PART_MAIN);
-        lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_PANEL), LV_PART_ITEMS);
-        lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_70, LV_PART_ITEMS);
-        lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_MUTED), LV_PART_ITEMS);
-        lv_obj_set_style_border_width(g_keyboard, 1, LV_PART_ITEMS);
-        lv_obj_set_style_radius(g_keyboard, ui_px(3), LV_PART_ITEMS);
-        lv_obj_set_style_text_color(g_keyboard, lv_color_hex(COL_TEXT), LV_PART_ITEMS);
-        lv_obj_set_style_text_opa(g_keyboard, LV_OPA_COVER, LV_PART_ITEMS);
-        lv_obj_set_style_text_font(g_keyboard, &lv_font_montserrat_20, LV_PART_ITEMS);
-        lv_obj_set_style_pad_row(g_keyboard, ui_px(2), LV_PART_MAIN);
-        lv_obj_set_style_pad_column(g_keyboard, ui_px(2), LV_PART_MAIN);
-        lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_SELECTED), LV_PART_ITEMS | LV_STATE_FOCUSED);
-        lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_90, LV_PART_ITEMS | LV_STATE_FOCUSED);
-        lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_ACCENT), LV_PART_ITEMS | LV_STATE_FOCUSED);
-        lv_obj_set_style_text_color(g_keyboard, lv_color_hex(COL_TEXT), LV_PART_ITEMS | LV_STATE_FOCUSED);
-        lv_obj_add_event_cb(g_keyboard, keyboard_value_event, LV_EVENT_VALUE_CHANGED, NULL);
-        lv_obj_add_event_cb(g_keyboard, keyboard_close_event, LV_EVENT_READY, NULL);
-        lv_obj_add_event_cb(g_keyboard, keyboard_close_event, LV_EVENT_CANCEL, NULL);
-        if (g_keyboard_focus < 0 || g_keyboard_focus >= 40) g_keyboard_focus = 0;
-        lv_buttonmatrix_set_selected_button(g_keyboard, (uint32_t)g_keyboard_focus);
-        lv_obj_add_state(g_keyboard, LV_STATE_FOCUSED);
-        lv_obj_clear_flag(g_keyboard, LV_OBJ_FLAG_HIDDEN);
-      }
-    }
-
-    if (!g_keyboard_open) {
-      lv_obj_t *status = lv_label_create(screen);
-      lv_label_set_text(status, "SETTINGS  A EDIT/SELECT  LEFT/RIGHT ADJUST  B BACK");
-      lv_obj_set_style_text_color(status, lv_color_hex(COL_MUTED), LV_PART_MAIN);
-      lv_obj_align(status, LV_ALIGN_BOTTOM_MID, 0, -ui_px(4));
-    }
+    ensure_keyboard(screen);
+    g_footer_label=lv_label_create(screen);
+    lv_label_set_text(g_footer_label,"SETTINGS  A EDIT/SELECT  LEFT/RIGHT ADJUST  B BACK");
+    lv_obj_set_style_text_color(g_footer_label,lv_color_hex(COL_MUTED),LV_PART_MAIN);
+    lv_obj_align(g_footer_label,LV_ALIGN_BOTTOM_MID,0,-ui_px(4));
     /* This branch returns before the regular list-page refresh. Populate the
      * settings controls now so LVGL's default label text ('Text') is never
      * shown, including immediately after an SD eject/rebuild. */
@@ -7339,78 +7444,7 @@ static int build_ui_on_host(void *arg)
   lv_obj_set_style_radius(g_list_scrollbar_thumb, LV_RADIUS_CIRCLE, LV_PART_MAIN);
   lv_obj_clear_flag(g_list_scrollbar_thumb, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
   update_list_scrollbar();
-  if (g_keyboard_open) {
-    /* Keep the native keyboard in the same PAX display tree so the loader's
-     * full-frame renderer composites it with the launcher instead of leaving
-     * its reserved area blank. It is created after the list, so it stays on
-     * top without relying on LVGL's separate overlay layer. */
-    g_keyboard = lv_keyboard_create(screen);
-    if (g_keyboard != NULL) {
-      g_svc->log_printf("launcher_ui: keyboard created; screen=%dx%d initial=%dx%d\n",
-                        lv_obj_get_width(screen), lv_obj_get_height(screen),
-                        lv_obj_get_width(g_keyboard), lv_obj_get_height(g_keyboard));
-      lv_obj_set_size(g_keyboard, g_canvas_w - 2 * margin, keyboard_height);
-      /* lv_keyboard_create() aligns itself to the parent's bottom edge.
-       * Clear that inherited alignment before applying an explicit position;
-       * otherwise LVGL interprets keyboard_y as a bottom-alignment offset and
-       * places the keyboard below the screen. */
-      lv_obj_set_align(g_keyboard, LV_ALIGN_DEFAULT);
-      lv_obj_set_pos(g_keyboard, margin, keyboard_y);
-      /* LVGL stores position/size as style values and resolves object coords
-       * during layout. Force that pass before rendering the first keyboard
-       * frame; otherwise the fresh button-matrix can remain at 0x0 until a
-       * later layout event, leaving only the list's reserved blank area. */
-      lv_obj_update_layout(screen);
-      g_svc->log_printf("launcher_ui: keyboard sized at (%d,%d) %dx%d\n",
-                        lv_obj_get_x(g_keyboard), lv_obj_get_y(g_keyboard),
-                        lv_obj_get_width(g_keyboard), lv_obj_get_height(g_keyboard));
-      lv_obj_move_foreground(g_keyboard);
-      lv_keyboard_set_textarea(g_keyboard, g_search_area);
-      lv_keyboard_set_mode(g_keyboard, LV_KEYBOARD_MODE_TEXT_LOWER);
-      lv_keyboard_set_popovers(g_keyboard, false);
-      lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_BG), LV_PART_MAIN);
-      lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_60, LV_PART_MAIN);
-      lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
-      lv_obj_set_style_border_width(g_keyboard, 1, LV_PART_MAIN);
-      lv_obj_set_style_radius(g_keyboard, ui_px(5), LV_PART_MAIN);
-      lv_obj_set_style_pad_all(g_keyboard, ui_px(2), LV_PART_MAIN);
-      lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_PANEL), LV_PART_ITEMS);
-      lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_70, LV_PART_ITEMS);
-      lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_MUTED), LV_PART_ITEMS);
-      lv_obj_set_style_border_width(g_keyboard, 1, LV_PART_ITEMS);
-      lv_obj_set_style_radius(g_keyboard, ui_px(3), LV_PART_ITEMS);
-      lv_obj_set_style_text_color(g_keyboard, lv_color_hex(COL_TEXT), LV_PART_ITEMS);
-      lv_obj_set_style_text_opa(g_keyboard, LV_OPA_COVER, LV_PART_ITEMS);
-      lv_obj_set_style_text_font(g_keyboard, &lv_font_montserrat_20, LV_PART_ITEMS);
-      lv_obj_set_style_pad_row(g_keyboard, ui_px(2), LV_PART_MAIN);
-      lv_obj_set_style_pad_column(g_keyboard, ui_px(2), LV_PART_MAIN);
-      lv_obj_set_style_bg_color(g_keyboard, lv_color_hex(COL_SELECTED),
-                                LV_PART_ITEMS | LV_STATE_FOCUSED);
-      lv_obj_set_style_bg_opa(g_keyboard, LV_OPA_90,
-                               LV_PART_ITEMS | LV_STATE_FOCUSED);
-      lv_obj_set_style_border_color(g_keyboard, lv_color_hex(COL_ACCENT),
-                                    LV_PART_ITEMS | LV_STATE_FOCUSED);
-      lv_obj_set_style_text_color(g_keyboard, lv_color_hex(COL_TEXT),
-                                  LV_PART_ITEMS | LV_STATE_FOCUSED);
-      lv_obj_add_event_cb(g_keyboard, keyboard_value_event, LV_EVENT_VALUE_CHANGED, NULL);
-      lv_obj_add_event_cb(g_keyboard, keyboard_close_event, LV_EVENT_READY, NULL);
-      lv_obj_add_event_cb(g_keyboard, keyboard_close_event, LV_EVENT_CANCEL, NULL);
-      /* LVGL 9.5's text keyboard map has 40 focusable keys across four rows. */
-      if (g_keyboard_focus < 0 || g_keyboard_focus >= 40) g_keyboard_focus = 0;
-      lv_buttonmatrix_set_selected_button(g_keyboard, (uint32_t)g_keyboard_focus);
-      lv_obj_add_state(g_keyboard, LV_STATE_FOCUSED);
-      lv_obj_clear_flag(g_keyboard, LV_OBJ_FLAG_HIDDEN);
-      lv_obj_invalidate(g_keyboard);
-      g_svc->log_printf("launcher_ui: native keyboard visible=%d at (%d,%d) %dx%d; focus=%d\n",
-                        lv_obj_is_visible(g_keyboard) ? 1 : 0,
-                        lv_obj_get_x(g_keyboard), lv_obj_get_y(g_keyboard),
-                        lv_obj_get_width(g_keyboard), lv_obj_get_height(g_keyboard),
-                        g_keyboard_focus);
-    }
-    else {
-      g_svc->log_printf("launcher_ui: native keyboard allocation failed; list space was reserved\n");
-    }
-  }
+  ensure_keyboard(screen);
   {
     g_empty_label = lv_label_create(g_list);
     const char *message = g_catalog_failed ? "SEARCH FAILED - CHECK STATUS OR REFRESH" :
@@ -7424,7 +7458,7 @@ static int build_ui_on_host(void *arg)
     if (g_view_count > 0) lv_obj_add_flag(g_empty_label, LV_OBJ_FLAG_HIDDEN);
   }
 
-  if (!g_keyboard_open && g_source == SOURCE_ARCHIVE) {
+  if (g_source == SOURCE_ARCHIVE) {
     g_archive_status_label = lv_label_create(screen);
     lv_label_set_text(g_archive_status_label, g_archive_status);
     lv_label_set_long_mode(g_archive_status_label, LV_LABEL_LONG_DOT);
@@ -7441,13 +7475,14 @@ static int build_ui_on_host(void *arg)
     lv_bar_set_value(g_archive_progress, percent > 100 ? 100 : percent, LV_ANIM_OFF);
     lv_obj_set_style_bg_color(g_archive_progress, lv_color_hex(COL_PANEL), LV_PART_MAIN);
     lv_obj_set_style_bg_color(g_archive_progress, lv_color_hex(COL_ACCENT), LV_PART_INDICATOR);
-  } else if (!g_keyboard_open) {
-    lv_obj_t *status = lv_label_create(screen);
+  } else {
+    lv_obj_t *status = lv_label_create(screen);g_footer_label=status;
     lv_label_set_text_fmt(status, "%s   L/R SOURCE   Y STAR   START FAV   SELECT SETTINGS",
                           g_favorites_mode ? "FAVORITES" : source_label(g_source));
     lv_obj_set_style_text_color(status, lv_color_hex(COL_MUTED), LV_PART_MAIN);
     lv_obj_align(status, LV_ALIGN_BOTTOM_MID, 0, -ui_px(8));
   }
+  sync_keyboard_layout();
   if (g_rom_picker_active) (void)build_rom_picker_overlay(screen);
   /* Ensure the first worker-side timer pass has a dirty screen to render. */
   lv_obj_invalidate(screen);
@@ -7521,7 +7556,7 @@ static int teardown_ui_on_host(void *arg)
   g_detail_status_label = NULL;
   g_detail_progress = NULL;
   g_search_area = NULL;
-  g_keyboard = NULL;
+  g_keyboard = NULL;g_footer_label=NULL;
   g_volume_slider = NULL;
   g_brightness_slider = NULL;
   g_volume_value = NULL;
@@ -7999,6 +8034,23 @@ static void wait_for_input_release(void)
   g_keyboard_enter_pending = false;
 }
 
+/* Entry-task publication: a displayed row never changes its mapping between
+ * a metadata arrival and the matching LVGL update. Input forces publication. */
+static bool flush_metadata_updates(bool force)
+{
+  if(!g_metadata_pending || g_catalog_loading || g_settings_mode || g_detail_index>=0 || g_open_index!=-1)return false;
+  uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
+  if(!force && (uint32_t)(now-g_metadata_last_flush)<150U)return false;
+  const int selected=selected_record_index();
+  apply_filter();
+  for(int i=0;i<g_view_count;i++)if(g_visible_indices[i]==selected){g_selected=i;break;}
+  if(g_selected<g_first_visible)g_first_visible=g_selected;
+  if(g_selected>=g_first_visible+VISIBLE_ROWS)g_first_visible=g_selected-VISIBLE_ROWS+1;
+  g_metadata_pending=false;g_metadata_last_flush=now;g_metadata_flushes++;
+  (void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+  return true;
+}
+
 static void io_ui_pulse(void)
 {
   static uint32_t last_ui,last_status;
@@ -8010,7 +8062,7 @@ static void io_ui_pulse(void)
   const int wheel=__atomic_exchange_n(&g_mouse_wheel_pending,0,__ATOMIC_ACQ_REL);
   if(wheel)(void)g_svc->ui_call_sync(mouse_scroll_on_host,(void *)(intptr_t)wheel,1000);
   if(g_filter_dirty && !g_catalog_loading){g_filter_dirty=false;apply_filter();changed=true;}
-  if(changed)(void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+  if(!flush_metadata_updates(changed) && changed)(void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
   if((uint32_t)(now-last_status)>=1000){
     (void)g_svc->ui_call_sync(update_device_status_on_host,NULL,1000);last_status=now;
   }
@@ -8020,7 +8072,7 @@ static void io_ui_pulse(void)
 /* Distinct screens have different object trees; only update matching ones. */
 static unsigned ui_layout_kind(void)
 {
-  return (g_keyboard_open ? 1U : 0U) | (g_settings_mode ? 2U : 0U) |
+  return (g_settings_mode ? 2U : 0U) |
          (g_detail_index>=0 ? 4U : 0U) |
          (g_source==SOURCE_ARCHIVE && !g_favorites_mode ? 8U : 0U) |
          (g_rom_picker_active ? 16U : 0U);
@@ -8146,7 +8198,8 @@ int app_entry(const app_services_t *svc)
   for (;;) {
     g_open_index = -1;
     g_discard_io=false;
-    if (!detail_mode && !g_settings_mode && (!g_keyboard_open || g_catalog_stale)) {
+    if(g_display && built_layout!=ui_layout_kind())(void)svc->ui_call_sync(teardown_ui_on_host,NULL,2000);
+    if (!detail_mode && !g_settings_mode && g_catalog_stale) {
       g_detail_index = -1;
       g_catalog_loading=true;g_app_count=0;g_view_count=0;
       load_background_image();
@@ -8188,7 +8241,7 @@ int app_entry(const app_services_t *svc)
     }
     wait_for_input_release();
 
-    bool list_ui=!detail_mode && !g_settings_mode && !g_keyboard_open && !g_rom_picker_active && g_source!=SOURCE_ARCHIVE;
+    bool list_ui=!detail_mode && !g_settings_mode && !g_rom_picker_active && g_source!=SOURCE_ARCHIVE;
     if(g_display && built_layout!=ui_layout_kind())(void)svc->ui_call_sync(teardown_ui_on_host,NULL,2000);
     int result = g_display ? svc->ui_call_sync(update_selection_on_host,NULL,1000) : svc->ui_call_sync(build_ui_on_host, NULL, 25000);
     if (result != 0) {
@@ -8204,9 +8257,8 @@ int app_entry(const app_services_t *svc)
     uint32_t last_progress_update_ms = 0;
     uint32_t last_status_update_ms = 0;
   while (g_open_index == -1) {
-      if(!g_settings_mode && !detail_mode && load_visible_metadata()) {
-        (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
-      }
+      if(!g_settings_mode && !detail_mode && load_visible_metadata())g_metadata_pending=true;
+      (void)flush_metadata_updates(false);
       if(g_open_index!=-1)break;
       const bool keyboard_changed = poll_usb_keyboard();
       const bool selection_changed = poll_controller();
@@ -8220,7 +8272,7 @@ int app_entry(const app_services_t *svc)
         apply_filter();
         (void)svc->ui_call_sync(update_selection_on_host, NULL, 1000);
       } else if (selection_changed || keyboard_changed) {
-        (void)svc->ui_call_sync(update_selection_on_host, NULL, 1000);
+        if(!flush_metadata_updates(true))(void)svc->ui_call_sync(update_selection_on_host, NULL, 1000);
       }
       if (g_source == SOURCE_ARCHIVE && !g_favorites_mode &&
           !g_settings_mode && !detail_mode && g_archive_search_pending &&
@@ -8279,7 +8331,8 @@ int app_entry(const app_services_t *svc)
     }
     bool reuse_list_ui=built_plain_list && !detail_mode && !g_settings_mode && !g_keyboard_open && !g_rom_picker_active && g_source!=SOURCE_ARCHIVE && chosen==-3;
     const bool loading_detail=built_plain_list && !detail_mode && (chosen==-18 || chosen==-4);
-    if(!reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
+    const bool retain_page=g_display && !detail_mode && !g_rom_picker_active && chosen<=-3 && chosen!=-49 && chosen!=-10;
+    if(!retain_page && !reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
     if (g_rom_picker_active && chosen == -61) {
       g_rom_picker_active = false;
       wait_for_input_release();
@@ -8298,7 +8351,7 @@ int app_entry(const app_services_t *svc)
       release_detail_cover();
     }
     if (chosen == -3) {
-      g_catalog_stale=true;
+      if(g_keyboard_layout==(int)g_keyboard_open)g_catalog_stale=true;
       if (g_settings_mode && g_archive_auth_edit_field >= 0 && !g_keyboard_open) {
         commit_archive_auth_edit();
         wait_for_input_release();
@@ -8336,6 +8389,7 @@ int app_entry(const app_services_t *svc)
     }
     if (!detail_mode && chosen == -46) {
       archive_s3_check_action();
+      if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
       wait_for_input_release();
       continue;
     }
@@ -8350,6 +8404,7 @@ int app_entry(const app_services_t *svc)
     }
     if (!detail_mode && chosen == -42) {
       archive_account_action();
+      if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
       wait_for_input_release();
       continue;
     }
@@ -8358,6 +8413,7 @@ int app_entry(const app_services_t *svc)
       continue;
     }
     if (!detail_mode && chosen == -14) {
+      g_catalog_stale=true;
       archive_open_selected();
       if (g_open_index == -3) {
         wait_for_input_release();
@@ -8370,6 +8426,7 @@ int app_entry(const app_services_t *svc)
       continue;
     }
     if (!detail_mode && chosen == -15) {
+      g_catalog_stale=true;
       if (g_archive_level == ARCHIVE_LEVEL_ZIP)
         g_archive_level = ARCHIVE_LEVEL_ITEM;
       else if (g_archive_level == ARCHIVE_LEVEL_ITEM)
@@ -8444,6 +8501,7 @@ int app_entry(const app_services_t *svc)
       continue;
     }
     if (!detail_mode && chosen == -9) {
+      g_catalog_stale=true;
       g_settings_mode = false;
       secure_clear(g_archive_password, sizeof(g_archive_password));
       g_archive_auth_edit_field = -1;
@@ -8570,7 +8628,7 @@ int app_entry(const app_services_t *svc)
       if (!g_detail_is_remote) {
         /* Keep update installs on the existing Store detail path so the
          * package hash and size are still checked before writing anything. */
-        g_source = SOURCE_STORE;
+        g_source = SOURCE_STORE;g_catalog_stale=true;
         g_favorites_mode = false;
         g_settings_mode = false;
         copy_text(g_search_text, sizeof(g_search_text), g_detail_name);
@@ -8632,6 +8690,7 @@ int app_entry(const app_services_t *svc)
       continue;
     }
     if (detail_mode && chosen == g_detail_action_count - 1) {
+      g_catalog_stale=true;
       detail_mode = false;
       g_detail_index = -1;
       release_detail_cover();
@@ -8673,6 +8732,7 @@ int app_entry(const app_services_t *svc)
   }
   release_detail_cover();
   io_finish();
+  svc->log_printf("launcher_ui render: builds=%u rows=%u labels=%u styles=%u keyboard=%u metadata=%u\n",g_ui_builds,g_row_updates,g_label_updates,g_button_updates,g_keyboard_transitions,g_metadata_flushes);
   svc->log_printf("launcher_ui I/O: %u jobs, %u cancelled\n",g_io_jobs,g_io_cancelled);
   if (launch_disc_installer && svc->app_open != NULL) {
     save_launcher_resume_state();
