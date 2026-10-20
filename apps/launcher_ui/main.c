@@ -13,6 +13,8 @@
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "lvgl.h"
+#include "src/misc/cache/instance/lv_image_cache.h"
+#include "src/misc/cache/instance/lv_image_header_cache.h"
 #include "iso9660_extract.h"
 
 /* Font Awesome Free Solid 5.15.4 subset used by the original ESPHome UI.
@@ -159,6 +161,8 @@ static uint16_t *g_background_pixels;
 static uint16_t g_background_width;
 static uint16_t g_background_height;
 static lv_image_dsc_t g_background_descriptor;
+static lv_obj_t *g_background_widget,*g_work_label;
+static bool g_settings_scan_pending,g_settings_scan_busy;
 static int g_volume_level;
 static int g_brightness_level;
 static int g_settings_focus;
@@ -399,6 +403,17 @@ static void play_ui_sound(uint8_t sound, uint8_t param)
 }
 
 #include "async_io.h"
+#include "timing.h"
+static PaxTiming g_pump_time,g_flush_time,g_action_time,g_image_time,g_scan_time;
+static uint64_t g_action_pending_us;
+static uint64_t timing_now(void){return (uint64_t)g_svc->get_time_us();}
+static void mark_ui_action(void){if(!g_action_pending_us)g_action_pending_us=timing_now();}
+static void log_timing(const char *name,const PaxTiming *value)
+{
+  g_svc->log_printf("launcher_ui timing %s: samples=%u avg_us=%u max_us=%u over_16ms=%u\n",
+      name,value->samples,value->samples ? (uint32_t)(value->total/value->samples) : 0,
+      value->maximum,value->over_16ms);
+}
 
 static int ui_px(int value)
 {
@@ -3230,6 +3245,7 @@ static void restore_lvgl_rgb565(uint16_t *pixels, size_t count)
 {
   if (pixels == NULL) return;
   for (size_t i = 0; i < count; i++) {
+    if((i&4095U)==0 && __atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE))return;
     const uint16_t panel_pixel = pixels[i];
     const uint16_t rgb_swapped =
         (uint16_t)(((panel_pixel & 0x001FU) << 11) |
@@ -3359,19 +3375,60 @@ static bool remove_detail_package(void)
   return true;
 }
 
-static bool load_detail_cover(const char *json, int length, const char *json_path)
+typedef struct {uint16_t *pixels;uint16_t width,height;} ImageResult;
+static void image_release(ImageResult *image)
 {
-  release_detail_cover();
-  if (g_svc == NULL || (g_svc->png_load_rgb565 == NULL &&
-                        g_svc->png_load_rgb565_blended == NULL)) return false;
+  if(image->pixels)g_svc->mem_free(image->pixels);
+  *image=(ImageResult){0};
+}
+static lv_image_dsc_t image_descriptor(const ImageResult *image)
+{
+  return (lv_image_dsc_t){
+    .header={.magic=LV_IMAGE_HEADER_MAGIC,.cf=LV_COLOR_FORMAT_RGB565,
+      .w=image->width,.h=image->height,.stride=(uint16_t)(image->width*2)},
+    .data_size=(uint32_t)image->width*image->height*2,.data=(const uint8_t *)image->pixels
+  };
+}
+static const char *g_work_text;
+static int update_work_on_host(void *unused)
+{
+  (void)unused;
+  if(!g_display)return 0;
+  if(!g_work_label){
+    g_work_label=lv_label_create(lv_display_get_screen_active(g_display));
+    lv_obj_set_style_text_font(g_work_label,&lv_font_montserrat_14,LV_PART_MAIN);
+    lv_obj_set_style_text_color(g_work_label,lv_color_hex(COL_ACCENT),LV_PART_MAIN);
+    lv_obj_set_style_bg_color(g_work_label,lv_color_hex(COL_PANEL),LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(g_work_label,LV_OPA_COVER,LV_PART_MAIN);
+    lv_obj_set_style_pad_all(g_work_label,ui_px(2),LV_PART_MAIN);
+    lv_obj_clear_flag(g_work_label,LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_align(g_work_label,LV_ALIGN_BOTTOM_RIGHT,-ui_px(8),-ui_px(2));
+  }
+  if(g_work_text){
+    lv_label_set_text(g_work_label,g_work_text);lv_obj_clear_flag(g_work_label,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(g_work_label);
+  }else lv_obj_add_flag(g_work_label,LV_OBJ_FLAG_HIDDEN);
+  return 0;
+}
+static void work_status(const char *text)
+{
+  g_work_text=text;
+  if(g_display)(void)g_svc->ui_call_sync(update_work_on_host,NULL,1000);
+}
+
+typedef struct {const char *json,*path;int length;ImageResult image;} CoverJob;
+static int cover_job(void *argument)
+{
+  CoverJob *job=argument;
   const char *temporary_paths[2] = {DETAIL_COVER_TEMP_SD, DETAIL_COVER_TEMP_USB};
-  if (json_path != NULL && has_prefix(json_path, "/usb0/")) {
+  if (job->path != NULL && has_prefix(job->path, "/usb0/")) {
     temporary_paths[0] = DETAIL_COVER_TEMP_USB;
     temporary_paths[1] = DETAIL_COVER_TEMP_SD;
   }
   for (int attempt = 0; attempt < 2; attempt++) {
+    if(__atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE))break;
     const char *temporary = temporary_paths[attempt];
-    if (!decode_base64_png_to_file(json, length, temporary)) {
+    if (!decode_base64_png_to_file(job->json,job->length,temporary)) {
       if (g_svc->file_remove != NULL) (void)g_svc->file_remove(temporary);
       continue;
     }
@@ -3384,36 +3441,24 @@ static bool load_detail_cover(const char *json, int length, const char *json_pat
                                (panel_rgb & 0x00FF00U) |
                                ((panel_rgb >> 16) & 0x0000FFU);
     if (g_svc->png_load_rgb565_blended != NULL)
-      g_detail_cover_pixels = g_svc->png_load_rgb565_blended(
-          temporary, &g_detail_cover_width, &g_detail_cover_height, panel_bgr);
+      job->image.pixels = g_svc->png_load_rgb565_blended(
+          temporary, &job->image.width, &job->image.height, panel_bgr);
     else if (g_svc->png_load_rgb565 != NULL)
-      g_detail_cover_pixels = g_svc->png_load_rgb565(temporary, &g_detail_cover_width,
-                                                      &g_detail_cover_height);
+      job->image.pixels = g_svc->png_load_rgb565(temporary, &job->image.width,
+                                                      &job->image.height);
     if (g_svc->file_remove != NULL) (void)g_svc->file_remove(temporary);
-    if (g_detail_cover_pixels != NULL && g_detail_cover_width > 0 &&
-        g_detail_cover_height > 0) {
-      restore_lvgl_rgb565(g_detail_cover_pixels,
-                          (size_t)g_detail_cover_width * g_detail_cover_height);
-      g_detail_cover_descriptor = (lv_image_dsc_t){
-        .header = {
-          .magic = LV_IMAGE_HEADER_MAGIC,
-          .cf = LV_COLOR_FORMAT_RGB565,
-          .w = g_detail_cover_width,
-          .h = g_detail_cover_height,
-          .stride = (uint16_t)(g_detail_cover_width * sizeof(uint16_t)),
-        },
-        .data_size = (uint32_t)g_detail_cover_width * g_detail_cover_height * sizeof(uint16_t),
-        .data = (const uint8_t *)g_detail_cover_pixels,
-        .reserved = NULL,
-        .reserved_2 = NULL,
-      };
+    if (job->image.pixels != NULL && job->image.width > 0 &&
+        job->image.height > 0) {
+      restore_lvgl_rgb565(job->image.pixels,
+                          (size_t)job->image.width * job->image.height);
+      if(__atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE)){image_release(&job->image);return -2;}
       /* Detail art is a small UI thumbnail, not a full-screen texture. Shrink
        * it once in-place to its final pixel dimensions so LVGL doesn't scale
        * a large image around its center (which made the art appear displaced
        * down and inward on the native 1024x600 canvas). */
       const uint16_t max_dim = (uint16_t)ui_px(28);
-      const uint16_t src_w = g_detail_cover_width;
-      const uint16_t src_h = g_detail_cover_height;
+      const uint16_t src_w = job->image.width;
+      const uint16_t src_h = job->image.height;
       const uint16_t largest = src_w > src_h ? src_w : src_h;
       if (largest > max_dim) {
         uint16_t dst_w = (uint16_t)(((uint32_t)src_w * max_dim) / largest);
@@ -3424,23 +3469,32 @@ static bool load_detail_cover(const char *json, int length, const char *json_pat
           const uint16_t sy = (uint16_t)(((uint32_t)y * src_h) / dst_h);
           for (uint16_t x = 0; x < dst_w; x++) {
             const uint16_t sx = (uint16_t)(((uint32_t)x * src_w) / dst_w);
-            g_detail_cover_pixels[(size_t)y * dst_w + x] =
-                g_detail_cover_pixels[(size_t)sy * src_w + sx];
+            job->image.pixels[(size_t)y * dst_w + x] =
+                job->image.pixels[(size_t)sy * src_w + sx];
           }
         }
-        g_detail_cover_width = dst_w;
-        g_detail_cover_height = dst_h;
-        g_detail_cover_descriptor.header.w = dst_w;
-        g_detail_cover_descriptor.header.h = dst_h;
-        g_detail_cover_descriptor.header.stride = (uint16_t)(dst_w * sizeof(uint16_t));
-        g_detail_cover_descriptor.data_size =
-            (uint32_t)dst_w * dst_h * sizeof(uint16_t);
+        job->image.width = dst_w;
+        job->image.height = dst_h;
       }
-      return true;
+      return 0;
     }
-    release_detail_cover();
+    image_release(&job->image);
   }
-  return false;
+  return -1;
+}
+
+static bool load_detail_cover(const char *json,int length,const char *json_path)
+{
+  release_detail_cover();
+  if(!g_svc->png_load_rgb565 && !g_svc->png_load_rgb565_blended)return false;
+  CoverJob job={.json=json,.path=json_path,.length=length};
+  work_status("Loading artwork...");uint64_t start=timing_now();
+  int result=io_run(cover_job,&job);
+  timing_record(&g_image_time,timing_now()-start);work_status(NULL);
+  if(result!=0){image_release(&job.image);return false;}
+  g_detail_cover_pixels=job.image.pixels;g_detail_cover_width=job.image.width;g_detail_cover_height=job.image.height;
+  g_detail_cover_descriptor=image_descriptor(&job.image);
+  return true;
 }
 
 static bool fetch_app_detail(int index)
@@ -4120,118 +4174,142 @@ static bool ipv4_from_text(const char *text, uint32_t *out)
   return true;
 }
 
-static void refresh_settings_snapshot(bool load_network_config)
+static int update_selection_on_host(void *arg);
+typedef struct {
+  pax_storage_status_t status[PAX_STORAGE_COUNT];
+  int count[PAX_STORAGE_COUNT];
+  bool inferred[PAX_STORAGE_COUNT],accessible[PAX_STORAGE_COUNT];
+} StorageSnapshot;
+static int storage_scan_job(void *argument)
 {
-  if (g_svc == NULL) return;
-  refresh_wifi_settings(load_network_config);
-  if (g_svc->network_config_get != NULL) {
-    pax_network_config_t current = {0};
-    if (g_svc->network_config_get(&current) == 0) {
-      g_network_live = current;
-      if (load_network_config) g_network_config = current;
-    }
-  }
+  StorageSnapshot *job=argument;
+  static char listing[LIST_BYTES]; /* private to the sole I/O worker */
   static const char *const app_dirs[PAX_STORAGE_COUNT] = {
     "/sd/roms/pax/", "/usb0/roms/pax/"
   };
   static const char *const root_dirs[PAX_STORAGE_COUNT] = {"/sd/", "/usb0/"};
   for (int storage = 0; storage < PAX_STORAGE_COUNT; storage++) {
-    g_storage_app_count[storage] = 0;
-    g_storage_status_inferred[storage] = false;
-    g_storage_path_accessible[storage] = false;
+    if(__atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE))return -2;
+    job->count[storage] = 0;
+    job->inferred[storage] = false;
+    job->accessible[storage] = false;
     const bool have_status_service = g_svc->storage_status_get != NULL &&
-        g_svc->storage_status_get(storage, &g_storage_status[storage]) == 0;
+        g_svc->storage_status_get(storage, &job->status[storage]) == 0;
     if (!have_status_service) {
-      memset(&g_storage_status[storage], 0, sizeof(g_storage_status[storage]));
-      g_storage_status_inferred[storage] = true;
+      memset(&job->status[storage], 0, sizeof(job->status[storage]));
+      job->inferred[storage] = true;
     }
     if (g_svc->file_list_dir == NULL) continue;
-    memset(g_listing, 0, sizeof(g_listing));
-    int bytes = g_svc->file_list_dir(app_dirs[storage], g_listing, sizeof(g_listing));
+    memset(listing, 0, sizeof(listing));
+    int bytes = g_svc->file_list_dir(app_dirs[storage], listing, sizeof(listing));
     if (bytes < 0) {
       /* The mount may be live even when the status service is absent or
        * stale, and a freshly formatted volume may not have roms/pax yet.
        * Probe the root before reporting it as unmounted. */
-      memset(g_listing, 0, sizeof(g_listing));
-      bytes = g_svc->file_list_dir(root_dirs[storage], g_listing, sizeof(g_listing));
+      memset(listing, 0, sizeof(listing));
+      bytes = g_svc->file_list_dir(root_dirs[storage], listing, sizeof(listing));
       if (bytes >= 0) {
-        g_storage_path_accessible[storage] = true;
-        g_storage_status_inferred[storage] = true;
-        g_storage_status[storage].available = 1;
-        g_storage_status[storage].mounted = 1;
-        copy_text(g_storage_status[storage].mount_path,
-                  sizeof(g_storage_status[storage].mount_path), root_dirs[storage]);
+        job->accessible[storage] = true;
+        job->inferred[storage] = true;
+        job->status[storage].available = 1;
+        job->status[storage].mounted = 1;
+        copy_text(job->status[storage].mount_path,
+                  sizeof(job->status[storage].mount_path), root_dirs[storage]);
       }
       continue;
     }
     if (bytes < 0) continue;
-    g_storage_path_accessible[storage] = true;
-    if (g_storage_status_inferred[storage] || !g_storage_status[storage].mounted) {
-      g_storage_status_inferred[storage] = true;
-      g_storage_status[storage].available = 1;
-      g_storage_status[storage].mounted = 1;
-      copy_text(g_storage_status[storage].mount_path,
-                sizeof(g_storage_status[storage].mount_path), root_dirs[storage]);
+    job->accessible[storage] = true;
+    if (job->inferred[storage] || !job->status[storage].mounted) {
+      job->inferred[storage] = true;
+      job->status[storage].available = 1;
+      job->status[storage].mounted = 1;
+      copy_text(job->status[storage].mount_path,
+                sizeof(job->status[storage].mount_path), root_dirs[storage]);
     }
-    if (!g_storage_status[storage].available || !g_storage_status[storage].mounted) continue;
+    if (!job->status[storage].available || !job->status[storage].mounted) continue;
     int offset = 0;
-    const int limit = bytes < (int)sizeof(g_listing) ? bytes : (int)sizeof(g_listing);
+    const int limit=sizeof(listing); /* file_list_dir returns an entry count. */
     while (offset < limit) {
-      const char *name = g_listing + offset;
+      const char *name = listing + offset;
       size_t length = 0;
       while (offset + (int)length < limit && name[length] != '\0') length++;
-      if (offset + (int)length >= limit) break;
+      if (!length || offset + (int)length >= limit) break;
       offset += (int)length + 1;
       if (length >= 4 && name[length - 1] != '/' && ends_with(name, ".pax"))
-        g_storage_app_count[storage]++;
+        job->count[storage]++;
     }
   }
+  return 0;
 }
 
+static void refresh_settings_snapshot(bool load_network_config)
+{
+  refresh_wifi_settings(load_network_config);
+  if(g_svc->network_config_get){
+    pax_network_config_t current={0};
+    if(g_svc->network_config_get(&current)==0){g_network_live=current;if(load_network_config)g_network_config=current;}
+  }
+  StorageSnapshot snapshot={0};g_settings_scan_busy=true;
+  (void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+  work_status("Checking storage...");uint64_t start=timing_now();
+  int result=io_run(storage_scan_job,&snapshot);
+  timing_record(&g_scan_time,timing_now()-start);work_status(NULL);g_settings_scan_busy=false;
+  if(result!=0)g_settings_scan_pending=true;
+  if(result==0){
+    memcpy(g_storage_status,snapshot.status,sizeof(g_storage_status));
+    memcpy(g_storage_app_count,snapshot.count,sizeof(g_storage_app_count));
+    memcpy(g_storage_status_inferred,snapshot.inferred,sizeof(g_storage_status_inferred));
+    memcpy(g_storage_path_accessible,snapshot.accessible,sizeof(g_storage_path_accessible));
+  }
+  (void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+}
+
+typedef struct {char path[PATH_BYTES];ImageResult image;} BackgroundJob;
+static int background_job(void *argument)
+{
+  BackgroundJob *job=argument;
+  job->image.pixels=g_svc->png_load_rgb565(job->path,&job->image.width,&job->image.height);
+  return job->image.pixels && job->image.width && job->image.height ? 0 : -1;
+}
+/* Swap the image on the UI owner and invalidate caches before releasing the
+ * previous allocation. A failed/cancelled job never touches the live image. */
+static int publish_background_on_host(void *argument)
+{
+  BackgroundJob *job=argument;
+  lv_image_cache_drop(&g_background_descriptor);
+  lv_image_header_cache_drop(&g_background_descriptor);
+  uint16_t *previous=g_background_pixels;
+  g_background_pixels=job->image.pixels;g_background_width=job->image.width;g_background_height=job->image.height;
+  g_background_descriptor=image_descriptor(&job->image);
+  if(g_background_widget){
+    if(g_background_pixels){
+      lv_image_set_src(g_background_widget,&g_background_descriptor);
+      lv_image_set_scale_x(g_background_widget,(uint32_t)(((uint64_t)g_canvas_w*256U)/g_background_width));
+      lv_image_set_scale_y(g_background_widget,(uint32_t)(((uint64_t)g_canvas_h*256U)/g_background_height));
+      lv_obj_center(g_background_widget);lv_obj_clear_flag(g_background_widget,LV_OBJ_FLAG_HIDDEN);
+    }else lv_obj_add_flag(g_background_widget,LV_OBJ_FLAG_HIDDEN);
+  }
+  job->image=(ImageResult){0};
+  if(previous)g_svc->mem_free(previous);
+  lv_obj_invalidate(lv_display_get_screen_active(g_display));
+  return 0;
+}
 static void load_background_image(void)
 {
   static char loaded_path[PATH_BYTES];
   const char *wanted=g_background_count && g_background_index>=0 && g_background_index<g_background_count ? g_background_paths[g_background_index] : "";
-  if(g_background_pixels && !strcmp(wanted,loaded_path))return;
-  if(g_display)return; /* Keep the image referenced by live widgets alive. */
-  copy_text(loaded_path,sizeof(loaded_path),wanted);
-  if (g_background_pixels != NULL && g_svc->mem_free != NULL) {
-    g_svc->mem_free(g_background_pixels);
-    g_background_pixels = NULL;
+  if(!g_display || !strcmp(wanted,loaded_path) || g_discard_io)return;
+  BackgroundJob job={0};copy_text(job.path,sizeof(job.path),wanted);
+  if(wanted[0]){
+    if(!g_svc->png_load_rgb565)return;
+    work_status("Loading background...");uint64_t start=timing_now();
+    int result=io_run(background_job,&job);
+    timing_record(&g_image_time,timing_now()-start);work_status(NULL);
+    if(result!=0){image_release(&job.image);return;}
   }
-  g_background_width = 0;
-  g_background_height = 0;
-  if (g_background_count == 0 || g_background_index < 0 ||
-      g_background_index >= g_background_count || g_svc->png_load_rgb565 == NULL) return;
-  g_background_pixels = g_svc->png_load_rgb565(g_background_paths[g_background_index],
-                                                &g_background_width, &g_background_height);
-  if (g_background_pixels == NULL || g_background_width == 0 || g_background_height == 0) {
-    if (g_background_pixels != NULL) g_svc->mem_free(g_background_pixels);
-    g_background_pixels = NULL;
-    g_svc->log_printf("launcher_ui: background decode failed: %s\n",
-                      g_background_paths[g_background_index]);
-    return;
-  }
-  /* The background PNG service returns pixels in the display's expected
-   * ordering for this renderer. Applying the cover-thumbnail restoration
-   * here turns the wallpaper magenta, so keep that correction cover-only. */
-  if (g_svc->log_printf != NULL)
-    g_svc->log_printf("launcher_ui background loaded: %s (%ux%u)\n",
-                      g_background_paths[g_background_index],
-                      g_background_width, g_background_height);
-  g_background_descriptor = (lv_image_dsc_t){
-    .header = {
-      .magic = LV_IMAGE_HEADER_MAGIC,
-      .cf = LV_COLOR_FORMAT_RGB565,
-      .w = g_background_width,
-      .h = g_background_height,
-      .stride = (uint16_t)(g_background_width * sizeof(uint16_t)),
-    },
-    .data_size = (uint32_t)g_background_width * g_background_height * sizeof(uint16_t),
-    .data = (const uint8_t *)g_background_pixels,
-    .reserved = NULL,
-    .reserved_2 = NULL,
-  };
+  if(g_svc->ui_call_sync(publish_background_on_host,&job,2000)==0)copy_text(loaded_path,sizeof(loaded_path),wanted);
+  image_release(&job.image);
 }
 
 static bool ends_with(const char *text, const char *suffix)
@@ -4419,10 +4497,15 @@ static void disp_flush_cb(lv_display_t *display, const lv_area_t *area, uint8_t 
   /* LVGL supplies tightly packed dirty rectangles in PARTIAL mode. The
    * host retains the complete canvas for screenshots and presents small
    * updates without rotating/copying the whole native-resolution screen. */
+  uint64_t flush_start=timing_now();
   g_svc->display_write_rect(area->x1, area->y1,
                            lv_area_get_width(area), lv_area_get_height(area),
                            (const uint16_t *)px_map);
-  if (lv_display_flush_is_last(display)) g_svc->display_flush();
+  if (lv_display_flush_is_last(display)){
+    g_svc->display_flush();
+    if(g_action_pending_us){timing_record(&g_action_time,timing_now()-g_action_pending_us);g_action_pending_us=0;}
+  }
+  timing_record(&g_flush_time,timing_now()-flush_start);
   lv_display_flush_ready(display);
 }
 
@@ -4724,7 +4807,7 @@ static void search_value_event(lv_event_t *event)
     g_archive_search_changed_ms = g_svc != NULL && g_svc->get_time_us != NULL ?
         (uint32_t)(g_svc->get_time_us() / 1000U) : 0;
   }
-  g_filter_dirty = true;
+  mark_ui_action();g_filter_dirty = true;
 }
 
 static void search_click_event(lv_event_t *event)
@@ -4735,7 +4818,7 @@ static void search_click_event(lv_event_t *event)
   g_keyboard_focus = 0;
   g_toolbar_focus = 7;
   play_ui_sound(PAX_UI_SOUND_CONFIRM, 0);
-  g_open_index = -8;
+  mark_ui_action();g_open_index = -8;
 }
 
 static void keyboard_close_event(lv_event_t *event)
@@ -4744,7 +4827,7 @@ static void keyboard_close_event(lv_event_t *event)
   if ((code != LV_EVENT_READY && code != LV_EVENT_CANCEL) || g_keyboard == NULL) return;
   g_keyboard_focus = (int)lv_buttonmatrix_get_selected_button(g_keyboard);
   g_keyboard_open = false;
-  g_open_index = -3;
+  mark_ui_action();g_open_index = -3;
 }
 
 static void keyboard_value_event(lv_event_t *event)
@@ -4972,6 +5055,7 @@ static void select_source(int source)
   /* Cancel a deferred Archive search before another source can own the list. */
   g_archive_search_pending = false;
   __atomic_add_fetch(&g_navigation_generation,1,__ATOMIC_ACQ_REL);
+  mark_ui_action();
   g_source = source;
   g_catalog_stale=true;
   g_favorites_mode = false;
@@ -5019,7 +5103,7 @@ static void toolbar_button_event(lv_event_t *event)
   g_toolbar_focus = -1;
   const int action = (int)(intptr_t)lv_event_get_user_data(event);
   play_ui_sound(action == -9 || action == -2 ? PAX_UI_SOUND_BACK : PAX_UI_SOUND_CONFIRM, 0);
-  g_open_index = action;
+  g_open_index = action;mark_ui_action();
 }
 
 static int toolbar_focus_step(int current, int direction)
@@ -5263,6 +5347,7 @@ static void append_storage_size(char *out, size_t capacity, uint64_t bytes)
 
 static void format_storage_status(int storage, char *out, size_t capacity)
 {
+  if(g_settings_scan_busy || g_settings_scan_pending){copy_text(out,capacity,"Checking storage...");return;}
   if (storage < 0 || storage >= PAX_STORAGE_COUNT) {
     copy_text(out, capacity, storage == PAX_STORAGE_SD ? "Not mounted" : "Not connected");
     return;
@@ -5349,7 +5434,7 @@ static void detail_button_event(lv_event_t *event)
   if (lv_event_get_code(event) == LV_EVENT_CLICKED)
     play_ui_sound(PAX_UI_SOUND_CONFIRM, 0);
   if (lv_event_get_code(event) == LV_EVENT_CLICKED)
-    g_open_index = action;
+    g_open_index = action;mark_ui_action();
 }
 
 /* Settings are rendered with storage first so card status and mount controls
@@ -5849,7 +5934,15 @@ static int update_selection_on_host(void *arg)
     ipv4_to_text(network_values[i], address, sizeof(address));
     label_text_changed(g_network_value_labels[i], address);
   }
+  if(g_network_apply_button){
+    if(g_settings_scan_busy || g_settings_scan_pending)lv_obj_add_state(g_network_apply_button,LV_STATE_DISABLED);
+    else lv_obj_clear_state(g_network_apply_button,LV_STATE_DISABLED);
+  }
   for (int i = 0; i < PAX_STORAGE_COUNT; i++) {
+    if(g_storage_buttons[i]){
+      if(g_settings_scan_busy || g_settings_scan_pending)lv_obj_add_state(g_storage_buttons[i],LV_STATE_DISABLED);
+      else lv_obj_clear_state(g_storage_buttons[i],LV_STATE_DISABLED);
+    }
     if (g_storage_status_labels[i] != NULL) {
       char summary[120];
       format_storage_status(i, summary, sizeof(summary));
@@ -6316,8 +6409,11 @@ static int build_ui_on_host(void *arg)
   lv_obj_set_style_bg_color(screen, lv_color_hex(COL_BG), LV_PART_MAIN);
   lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
   create_mouse_cursor(screen);
+  g_background_widget=lv_image_create(screen);
+  lv_obj_clear_flag(g_background_widget,LV_OBJ_FLAG_CLICKABLE);
+  lv_image_set_antialias(g_background_widget,false);
   if (g_background_pixels != NULL && g_background_width > 0 && g_background_height > 0) {
-    lv_obj_t *background = lv_image_create(screen);
+    lv_obj_t *background = g_background_widget;
     lv_image_set_src(background, &g_background_descriptor);
     const uint32_t scale_x = (uint32_t)(((uint64_t)g_canvas_w * 256U) / g_background_width);
     const uint32_t scale_y = (uint32_t)(((uint64_t)g_canvas_h * 256U) / g_background_height);
@@ -6325,7 +6421,7 @@ static int build_ui_on_host(void *arg)
     lv_image_set_scale_y(background, scale_y);
     lv_image_set_antialias(background, false);
     lv_obj_center(background);
-  }
+  }else lv_obj_add_flag(g_background_widget,LV_OBJ_FLAG_HIDDEN);
 
   const int status_h = ui_px(24);
   const int header_h = ui_px(30);
@@ -7493,7 +7589,9 @@ static int pump_ui_on_host(void *arg)
 {
   (void)arg;
   if (g_display == NULL) return -1;
+  uint64_t start=timing_now();
   g_next_handler_ms = lv_timer_handler();
+  timing_record(&g_pump_time,timing_now()-start);
   if (g_next_handler_ms > 20) g_next_handler_ms = 20;
   if (g_next_handler_ms == 0) g_next_handler_ms = 1;
   return 0;
@@ -7540,7 +7638,7 @@ static int teardown_ui_on_host(void *arg)
     lv_indev_delete(g_mouse_indev);
     g_mouse_indev = NULL;
   }
-  g_mouse_cursor = NULL;
+  g_mouse_cursor = NULL;g_background_widget=NULL;g_work_label=NULL;
   if (g_display != NULL) {
     lv_display_delete(g_display);
     g_display = NULL;
@@ -7638,6 +7736,7 @@ static bool poll_controller(void)
   for (int i = 0; i < 4; i++) g_keyboard_nav_pending[i] = false;
   g_keyboard_enter_pending = false;
   bool changed = false;
+  const int previous_action=g_open_index;
   const bool toolbar_was_active = g_toolbar_focus >= 0;
   if (g_rom_picker_active) {
     if (up && !g_pad_last[PAX_INPUT_UP] && g_rom_picker_count > 0) {
@@ -7803,9 +7902,9 @@ static bool poll_controller(void)
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus >= 13 && g_settings_focus <= 16)
       g_open_index = -30 - (g_settings_focus - 13);
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=25 && g_settings_focus<=28)g_open_index=-62-(g_settings_focus-25);
-    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 17) g_open_index = -35;
-    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 18) g_open_index = -36;
-    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 19) g_open_index = -37;
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 17 && !g_settings_scan_busy && !g_settings_scan_pending) g_open_index = -35;
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 18 && !g_settings_scan_busy && !g_settings_scan_pending) g_open_index = -36;
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 19 && !g_settings_scan_busy && !g_settings_scan_pending) g_open_index = -37;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 20) {
       g_app_details_enabled = !g_app_details_enabled;
       g_open_index = -43;
@@ -7941,6 +8040,7 @@ static bool poll_controller(void)
         ((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3))
       g_open_index = g_source == SOURCE_ARCHIVE && g_archive_level != ARCHIVE_LEVEL_SEARCH ? -15 : -2;
   }
+  if(changed || previous_action!=g_open_index)mark_ui_action();
   const bool accept_pressed = a && !g_pad_last[PAX_INPUT_A];
   const bool back_pressed = b && !g_pad_last[PAX_INPUT_B];
   if (changed) {
@@ -8202,7 +8302,6 @@ int app_entry(const app_services_t *svc)
     if (!detail_mode && !g_settings_mode && g_catalog_stale) {
       g_detail_index = -1;
       g_catalog_loading=true;g_app_count=0;g_view_count=0;
-      load_background_image();
       if(!g_display){
         if(svc->ui_call_sync(build_ui_on_host,NULL,25000)!=0){
           (void)svc->ui_call_sync(teardown_ui_on_host,NULL,2000);
@@ -8212,6 +8311,7 @@ int app_entry(const app_services_t *svc)
         built_plain_list=built_layout==0;
       }
       else (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
+      load_background_image();
       load_apps();
       g_catalog_loading=false;
       g_catalog_stale=g_discard_io;
@@ -8230,7 +8330,6 @@ int app_entry(const app_services_t *svc)
         }
       }
     }
-    load_background_image();
     svc->log_printf("launcher_ui source=%s apps=%d visible=%d favorites=%d\n",
                     g_favorites_mode ? "FAVORITES" : source_label(g_source),
                     g_app_count, g_view_count, g_favorite_count);
@@ -8251,6 +8350,10 @@ int app_entry(const app_services_t *svc)
     }
     built_layout=ui_layout_kind();
     built_plain_list=list_ui;
+    load_background_image();
+    if(g_settings_mode && g_settings_scan_pending && !g_discard_io){
+      g_settings_scan_pending=false;refresh_settings_snapshot(true);
+    }
     svc->log_printf("launcher_ui: LVGL %s screen created through loader bridge\n",
                     source_label(g_source));
 
@@ -8331,7 +8434,7 @@ int app_entry(const app_services_t *svc)
     }
     bool reuse_list_ui=built_plain_list && !detail_mode && !g_settings_mode && !g_keyboard_open && !g_rom_picker_active && g_source!=SOURCE_ARCHIVE && chosen==-3;
     const bool loading_detail=built_plain_list && !detail_mode && (chosen==-18 || chosen==-4);
-    const bool retain_page=g_display && !detail_mode && !g_rom_picker_active && chosen<=-3 && chosen!=-49 && chosen!=-10;
+    const bool retain_page=g_display && !detail_mode && !g_rom_picker_active && chosen<=-3 && chosen!=-49;
     if(!retain_page && !reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
     if (g_rom_picker_active && chosen == -61) {
       g_rom_picker_active = false;
@@ -8461,7 +8564,7 @@ int app_entry(const app_services_t *svc)
       g_settings_message[0] = '\0';
       load_archive_credentials();
       load_archive_s3_keys();
-      refresh_settings_snapshot(true);
+      g_settings_scan_pending=true;
       wait_for_input_release();
       continue;
     }
@@ -8566,6 +8669,7 @@ int app_entry(const app_services_t *svc)
                                     "Network settings rejected; check the IPv4 values"));
         }
       }
+      if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
       wait_for_input_release();
       continue;
     }
@@ -8590,6 +8694,7 @@ int app_entry(const app_services_t *svc)
           refresh_settings_snapshot(false);
         }
       }
+      if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
       wait_for_input_release();
       continue;
     }
@@ -8732,6 +8837,8 @@ int app_entry(const app_services_t *svc)
   }
   release_detail_cover();
   io_finish();
+  log_timing("pump",&g_pump_time);log_timing("flush",&g_flush_time);
+  log_timing("action_to_flush",&g_action_time);log_timing("image_job",&g_image_time);log_timing("storage_scan",&g_scan_time);
   svc->log_printf("launcher_ui render: builds=%u rows=%u labels=%u styles=%u keyboard=%u metadata=%u\n",g_ui_builds,g_row_updates,g_label_updates,g_button_updates,g_keyboard_transitions,g_metadata_flushes);
   svc->log_printf("launcher_ui I/O: %u jobs, %u cancelled\n",g_io_jobs,g_io_cancelled);
   if (launch_disc_installer && svc->app_open != NULL) {

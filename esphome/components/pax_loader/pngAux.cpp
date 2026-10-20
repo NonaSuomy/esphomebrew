@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mutex>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 
@@ -15,6 +16,9 @@ static const char *TAG = "pngAux";
 // File handle for PNG callbacks
 static FILE *_myfile = NULL;
 
+// PNGdec callbacks use shared decoder/file state. Serialize all callers,
+// including PAX background tasks and the native launcher.
+static std::mutex _pngMutex;
 static PNG _png;
 static unsigned int _PNGendianessFlag;
 static uint32_t _PNGbackground = 0xffffffff;
@@ -67,6 +71,9 @@ static void PNGDraw(PNGDRAW *pDraw)
 
 bool loadPngFromFile(const char *fileName, pngObject *pngObj, bool usePSRAM, bool littleEndian)
 {
+    if (fileName == nullptr || pngObj == nullptr) return false;
+    std::lock_guard<std::mutex> lock(_pngMutex);
+    *pngObj = {};
     int pngStatus;
 
     if (littleEndian) {
@@ -80,7 +87,14 @@ bool loadPngFromFile(const char *fileName, pngObject *pngObj, bool usePSRAM, boo
         ESP_LOGI(TAG, "Image specs: (%d x %d), %d bpp, pixel type: %d",
                  _png.getWidth(), _png.getHeight(), _png.getBpp(), _png.getPixelType());
 
-        size_t buf_size = _png.getWidth() * _png.getHeight() * 2;
+        const size_t width = _png.getWidth(), height = _png.getHeight();
+        if (width == 0 || height == 0 || width > UINT16_MAX || height > UINT16_MAX ||
+            width > SIZE_MAX / height / sizeof(uint16_t)) {
+            _png.close();
+            _PNGbackground = 0xffffffff;
+            return false;
+        }
+        const size_t buf_size = width * height * sizeof(uint16_t);
         if (usePSRAM) {
             // Return an aligned pointer that can also be passed directly to
             // heap_caps_free(). The old +4/manual-adjustment code could shift
@@ -101,6 +115,14 @@ bool loadPngFromFile(const char *fileName, pngObject *pngObj, bool usePSRAM, boo
         pngObj->h = _png.getHeight();
         pngObj->data = (unsigned int *)_pngBuffer;
         pngStatus = _png.decode(NULL, 0);
+        if (pngStatus != PNG_SUCCESS) {
+            _png.close();
+            heap_caps_free(pngObj->data);
+            *pngObj = {};
+            _PNGbackground = 0xffffffff;
+            ESP_LOGW(TAG, "PNG decode failed (status=%d)", pngStatus);
+            return false;
+        }
 
         // Color channel swap for ESP32-P4 MIPI DSI panel (BGR to RGB)
         uint16_t *tempPointer = (uint16_t *)pngObj->data;
@@ -131,6 +153,9 @@ bool loadPngFromFileRawBackground(const char *fileName, pngObject *pngObj,
                                   bool usePSRAM, bool littleEndian,
                                   uint32_t background_bgr888)
 {
+    if (fileName == nullptr || pngObj == nullptr) return false;
+    std::lock_guard<std::mutex> lock(_pngMutex);
+    *pngObj = {};
     int pngStatus;
     _PNGbackground = background_bgr888;
 
@@ -145,7 +170,14 @@ bool loadPngFromFileRawBackground(const char *fileName, pngObject *pngObj,
         ESP_LOGI(TAG, "Image specs: (%d x %d), %d bpp, pixel type: %d",
                  _png.getWidth(), _png.getHeight(), _png.getBpp(), _png.getPixelType());
 
-        size_t buf_size = _png.getWidth() * _png.getHeight() * 2;
+        const size_t width = _png.getWidth(), height = _png.getHeight();
+        if (width == 0 || height == 0 || width > UINT16_MAX || height > UINT16_MAX ||
+            width > SIZE_MAX / height / sizeof(uint16_t)) {
+            _png.close();
+            _PNGbackground = 0xffffffff;
+            return false;
+        }
+        const size_t buf_size = width * height * sizeof(uint16_t);
         if (usePSRAM) {
             _pngBuffer = (uint16_t *)heap_caps_aligned_calloc(4, 1, buf_size, MALLOC_CAP_SPIRAM);
         } else {
@@ -163,6 +195,14 @@ bool loadPngFromFileRawBackground(const char *fileName, pngObject *pngObj,
         pngObj->h = _png.getHeight();
         pngObj->data = (unsigned int *)_pngBuffer;
         pngStatus = _png.decode(NULL, 0);
+        if (pngStatus != PNG_SUCCESS) {
+            _png.close();
+            heap_caps_free(pngObj->data);
+            *pngObj = {};
+            _PNGbackground = 0xffffffff;
+            ESP_LOGW(TAG, "PNG decode failed (status=%d)", pngStatus);
+            return false;
+        }
 
         /* No color swap — raw RGB565 as decoded by PNGdec */
 

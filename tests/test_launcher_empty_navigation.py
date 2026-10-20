@@ -43,6 +43,7 @@ static struct {int (*log_printf)(const char *,...);} *g_svc;
 static bool g_favorites_mode,g_settings_mode,g_archive_search_pending;
 static char g_archive_identifier[128],g_archive_zip_url[512],g_search_text[128];
 static bool g_pad_last[PAX_INPUT_MAX];
+static void mark_ui_action(void){}
 static void play_ui_sound(int sound,int level){(void)sound;(void)level;}
 #define PAX_UI_SOUND_CHIME 0
 '''+function(source,'toolbar_focus_step')+'\n'+function(source,'select_source')+'\n'+function(source,'source_button_event')+r'''
