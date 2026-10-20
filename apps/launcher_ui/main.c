@@ -2136,7 +2136,9 @@ static bool extract_recipe_parse_object(const char *json, int length,
   /* Version 2 setup and ZIP recipes are interpreted by the separate recipe app.
    * The launcher keeps only enough state to expose its handoff action. */
   if (version == 2) {
-    char instructions[4096];
+    /* Entry-task parsing is serial. Keep this validation scratch in the
+     * PAX's PSRAM data instead of consuming half of pax_main's 8 KiB stack. */
+    static char instructions[4096];
     if (!json_string_field(extract_json, extract_length, "instructions", instructions, sizeof(instructions))) return false;
     recipe->valid = true;
     return true;
@@ -4003,6 +4005,7 @@ static void refresh_c6_status(void) {
   }
 }
 static void request_c6_update(uint32_t command) {
+  if(mutations_busy()){copy_text(g_settings_message,sizeof(g_settings_message),"Wait for the active transfer before updating C6");return;}
   pax_c6_request_t request={0};request.magic=PAX_C6_UPDATE_MAGIC;request.command=command;
   memcpy(request.source,g_c6_source,sizeof(request.source));
   void *f=g_svc->file_open ? g_svc->file_open(PAX_C6_UPDATE_FILE,"wb") : NULL;

@@ -60,3 +60,16 @@ int main(void){
 }
 '''
   run(code)
+
+ def test_controller_c6_request_cannot_bypass_transfer_guard(self):
+  code=PREFIX+r'''
+#include "pax_c6_update.h"
+static char g_settings_message[160],g_c6_source[sizeof(((pax_c6_request_t *)0)->source)],g_c6_checked_source[sizeof(g_c6_source)];
+static bool busy=true;static int opens,refreshes;
+static bool mutations_busy(void){return busy;}
+static void refresh_c6_status(void){refreshes++;}
+static void *open_file(const char *path,const char *mode){(void)path;(void)mode;opens++;return NULL;}
+'''+function('request_c6_update')+r'''
+int main(void){services.file_open=open_file;request_c6_update(PAX_C6_INSTALL);assert(!opens && !refreshes && strstr(g_settings_message,"active transfer"));busy=false;request_c6_update(PAX_C6_PREPARE);assert(opens==1 && refreshes==1);}
+'''
+  run(code)

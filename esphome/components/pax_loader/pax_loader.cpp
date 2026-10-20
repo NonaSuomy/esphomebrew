@@ -8189,6 +8189,35 @@ int PaxLoader::svc_net_poll(int handle) {
          (FD_ISSET(handle, &failed) || error != 0 ? 4 : 0);
 }
 
+// ESP-IDF can retain DNS on the interface after a DHCP restart while its
+// global resolver slots are empty. Reuse the active interface's own servers;
+// never replace a configured resolver or introduce a different DNS provider.
+static bool restore_active_dns_if_missing_() {
+#ifdef CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF
+  esp_netif_t *netif = esp_netif_get_default_netif();
+  esp_netif_ip_info_t ip{};
+  if (netif == nullptr || esp_netif_get_ip_info(netif, &ip) != ESP_OK || ip.ip.addr == 0)
+    return false;
+  for (int slot = ESP_NETIF_DNS_MAIN; slot <= ESP_NETIF_DNS_FALLBACK; ++slot) {
+    esp_netif_dns_info_t dns{};
+    if (esp_netif_get_dns_info(nullptr, static_cast<esp_netif_dns_type_t>(slot), &dns) != ESP_OK ||
+        !ESP_IP_IS_ANY(dns.ip)) return false;
+  }
+  bool restored = false;
+  for (int slot = ESP_NETIF_DNS_MAIN; slot <= ESP_NETIF_DNS_FALLBACK; ++slot) {
+    esp_netif_dns_info_t dns{};
+    if (esp_netif_get_dns_info(netif, static_cast<esp_netif_dns_type_t>(slot), &dns) == ESP_OK &&
+        !ESP_IP_IS_ANY(dns.ip) &&
+        esp_netif_set_dns_info(nullptr, static_cast<esp_netif_dns_type_t>(slot), &dns) == ESP_OK)
+      restored = true;
+  }
+  if (restored) ESP_LOGI(TAG, "PAX DNS: restored resolver servers from active interface");
+  return restored;
+#else
+  return false;
+#endif
+}
+
 int PaxLoader::svc_net_resolve(const char *host, uint32_t *ip) {
   if (host == nullptr || *host == '\0' || ip == nullptr)
     return 0;
@@ -8197,12 +8226,25 @@ int PaxLoader::svc_net_resolve(const char *host, uint32_t *ip) {
     *ip = ntohl(parsed.s_addr);
     return 1;
   }
+  (void)restore_active_dns_if_missing_();
   addrinfo hints{};
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
   addrinfo *found = nullptr;
-  if (getaddrinfo(host, nullptr, &hints, &found) != 0 || found == nullptr)
+  const int lookup_result = getaddrinfo(host, nullptr, &hints, &found);
+  if (lookup_result != 0 || found == nullptr) {
+#ifdef CONFIG_ESP_NETIF_SET_DNS_PER_DEFAULT_NETIF
+    esp_netif_dns_info_t global_dns{}, interface_dns{};
+    esp_netif_get_dns_info(nullptr, ESP_NETIF_DNS_MAIN, &global_dns);
+    esp_netif_get_dns_info(esp_netif_get_default_netif(), ESP_NETIF_DNS_MAIN, &interface_dns);
+    ESP_LOGW(TAG, "PAX DNS: interface=%08x resolver=%08x", static_cast<unsigned>(ntohl(interface_dns.ip.u_addr.ip4.addr)),
+             static_cast<unsigned>(ntohl(global_dns.ip.u_addr.ip4.addr)));
+#endif
+    ESP_LOGW(TAG, "PAX DNS: %s lookup failed (result=%d, errno=%d, free_internal=%u)",
+             host, lookup_result, errno, static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+    if (found != nullptr) freeaddrinfo(found);
     return 0;
+  }
   *ip = ntohl(reinterpret_cast<sockaddr_in *>(found->ai_addr)->sin_addr.s_addr);
   freeaddrinfo(found);
   return 1;
@@ -8312,40 +8354,45 @@ int PaxLoader::svc_network_config_set(const pax_network_config_t *config) {
   esp_err_t err = esp_netif_dhcpc_get_status(netif, &dhcp_status);
   if (err != ESP_OK)
     return -1;
-  if (dhcp_status == ESP_NETIF_DHCP_STARTED) {
-    err = esp_netif_dhcpc_stop(netif);
-    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
-      return -1;
-  }
-
-  esp_netif_ip_info_t ip{};
-  if (!config->dhcp_enabled) {
-    ip.ip.addr = htonl(config->ipv4);
-    ip.netmask.addr = htonl(config->netmask);
-    ip.gw.addr = htonl(config->gateway);
-  }
-  err = esp_netif_set_ip_info(netif, &ip);
-  if (err != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to set IPv4 information: %s", esp_err_to_name(err));
-    return -1;
-  }
-
-  if (config->dhcp_enabled) {
-    err = esp_netif_dhcpc_start(netif);
-    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED) {
-      ESP_LOGE(TAG, "Failed to restart DHCP client: %s", esp_err_to_name(err));
-      return -1;
+  // Reapplying/restoring DHCP must not clear the lease and DNS servers on
+  // an interface whose DHCP client is already running.
+  if (!(config->dhcp_enabled && dhcp_status == ESP_NETIF_DHCP_STARTED)) {
+    if (dhcp_status == ESP_NETIF_DHCP_STARTED) {
+      err = esp_netif_dhcpc_stop(netif);
+      if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
+        return -1;
     }
-  } else if (config->dns != 0) {
-    esp_netif_dns_info_t dns{};
-    dns.ip.type = IPADDR_TYPE_V4;
-    dns.ip.u_addr.ip4.addr = htonl(config->dns);
-    err = esp_netif_set_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns);
+
+    esp_netif_ip_info_t ip{};
+    if (!config->dhcp_enabled) {
+      ip.ip.addr = htonl(config->ipv4);
+      ip.netmask.addr = htonl(config->netmask);
+      ip.gw.addr = htonl(config->gateway);
+    }
+    err = esp_netif_set_ip_info(netif, &ip);
     if (err != ESP_OK) {
-      ESP_LOGE(TAG, "Failed to set DNS server: %s", esp_err_to_name(err));
+      ESP_LOGE(TAG, "Failed to set IPv4 information: %s", esp_err_to_name(err));
       return -1;
     }
+
+    if (config->dhcp_enabled) {
+      err = esp_netif_dhcpc_start(netif);
+      if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED) {
+        ESP_LOGE(TAG, "Failed to restart DHCP client: %s", esp_err_to_name(err));
+        return -1;
+      }
+    } else if (config->dns != 0) {
+      esp_netif_dns_info_t dns{};
+      dns.ip.type = IPADDR_TYPE_V4;
+      dns.ip.u_addr.ip4.addr = htonl(config->dns);
+      err = esp_netif_set_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns);
+      if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set DNS server: %s", esp_err_to_name(err));
+        return -1;
+      }
+    }
   }
+  (void)restore_active_dns_if_missing_();
 
   SavedNetworkConfig saved{};
   saved.magic = NETWORK_PREFERENCE_MAGIC;
@@ -10274,6 +10321,7 @@ void PaxLoader::report_task_entry_(void *arg) {
   if (std::strncmp(report->url.c_str(), "https://", 8) == 0)
     config.crt_bundle_attach = esp_crt_bundle_attach;
 #endif
+  (void)restore_active_dns_if_missing_();
   esp_http_client_handle_t client = esp_http_client_init(&config);
   if (client == nullptr) {
     ESP_LOGW(TAG, "Test report not sent: out of memory");
@@ -10352,6 +10400,7 @@ static esp_err_t fetch_http_text_impl(const char *url, std::string *out, size_t 
     config.crt_bundle_attach = esp_crt_bundle_attach;
 #endif
 
+  (void)restore_active_dns_if_missing_();
   esp_http_client_handle_t client = esp_http_client_init(&config);
   if (client == nullptr)
     return ESP_ERR_NO_MEM;
@@ -11048,6 +11097,7 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
     if (current_url.rfind("https://", 0) == 0)
       config.crt_bundle_attach = esp_crt_bundle_attach;
 #endif
+    (void)restore_active_dns_if_missing_();
     client = esp_http_client_init(&config);
     if (client == nullptr)
       return ESP_ERR_NO_MEM;
@@ -11350,6 +11400,7 @@ esp_err_t psram_app_load_url(const char *url, psram_app_handle_t *out_handle) {
     config.crt_bundle_attach = esp_crt_bundle_attach;
 #endif
 
+  (void)restore_active_dns_if_missing_();
   esp_http_client_handle_t client = esp_http_client_init(&config);
   if (client == nullptr)
     return ESP_ERR_NO_MEM;
