@@ -31,6 +31,7 @@ class EmptyNavigationTests(unittest.TestCase):
 '''+defines+r'''
 static int g_toolbar_focus=-1,g_source,g_selected,g_first_visible,g_view_count,g_open_index;
 static int g_archive_level;
+static uint32_t g_navigation_generation;
 static bool g_favorites_mode,g_settings_mode,g_archive_search_pending;
 static char g_archive_identifier[128],g_archive_zip_url[512],g_search_text[128];
 static bool g_pad_last[PAX_INPUT_MAX];

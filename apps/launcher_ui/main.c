@@ -6,8 +6,8 @@
  *
  * This is the first real launcher screen behind the PAX boundary. The PAX
  * owns its LVGL 9.5 instance, but every LVGL call is dispatched to the
- * loader's ESPHome task through ui_call_sync(). The worker task only handles
- * filesystem/controller work and waits for the host task to pump LVGL.
+ * loader's ESPHome task through ui_call_sync(). The entry task owns the model
+ * and pumps input/UI while a single cancellable worker handles catalog I/O.
  */
 
 #define PAX_APP_SIDE 1
@@ -398,6 +398,8 @@ static void play_ui_sound(uint8_t sound, uint8_t param)
     g_svc->ui_sound(sound, param);
 }
 
+#include "async_io.h"
+
 static int ui_px(int value)
 {
   int scaled = (int)(value * g_ui_scale + 0.5f);
@@ -742,6 +744,7 @@ static int http_request_redirects(const char *base_url, char *body, int capacity
                                   const char *method, const char *post_body)
 {
   g_http_status_code = 0;
+  if (__atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE)) return -1;
   if (g_svc == NULL || base_url == NULL || body == NULL || capacity < 256 ||
       g_svc->net_poll == NULL) return -1;
   bool tls = has_prefix(base_url, "https://");
@@ -825,6 +828,8 @@ static int http_request_redirects(const char *base_url, char *body, int capacity
                              cookie_buffer, sizeof(g_http_cookie));
   int wait_ms = 0;
   while (wait_ms < 16000) {
+    if (__atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE))
+      return fail_http_request(handle,tls,request,sizeof(g_http_request),cookie_buffer,sizeof(g_http_cookie));
     int ready = tls ? g_svc->net_tls_status(handle) : g_svc->net_poll(handle);
     if (ready < 0 || (!tls && (ready & 4))) {
       return fail_http_request(handle, tls, request, sizeof(g_http_request),
@@ -840,6 +845,8 @@ static int http_request_redirects(const char *base_url, char *body, int capacity
   }
   int sent = 0;
   while (sent < request_length && wait_ms < 18000) {
+    if (__atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE))
+      return fail_http_request(handle,tls,request,sizeof(g_http_request),cookie_buffer,sizeof(g_http_cookie));
     int n = tls ? g_svc->net_tls_send(handle, request + sent, request_length - sent)
                 : g_svc->net_tcp_send(handle, request + sent, request_length - sent);
     if (n < 0) {
@@ -858,6 +865,8 @@ static int http_request_redirects(const char *base_url, char *body, int capacity
   int used = 0;
   int idle_ms = 0;
   while (used + 1 < capacity && idle_ms < 12000) {
+    if (__atomic_load_n(&g_io_cancel,__ATOMIC_ACQUIRE))
+      return fail_http_request(handle,tls,request,sizeof(g_http_request),cookie_buffer,sizeof(g_http_cookie));
     char *destination = body + used;
     int room = capacity - used - 1;
     int n = tls ? g_svc->net_tls_recv(handle, destination, room)
@@ -936,14 +945,19 @@ static int http_request_redirects(const char *base_url, char *body, int capacity
   return body_length;
 }
 
-static int http_fetch(const char *url, char *body, int capacity)
+typedef struct {const char *url,*method,*form;char *body;int capacity;} HttpJob;
+static int http_job(void *argument)
 {
-  return http_request_redirects(url, body, capacity, 0, "GET", NULL);
+  HttpJob *job=argument;
+  return http_request_redirects(job->url,job->body,job->capacity,0,job->method,job->form);
 }
-
-static int http_post_form(const char *url, const char *form_body, char *body, int capacity)
+static int http_fetch(const char *url,char *body,int capacity)
 {
-  return http_request_redirects(url, body, capacity, 0, "POST", form_body);
+  HttpJob job={url,"GET",NULL,body,capacity};return io_run(http_job,&job);
+}
+static int http_post_form(const char *url,const char *form_body,char *body,int capacity)
+{
+  HttpJob job={url,"POST",form_body,body,capacity};return io_run(http_job,&job);
 }
 
 static void set_fa_glyph(lv_obj_t *label, uint32_t codepoint)
@@ -2817,6 +2831,7 @@ static int archive_add_record(const char *name, const char *path, const char *fi
 static void archive_search_load(void)
 {
   g_app_count = 0;
+  g_view_count = 0;
   g_catalog_failed = false;
   copy_text(g_archive_status, sizeof(g_archive_status), "Searching collection: ");
   append_text(g_archive_status, sizeof(g_archive_status), g_archive_collection);
@@ -2936,6 +2951,7 @@ static bool archive_item_url(char *out, size_t capacity, const char *identifier,
 static void archive_metadata_load(void)
 {
   g_app_count = 0;
+  g_view_count = 0;
   g_catalog_failed = false;
   copy_text(g_archive_status, sizeof(g_archive_status), "Loading item files...");
   char safe_identifier[128], url[PATH_BYTES] = "https://archive.org/metadata/";
@@ -3060,6 +3076,7 @@ static bool archive_resolve_href(const char *base, const char *href, char *label
 static void archive_zip_load(void)
 {
   g_app_count = 0;
+  g_view_count = 0;
   g_catalog_failed = false;
   copy_text(g_archive_status, sizeof(g_archive_status), "Loading ZIP contents...");
   char listing_url[PATH_BYTES];
@@ -3235,17 +3252,30 @@ static bool replace_package_suffix(const char *path, char *out, size_t capacity,
   return true;
 }
 
+typedef struct {const char *path;char *buffer;int capacity;} FileJob;
+static int read_file_job(void *argument)
+{
+  FileJob *job=argument;
+  if(!g_svc->file_open || !g_svc->file_read || !g_svc->file_close || job->capacity<2)return -1;
+  void *file=g_svc->file_open(job->path,"rb");if(!file)return -1;
+  int bytes=(int)g_svc->file_read(job->buffer,1,job->capacity-1,file);
+  (void)g_svc->file_close(file);job->buffer[bytes]=0;return bytes ? bytes : -1;
+}
 static int read_json_file(const char *path)
 {
-  if (g_svc == NULL || g_svc->file_open == NULL || g_svc->file_read == NULL ||
-      g_svc->file_close == NULL) return -1;
-  void *file = g_svc->file_open(path, "rb");
-  if (file == NULL) return -1;
-  const size_t bytes = g_svc->file_read(g_remote, 1, sizeof(g_remote) - 1, file);
-  (void)g_svc->file_close(file);
-  g_remote[bytes] = '\0';
-  return bytes > 0 ? (int)bytes : -1;
+  FileJob job={path,g_remote,sizeof(g_remote)};return io_run(read_file_job,&job);
 }
+static int list_directory_job(void *argument)
+{
+  FileJob *job=argument;return g_svc->file_list_dir(job->path,job->buffer,job->capacity);
+}
+static int list_directory_async(const char *path,char *buffer,int capacity)
+{
+  FileJob job={path,buffer,capacity};return io_run(list_directory_job,&job);
+}
+typedef struct {const char *path;pax_file_stat_t *out;} StatJob;
+static int stat_job(void *argument){StatJob *job=argument;return g_svc->file_stat(job->path,job->out);}
+static int stat_async(const char *path,pax_file_stat_t *out){StatJob job={path,out};return io_run(stat_job,&job);}
 
 static bool detail_package_present(const char *name, char *path, size_t capacity)
 {
@@ -3471,7 +3501,7 @@ static bool fetch_app_detail(int index)
   append_text(g_detail_file_info,sizeof(g_detail_file_info),g_paths[index]);
   pax_file_stat_t actual={0};
   bool have_stat=g_detail_local_path[0] && g_svc->file_stat &&
-                 g_svc->file_stat(g_detail_local_path,&actual)==0 && !actual.is_dir;
+                 stat_async(g_detail_local_path,&actual)==0 && !actual.is_dir;
   if(have_stat){
     if(g_detail_is_remote){append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nInstalled file: ");append_text(g_detail_file_info,sizeof(g_detail_file_info),g_detail_local_path);}
     append_text(g_detail_file_info,sizeof(g_detail_file_info),"\nSize: ");pax_info_number(g_detail_file_info,sizeof(g_detail_file_info),actual.size,1);
@@ -3488,6 +3518,7 @@ static bool fetch_app_detail(int index)
     copy_text(g_install_status, sizeof(g_install_status), "No JSON sidecar for this entry; launch remains available.");
     return false;
   }
+  if (g_discard_io) return false;
   if (!g_detail_is_remote) {
     copy_text(g_detail_recipe_path, sizeof(g_detail_recipe_path), info_path);
   }
@@ -3982,7 +4013,7 @@ static void add_background_folder(const char *folder)
   if (g_background_count >= MAX_BACKGROUNDS || g_svc->file_list_dir == NULL) return;
   for (int i = 0; i < LIST_BYTES; i++) g_listing[i] = '\0';
   const int written = g_svc->file_list_dir(folder, g_listing, LIST_BYTES);
-  if (written < 0) return;
+  if (written < 0 || g_discard_io) return;
   int offset = 0;
   while (offset < LIST_BYTES && g_background_count < MAX_BACKGROUNDS) {
     const char *name = g_listing + offset;
@@ -4159,6 +4190,11 @@ static void refresh_settings_snapshot(bool load_network_config)
 
 static void load_background_image(void)
 {
+  static char loaded_path[PATH_BYTES];
+  const char *wanted=g_background_count && g_background_index>=0 && g_background_index<g_background_count ? g_background_paths[g_background_index] : "";
+  if(g_background_pixels && !strcmp(wanted,loaded_path))return;
+  if(g_display)return; /* Keep the image referenced by live widgets alive. */
+  copy_text(loaded_path,sizeof(loaded_path),wanted);
   if (g_background_pixels != NULL && g_svc->mem_free != NULL) {
     g_svc->mem_free(g_background_pixels);
     g_background_pixels = NULL;
@@ -4232,7 +4268,7 @@ static void add_folder_entries(const char *folder)
    * valid across that service boundary on every ESP-IDF heap configuration. */
   char *listing = g_listing;
   for (int i = 0; i < LIST_BYTES; i++) listing[i] = '\0';
-  int written = g_svc->file_list_dir(folder, listing, LIST_BYTES);
+  int written = list_directory_async(folder, listing, LIST_BYTES);
   if (written < 0) return;
   g_svc->log_printf("launcher_ui dir '%s': entries=%d bytes=%u,%u,%u,%u\n",
                     folder, written, (unsigned)listing[0], (unsigned)listing[1],
@@ -4269,23 +4305,72 @@ static void add_folder_entries(const char *folder)
   }
 }
 
+typedef struct {char path[PATH_BYTES],title[NAME_BYTES];pax_file_stat_t stat;uint32_t expires;bool local,used;} TitleCache;
+static TitleCache g_title_cache[MAX_APPS];
+static unsigned g_title_cache_next;
+static bool g_title_attempted[MAX_APPS];
+static uint32_t g_catalog_generation;
+
 static void load_list_title(int index)
 {
-  if (g_titles[index][0] != '\0' || !ends_with(g_paths[index], ".pax")) return;
-  char sidecar[PATH_BYTES];
-  if (!replace_package_suffix(g_paths[index], sidecar, sizeof(sidecar), ".json")) return;
-  /* Directory HTML is fully parsed before reusing the HTTP/JSON buffer. */
-  const bool remote = has_prefix(sidecar, "http://") || has_prefix(sidecar, "https://");
-  int length = remote ? http_fetch(sidecar, g_remote, REMOTE_BYTES) : read_json_file(sidecar);
-  if (length > 0) {
-    if (!json_string_field(g_remote, length, "title", g_titles[index], NAME_BYTES) ||
-        !pax_list_title_valid(g_titles[index])) g_titles[index][0] = '\0';
+  if(g_title_attempted[index])return;
+  g_title_attempted[index]=true;
+  if(g_titles[index][0] || !ends_with(g_paths[index],".pax"))return;
+  char sidecar[PATH_BYTES];if(!replace_package_suffix(g_paths[index],sidecar,sizeof(sidecar),".json"))return;
+  const bool remote=has_prefix(sidecar,"http://") || has_prefix(sidecar,"https://");
+  pax_file_stat_t info={0};
+  const bool local_ok=!remote && g_svc->file_stat && stat_async(sidecar,&info)==0;
+  if(g_discard_io)return;
+  uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
+  for(int i=0;i<MAX_APPS;i++)if(g_title_cache[i].used && !strcmp(g_title_cache[i].path,sidecar)){
+    TitleCache *cache=&g_title_cache[i];
+    if((remote && (int32_t)(cache->expires-now)>0) ||
+       (local_ok && cache->local && cache->stat.size==info.size && cache->stat.mtime==info.mtime && (int32_t)(cache->expires-now)>0)){
+      copy_text(g_titles[index],NAME_BYTES,cache->title);return;
+    }
+    break;
   }
+  int length=remote ? http_fetch(sidecar,g_remote,REMOTE_BYTES) : read_json_file(sidecar);
+  if(g_discard_io)return;
+  if(length>0 && (!json_string_field(g_remote,length,"title",g_titles[index],NAME_BYTES) || !pax_list_title_valid(g_titles[index])))g_titles[index][0]=0;
+  if(length>0){
+    TitleCache *cache=&g_title_cache[g_title_cache_next++%MAX_APPS];
+    copy_text(cache->path,sizeof(cache->path),sidecar);copy_text(cache->title,sizeof(cache->title),g_titles[index]);
+    cache->stat=info;cache->local=local_ok;cache->expires=now+30000;cache->used=true;
+  }
+}
+
+/* Prefer visible rows, then finish the rest so title searches cover the
+ * whole catalog without delaying the first usable list. */
+static bool load_visible_metadata(void)
+{
+  if(g_catalog_loading || g_settings_mode || g_detail_index>=0 || g_source==SOURCE_ARCHIVE)return false;
+  int index=-1;
+  for(int row=0;row<VISIBLE_ROWS;row++){
+    int view=g_first_visible+row;if(view>=g_view_count)break;
+    int candidate=g_visible_indices[view];
+    if(!g_title_attempted[candidate]){index=candidate;break;}
+  }
+  if(index<0)for(int i=0;i<g_app_count;i++)if(!g_title_attempted[i]){index=i;break;}
+  if(index<0)return false;
+  const int selected=selected_record_index();
+  if(g_item_source[index]==SOURCE_STORAGE && g_svc->file_stat)
+    g_list_stats_valid[index]=stat_async(g_paths[index],&g_list_stats[index])==0 && !g_list_stats[index].is_dir;
+  if(g_discard_io)return false;
+  load_list_title(index);
+  if(g_discard_io)return false;
+  apply_filter();
+  for(int i=0;i<g_view_count;i++)if(g_visible_indices[i]==selected){g_selected=i;break;}
+  if(g_selected<g_first_visible)g_first_visible=g_selected;
+  if(g_selected>=g_first_visible+VISIBLE_ROWS)g_first_visible=g_selected-VISIBLE_ROWS+1;
+  return true;
 }
 
 static void load_apps(void)
 {
   memset(g_list_stats_valid,0,sizeof(g_list_stats_valid));
+  memset(g_title_attempted,0,sizeof(g_title_attempted));
+  g_catalog_generation=__atomic_load_n(&g_navigation_generation,__ATOMIC_ACQUIRE);
   g_app_count = 0;
   g_catalog_failed = false;
   for (int i = 0; i < MAX_APPS; i++) {
@@ -4316,11 +4401,8 @@ static void load_apps(void)
                         source_label(g_source), MAX_APPS);
     for (int i = 0; i < g_app_count; i++) g_item_source[i] = g_source;
   }
-  for(int i=0;i<g_app_count;i++) {
-    load_list_title(i);
-    if(g_item_source[i]==SOURCE_STORAGE && g_svc->file_stat)
-      g_list_stats_valid[i]=g_svc->file_stat(g_paths[i],&g_list_stats[i])==0 && !g_list_stats[i].is_dir;
-  }
+  if(g_discard_io || g_catalog_generation!=__atomic_load_n(&g_navigation_generation,__ATOMIC_ACQUIRE)){g_app_count=0;g_view_count=0;return;}
+  /* Publish filenames first. File stats and titles arrive progressively. */
   apply_filter();
 }
 
@@ -4862,6 +4944,7 @@ static void select_source(int source)
     play_ui_sound(PAX_UI_SOUND_CHIME, 0);
   /* Cancel a deferred Archive search before another source can own the list. */
   g_archive_search_pending = false;
+  __atomic_add_fetch(&g_navigation_generation,1,__ATOMIC_ACQ_REL);
   g_source = source;
   g_favorites_mode = false;
   g_settings_mode = false;
@@ -5567,7 +5650,7 @@ static int update_selection_on_host(void *arg)
   if (g_empty_label != NULL) {
     if (g_view_count > 0) lv_obj_add_flag(g_empty_label, LV_OBJ_FLAG_HIDDEN);
     else {
-      const char *message = g_catalog_failed ? "SEARCH FAILED - CHECK STATUS OR REFRESH" :
+      const char *message = g_catalog_loading ? "LOADING APPS... YOU CAN SWITCH SOURCES" : g_catalog_failed ? "SEARCH FAILED - CHECK STATUS OR REFRESH" :
           (g_favorites_mode ? "NO FAVORITES YET - PRESS Y ON AN APP" :
            (g_search_text[0] != '\0' ? "NO SEARCH MATCHES" : "NO APPS FOUND"));
       lv_label_set_text(g_empty_label, message);
@@ -7914,6 +7997,33 @@ static void wait_for_input_release(void)
   g_keyboard_enter_pending = false;
 }
 
+static void io_ui_pulse(void)
+{
+  static uint32_t last_ui,last_status;
+  if(!g_display)return;
+  uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
+  if((uint32_t)(now-last_ui)<16)return;
+  last_ui=now;
+  bool changed=poll_usb_keyboard();changed=poll_controller() || changed;
+  const int wheel=__atomic_exchange_n(&g_mouse_wheel_pending,0,__ATOMIC_ACQ_REL);
+  if(wheel)(void)g_svc->ui_call_sync(mouse_scroll_on_host,(void *)(intptr_t)wheel,1000);
+  if(g_filter_dirty && !g_catalog_loading){g_filter_dirty=false;apply_filter();changed=true;}
+  if(changed)(void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+  if((uint32_t)(now-last_status)>=1000){
+    (void)g_svc->ui_call_sync(update_device_status_on_host,NULL,1000);last_status=now;
+  }
+  (void)g_svc->ui_call_sync(pump_ui_on_host,NULL,1000);
+}
+
+/* Distinct screens have different object trees; only update matching ones. */
+static unsigned ui_layout_kind(void)
+{
+  return (g_keyboard_open ? 1U : 0U) | (g_settings_mode ? 2U : 0U) |
+         (g_detail_index>=0 ? 4U : 0U) |
+         (g_source==SOURCE_ARCHIVE && !g_favorites_mode ? 8U : 0U) |
+         (g_rom_picker_active ? 16U : 0U);
+}
+
 __attribute__((section(".text.entry")))
 int app_entry(const app_services_t *svc)
 {
@@ -7924,6 +8034,8 @@ int app_entry(const app_services_t *svc)
     return -1;
   svc->log_printf("launcher_ui startup: services validated\n");
   g_svc = svc;
+  g_discard_io=false;
+  if(!io_start()){svc->log_printf("launcher_ui: I/O worker unavailable\n");return -4;}
   refresh_archive_auth_state();
   svc->log_printf("launcher_ui startup: archive auth read\n");
   load_archive_collection();
@@ -7981,7 +8093,7 @@ int app_entry(const app_services_t *svc)
                   (double)g_render_scale, (double)g_ui_scale);
   g_canvas = (uint16_t *)svc->mem_caps_alloc((size_t)g_canvas_w * g_canvas_h * sizeof(uint16_t),
                                              PAX_MEM_CAP_SPIRAM | PAX_MEM_CAP_DMA);
-  if (g_canvas == NULL) return -2;
+  if (g_canvas == NULL) {io_finish();return -2;}
   for (int i = 0; i < MAX_APPS; i++) {
     g_names[i][0] = '\0';
     g_titles[i][0] = '\0';
@@ -8027,20 +8139,36 @@ int app_entry(const app_services_t *svc)
   int chosen = -2;
   bool detail_mode = false;
   bool launch_disc_installer = false;
+  bool built_plain_list=false;
+  unsigned built_layout=~0U;
   for (;;) {
     g_open_index = -1;
-    if (!detail_mode) {
+    g_discard_io=false;
+    if (!detail_mode && !g_settings_mode && !g_keyboard_open) {
       g_detail_index = -1;
+      g_catalog_loading=true;g_app_count=0;g_view_count=0;
+      load_background_image();
+      if(!g_display){
+        if(svc->ui_call_sync(build_ui_on_host,NULL,25000)!=0){
+          (void)svc->ui_call_sync(teardown_ui_on_host,NULL,2000);
+          io_finish();svc->mem_free(g_canvas);g_canvas=NULL;return -3;
+        }
+        built_layout=ui_layout_kind();
+        built_plain_list=built_layout==0;
+      }
+      else (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
       load_apps();
-      if (g_resume_detail_record >= 0) {
+      g_catalog_loading=false;
+      if(!g_discard_io)(void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
+      if (!g_discard_io && g_resume_detail_record >= 0) {
         const int resume_record = g_resume_detail_record;
         g_resume_detail_record = -1;
         if (resume_record < g_app_count &&
             g_item_source[resume_record] == g_source) {
-          g_detail_index = resume_record;
-          (void)fetch_app_detail(g_detail_index);
+          (void)fetch_app_detail(resume_record);
+          g_detail_index = g_discard_io ? -1 : resume_record;
           g_detail_focus = 3;
-          detail_mode = true;
+          detail_mode = !g_discard_io;
           svc->log_printf("launcher_ui: resuming app information page for %s\n",
                           g_detail_name);
         }
@@ -8057,19 +8185,26 @@ int app_entry(const app_services_t *svc)
     }
     wait_for_input_release();
 
-    int result = svc->ui_call_sync(build_ui_on_host, NULL, 25000);
+    bool list_ui=!detail_mode && !g_settings_mode && !g_keyboard_open && !g_rom_picker_active && g_source!=SOURCE_ARCHIVE;
+    if(g_display && built_layout!=ui_layout_kind())(void)svc->ui_call_sync(teardown_ui_on_host,NULL,2000);
+    int result = g_display ? svc->ui_call_sync(update_selection_on_host,NULL,1000) : svc->ui_call_sync(build_ui_on_host, NULL, 25000);
     if (result != 0) {
       svc->log_printf("launcher_ui: LVGL setup failed: %d\n", result);
-      svc->mem_free(g_canvas);
-      g_canvas = NULL;
-      return -3;
+      (void)svc->ui_call_sync(teardown_ui_on_host,NULL,2000);
+      io_finish();svc->mem_free(g_canvas);g_canvas=NULL;return -3;
     }
+    built_layout=ui_layout_kind();
+    built_plain_list=list_ui;
     svc->log_printf("launcher_ui: LVGL %s screen created through loader bridge\n",
                     source_label(g_source));
 
     uint32_t last_progress_update_ms = 0;
     uint32_t last_status_update_ms = 0;
   while (g_open_index == -1) {
+      if(!g_settings_mode && !detail_mode && load_visible_metadata()) {
+        (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
+      }
+      if(g_open_index!=-1)break;
       const bool keyboard_changed = poll_usb_keyboard();
       const bool selection_changed = poll_controller();
       if(consume_c6_action())(void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
@@ -8133,12 +8268,15 @@ int app_entry(const app_services_t *svc)
     }
 
     chosen = g_open_index;
+ dispatch_action: ;
     if (g_settings_dirty) {
       if (svc->settings_volume_set != NULL) svc->settings_volume_set(g_volume_level);
       if (svc->settings_brightness_set != NULL) svc->settings_brightness_set(g_brightness_level);
       g_settings_dirty = false;
     }
-    (void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
+    bool reuse_list_ui=built_plain_list && !detail_mode && !g_settings_mode && !g_keyboard_open && !g_rom_picker_active && g_source!=SOURCE_ARCHIVE && chosen==-3;
+    const bool loading_detail=built_plain_list && !detail_mode && (chosen==-18 || chosen==-4);
+    if(!reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
     if (g_rom_picker_active && chosen == -61) {
       g_rom_picker_active = false;
       wait_for_input_release();
@@ -8406,9 +8544,17 @@ int app_entry(const app_services_t *svc)
     if (!detail_mode && (chosen == -18 || chosen == -4)) {
       const int selected_record = selected_record_index();
       if (selected_record < 0 || g_item_source[selected_record] == SOURCE_ARCHIVE) continue;
-      g_detail_index = selected_record;
+      /* Keep the list interactive while reading details. Detail navigation
+       * becomes active only after its model is ready. */
+      g_detail_index = -1;
       g_detail_focus = 0;
-      (void)fetch_app_detail(g_detail_index);
+      (void)fetch_app_detail(selected_record);
+      if(g_discard_io){
+        detail_mode=false;chosen=g_open_index;g_discard_io=false;
+        g_open_index=-1;
+        goto dispatch_action;
+      }
+      g_detail_index=selected_record;
       detail_mode = true;
       wait_for_input_release();
       continue;
@@ -8519,6 +8665,8 @@ int app_entry(const app_services_t *svc)
     g_background_pixels = NULL;
   }
   release_detail_cover();
+  io_finish();
+  svc->log_printf("launcher_ui I/O: %u jobs, %u cancelled\n",g_io_jobs,g_io_cancelled);
   if (launch_disc_installer && svc->app_open != NULL) {
     save_launcher_resume_state();
     if (svc->app_open(DISC_INSTALLER_PAX, g_detail_recipe_path, 1) == 0)

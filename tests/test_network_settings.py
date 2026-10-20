@@ -109,6 +109,6 @@ int main(){
  return 0;}
 """
         with tempfile.TemporaryDirectory() as td:
-            path=Path(td);header=path/'esphome/components/wifi/wifi_component.h';header.parent.mkdir(parents=True);header.write_text(stub);(path/'test.cpp').write_text(code)
+            path=Path(td);header=path/'esphome/components/wifi/wifi_component.h';header.parent.mkdir(parents=True);header.write_text(stub);log=path/'esphome/core/log.h';log.parent.mkdir(parents=True);log.write_text('#pragma once\n#define ESP_LOGI(...) ((void)0)\n#define ESP_LOGW(...) ((void)0)\n');(path/'test.cpp').write_text(code)
             subprocess.run(['c++','-std=gnu++17','-D_GNU_SOURCE','-I'+str(path),'-I'+str(self.sdk()),str(path/'test.cpp'),'-o',str(path/'test')],check=True)
             subprocess.run([str(path/'test')],check=True)

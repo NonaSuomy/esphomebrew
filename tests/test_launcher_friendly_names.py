@@ -75,7 +75,12 @@ static pax_file_stat_t g_list_stats[MAX_APPS];static bool g_list_stats_valid[MAX
 static int reads=0;
 static int read_json_file(const char *p){reads++;assert(strstr(p,".json"));if(strstr(p,"missing"))return -1;strcpy(g_remote,strstr(p,"blank")?"{\"title\":\"  \"}":"{\"title\":\"Another World\"}");return (int)strlen(g_remote);}
 static int http_fetch(const char *p,char *body,int cap){(void)body;(void)cap;return read_json_file(p);}
-""" + '\n'.join(function(source,n) for n in ('copy_text','ends_with','has_prefix','replace_package_suffix','json_string_field','display_name_for','contains_case_insensitive','load_list_title','apply_filter')) + r"""
+static bool g_discard_io;
+static int stat_async(const char *p,pax_file_stat_t *out){(void)p;out->size=32;out->mtime=100;return 0;}
+static int64_t now_us;
+static int64_t get_time(void){return now_us;}
+static struct {void *file_stat;int64_t (*get_time_us)(void);} services={(void *)1,get_time},*g_svc=&services;
+""" + source[source.index('typedef struct {char path[PATH_BYTES],title[NAME_BYTES];pax_file_stat_t stat;'):source.index('static void load_list_title(')] + '\n'.join(function(source,n) for n in ('copy_text','ends_with','has_prefix','replace_package_suffix','json_string_field','display_name_for','contains_case_insensitive','load_list_title','apply_filter')) + r"""
 int main(void){
  strcpy(g_names[0],"anotherworld.pax");strcpy(g_paths[0],"/sd/roms/pax/anotherworld.pax");
  strcpy(g_names[1],"missing.pax");strcpy(g_paths[1],"http://host/missing.pax");
@@ -85,6 +90,8 @@ int main(void){
  assert(!strcmp(display_name_for(1),"missing.pax"));assert(!strcmp(display_name_for(2),"blank.pax"));
  assert(!strcmp(g_names[0],"anotherworld.pax"));assert(!strcmp(g_paths[0],"/sd/roms/pax/anotherworld.pax"));
  int before=reads;load_list_title(0);assert(reads==before);
+ g_title_attempted[0]=false;g_titles[0][0]=0;load_list_title(0);assert(reads==before); /* cache */
+ now_us=31000000;g_title_attempted[0]=false;g_titles[0][0]=0;load_list_title(0);assert(reads==before+1); /* expired */
  strcpy(g_search_text,"Another World");apply_filter();assert(g_view_count==1 && g_visible_indices[0]==0);
  strcpy(g_search_text,"anotherworld.pax");apply_filter();assert(g_view_count==1 && g_visible_indices[0]==0);
  /* Exercise the real filtered-index sort without moving canonical records. */
