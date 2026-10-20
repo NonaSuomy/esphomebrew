@@ -1,6 +1,7 @@
 #include "pax_loader.h"
 #include "pax_internal.h"
 #include "pax_memory.h"
+#include "pax_frame_copy.h"
 #include "pax_ownership.h"
 #include "pax_stick_mouse.h"
 #include "pax_volume_icon.h"
@@ -7717,16 +7718,7 @@ void PaxLoader::svc_display_write_rect(int x, int y, int w, int h, const uint16_
   const int canvas_h = active_->geometry_.canvas_h;
   if (pax_launcher::owns_pointer(active_->running_source_))
     active_->launcher_dirty_region_.add(x, y, w, h, canvas_w, canvas_h);
-  for (int row = 0; row < h; row++) {
-    const int dst_y = y + row;
-    if (dst_y < 0 || dst_y >= canvas_h)
-      continue;
-    for (int col = 0; col < w; col++) {
-      const int dst_x = x + col;
-      if (dst_x >= 0 && dst_x < canvas_w)
-        active_->framebuffer_[dst_y * canvas_w + dst_x] = data[row * w + col];
-    }
-  }
+  pax_frame::copy_rect(active_->framebuffer_, canvas_w, canvas_h, x, y, w, h, data);
 }
 int PaxLoader::svc_sprite_blit(uint16_t *framebuf, uint32_t fb_w, uint32_t fb_h,
                                 uint32_t x, uint32_t y, const uint16_t *sprite,
