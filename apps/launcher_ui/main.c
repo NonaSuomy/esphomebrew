@@ -4315,6 +4315,14 @@ static void refresh_settings_snapshot(bool load_network_config)
   (void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
 }
 
+static void refresh_pending_settings_scan(void)
+{
+  if(!g_settings_mode || !g_settings_scan_pending || g_settings_scan_busy ||
+     mutations_busy() || g_discard_io || __atomic_load_n(&g_io_state,__ATOMIC_ACQUIRE)!=0)return;
+  g_settings_scan_pending=false;
+  refresh_settings_snapshot(false);
+}
+
 typedef struct {char path[PATH_BYTES];ImageResult image;} BackgroundJob;
 static int background_job(void *argument)
 {
@@ -8461,6 +8469,8 @@ int app_entry(const app_services_t *svc)
         (void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
         last_status_update_ms = now_ms;
       }
+      refresh_pending_settings_scan();
+      if(g_open_index!=-1)break;
       if(g_transfer_verify_pending){
         g_transfer_verify_pending=false;
         if(g_detail_index>=0 && g_detail_is_remote && strcmp(g_detail_name,g_transfer_name)==0){

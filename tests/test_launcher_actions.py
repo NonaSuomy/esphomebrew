@@ -73,3 +73,20 @@ static void *open_file(const char *path,const char *mode){(void)path;(void)mode;
 int main(void){services.file_open=open_file;request_c6_update(PAX_C6_INSTALL);assert(!opens && !refreshes && strstr(g_settings_message,"active transfer"));busy=false;request_c6_update(PAX_C6_PREPARE);assert(opens==1 && refreshes==1);}
 '''
   run(code)
+
+ def test_pending_storage_refresh_runs_after_transfer_without_leaving_settings(self):
+  code=PREFIX+r'''
+static bool g_settings_mode=true,g_settings_scan_pending=true,g_settings_scan_busy,busy;static int g_io_state,scans;
+static bool mutations_busy(void){return busy;}
+static void refresh_settings_snapshot(bool load_network){assert(!load_network && !g_settings_scan_pending);scans++;}
+'''+function('refresh_pending_settings_scan')+r'''
+int main(void){
+ busy=true;refresh_pending_settings_scan();assert(!scans && g_settings_scan_pending);
+ busy=false;g_io_state=1;refresh_pending_settings_scan();assert(!scans && g_settings_scan_pending);
+ g_io_state=0;g_discard_io=true;refresh_pending_settings_scan();assert(!scans);
+ g_discard_io=false;g_settings_mode=false;refresh_pending_settings_scan();assert(!scans);
+ g_settings_mode=true;refresh_pending_settings_scan();assert(scans==1 && !g_settings_scan_pending);
+ refresh_pending_settings_scan();assert(scans==1);
+}
+'''
+  run(code)
