@@ -911,9 +911,12 @@ static void pax_network_status_draw(lv_event_t *event) {
   lv_layer_t *layer = lv_event_get_layer(event);
   lv_area_t area;
   lv_obj_get_coords(obj, &area);
-  const int32_t x = area.x1 + 20, y = area.y1;
+  const bool ethernet = reinterpret_cast<uintptr_t>(lv_obj_get_user_data(obj)) == 2;
+  // The Wi-Fi arcs occupy y=10..29 within the drawing. Remove their extra
+  // top space so the visible symbol is centered alongside the clock text.
+  const int32_t x = area.x1 + 20, y = area.y1 - (ethernet ? 0 : 9);
   const lv_color_t color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
-  if (reinterpret_cast<uintptr_t>(lv_obj_get_user_data(obj)) == 2) {
+  if (ethernet) {
     lv_draw_rect_dsc_t box;
     lv_draw_rect_dsc_init(&box);
     box.bg_opa = LV_OPA_TRANSP;
