@@ -6,6 +6,7 @@ display:
     model: CUSTOM
     update_interval: never
     video_mode_only: true
+    continuous_clock: true
     rotation: 0
     transform: disabled
     auto_clear_enabled: false

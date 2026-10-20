@@ -2,6 +2,10 @@
 
 Reviewed 2026-10-12. This is a source-based design assessment, not an implemented or hardware-tested GSV1172 driver. The ECA20-MHA1-I module and the bare GSV1172 chip must be treated separately: the module has its own programmed MCU/flash, power circuitry and optional resistor connections.
 
+## EBYTE example update, 2026-10-20
+
+EBYTE has now supplied a P4 DSI transmitter example. The PAX integration, source hashes and remaining firmware requirements are documented in [the ECA20 profile](eca20-mha1-i.md). It specifies 720p60, two lanes and continuous HS clock after panel initialization. It does not supply a GSV1172 register map or initialization table. Matching two-lane module firmware is still pending. The earlier investigation below remains a record of the manuals and public references.
+
 ## What the references provide
 
 Espressif's `esp_lcd_lt8912b` is a useful model for an ESP-IDF panel component. It creates an `esp_lcd_new_panel_dpi()` framebuffer panel, retains its original init/delete callbacks and wraps panel operations with the bridge's reset and I2C control. It also provides timing structures and an HDMI-ready query. Its chip-specific register tables, three I2C addresses, PLL programming, HPD bits and AVI packet handling are not GSV1172-compatible.
