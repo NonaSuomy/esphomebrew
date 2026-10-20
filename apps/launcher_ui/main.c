@@ -308,6 +308,8 @@ static lv_coord_t g_mouse_x;
 static lv_coord_t g_mouse_y;
 static int g_mouse_buttons;
 static bool g_mouse_cursor_seen;
+static uint32_t g_mouse_last_activity_ms;
+#define MOUSE_CURSOR_IDLE_MS 3000U
 static volatile int g_mouse_wheel_pending;
 static lv_obj_t *g_list;
 static lv_obj_t *g_list_scrollbar;
@@ -5826,23 +5828,34 @@ static void touch_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 static void mouse_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
   (void)indev;
+  bool activity = false;
   int dx = 0, dy = 0, buttons = 0;
   if (g_svc != NULL && g_svc->input_mouse_read != NULL &&
       g_svc->input_mouse_read(&dx, &dy, &buttons)) {
     /* The HID provider normalizes relative movement to screen direction. */
     g_mouse_x += dx;
     g_mouse_y += dy;
+    activity = dx != 0 || dy != 0 || buttons != g_mouse_buttons;
     g_mouse_buttons = buttons;
-    g_mouse_cursor_seen = true;
-    if (g_mouse_cursor != NULL)
-      lv_obj_clear_flag(g_mouse_cursor, LV_OBJ_FLAG_HIDDEN);
   }
   int wheel = 0;
   if (g_svc != NULL && g_svc->input_mouse_scroll_read != NULL &&
       g_svc->input_mouse_scroll_read(&wheel) && wheel != 0) {
+    activity = true;
     int pending = __atomic_add_fetch(&g_mouse_wheel_pending, wheel, __ATOMIC_RELAXED);
     if (pending > 32) __atomic_store_n(&g_mouse_wheel_pending, 32, __ATOMIC_RELAXED);
     if (pending < -32) __atomic_store_n(&g_mouse_wheel_pending, -32, __ATOMIC_RELAXED);
+  }
+  const uint32_t now_ms = lv_tick_get();
+  if (activity) {
+    g_mouse_cursor_seen = true;
+    g_mouse_last_activity_ms = now_ms;
+  }
+  if (g_mouse_cursor != NULL) {
+    const bool visible = g_mouse_cursor_seen &&
+        (g_mouse_buttons != 0 || (uint32_t)(now_ms - g_mouse_last_activity_ms) < MOUSE_CURSOR_IDLE_MS);
+    if (visible) lv_obj_clear_flag(g_mouse_cursor, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(g_mouse_cursor, LV_OBJ_FLAG_HIDDEN);
   }
   if (g_mouse_x < 0) g_mouse_x = 0;
   if (g_mouse_y < 0) g_mouse_y = 0;
@@ -5858,14 +5871,15 @@ static void mouse_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 static void create_mouse_cursor(lv_obj_t *screen)
 {
   if (g_svc == NULL || g_svc->input_mouse_read == NULL) return;
+  /* Cursor dimensions are canvas pixels, independent of the UI text scale. */
   static lv_point_precise_t arrow_points[8];
   arrow_points[0] = (lv_point_precise_t){0, 0};
-  arrow_points[1] = (lv_point_precise_t){0, ui_px(15)};
-  arrow_points[2] = (lv_point_precise_t){ui_px(4), ui_px(11)};
-  arrow_points[3] = (lv_point_precise_t){ui_px(7), ui_px(17)};
-  arrow_points[4] = (lv_point_precise_t){ui_px(10), ui_px(16)};
-  arrow_points[5] = (lv_point_precise_t){ui_px(7), ui_px(10)};
-  arrow_points[6] = (lv_point_precise_t){ui_px(13), ui_px(10)};
+  arrow_points[1] = (lv_point_precise_t){0, 15};
+  arrow_points[2] = (lv_point_precise_t){4, 11};
+  arrow_points[3] = (lv_point_precise_t){7, 17};
+  arrow_points[4] = (lv_point_precise_t){10, 16};
+  arrow_points[5] = (lv_point_precise_t){7, 10};
+  arrow_points[6] = (lv_point_precise_t){13, 10};
   arrow_points[7] = (lv_point_precise_t){0, 0};
   g_mouse_indev = lv_indev_create();
   if (g_mouse_indev == NULL) return;
@@ -5880,19 +5894,19 @@ static void create_mouse_cursor(lv_obj_t *screen)
   g_mouse_cursor = lv_obj_create(screen);
   if (g_mouse_cursor == NULL) return;
   lv_obj_remove_style_all(g_mouse_cursor);
-  lv_obj_set_size(g_mouse_cursor, ui_px(15), ui_px(19));
+  lv_obj_set_size(g_mouse_cursor, 15, 19);
   lv_obj_clear_flag(g_mouse_cursor, LV_OBJ_FLAG_SCROLLABLE | LV_OBJ_FLAG_CLICKABLE);
   lv_obj_t *outline = lv_line_create(g_mouse_cursor);
   lv_line_set_points(outline, arrow_points,
                      sizeof(arrow_points) / sizeof(arrow_points[0]));
   lv_obj_set_style_line_color(outline, lv_color_hex(COL_BG), LV_PART_MAIN);
-  lv_obj_set_style_line_width(outline, ui_px(4), LV_PART_MAIN);
+  lv_obj_set_style_line_width(outline, 2, LV_PART_MAIN);
   lv_obj_set_style_line_rounded(outline, false, LV_PART_MAIN);
   lv_obj_t *fill = lv_line_create(g_mouse_cursor);
   lv_line_set_points(fill, arrow_points,
                      sizeof(arrow_points) / sizeof(arrow_points[0]));
   lv_obj_set_style_line_color(fill, lv_color_hex(COL_TEXT), LV_PART_MAIN);
-  lv_obj_set_style_line_width(fill, ui_px(2), LV_PART_MAIN);
+  lv_obj_set_style_line_width(fill, 1, LV_PART_MAIN);
   lv_obj_set_style_line_rounded(fill, false, LV_PART_MAIN);
   lv_obj_add_flag(g_mouse_cursor, LV_OBJ_FLAG_HIDDEN);
   lv_indev_set_cursor(g_mouse_indev, g_mouse_cursor);
@@ -7957,6 +7971,7 @@ int app_entry(const app_services_t *svc)
   g_mouse_y = (lv_coord_t)(g_canvas_h / 2);
   g_mouse_buttons = 0;
   g_mouse_cursor_seen = false;
+  g_mouse_last_activity_ms = 0;
   const float sx = (float)g_canvas_w / (float)DEFAULT_CANVAS_W;
   const float sy = (float)g_canvas_h / (float)DEFAULT_CANVAS_H;
   g_ui_scale = sx < sy ? sx : sy;
