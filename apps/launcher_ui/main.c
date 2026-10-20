@@ -162,7 +162,10 @@ static uint16_t g_background_width;
 static uint16_t g_background_height;
 static lv_image_dsc_t g_background_descriptor;
 static lv_obj_t *g_background_widget,*g_work_label;
-static bool g_settings_scan_pending,g_settings_scan_busy;
+static bool g_settings_scan_pending,g_settings_scan_busy,g_settings_reload_network;
+static bool g_action_busy,g_transfer_busy,g_transfer_verify_pending;
+static char g_transfer_name[65],g_transfer_message[160];
+
 static int g_volume_level;
 static int g_brightness_level;
 static int g_settings_focus;
@@ -196,6 +199,7 @@ static bool ends_with(const char *text, const char *suffix);
 static bool extract_ends_with_ci(const char *text, const char *suffix);
 static bool extract_has_char(const char *text, char wanted);
 static const char *detail_action_text(int action);
+static int update_selection_on_host(void *arg);
 /* Keep only the directory scratch buffer static.  The visible names must be
  * copied into the loader task's own stack: LVGL and its label allocator run
  * there, while PAX BSS is not a reliable backing store for host-side text. */
@@ -403,6 +407,7 @@ static void play_ui_sound(uint8_t sound, uint8_t param)
 }
 
 #include "async_io.h"
+static bool mutations_busy(void){return g_action_busy || g_transfer_busy || g_archive_download_active;}
 #include "timing.h"
 static PaxTiming g_pump_time,g_flush_time,g_action_time,g_image_time,g_scan_time;
 static uint64_t g_action_pending_us;
@@ -3313,7 +3318,7 @@ static bool detail_package_present(const char *name, char *path, size_t capacity
     if (!append_text_checked(candidate, sizeof(candidate), safe_name) ||
         !append_text_checked(candidate, sizeof(candidate), ".pax")) continue;
     pax_file_stat_t info = {0};
-    if (g_svc->file_stat(candidate, &info) == 0 && !info.is_dir) {
+    if (stat_async(candidate, &info) == 0 && !info.is_dir) {
       copy_text(path, capacity, candidate);
       return true;
     }
@@ -3412,8 +3417,51 @@ static int update_work_on_host(void *unused)
 }
 static void work_status(const char *text)
 {
-  g_work_text=text;
+  g_work_text=text ? text : (g_transfer_busy ? g_transfer_message : NULL);
   if(g_display)(void)g_svc->ui_call_sync(update_work_on_host,NULL,1000);
+}
+
+typedef struct {int storage,mounted;} MountJob;
+static int mount_job(void *argument)
+{
+  const MountJob *job=argument;
+  return g_svc->storage_set_mounted ? g_svc->storage_set_mounted(job->storage,job->mounted) : -1;
+}
+static int network_apply_job(void *argument)
+{
+  return g_svc->network_config_set ? g_svc->network_config_set(argument) : -1;
+}
+static int wifi_apply_job(void *argument)
+{
+  if(!g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return -1;
+  void *file=g_svc->file_open(PAX_WIFI_SETTINGS_FILE,"wb");
+  if(!file)return -1;
+  bool accepted=g_svc->file_write(argument,1,sizeof(pax_wifi_request_t),file)==sizeof(pax_wifi_request_t);
+  return g_svc->file_close(file)==0 && accepted ? 0 : -2;
+}
+static int run_action(int (*function)(void *),void *argument,const char *message)
+{
+  if(mutations_busy())return -4;
+  g_action_busy=true;
+  /* Clear the action that started this job. A new action now represents a
+   * distinct intent; keep its dispatch after this non-cancellable mutation. */
+  g_open_index=-1;
+  copy_text(g_settings_message,sizeof(g_settings_message),message);
+  (void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+  work_status(message);
+  int result=io_run_committed(function,argument);
+  g_action_busy=false;work_status(NULL);
+  g_svc->log_printf("launcher_ui action finished: result=%d navigation=%d\n",result,g_discard_io);
+  return result;
+}
+
+typedef struct {
+  char url[PATH_BYTES],name[65],title[97],version[33],sha256[65];uint32_t size;
+} InstallJob;
+static int install_start_job(void *argument)
+{
+  const InstallJob *job=argument;
+  return g_svc->store_install_start(job->url,job->name,job->title,job->version,job->size,job->sha256);
 }
 
 typedef struct {const char *json,*path;int length;ImageResult image;} CoverJob;
@@ -3640,6 +3688,7 @@ static bool fetch_app_detail(int index)
 
 static const char *detail_action_text(int action)
 {
+  if(action==1 && g_detail_is_remote && (g_action_busy || g_transfer_busy))return "INSTALLING...";
   if (action == 0) return "LAUNCH";
   if (action == 1)
     return g_detail_is_remote ? (g_detail_is_installed ?
@@ -3989,10 +4038,8 @@ static void apply_wifi_settings(void)
   pax_wifi_request_t request={0};request.magic=PAX_WIFI_SETTINGS_MAGIC;request.replace_password=g_wifi_password_changed;
   copy_text(request.ssid,sizeof(request.ssid),g_wifi_ssid);copy_text(request.password,sizeof(request.password),g_wifi_password);
   if(!pax_wifi_request_valid(&request)){copy_text(g_settings_message,sizeof(g_settings_message),"SSID required; password must be 8-63 characters, 64 hex digits, or blank for open Wi-Fi");secure_clear(&request,sizeof(request));return;}
-  void *f=g_svc->file_open ? g_svc->file_open(PAX_WIFI_SETTINGS_FILE,"wb") : NULL;
-  if(!f){copy_text(g_settings_message,sizeof(g_settings_message),"Wi-Fi controls require the updated firmware");secure_clear(&request,sizeof(request));return;}
-  bool accepted=g_svc->file_write(&request,1,sizeof(request),f)==sizeof(request);
-  accepted=g_svc->file_close(f)==0 && accepted;secure_clear(&request,sizeof(request));
+  int result=run_action(wifi_apply_job,&request,"Applying Wi-Fi... Please wait");
+  bool accepted=result==0;secure_clear(&request,sizeof(request));
   if(accepted){secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=false;}
   copy_text(g_settings_message,sizeof(g_settings_message),accepted ? "Connecting; failed Wi-Fi changes revert after 45 seconds" : "Wi-Fi request rejected; another connection may be in progress");
 }
@@ -4969,7 +5016,7 @@ static int update_c6_progress_on_host(void *unused)
   if(!g_settings_mode || !g_c6_progress)return 0;
   refresh_c6_status();
   for(int i=0;i<3;i++)if(g_settings_focus_widgets[31+i]){
-    bool enabled=g_c6_available && g_c6_status.state!=PAX_C6_BUSY && g_c6_status.state!=PAX_C6_REBOOTING;
+    bool enabled=!mutations_busy() && g_c6_available && g_c6_status.state!=PAX_C6_BUSY && g_c6_status.state!=PAX_C6_REBOOTING;
     if(i==2)enabled=enabled && g_c6_status.state==PAX_C6_READY && strcmp(g_c6_source,g_c6_checked_source)==0;
     if(enabled)lv_obj_clear_state(g_settings_focus_widgets[31+i],LV_STATE_DISABLED);else lv_obj_add_state(g_settings_focus_widgets[31+i],LV_STATE_DISABLED);
   }
@@ -5102,6 +5149,7 @@ static void toolbar_button_event(lv_event_t *event)
   if (lv_event_get_code(event) != LV_EVENT_CLICKED) return;
   g_toolbar_focus = -1;
   const int action = (int)(intptr_t)lv_event_get_user_data(event);
+  if(mutations_busy() && (action==-35 || action==-36 || action==-37 || action==-65 || action==-71 || action==-72))return;
   play_ui_sound(action == -9 || action == -2 ? PAX_UI_SOUND_BACK : PAX_UI_SOUND_CONFIRM, 0);
   g_open_index = action;mark_ui_action();
 }
@@ -5424,6 +5472,7 @@ static void detail_button_event(lv_event_t *event)
 {
   const int action = (int)(intptr_t)lv_event_get_user_data(event);
   if (action < 0 || action >= g_detail_action_count) return;
+  if(mutations_busy() && action<g_detail_action_count-1)return;
   if (g_svc != NULL && g_svc->log_printf != NULL)
     g_svc->log_printf("launcher_ui detail action click: action=%d\n", action);
   g_detail_focus = action;
@@ -5503,15 +5552,17 @@ static void poll_install_status(void)
   if (g_svc == NULL || g_svc->store_install_status == NULL) return;
   pax_install_progress_t progress;
   if (g_svc->store_install_status(&progress) != 0) return;
+  if(progress.state==0){g_transfer_busy=false;return;}
+  g_transfer_busy=progress.state==1;
+  copy_text(g_transfer_message,sizeof(g_transfer_message),progress.status);
+  work_status(g_transfer_message);
+  if(!g_transfer_busy){g_catalog_stale=true;g_settings_scan_pending=true;}
+  if(g_detail_index<0 || !g_detail_is_remote || strcmp(g_detail_name,g_transfer_name)!=0)return;
   g_install_state = progress.state;
   g_install_done = progress.done;
   g_install_total = progress.total;
   copy_text(g_install_status, sizeof(g_install_status), progress.status);
-  if (progress.state == 2 && g_detail_index >= 0 && g_detail_is_remote) {
-    g_detail_is_installed = detail_package_present(g_detail_name, g_detail_local_path,
-                                                    sizeof(g_detail_local_path));
-    g_detail_uninstall_confirm = false;
-  }
+  if(progress.state==2)g_transfer_verify_pending=true;
 }
 
 static void poll_archive_download(void)
@@ -5735,7 +5786,8 @@ static int update_selection_on_host(void *arg)
         label_text_changed(g_detail_button_labels[i], detail_action_text(i));
       if (g_detail_buttons[i] != NULL) {
         if ((i == 1 && g_detail_is_remote && !g_detail_install_valid) ||
-            (i == 2 && !g_detail_is_installed))
+            (i == 2 && !g_detail_is_installed) ||
+            (mutations_busy() && i < g_detail_action_count-1))
           lv_obj_add_state(g_detail_buttons[i], LV_STATE_DISABLED);
         else
           lv_obj_clear_state(g_detail_buttons[i], LV_STATE_DISABLED);
@@ -5934,13 +5986,21 @@ static int update_selection_on_host(void *arg)
     ipv4_to_text(network_values[i], address, sizeof(address));
     label_text_changed(g_network_value_labels[i], address);
   }
+  const int mutation_focus[]={28};
+  for(size_t k=0;k<sizeof(mutation_focus)/sizeof(mutation_focus[0]);k++){
+    int focus=mutation_focus[k];
+    if(focus<SETTINGS_FOCUS_COUNT && g_settings_focus_widgets[focus]){
+      if(mutations_busy())lv_obj_add_state(g_settings_focus_widgets[focus],LV_STATE_DISABLED);
+      else lv_obj_clear_state(g_settings_focus_widgets[focus],LV_STATE_DISABLED);
+    }
+  }
   if(g_network_apply_button){
-    if(g_settings_scan_busy || g_settings_scan_pending)lv_obj_add_state(g_network_apply_button,LV_STATE_DISABLED);
+    if(g_settings_scan_busy || g_settings_scan_pending || mutations_busy())lv_obj_add_state(g_network_apply_button,LV_STATE_DISABLED);
     else lv_obj_clear_state(g_network_apply_button,LV_STATE_DISABLED);
   }
   for (int i = 0; i < PAX_STORAGE_COUNT; i++) {
     if(g_storage_buttons[i]){
-      if(g_settings_scan_busy || g_settings_scan_pending)lv_obj_add_state(g_storage_buttons[i],LV_STATE_DISABLED);
+      if(g_settings_scan_busy || g_settings_scan_pending || mutations_busy())lv_obj_add_state(g_storage_buttons[i],LV_STATE_DISABLED);
       else lv_obj_clear_state(g_storage_buttons[i],LV_STATE_DISABLED);
     }
     if (g_storage_status_labels[i] != NULL) {
@@ -7402,7 +7462,8 @@ static int build_ui_on_host(void *arg)
       lv_obj_set_style_radius(g_detail_buttons[i], 4, LV_PART_MAIN);
       style_button(g_detail_buttons[i], i == g_detail_focus);
       if ((i == 1 && g_detail_is_remote && !g_detail_install_valid) ||
-          (i == 2 && !g_detail_is_installed))
+          (i == 2 && !g_detail_is_installed) ||
+            (mutations_busy() && i < g_detail_action_count-1))
         lv_obj_add_state(g_detail_buttons[i], LV_STATE_DISABLED);
       /* React only to the finished click; LV_EVENT_ALL can recurse through
        * style updates and exhaust the ESPHome loop task's stack. */
@@ -7799,7 +7860,7 @@ static bool poll_controller(void)
         (void)g_svc->ui_call_sync(detail_scroll_on_host, (void *)(intptr_t)-4, 1000);
       else if (r && !g_pad_last[PAX_INPUT_R])
         (void)g_svc->ui_call_sync(detail_scroll_on_host, (void *)(intptr_t)4, 1000);
-      if (a && !g_pad_last[PAX_INPUT_A]) g_open_index = g_detail_focus;
+      if (a && !g_pad_last[PAX_INPUT_A] && (!mutations_busy() || g_detail_focus==g_detail_action_count-1)) g_open_index = g_detail_focus;
       if (b && !g_pad_last[PAX_INPUT_B]) g_open_index = g_detail_action_count - 1;
     }
     if ((x && !g_pad_last[PAX_INPUT_X]) || l3) g_open_index = -2;
@@ -7902,9 +7963,9 @@ static bool poll_controller(void)
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus >= 13 && g_settings_focus <= 16)
       g_open_index = -30 - (g_settings_focus - 13);
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=25 && g_settings_focus<=28)g_open_index=-62-(g_settings_focus-25);
-    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 17 && !g_settings_scan_busy && !g_settings_scan_pending) g_open_index = -35;
-    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 18 && !g_settings_scan_busy && !g_settings_scan_pending) g_open_index = -36;
-    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 19 && !g_settings_scan_busy && !g_settings_scan_pending) g_open_index = -37;
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 17 && !g_settings_scan_busy && !g_settings_scan_pending && !mutations_busy()) g_open_index = -35;
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 18 && !g_settings_scan_busy && !g_settings_scan_pending && !mutations_busy()) g_open_index = -36;
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 19 && !g_settings_scan_busy && !g_settings_scan_pending && !mutations_busy()) g_open_index = -37;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 20) {
       g_app_details_enabled = !g_app_details_enabled;
       g_open_index = -43;
@@ -8153,11 +8214,12 @@ static bool flush_metadata_updates(bool force)
 
 static void io_ui_pulse(void)
 {
-  static uint32_t last_ui,last_status;
+  static uint32_t last_ui,last_status,last_transfer;
   if(!g_display)return;
   uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
   if((uint32_t)(now-last_ui)<16)return;
   last_ui=now;
+  if(g_transfer_busy && (uint32_t)(now-last_transfer)>=250){poll_install_status();last_transfer=now;}
   bool changed=poll_usb_keyboard();changed=poll_controller() || changed;
   const int wheel=__atomic_exchange_n(&g_mouse_wheel_pending,0,__ATOMIC_ACQ_REL);
   if(wheel)(void)g_svc->ui_call_sync(mouse_scroll_on_host,(void *)(intptr_t)wheel,1000);
@@ -8190,6 +8252,7 @@ int app_entry(const app_services_t *svc)
   g_svc = svc;
   g_discard_io=false;
   if(!io_start()){svc->log_printf("launcher_ui: I/O worker unavailable\n");return -4;}
+  poll_install_status(); /* Adopt an install still running after launcher relaunch. */
   refresh_archive_auth_state();
   svc->log_printf("launcher_ui startup: archive auth read\n");
   load_archive_collection();
@@ -8352,7 +8415,7 @@ int app_entry(const app_services_t *svc)
     built_plain_list=list_ui;
     load_background_image();
     if(g_settings_mode && g_settings_scan_pending && !g_discard_io){
-      g_settings_scan_pending=false;refresh_settings_snapshot(true);
+      g_settings_scan_pending=false;bool reload_network=g_settings_reload_network;g_settings_reload_network=false;refresh_settings_snapshot(reload_network);
     }
     svc->log_printf("launcher_ui: LVGL %s screen created through loader bridge\n",
                     source_label(g_source));
@@ -8395,7 +8458,15 @@ int app_entry(const app_services_t *svc)
         (void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
         last_status_update_ms = now_ms;
       }
-      if (detail_mode && g_install_state == 1 && g_svc->store_install_status != NULL) {
+      if(g_transfer_verify_pending){
+        g_transfer_verify_pending=false;
+        if(g_detail_index>=0 && g_detail_is_remote && strcmp(g_detail_name,g_transfer_name)==0){
+          g_detail_is_installed=detail_package_present(g_detail_name,g_detail_local_path,sizeof(g_detail_local_path));
+          g_detail_uninstall_confirm=false;
+          (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
+        }
+      }
+      if (g_transfer_busy && g_svc->store_install_status != NULL) {
         if ((uint32_t)(now_ms - last_progress_update_ms) >= 250) {
           poll_install_status();
           (void)svc->ui_call_sync(update_selection_on_host, NULL, 1000);
@@ -8432,10 +8503,16 @@ int app_entry(const app_services_t *svc)
       if (svc->settings_brightness_set != NULL) svc->settings_brightness_set(g_brightness_level);
       g_settings_dirty = false;
     }
+    if(mutations_busy() && ((!detail_mode && (chosen>=0 || chosen==-60 || chosen==-35 || chosen==-36 || chosen==-37 || chosen==-65 || chosen==-71 || chosen==-72)) ||
+       (detail_mode && chosen>=0 && chosen<g_detail_action_count-1))){
+      copy_text(g_settings_message,sizeof(g_settings_message),"A transfer is active; wait for it to finish");
+      wait_for_input_release();continue;
+    }
     bool reuse_list_ui=built_plain_list && !detail_mode && !g_settings_mode && !g_keyboard_open && !g_rom_picker_active && g_source!=SOURCE_ARCHIVE && chosen==-3;
     const bool loading_detail=built_plain_list && !detail_mode && (chosen==-18 || chosen==-4);
+    const bool retain_install=g_display && detail_mode && chosen==1 && g_detail_is_remote;
     const bool retain_page=g_display && !detail_mode && !g_rom_picker_active && chosen<=-3 && chosen!=-49;
-    if(!retain_page && !reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
+    if(!retain_install && !retain_page && !reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
     if (g_rom_picker_active && chosen == -61) {
       g_rom_picker_active = false;
       wait_for_input_release();
@@ -8564,7 +8641,7 @@ int app_entry(const app_services_t *svc)
       g_settings_message[0] = '\0';
       load_archive_credentials();
       load_archive_s3_keys();
-      g_settings_scan_pending=true;
+      g_settings_scan_pending=true;g_settings_reload_network=true;
       wait_for_input_release();
       continue;
     }
@@ -8646,7 +8723,7 @@ int app_entry(const app_services_t *svc)
     if(!detail_mode && chosen==-70){begin_network_edit(7);wait_for_input_release();continue;}
     if(!detail_mode && chosen==-71){request_c6_update(PAX_C6_PREPARE);wait_for_input_release();continue;}
     if(!detail_mode && chosen==-72){request_c6_update(PAX_C6_INSTALL);wait_for_input_release();continue;}
-    if(!detail_mode && chosen==-65){apply_wifi_settings();wait_for_input_release();continue;}
+    if(!detail_mode && chosen==-65){apply_wifi_settings();if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}wait_for_input_release();continue;}
     if (!detail_mode && chosen == -34) {
       g_network_config.dhcp_enabled = !g_network_config.dhcp_enabled;
       copy_text(g_settings_message, sizeof(g_settings_message), "DHCP mode staged; select APPLY NETWORK");
@@ -8657,11 +8734,12 @@ int app_entry(const app_services_t *svc)
       if (svc->network_config_set == NULL) {
         copy_text(g_settings_message, sizeof(g_settings_message), "Network configuration service unavailable");
       } else {
-        const int result = svc->network_config_set(&g_network_config);
+        pax_network_config_t request=g_network_config;
+        const int result = run_action(network_apply_job,&request,"Applying network... Please wait");
         if (result == 0) {
           copy_text(g_settings_message, sizeof(g_settings_message),
                     "Network config saved; the connection may briefly restart");
-          refresh_settings_snapshot(true);
+          if(!g_discard_io)refresh_settings_snapshot(false);
         } else {
           copy_text(g_settings_message, sizeof(g_settings_message),
                     result == -2 ? "Network interface is not available" :
@@ -8679,11 +8757,13 @@ int app_entry(const app_services_t *svc)
         copy_text(g_settings_message, sizeof(g_settings_message), "Storage controls unavailable");
       } else {
         const int should_mount = !g_storage_status[storage].mounted;
-        const int result = svc->storage_set_mounted(storage, should_mount);
+        MountJob request={storage,should_mount};
+        const int result = run_action(mount_job,&request,should_mount ? "Mounting storage... Please wait" : "Safely ejecting storage... Please wait");
+        g_catalog_stale=true;g_settings_scan_pending=true;
         if (result == 0) {
           copy_text(g_settings_message, sizeof(g_settings_message),
                     should_mount ? "Storage mounted" : "Storage safely ejected");
-          refresh_settings_snapshot(false);
+          if(!g_discard_io){g_settings_scan_pending=false;refresh_settings_snapshot(false);}
         } else {
           copy_text(g_settings_message, sizeof(g_settings_message),
                     should_mount ? (storage == PAX_STORAGE_USB ?
@@ -8691,7 +8771,8 @@ int app_entry(const app_services_t *svc)
                                                    "Mount failed; connect a USB drive first") :
                                     "SD mount failed; check the card and filesystem") :
                                    "Could not safely eject storage");
-          refresh_settings_snapshot(false);
+          if(result==-4)copy_text(g_settings_message,sizeof(g_settings_message),"Storage is busy with a transfer or firmware update");
+          if(!g_discard_io){g_settings_scan_pending=false;refresh_settings_snapshot(false);}
         }
       }
       if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
@@ -8747,11 +8828,16 @@ int app_entry(const app_services_t *svc)
       } else if (!g_detail_install_valid || svc->store_install_start == NULL) {
         copy_text(g_install_status, sizeof(g_install_status), "This listing cannot be installed safely.");
       } else {
-        const int install_result = svc->store_install_start(
-            g_paths[g_detail_index], g_detail_name, g_detail_title, g_detail_version,
-            g_detail_size, g_detail_sha256);
+        InstallJob request={0};
+        copy_text(request.url,sizeof(request.url),g_paths[g_detail_index]);
+        copy_text(request.name,sizeof(request.name),g_detail_name);
+        copy_text(request.title,sizeof(request.title),g_detail_title);
+        copy_text(request.version,sizeof(request.version),g_detail_version);
+        copy_text(request.sha256,sizeof(request.sha256),g_detail_sha256);request.size=g_detail_size;
+        const int install_result=run_action(install_start_job,&request,"Starting install... Please wait");
         if (install_result == 0) {
-          g_install_state = 1;
+          g_install_state = 1;g_transfer_busy=true;copy_text(g_transfer_name,sizeof(g_transfer_name),request.name);
+          copy_text(g_transfer_message,sizeof(g_transfer_message),"Preparing install...");work_status(NULL);
           copy_text(g_install_status, sizeof(g_install_status), "Install started; preparing files...");
         } else {
           g_install_state = 3;
@@ -8759,6 +8845,7 @@ int app_entry(const app_services_t *svc)
                     "Another install is already running." : "Install could not be started.");
         }
       }
+      if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
       wait_for_input_release();
       continue;
     }

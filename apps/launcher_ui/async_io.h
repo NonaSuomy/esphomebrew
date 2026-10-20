@@ -39,7 +39,7 @@ static bool io_start(void)
   return g_svc->task_create(io_worker,"launcher_io",16384,NULL,3,&g_io_task,0)==0 && g_io_task;
 }
 
-static int io_run(int (*function)(void *), void *argument)
+static int io_run_mode(int (*function)(void *), void *argument, bool committed)
 {
   if (!g_io_task || g_discard_io || __atomic_load_n(&g_io_state,__ATOMIC_ACQUIRE)!=0) return -2;
   const uint32_t generation=__atomic_load_n(&g_navigation_generation,__ATOMIC_ACQUIRE);
@@ -51,7 +51,7 @@ static int io_run(int (*function)(void *), void *argument)
     io_ui_pulse();
     if (__atomic_load_n(&g_navigation_generation,__ATOMIC_ACQUIRE)!=generation || g_open_index!=action) {
       g_discard_io=true;
-      __atomic_store_n(&g_io_cancel,true,__ATOMIC_RELEASE);
+      if (!committed) __atomic_store_n(&g_io_cancel,true,__ATOMIC_RELEASE);
     }
     g_svc->delay_ms(1);
   }
@@ -59,10 +59,17 @@ static int io_run(int (*function)(void *), void *argument)
     g_discard_io=true;
   int result=g_io_result;
   g_io_jobs++;
-  if(g_discard_io)g_io_cancelled++;
+  if(g_discard_io && !committed)g_io_cancelled++;
   __atomic_store_n(&g_io_state,0,__ATOMIC_RELEASE);
-  return g_discard_io ? -2 : result;
+  return g_discard_io && !committed ? -2 : result;
 }
+
+/* Mutations finish exactly once even after navigation. Their result remains
+ * meaningful; navigation is dispatched by the owner after the worker joins. */
+static int io_run(int (*function)(void *), void *argument)
+{ return io_run_mode(function, argument, false); }
+static int io_run_committed(int (*function)(void *), void *argument)
+{ return io_run_mode(function, argument, true); }
 
 static void io_finish(void)
 {

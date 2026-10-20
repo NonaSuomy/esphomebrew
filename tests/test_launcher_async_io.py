@@ -46,6 +46,18 @@ int main(void){
  g_discard_io=false;cancel_at=0;g_open_index=-1;
  assert(io_run(stale_completed_job,NULL)==-2); /* even if completion races the UI pulse */
  g_discard_io=false;assert(io_run(slow_job,&result)==42);
+ /* A mutation completes once, keeps its real error/success, and preserves
+  * navigation without setting the cooperative cancellation flag. */
+ g_discard_io=false;g_open_index=-1;pulses=0;cancel_at=5;
+ unsigned cancelled=g_io_cancelled;
+ assert(io_run_committed(slow_job,&result)==42);
+ assert(g_discard_io && g_open_index==-3 && !g_io_cancel && !active && pulses>10);
+ assert(g_io_cancelled==cancelled);
+ g_discard_io=false;g_open_index=-1;pulses=0;result=-3;
+ assert(io_run_committed(slow_job,&result)==-3 && g_discard_io && !g_io_cancel);
+ g_discard_io=false;cancel_at=0;g_open_index=-1;
+ assert(io_run_committed(stale_completed_job,NULL)==7 && g_discard_io);
+
  io_finish();assert(deleted && !g_io_task && g_io_state==3);
  io_finish(); /* idempotent cleanup */
 }

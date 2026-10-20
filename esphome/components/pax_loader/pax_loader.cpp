@@ -8409,7 +8409,10 @@ int PaxLoader::svc_storage_status_get(int32_t storage, pax_storage_status_t *out
 }
 
 int PaxLoader::svc_storage_set_mounted(int32_t storage, int32_t mounted) {
-  if (pax_c6::busy()) return -1;
+  // A transfer owns files on the volume. Never unmount or remount underneath
+  // its install/upload task, including when the launcher has been reopened.
+  if (pax_c6::busy() || (PaxLoader::active_ != nullptr &&
+      (PaxLoader::active_->install_task_handle_ != nullptr || PaxLoader::active_->web_storage_busy_))) return -4;
   if (storage < 0 || storage >= PAX_STORAGE_COUNT || PaxLoader::active_ == nullptr)
     return -1;
   const char *path = storage == PAX_STORAGE_SD ? "/sdcard" : "/usb0";
