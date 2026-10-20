@@ -125,7 +125,7 @@ static int key_y, key_h;
 static void draw_home(void) {
   fill(0, 0, sw, sh, 0x1084);
   int scale = sw >= 640 ? 2 : 1;
-  text(18, 15, "DESKTOP / VNC", scale, 0x8e7f);
+  text(18, 15, "WORKSPACE / VNC", scale, 0x8e7f);
   if (sw >= 1000)
     button(240, 6, 140, 34, "MEDIA", selected == 10);
   if (sw >= 800)
@@ -829,7 +829,7 @@ static void relay_wait_screen(void) {
          1, 0xc618);
     text(18, 315, "Finish the relay's dashboard-user login setup for HA pages.",
          1, 0xc618);
-    text(18, 340, "Shared menu > Desktop: Refresh page (F5) / Browser Back.", 1,
+    text(18, 340, "Shared menu > Workspace: Refresh page (F5) / Browser Back.", 1,
          0xc618);
   }
   if (media_mode && sh >= 420) {
@@ -844,7 +844,7 @@ static void relay_wait_screen(void) {
          0xc618);
     text(18, 340, "USB keyboard: Space pause; Esc stop; M mute.", 1, 0xc618);
   }
-  text(18, sh - 42, "Hold MENU 3 s: exit. Shared menu > Desktop: disconnect.",
+  text(18, sh - 42, "Hold MENU 3 s: exit. Shared menu > Workspace: disconnect.",
        1, 0xc618);
   text(18, sh - 21, status, 1, 0xffff);
   svc->display_flush();
@@ -1020,18 +1020,18 @@ static void menu_action(void *context, uint32_t action, int32_t direction) {
   if (action == 0) {
     pax_game_menu_page_t page;
     zero(&page, sizeof page);
-    copy(page.title, "Desktop", sizeof page.title);
+    copy(page.title, "Workspace", sizeof page.title);
     copy(page.status,
          relay_active ? "SVP Relay receiver"
          : connected  ? "VNC session connected"
-                      : "Desktop connection",
+                      : "Workspace connection",
          sizeof page.status);
     page.count = relay_active ? (relay.wire_mode == 2 ? 5 : 4)
                  : connected  ? 1
                               : 6;
     page.items[0].action = 1;
     copy(page.items[0].label,
-         connected ? "Disconnect desktop" : "Exit desktop app",
+         connected ? "Disconnect desktop" : "Exit Workspace",
          sizeof page.items[0].label);
     if (relay_active && relay.wire_mode == 2) {
       page.items[1].action = 8;
@@ -1164,7 +1164,7 @@ app_entry(const app_services_t *services) {
   remote.io = (rfb_io_t){0, receive, transmit, allocate, release};
   if (svc->game_menu_register && svc->game_menu_set_page &&
       svc->game_menu_close)
-    svc->game_menu_register("Desktop", menu_action, 0);
+    svc->game_menu_register("Workspace", menu_action, 0);
   load_host();
   if (svc->app_get_arg) {
     char arg[160];

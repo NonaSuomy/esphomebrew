@@ -1,14 +1,14 @@
-# Desktop: direct VNC and SVP Relay
+# Workspace: direct VNC and SVP Relay
 
-`desktop.pax` 0.6.0 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
-itself. **LISTEN** receives SVP Relay desktop/dashboard JPEG pictures on TCP
+Workspace (`desktop.pax`) 0.6.1 is an ESP32-P4 PAX app. **CONNECT** opens a VNC session
+itself. The package remains `desktop.pax` and keeps `/sd/roms/desktop/` for existing saved connections and relay settings. **LISTEN** receives SVP Relay desktop/dashboard JPEG pictures on TCP
 port **5000**. **VIA RELAY** asks Home Assistant to start a VNC desktop and feed
 it to that receiver. These modes use the current PAX firmware's service table;
 no new `simple_video_player` component is needed. The optional on-panel media browser requires the firmware bridge described below.
 
 ## Browse and play media on the panel
 
-Choose **MEDIA** on the connection screen or **shared menu > Desktop > Media browser**.
+Choose **MEDIA** on the connection screen or **shared menu > Workspace > Media browser**.
 **HA** lists Home Assistant media sources; tap a folder, then an audio or video file.
 **SD** lists supported files beneath `/sd/media`. **UP**, **LOAD**, **PREV** and
 **NEXT** navigate folders, refresh and change pages. Arrow keys move the selection;
@@ -43,7 +43,7 @@ Picture viewing, playlists, artwork and seek controls are not implemented yet.
 ## Configure the panel in SVP Relay
 
 1. Load the updated `desktop.pax` from the PAX launcher's network library.
-2. Choose **LISTEN**, or shared menu > Desktop > Listen for SVP Relay.
+2. Choose **LISTEN**, or shared menu > Workspace > Listen for SVP Relay.
 3. In Home Assistant's SVP Relay panel configuration, select this ESPHome device.
    Set **Panel address** to its reachable address (currently `10.13.37.159`, or
    leave empty if the ESPHome integration already has that address).
@@ -57,7 +57,7 @@ Picture viewing, playlists, artwork and seek controls are not implemented yet.
 
 ## Show your Home Assistant dashboard
 
-1. Open **DASHBOARD** on the app's connection screen (or shared menu > Desktop >
+1. Open **DASHBOARD** on the app's connection screen (or shared menu > Workspace >
    Show dashboard). It opens the same port 5000 receiver as LISTEN and shows setup
    hints. The app receives a page rendered by the relay; it does not run Chromium.
 2. In Home Assistant, open **Settings > Devices & services > SVP Relay**, configure
@@ -76,7 +76,7 @@ Picture viewing, playlists, artwork and seek controls are not implemented yet.
    panel. If it previously tried while port 5000 was closed, save/reload its entry
    once the app is listening. A test finishing also resumes the idle dashboard.
 7. Touch to operate cards; use a USB mouse/keyboard as needed. Shared menu >
-   Desktop provides **Refresh page (F5)** and **Browser Back (Alt+Left)** after
+   Workspace provides **Refresh page (F5)** and **Browser Back (Alt+Left)** after
    the relay subscribes to input. Browser typing sends separate text messages.
 
 The relay needs Chromium on its Home Assistant host or configured worker.
@@ -94,7 +94,7 @@ You can leave the receiver or exit the app during either wait.
 
 ## Video with sound through SVP Relay
 
-1. Load the updated app, then choose **VIDEO/AUDIO** (shared menu > Desktop >
+1. Load the updated app, then choose **VIDEO/AUDIO** (shared menu > Workspace >
    Video / Audio via relay on smaller screens). Video/Audio mode uses a half-size canvas (512×300 on this 1024×600 board),
    upscaled by the firmware, and advertises mono 16 kHz sound. Dashboard/Listen
    keep the native canvas and stereo 48 kHz handshake. Both accept AVI/JPEG on
@@ -112,7 +112,7 @@ You can leave the receiver or exit the app during either wait.
    No separate HA Audio player entity is needed for embedded AVI sound. The HA
    **Audio player** selector still controls audio-only/announcement routing;
    this app does not create an ESPHome media-player API entity for those actions.
-5. During AVI playback, shared menu > Desktop offers **Pause/Resume**, **Stop
+5. During AVI playback, shared menu > Workspace offers **Pause/Resume**, **Stop
    media (return to dashboard)** and **Mute/Unmute**. USB keyboard: **Space**,
    **Esc**, **M**. Pause stops reading the stream and uses TCP backpressure; sound
    already queued in the speaker may finish before the pause becomes silent.
@@ -195,7 +195,7 @@ the computer host/port; it never saves the VNC password or writes `relay.conf`.
   left click/drag. USB mouse: movement, left/right/middle buttons and wheel.
 - USB keyboard: press/release events become the relay's HID/codepoint messages.
   Repeat and modifier/chord behavior depend on the firmware HID/text events.
-- Hold two fingers for 1.5 s while connected, or shared menu > Desktop > Disconnect,
+- Hold two fingers for 1.5 s while connected, or shared menu > Workspace > Disconnect,
   to return to the connection screen. Esc leaves the receiver while it is waiting.
 - Hold Menu 3 s to exit to the launcher. The loader's synthetic Menu+X close
   control is supported too.
