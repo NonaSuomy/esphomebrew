@@ -5,6 +5,7 @@ static void io_ui_pulse(void);
 static uint32_t g_navigation_generation;
 static bool g_discard_io;
 static bool g_catalog_loading;
+static bool g_catalog_stale=true;
 static bool g_io_cancel;
 static int g_io_state; /* 0 idle, 1 submitted, 2 done, 3 parked for deletion */
 static bool g_io_stop;

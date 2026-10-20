@@ -32,6 +32,7 @@ class EmptyNavigationTests(unittest.TestCase):
 static int g_toolbar_focus=-1,g_source,g_selected,g_first_visible,g_view_count,g_open_index;
 static int g_archive_level;
 static uint32_t g_navigation_generation;
+static bool g_catalog_stale;
 static int g_detail_index=-1,g_io_state;
 typedef struct {int source;} lv_event_t;
 #define LV_EVENT_CLICKED 1
@@ -68,7 +69,7 @@ int main(void){
  press(PAX_INPUT_UP);assert(g_toolbar_focus==SOURCE_NETWORK);
  /* The active source also exits Settings and cancels an in-flight read. */
  lv_event_t event={.source=g_source};g_settings_mode=true;g_open_index=-1;
- source_button_event(&event);assert(!g_settings_mode && g_open_index==-3);
+ source_button_event(&event);assert(!g_settings_mode && g_open_index==-3 && g_catalog_stale);
  g_io_state=1;g_open_index=-1;uint32_t generation=g_navigation_generation;
  source_button_event(&event);assert(g_open_index==-3 && g_navigation_generation==generation+1);
  return 0;

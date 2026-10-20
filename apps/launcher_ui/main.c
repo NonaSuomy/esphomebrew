@@ -4946,6 +4946,7 @@ static void select_source(int source)
   g_archive_search_pending = false;
   __atomic_add_fetch(&g_navigation_generation,1,__ATOMIC_ACQ_REL);
   g_source = source;
+  g_catalog_stale=true;
   g_favorites_mode = false;
   g_settings_mode = false;
   g_toolbar_focus = -1;
@@ -8145,7 +8146,7 @@ int app_entry(const app_services_t *svc)
   for (;;) {
     g_open_index = -1;
     g_discard_io=false;
-    if (!detail_mode && !g_settings_mode && !g_keyboard_open) {
+    if (!detail_mode && !g_settings_mode && (!g_keyboard_open || g_catalog_stale)) {
       g_detail_index = -1;
       g_catalog_loading=true;g_app_count=0;g_view_count=0;
       load_background_image();
@@ -8160,6 +8161,7 @@ int app_entry(const app_services_t *svc)
       else (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
       load_apps();
       g_catalog_loading=false;
+      g_catalog_stale=g_discard_io;
       if(!g_discard_io)(void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
       if (!g_discard_io && g_resume_detail_record >= 0) {
         const int resume_record = g_resume_detail_record;
@@ -8296,6 +8298,7 @@ int app_entry(const app_services_t *svc)
       release_detail_cover();
     }
     if (chosen == -3) {
+      g_catalog_stale=true;
       if (g_settings_mode && g_archive_auth_edit_field >= 0 && !g_keyboard_open) {
         commit_archive_auth_edit();
         wait_for_input_release();
@@ -8386,6 +8389,7 @@ int app_entry(const app_services_t *svc)
     if (!detail_mode && chosen == -6) {
       g_toolbar_focus = -1;
       g_favorites_mode = !g_favorites_mode;
+      g_catalog_stale=true;
       g_settings_mode = false;
       g_selected = 0;
       wait_for_input_release();
@@ -8450,6 +8454,7 @@ int app_entry(const app_services_t *svc)
       g_settings_mode = false;
       g_favorites_mode = false;
       g_source = SOURCE_ARCHIVE;
+      g_catalog_stale=true;
       g_archive_level = ARCHIVE_LEVEL_SEARCH;
       copy_text(g_search_text, sizeof(g_search_text), "collection:");
       g_selected = 0;
