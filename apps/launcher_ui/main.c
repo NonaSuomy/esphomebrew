@@ -4973,8 +4973,9 @@ static void source_button_event(lv_event_t *event)
     /* Choosing the already-active source from an app's details page is still
      * an explicit request to return to that source's list. Without this,
      * controller A remains armed on the detail page's Play action. */
-    if (g_detail_index >= 0) {
-      g_open_index = -3;
+    if (g_detail_index >= 0 || g_settings_mode ||
+        __atomic_load_n(&g_io_state,__ATOMIC_ACQUIRE)==1) {
+      select_source(source);
       return;
     }
     if (source == SOURCE_ARCHIVE)
@@ -8548,6 +8549,7 @@ int app_entry(const app_services_t *svc)
        * becomes active only after its model is ready. */
       g_detail_index = -1;
       g_detail_focus = 0;
+      g_open_index = -1; /* A second row click must be a new action. */
       (void)fetch_app_detail(selected_record);
       if(g_discard_io){
         detail_mode=false;chosen=g_open_index;g_discard_io=false;

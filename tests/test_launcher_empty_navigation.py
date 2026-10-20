@@ -32,12 +32,19 @@ class EmptyNavigationTests(unittest.TestCase):
 static int g_toolbar_focus=-1,g_source,g_selected,g_first_visible,g_view_count,g_open_index;
 static int g_archive_level;
 static uint32_t g_navigation_generation;
+static int g_detail_index=-1,g_io_state;
+typedef struct {int source;} lv_event_t;
+#define LV_EVENT_CLICKED 1
+static int lv_event_get_code(lv_event_t *e){(void)e;return LV_EVENT_CLICKED;}
+static void *lv_event_get_user_data(lv_event_t *e){return (void *)(intptr_t)e->source;}
+static struct {int (*log_printf)(const char *,...);} *g_svc;
+
 static bool g_favorites_mode,g_settings_mode,g_archive_search_pending;
 static char g_archive_identifier[128],g_archive_zip_url[512],g_search_text[128];
 static bool g_pad_last[PAX_INPUT_MAX];
 static void play_ui_sound(int sound,int level){(void)sound;(void)level;}
 #define PAX_UI_SOUND_CHIME 0
-'''+function(source,'toolbar_focus_step')+'\n'+function(source,'select_source')+r'''
+'''+function(source,'toolbar_focus_step')+'\n'+function(source,'select_source')+'\n'+function(source,'source_button_event')+r'''
 static void press(int key){
  bool up=key==PAX_INPUT_UP,down=key==PAX_INPUT_DOWN,left=key==PAX_INPUT_LEFT,right=key==PAX_INPUT_RIGHT;
  bool a=key==PAX_INPUT_A,b=key==PAX_INPUT_B,l=key==PAX_INPUT_L,r=key==PAX_INPUT_R,changed=false;
@@ -59,6 +66,11 @@ int main(void){
  press(PAX_INPUT_UP);assert(g_toolbar_focus==-1);g_pad_last[PAX_INPUT_UP]=false;
  g_view_count=2;g_selected=1;press(PAX_INPUT_UP);assert(g_selected==0 && g_toolbar_focus==-1);
  press(PAX_INPUT_UP);assert(g_toolbar_focus==SOURCE_NETWORK);
+ /* The active source also exits Settings and cancels an in-flight read. */
+ lv_event_t event={.source=g_source};g_settings_mode=true;g_open_index=-1;
+ source_button_event(&event);assert(!g_settings_mode && g_open_index==-3);
+ g_io_state=1;g_open_index=-1;uint32_t generation=g_navigation_generation;
+ source_button_event(&event);assert(g_open_index==-3 && g_navigation_generation==generation+1);
  return 0;
 }
 '''
