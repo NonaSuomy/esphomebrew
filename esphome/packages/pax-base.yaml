@@ -260,37 +260,37 @@ esphome:
     - pax_launcher_pointer.h
     - pax_launcher_layout.h
   on_boot:
-    priority: -100
-    then:
-      - lambda: |-
-          static esphome::pax_launcher::Pointer pointer${pointer_dimensions};
-          auto *mouse = lv_indev_create();
-          lv_indev_set_type(mouse, LV_INDEV_TYPE_POINTER);
-          lv_indev_set_display(mouse, id(lvgl_component)->get_disp());
-          lv_indev_set_group(mouse, lv_group_get_default());
-          lv_indev_set_read_cb(mouse, [](lv_indev_t *, lv_indev_data_t *data) {
-            const bool enabled = !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading();
-            data->point.x = pointer.x;
-            data->point.y = pointer.y;
-            data->state = pointer.pressed(enabled) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
-          });
-          auto *cursor = lv_label_create(lv_layer_top());
-          lv_label_set_text(cursor, "+");
-          lv_obj_set_style_text_color(cursor, lv_color_hex(0xFFFFFF), 0);
-          lv_obj_set_style_text_font(cursor, &lv_font_montserrat_20, 0);
-          lv_obj_remove_flag(cursor, LV_OBJ_FLAG_CLICKABLE);
-          lv_obj_remove_flag(cursor, LV_OBJ_FLAG_SCROLLABLE);
-          lv_indev_set_cursor(mouse, cursor);
-          id(pax_mouse_x)->add_on_state_callback([](float dx) {
-            pointer.move(dx, 0, !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading());
-          });
-          id(pax_mouse_y)->add_on_state_callback([](float dy) {
-            pointer.move(0, dy, !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading());
-          });
-          id(pax_mouse_left)->add_on_state_callback([](bool down) {
-            pointer.button(down, !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading());
-          });
-          ESP_LOGI("quick_launcher", "USB touchpad pointer and keyboard navigation ready");
+    - priority: -100
+      then:
+        - lambda: |-
+            static esphome::pax_launcher::Pointer pointer${pointer_dimensions};
+            auto *mouse = lv_indev_create();
+            lv_indev_set_type(mouse, LV_INDEV_TYPE_POINTER);
+            lv_indev_set_display(mouse, id(lvgl_component)->get_disp());
+            lv_indev_set_group(mouse, lv_group_get_default());
+            lv_indev_set_read_cb(mouse, [](lv_indev_t *, lv_indev_data_t *data) {
+              const bool enabled = !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading();
+              data->point.x = pointer.x;
+              data->point.y = pointer.y;
+              data->state = pointer.pressed(enabled) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+            });
+            auto *cursor = lv_label_create(lv_layer_top());
+            lv_label_set_text(cursor, "+");
+            lv_obj_set_style_text_color(cursor, lv_color_hex(0xFFFFFF), 0);
+            lv_obj_set_style_text_font(cursor, &lv_font_montserrat_20, 0);
+            lv_obj_remove_flag(cursor, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_remove_flag(cursor, LV_OBJ_FLAG_SCROLLABLE);
+            lv_indev_set_cursor(mouse, cursor);
+            id(pax_mouse_x)->add_on_state_callback([](float dx) {
+              pointer.move(dx, 0, !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading());
+            });
+            id(pax_mouse_y)->add_on_state_callback([](float dy) {
+              pointer.move(0, dy, !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading());
+            });
+            id(pax_mouse_left)->add_on_state_callback([](bool down) {
+              pointer.button(down, !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading());
+            });
+            ESP_LOGI("quick_launcher", "USB touchpad pointer and keyboard navigation ready");
   platformio_options:
     extra_scripts:
       - ${idf_compat_script}

@@ -66,6 +66,8 @@ for key,file in profiles.items():
   assert display['hsync_front_porch']==2 and display['hsync_back_porch']==46 and display['vsync_back_porch']==21,key
   assert touch['address']==0x38 and touch['transform']=={'mirror_x':True,'mirror_y':True},key
   assert cv.frequency(bus['frequency'])==100000.0 and not bus['sda_pullup_enabled'] and not bus['scl_pullup_enabled'],key
+  assert {-100,-200}.issubset({entry['priority'] for entry in n['esphome']['on_boot']}),key
+  assert 'pax_native_panel.h' in n['esphome']['includes'],key
  if key=='nano-lcd101':
   assert n['display'][0]['model']=='WAVESHARE-P4-NANO-10.1',key
   assert n['display'][0]['rotation']==90 and loader['panel_width']==1280 and loader['panel_height']==800,key

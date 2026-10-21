@@ -70,3 +70,15 @@ lvgl:
 
 pax_loader:
   touchscreen_id: touch_panel
+
+# Keep apps upright after the common renderer's legacy 180-degree transform.
+esphome:
+  includes:
+    - pax_native_panel.h
+  on_boot:
+    - priority: -200
+      then:
+        - lambda: |-
+            static esphome::pax_native::NativePanel panel(id(main_display));
+            id(pax_runtime)->set_mipi_dsi(nullptr);
+            id(pax_runtime)->set_display(&panel);
