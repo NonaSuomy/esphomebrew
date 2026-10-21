@@ -177,3 +177,5 @@ A size-aware native-panel adapter reverses the common renderer's Elecrow-specifi
 The 4.3-inch profile corrects inherited SD power settings: GPIO45 is active low (Q1 AO3401 in the NANO schematic), and LDO4 uses 3.3V passthrough, matching the vendor SD power driver. LDO3 remains 2.5V for DSI. The inserted 1886MB SD card now mounts on the first attempt. Sources: [NANO schematic](https://files.waveshare.com/wiki/ESP32-P4-NANO/ESP32-P4-NANO-schematic.pdf) and [vendor BSP](https://github.com/waveshareteam/Waveshare-ESP32-components/blob/master/bsp/esp32_p4_nano/esp32_p4_nano.c).
 
 The NANO 4.3-inch SD starter is versioned under `sd/releases/20261021/`. The installer selects its matching starter ZIP, flash kits include its files, and this profile's GitHub launcher URL uses the same release. Existing profiles' published starter files and hashes remain unchanged.
+
+Consecutive HTTP SD uploads now wait briefly for the previous completed transfer to release storage ownership. Active transfers are still rejected, and timeout cleanup is bounded. The reservation regression test covers both cases.

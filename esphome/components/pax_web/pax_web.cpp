@@ -118,6 +118,12 @@ bool PaxWeb::reserve_() {
   // Only the HTTP server task requests reservations.
   while (xSemaphoreTake(granted_, 0) == pdTRUE) {
   }
+  // A successful HTTP reply can reach the next request before the main loop
+  // releases storage ownership. Wait for that completed transfer, not an
+  // active upload, so consecutive files do not spuriously fail as busy.
+  const uint32_t started = millis();
+  while (transfer_.load() == 4 && uint32_t(millis() - started) < 1000)
+    vTaskDelay(pdMS_TO_TICKS(1));
   int expected = 0;
   if (!transfer_.compare_exchange_strong(expected, 1))
     return false;
