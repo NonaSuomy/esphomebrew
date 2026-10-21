@@ -5092,21 +5092,25 @@ static void update_clock_label(void)
   if (g_status_clock == NULL) return;
   const char *text = g_device_status.local_time[0] != '\0' ?
                        g_device_status.local_time : "--:--";
-  char compact[24];
+  char compact[48];
   if (g_show_date) {
     char date[64];
     text = "No date";
     if (g_svc->device_date_get != NULL) {
       if (g_svc->device_date_get(date, sizeof(date)) == 0) {
-        /* Firmware returns weekday\nDD Month YYYY. Keep the bar compact and
-         * unambiguous, including the year, without widening its clock slot. */
+        /* Firmware returns weekday\nDD Month YYYY. Keep the full weekday
+         * and year, abbreviating only the month for a single-line date. */
         const char *day = strchr(date, '\n');
         if (day != NULL && strlen(day + 1) >= 6) {
           const char *year = strchr(day + 4, ' ');
           if (year != NULL && year > day + 6) {
-            compact[0] = day[1]; compact[1] = day[2]; compact[2] = ' ';
-            compact[3] = day[4]; compact[4] = day[5]; compact[5] = day[6];
-            compact[6] = ' '; compact[7] = '\0';
+            size_t prefix = (size_t)(day - date);
+            if (prefix > 15) prefix = 15;
+            for (size_t i = 0; i < prefix; ++i) compact[i] = date[i];
+            compact[prefix++] = ' ';
+            compact[prefix++] = day[1]; compact[prefix++] = day[2]; compact[prefix++] = ' ';
+            compact[prefix++] = day[4]; compact[prefix++] = day[5]; compact[prefix++] = day[6];
+            compact[prefix++] = ' '; compact[prefix] = '\0';
             append_text(compact, sizeof(compact), year + 1);
             text = compact;
           }
@@ -6640,12 +6644,38 @@ static int build_ui_on_host(void *arg)
       if (size.x + ui_px(2) > clock_width) clock_width = size.x + ui_px(2);
     }
   }
+  /* Reserve the longest weekday/month combination too, keeping the bar
+   * stable when tapping between the clock and its full local date. */
+  const char *weekdays[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+  const char *months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+  for (int day = 0; day < 7; ++day) for (int month = 0; month < 12; ++month) {
+    char sample[48];
+    copy_text(sample, sizeof(sample), weekdays[day]);
+    append_text(sample, sizeof(sample), " 88 ");
+    append_text(sample, sizeof(sample), months[month]);
+    append_text(sample, sizeof(sample), " 8888");
+    lv_point_t size;
+    lv_text_get_size(&size, sample, &lv_font_montserrat_14, 0, 0,
+                     LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    if (size.x + ui_px(2) > clock_width) clock_width = size.x + ui_px(2);
+  }
   const int clock_x = ui_px(logical_width - 84) - clock_width;
   const int clock_icon_x = clock_x - ui_px(18);
   /* Keep the centered brand clear of the time on narrower panels. */
   const int brand_right = clock_icon_x - ui_px(4);
-  if ((g_canvas_w + brand_width) / 2 > brand_right)
-    lv_obj_set_x(brand, brand_right - brand_width - (g_canvas_w - brand_width) / 2);
+  int available_brand = brand_right - ui_px(128);
+  if (available_brand <= 0) lv_obj_add_flag(brand, LV_OBJ_FLAG_HIDDEN);
+  else {
+    if (available_brand > brand_width) available_brand = brand_width;
+    lv_obj_set_width(brand, available_brand);
+    lv_text_get_size(&brand_size, "ESPHOMEBREW", brand_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    if (brand_size.x > available_brand) {
+      brand_font = &lv_font_montserrat_14;
+      lv_obj_set_style_text_font(brand, brand_font, LV_PART_MAIN);
+    }
+    if ((g_canvas_w + available_brand) / 2 > brand_right)
+      lv_obj_set_x(brand, brand_right - available_brand - (g_canvas_w - available_brand) / 2);
+  }
   g_status_clock_icon = create_fa_label(topbar, 0xf017U, lv_color_hex(COL_ACCENT));
   lv_obj_set_size(g_status_clock_icon, ui_px(16), status_item_h);
   lv_obj_set_pos(g_status_clock_icon, clock_icon_x, status_item_y);

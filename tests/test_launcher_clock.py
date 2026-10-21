@@ -35,8 +35,8 @@ static struct {int (*device_date_get)(char*,uint32_t);} services={get_date},*g_s
 int main(void){
  lv_event_t tap={LV_EVENT_CLICKED},other={0};
  update_clock_label();assert(!strcmp(shown,"10:00 AM") && font==&lv_font_montserrat_20);
- clock_tap_event(&tap);assert(g_show_date && !strcmp(shown,"21 Oct 2026") && font==&lv_font_montserrat_14);
- date="Thursday\n01 January 2027";update_clock_label();assert(!strcmp(shown,"01 Jan 2027"));
+ clock_tap_event(&tap);assert(g_show_date && !strcmp(shown,"Wednesday 21 Oct 2026") && font==&lv_font_montserrat_14);
+ date="Thursday\n01 January 2026";update_clock_label();assert(!strcmp(shown,"Thursday 01 Jan 2026"));
  clock_tap_event(&other);assert(g_show_date);
  clock_tap_event(&tap);assert(!g_show_date && !strcmp(shown,"10:00 AM"));
  strcpy(g_device_status.local_time,"23:59");update_clock_label();assert(!strcmp(shown,"23:59"));
