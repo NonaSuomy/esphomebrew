@@ -371,6 +371,17 @@ static void push_wait(player_t *p, pktq_t *q, qitem_t it)
     }
 }
 
+void pax_log_codecs(void)
+{
+    static const enum AVCodecID ids[] = {AV_CODEC_ID_H264, AV_CODEC_ID_MPEG4,
+        AV_CODEC_ID_MJPEG, AV_CODEC_ID_VP8, AV_CODEC_ID_MSMPEG4V2,
+        AV_CODEC_ID_THEORA, AV_CODEC_ID_HEVC, AV_CODEC_ID_VP9, AV_CODEC_ID_AV1};
+    for (unsigned i = 0; i < sizeof(ids) / sizeof(ids[0]); ++i) {
+        const AVCodec *codec = avcodec_find_decoder(ids[i]);
+        pax_log("decoder %s: %s", avcodec_get_name(ids[i]), codec ? codec->name : "MISSING");
+    }
+}
+
 static AVCodecContext *open_decoder(player_t *p, AVStream *st, char *info, size_t info_len)
 {
     const AVCodec *codec = avcodec_find_decoder(st->codecpar->codec_id);
@@ -1254,6 +1265,8 @@ enum pax_play_result pax_play(const char *location, int cw, int ch, pax_input_t 
     bool redraw = true;
     int64_t last_redraw = 0;
     int64_t stats_at = now_us();
+    const int64_t playback_began_us = stats_at;
+    int64_t last_stats_log_us = stats_at;
     int stats_decoded = 0, stats_shown = 0;
     char stats[48] = "";
     int64_t ended_at = 0;
@@ -1399,6 +1412,13 @@ enum pax_play_result pax_play(const char *location, int cw, int ch, pax_input_t 
             } else {
                 snprintf(stats, sizeof(stats), "%s", p->ainfo);
             }
+            if (t - last_stats_log_us >= 5000000) {
+                pax_log("stats codec=%s elapsed_ms=%lld decoded=%d shown=%d drop_early=%d drop_late=%d skip=%d audio_latency_ms=%lld",
+                        p->vinfo, (long long)((t - playback_began_us) / 1000), dec, shw,
+                        p->dropped_early, p->dropped_late, p->skip_level,
+                        p->lat_known ? (long long)(p->lat_us / 1000) : -1LL);
+                last_stats_log_us = t;
+            }
             stats_decoded = dec;
             stats_shown = shw;
             stats_at = t;
@@ -1520,8 +1540,9 @@ enum pax_play_result pax_play(const char *location, int cw, int ch, pax_input_t 
         pax_sleep_ms(10);
     }
 
-    pax_log("played %d frames, dropped %d before and %d after conversion; result %d", p->shown, p->dropped_early,
-             p->dropped_late, (int)result);
+    pax_log("played %d frames, decoded %d, dropped %d before and %d after conversion; elapsed_ms=%lld result %d",
+             p->shown, p->decoded, p->dropped_early, p->dropped_late,
+             (long long)((now_us() - playback_began_us) / 1000), (int)result);
     player_free(p);
     free(ovl);
     free(pic.px);

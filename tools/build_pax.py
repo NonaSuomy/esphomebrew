@@ -473,6 +473,8 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     if len(set(objs)) != len(objs):
         raise ValueError("two sources map to the same object file; give a group a 'prefix'")
     ldflags = list(manifest.get("ldflags", []))
+    # Prebuild-produced archives stay inside the pinned source or local repo.
+    ldflags += [str(source_file(src_root, path)) for path in manifest.get("libraries", [])]
     if manifest.get("newlib"):
         ldflags += [f"-Wl,--wrap={sym}" for sym in NEWLIB_WRAPS] + NEWLIB_LIBS
     return units, ldflags

@@ -38,6 +38,9 @@ void pax_input_poll(pax_input_t *in);
 bool pax_button(pax_input_t *in, int button, int repeat_ms);
 bool pax_key(const pax_input_t *in, int key);
 
+// Report the compiled decoder registry before opening media.
+void pax_log_codecs(void);
+
 // ── Player ────────────────────────────────────────────────────────────────
 
 enum pax_play_result {

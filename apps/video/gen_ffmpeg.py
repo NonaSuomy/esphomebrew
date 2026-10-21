@@ -37,12 +37,13 @@ VERSION = "7.1.5"
 # demuxers want for these codecs, then the libraries.
 COMPONENTS = """
     h264_decoder mpeg4_decoder mjpeg_decoder vp8_decoder
+    msmpeg4v2_decoder theora_decoder hevc_decoder vp9_decoder libaom_av1_decoder
     aac_decoder mp3_decoder opus_decoder vorbis_decoder
     pcm_s16le_decoder pcm_s16be_decoder pcm_u8_decoder pcm_s24le_decoder pcm_s32le_decoder
     pcm_f32le_decoder pcm_alaw_decoder pcm_mulaw_decoder
     mov_demuxer matroska_demuxer avi_demuxer mpegts_demuxer mp3_demuxer ogg_demuxer wav_demuxer
     h264_parser aac_parser mpegaudio_parser opus_parser vorbis_parser
-    mpeg4video_parser vp8_parser mjpeg_parser
+    mpeg4video_parser vp8_parser mjpeg_parser hevc_parser av1_parser
     avcodec avformat avutil swresample
 """.split()
 

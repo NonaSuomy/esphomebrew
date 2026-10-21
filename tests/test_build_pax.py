@@ -235,6 +235,15 @@ class CustomRecipeTests(unittest.TestCase):
         self.assertIn("-Wl,--wrap=__retarget_lock_release_recursive", ldflags)
         self.assertEqual(ldflags[-3:], ["-lc", "-lgcc", "-lm"])
 
+    def test_prebuilt_libraries_resolve_before_runtime_libraries(self):
+        _, flags = bp.custom_units(self.manifest(libraries=[".pax-gen/aom/libaom.a"]), self.root, self.build)
+        library = str((self.root / ".pax-gen/aom/libaom.a").resolve())
+        self.assertIn(library, flags)
+        self.assertLess(flags.index(library), flags.index("-lc"))
+        for path in ("../outside.a", "/tmp/outside.a"):
+            with self.assertRaises(ValueError):
+                bp.custom_units(self.manifest(libraries=[path]), self.root, self.build)
+
     def test_without_newlib_nothing_is_wrapped(self):
         _, ldflags = bp.custom_units(self.manifest(newlib=False, ldflags=[]), self.root, self.build)
         self.assertEqual(ldflags, [])

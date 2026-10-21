@@ -425,6 +425,7 @@ __attribute__((section(".text.entry"), used)) int app_entry(const app_services_t
 {
     pax_svc = svc;
     pax_syscalls_init();
+    pax_log_codecs();
     svc->log_printf("VIDEO: video starting (ABI %u)\n", (unsigned)svc->abi_version);
 
     // The whole panel when the loader offers it, else 800x480.
@@ -443,7 +444,11 @@ __attribute__((section(".text.entry"), used)) int app_entry(const app_services_t
 
     static char arg[PAX_APP_ARG_MAX];
     const int len = svc->app_get_arg != NULL ? svc->app_get_arg(arg, sizeof(arg)) : 0;
-    if (len > 0 && len < (int)sizeof(arg)) {
+    // The launcher passes the executable path as its argument. That is an
+    // app launch, not a request to decode the PAX executable as media.
+    const char *ext = strrchr(arg, '.');
+    const bool executable_arg = ext != NULL && strcasecmp(ext, ".pax") == 0;
+    if (len > 0 && len < (int)sizeof(arg) && !executable_arg) {
         // Opened by another app (NetSurf): play that and go back to it.
         pax_play(arg, cw, ch, &in);
     } else {
