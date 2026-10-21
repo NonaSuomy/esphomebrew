@@ -9853,6 +9853,19 @@ void PaxLoader::svc_settings_brightness_set(int32_t level) {
     s_brightness = std::max<int32_t>(5, std::min<int32_t>(100, level));
 }
 
+int PaxLoader::svc_device_date_get(char *out, uint32_t capacity) {
+  if (out == nullptr || capacity == 0) return -1;
+  out[0] = '\0';
+  const time_t now = std::time(nullptr);
+  struct tm local{};
+  if (now < MIN_VALID_TLS_TIME || localtime_r(&now, &local) == nullptr) return -2;
+  char date[64];
+  const size_t length = std::strftime(date, sizeof(date), "%A\n%d %B %Y", &local);
+  if (length == 0 || length >= capacity) return -1;
+  std::memcpy(out, date, length + 1);
+  return 0;
+}
+
 int PaxLoader::svc_device_status_get(pax_device_status_t *out) {
   if (out == nullptr)
     return -1;
@@ -10027,6 +10040,7 @@ void PaxLoader::populate_services(app_services_t *services) {
   services->store_install_start = &PaxServiceGate<&PaxLoader::svc_store_install_start>::call;
   services->store_install_status = &PaxServiceGate<&PaxLoader::svc_store_install_status>::call;
   services->device_status_get = &PaxServiceGate<&PaxLoader::svc_device_status_get>::call;
+  services->device_date_get = &PaxServiceGate<&PaxLoader::svc_device_date_get>::call;
   services->settings_auto_brightness_get = &PaxServiceGate<&PaxLoader::svc_settings_auto_brightness_get>::call;
   services->settings_auto_brightness_set = &PaxServiceGate<&PaxLoader::svc_settings_auto_brightness_set>::call;
   services->archive_download_start = &PaxServiceGate<&PaxLoader::svc_archive_download_start>::call;

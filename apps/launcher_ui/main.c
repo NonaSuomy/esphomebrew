@@ -378,6 +378,8 @@ static lv_obj_t *g_archive_login_button_label;
 static lv_obj_t *g_archive_login_button;
 static lv_obj_t *g_status_clock_icon;
 static lv_obj_t *g_status_clock;
+static lv_obj_t *g_date_popup;
+static lv_obj_t *g_date_label;
 static lv_obj_t *g_status_network_icon;
 static lv_obj_t *g_status_battery_icon;
 static lv_obj_t *g_status_battery_level;
@@ -5086,6 +5088,64 @@ static int update_c6_progress_on_host(void *unused)
   return 0;
 }
 
+static void update_date_popup(void)
+{
+  if (g_date_label == NULL) return;
+  char date[64];
+  if (g_svc->device_date_get == NULL)
+    lv_label_set_text(g_date_label, "Date needs newer firmware");
+  else if (g_svc->device_date_get(date, sizeof(date)) == 0)
+    lv_label_set_text(g_date_label, date);
+  else
+    lv_label_set_text(g_date_label, "Waiting for time sync");
+}
+
+static void close_date_popup(lv_event_t *event)
+{
+  (void)event;
+  lv_obj_t *popup = g_date_popup;
+  g_date_popup = NULL;
+  g_date_label = NULL;
+  if (popup != NULL) lv_obj_delete(popup);
+}
+
+static void clock_tap_event(lv_event_t *event)
+{
+  if (lv_event_get_code(event) != LV_EVENT_CLICKED) return;
+  if (g_date_popup != NULL) { close_date_popup(event); return; }
+  lv_obj_t *screen = lv_display_get_screen_active(g_display);
+  g_date_popup = lv_obj_create(screen);
+  lv_obj_remove_style_all(g_date_popup);
+  lv_obj_set_size(g_date_popup, g_canvas_w, g_canvas_h);
+  lv_obj_set_style_bg_color(g_date_popup, lv_color_black(), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(g_date_popup, LV_OPA_60, LV_PART_MAIN);
+  lv_obj_clear_flag(g_date_popup, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(g_date_popup, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(g_date_popup, close_date_popup, LV_EVENT_CLICKED, NULL);
+  lv_obj_t *card = lv_obj_create(g_date_popup);
+  int width = ui_px(190);
+  if (width > g_canvas_w - ui_px(16)) width = g_canvas_w - ui_px(16);
+  lv_obj_set_size(card, width, ui_px(90));
+  lv_obj_center(card);
+  lv_obj_clear_flag(card, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_color(card, lv_color_hex(COL_PANEL), LV_PART_MAIN);
+  lv_obj_set_style_border_color(card, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
+  lv_obj_set_style_border_width(card, 1, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(card, ui_px(8), LV_PART_MAIN);
+  g_date_label = lv_label_create(card);
+  lv_obj_set_width(g_date_label, width - ui_px(20));
+  lv_obj_set_style_text_font(g_date_label, ui_font(), LV_PART_MAIN);
+  lv_obj_set_style_text_color(g_date_label, lv_color_hex(COL_TEXT), LV_PART_MAIN);
+  lv_obj_set_style_text_align(g_date_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_align(g_date_label, LV_ALIGN_TOP_MID, 0, ui_px(5));
+  lv_obj_t *hint = lv_label_create(card);
+  lv_label_set_text(hint, "Tap anywhere to close");
+  lv_obj_set_style_text_font(hint, &lv_font_montserrat_14, LV_PART_MAIN);
+  lv_obj_set_style_text_color(hint, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
+  lv_obj_align(hint, LV_ALIGN_BOTTOM_MID, 0, 0);
+  update_date_popup();
+}
+
 static int update_device_status_on_host(void *unused)
 {
   (void)unused;
@@ -5096,6 +5156,7 @@ static int update_device_status_on_host(void *unused)
   g_device_status.battery_percent = -1;
   if (g_svc->device_status_get != NULL)
     (void)g_svc->device_status_get(&g_device_status);
+  update_date_popup();
   lv_label_set_text(g_status_clock, g_device_status.local_time[0] != '\0' ?
                     g_device_status.local_time : "--:--");
   const uint32_t network_icon = g_device_status.network_type == PAX_NETWORK_ETHERNET ? 0xf796U :
@@ -6450,6 +6511,8 @@ static int build_ui_on_host(void *arg)
   g_archive_collection_button = NULL;
   g_status_clock_icon = NULL;
   g_status_clock = NULL;
+  g_date_popup = NULL;
+  g_date_label = NULL;
   g_status_network_icon = NULL;
   g_status_battery_icon = NULL;
   g_status_battery_level = NULL;
@@ -6618,6 +6681,12 @@ static int build_ui_on_host(void *arg)
   lv_obj_set_style_text_color(g_status_clock, lv_color_hex(COL_TEXT), LV_PART_MAIN);
   lv_obj_set_style_text_font(g_status_clock, &lv_font_montserrat_20, LV_PART_MAIN);
   lv_obj_set_style_text_align(g_status_clock, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+  lv_obj_add_flag(g_status_clock, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_ext_click_area(g_status_clock, ui_px(4));
+  lv_obj_add_event_cb(g_status_clock, clock_tap_event, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_flag(g_status_clock_icon, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_ext_click_area(g_status_clock_icon, ui_px(4));
+  lv_obj_add_event_cb(g_status_clock_icon, clock_tap_event, LV_EVENT_CLICKED, NULL);
   g_status_network_icon = create_fa_label(topbar, 0xf071U, lv_color_hex(COL_ACCENT));
   lv_obj_set_size(g_status_network_icon, ui_px(16), status_item_h);
   lv_obj_set_pos(g_status_network_icon, ui_px(logical_width - 80), status_item_y);
@@ -7820,6 +7889,8 @@ static int teardown_ui_on_host(void *arg)
   }
   g_status_clock_icon = NULL;
   g_status_clock = NULL;
+  g_date_popup = NULL;
+  g_date_label = NULL;
   g_status_network_icon = NULL;
   g_status_battery_icon = NULL;
   g_status_battery_level = NULL;

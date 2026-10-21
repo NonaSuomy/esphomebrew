@@ -710,6 +710,11 @@ typedef struct {
     int (*hardware_info)(int index, pax_hardware_info_t *out);
     int (*hardware_read)(const char *name, float *value);
     int (*hardware_write)(const char *name, float value);
+
+    /* Local calendar date, "Wednesday\n21 October 2026". Optional on older
+     * firmware. Returns 0 on success, -1 for invalid/short output, -2 until
+     * wall-clock time is synchronized. Uses the same timezone as local_time. */
+    int (*device_date_get)(char *out, uint32_t capacity);
 } app_services_t;
 
 /* Relative HID movement is already in the visible direction. The loader's

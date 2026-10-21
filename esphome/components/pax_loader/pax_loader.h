@@ -551,6 +551,7 @@ class PaxLoader : public Component {
   static int svc_archive_auth_get(char *cookie_header, size_t capacity);
   static void svc_ui_sound(uint8_t sound, uint8_t param);
   static int svc_device_status_get(pax_device_status_t *out);
+  static int svc_device_date_get(char *out, uint32_t capacity);
   static int32_t svc_settings_auto_brightness_get();
   static void svc_settings_auto_brightness_set(int32_t enabled);
   // The runtime (VFS) path for an app's path, or "" when files::clean_app_path
