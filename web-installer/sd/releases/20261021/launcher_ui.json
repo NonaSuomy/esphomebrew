@@ -1,0 +1,39 @@
+{
+  "name": "launcher_ui",
+  "file": "launcher_ui.pax",
+  "abi": 1,
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "cd66eae8a75efa54ca240df6d1101047b606b3ed5f29bbf578502557cd9f1e6b",
+    "path": "pax-esphome/components/pax_loader/psram_app.h",
+    "ref": "91d9a6048593f04f17f400f81a9803822d5e0b6f"
+  },
+  "source": {
+    "path": "pax-modules/apps/launcher_ui",
+    "repository": "pax-modules",
+    "ref": "78cbe5b8766bb5ffce5e8f3b6b8d251bf6f531f9"
+  },
+  "size": 492200,
+  "sha256": "3016614ceced82b52816fc63f156979cd2f23ca06dfbd6be79fa372b488325b9",
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "title": "Launcher Ui",
+  "active_source": {
+    "path": "pax-modules/apps/launcher_ui",
+    "repository": "pax-modules",
+    "ref": "1c9d1950f6753f34c64990583f30aa45f6dec10a"
+  },
+  "extract": {
+    "version": 2,
+    "app": "launcher_ui",
+    "mode": "self-contained",
+    "archive_dir": "/sd/roms/launcher_ui/incoming",
+    "folders": [],
+    "requires": [],
+    "instructions": "No mandatory external game data is needed by this current build.\n\nFILES / FOLDERS",
+    "media": [],
+    "sources": []
+  },
+  "install_recipe_source": "pax-modules/apps/launcher_ui/install-recipe.json",
+  "requires": [],
+  "install_recipe_ref": "220e0b17ccd041429e07fe857f65937e53df9128"
+}

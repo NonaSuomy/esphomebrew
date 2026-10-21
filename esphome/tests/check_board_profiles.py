@@ -68,6 +68,8 @@ for key,file in profiles.items():
   assert cv.frequency(bus['frequency'])==100000.0 and not bus['sda_pullup_enabled'] and not bus['scl_pullup_enabled'],key
   assert {-100,-200}.issubset({entry['priority'] for entry in n['esphome']['on_boot']}),key
   assert 'pax_native_panel.h' in n['esphome']['includes'],key
+  assert n['sd_mmc_card']['power_ctrl_pin']=={'number':'GPIO45','inverted':True},key
+  assert n['esp_ldo'][-1]['voltage']=='passthrough',key
  if key=='nano-lcd101':
   assert n['display'][0]['model']=='WAVESHARE-P4-NANO-10.1',key
   assert n['display'][0]['rotation']==90 and loader['panel_width']==1280 and loader['panel_height']==800,key

@@ -3,6 +3,7 @@ esp_ldo:
   - channel: 3
     voltage: 2.5V
   - channel: 4
+    id: nano_sd_supply
     voltage: 2.5V
 
 

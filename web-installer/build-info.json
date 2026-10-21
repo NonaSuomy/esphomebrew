@@ -1,9 +1,9 @@
 {
   "built_at": "2026-10-21",
   "repositories": {
-    "pax-esphome": "0dfde2e45cf5084c87240149435b9d15eef0798a",
+    "pax-esphome": "f922f49f1b25985c1d88e9821977b6fc99dcb9d3",
     "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
-    "pax-tools": "e1d73f1209e3a5318835d8ce44d9dbcec2ba7b27",
+    "pax-tools": "26fdc1f1059c1443074ff0c2364474ea96c17412",
     "pax-modules": "9f1abcdc7b3bc7471f16d7802bafba2b39fd5c05"
   },
   "firmware": [
@@ -487,7 +487,7 @@
       ],
       "yaml": "esp32-p4-nano-lcd43-pax-web.yaml",
       "bytes": 2104320,
-      "sha256": "7cb3d57eb31013e7e13195ef89e7cb96b3f51db72b9493f5bd3c8ab65496a4f8",
+      "sha256": "e4e35b912ea4230809cd64a069f5df5f5474855d77cf37112d50094bc9e5746d",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -500,16 +500,17 @@
         "chip_revision": "1.0",
         "display": true,
         "touch_polling": true,
-        "touch_interaction": false,
+        "touch_interaction": true,
+        "sd_mount": true,
         "sd": false,
         "network": false,
         "audio": false,
         "app_launch": false
       },
       "repositories": {
-        "pax-esphome": "0dfde2e45cf5084c87240149435b9d15eef0798a",
+        "pax-esphome": "f922f49f1b25985c1d88e9821977b6fc99dcb9d3",
         "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
-        "pax-tools": "e1d73f1209e3a5318835d8ce44d9dbcec2ba7b27",
+        "pax-tools": "26fdc1f1059c1443074ff0c2364474ea96c17412",
         "pax-modules": "9f1abcdc7b3bc7471f16d7802bafba2b39fd5c05"
       }
     }
