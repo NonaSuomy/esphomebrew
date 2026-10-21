@@ -163,3 +163,11 @@ hardware before marking this option tested.
 
 Sources: user-supplied `101-tab-dev.yaml` and product photo; [official board documentation](https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT)
 and [schematic](https://files.waveshare.com/wiki/ESP32-P4-Module-DEV-KIT/ESP32-P4-Module-DEV-KIT.pdf).
+
+## NANO with Waveshare Raspberry Pi 4.3-inch DSI
+
+Use build alias `nano-lcd43` (`esp32-p4-nano-lcd43-pax-web.yaml`) and select the 4.3-inch option on the existing NANO installer card. This is the Raspberry Pi 800x480 DSI panel, not the integrated Waveshare 4B. It uses one 800Mbps lane, requested 26MHz pixel clock, horizontal front/sync/back 2/2/46 and vertical 7/2/21, RGB888 output and double buffering. Continuous HS is preserved from bus creation through video startup. The 0x45 power controller uses PWM register 0x86 and touch reset at PORTC bit 1. FT5x06-compatible touch reads count directly from 0x02 and coordinates from 0x03 at address 0x38, with both axes mirrored. I2C7/8 uses 100kHz and disabled internal pull-ups, including recovery.
+
+The shared PAX launch buttons now derive their bounds from the display size at page load; landscape uses three columns and portrait stacks three rows. Elecrow's established 1024x600 layout is preserved. PAX launcher apps already query the offered canvas size; individual games retain their own rendering/scaling behavior. The new profile offers an 800x480 canvas and reuses NANO Ethernet/C6, SD and codec wiring. The PAX image was built and flashed on a P4 rev1.0. The webcam confirms the launcher is displayed; an eight-second capture showed no large brightness flashes (144 sampled frames). Touch polling is error-free; touch-driven PAX actions still need user verification. No SD card was detected and Ethernet has no link, so SD, app launches, network and audio are not marked tested. The preceding standalone display, touch and brightness test succeeded.
+
+On P4 revisions below 3.0 the bridge has one shared input/output format selector. The driver therefore converts PAX RGB565 pixels in software into two RGB888 scanout buffers; revision 3 retains the hardware conversion path. Partial updates preserve the previous frame, and buffer reuse waits for the DMA handoff.

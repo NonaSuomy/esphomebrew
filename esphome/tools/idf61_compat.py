@@ -148,3 +148,12 @@ if gpio_source.exists():
     if old in source:
         gpio_source.write_text(source.replace(old, new, 1))
         print("IDF compatibility: reuse existing hosted GPIO ISR service")
+
+# Respect per-pin pull-up settings during I2C recovery as well as operation.
+i2c_source = project_dir / "src/esphome/components/i2c/i2c_bus_esp_idf.cpp"
+if i2c_source.exists():
+    text = i2c_source.read_text()
+    for field, setting in (("scl_config", "scl_pullup_enabled_"), ("sda_conf", "sda_pullup_enabled_")):
+        text = text.replace(f"{field}.pull_up_en = GPIO_PULLUP_ENABLE;",
+                            f"{field}.pull_up_en = {setting} ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE;")
+    i2c_source.write_text(text)

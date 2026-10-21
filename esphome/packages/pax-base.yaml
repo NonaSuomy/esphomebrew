@@ -258,6 +258,7 @@ esphome:
   friendly_name: ${friendly_name}
   includes:
     - pax_launcher_pointer.h
+    - pax_launcher_layout.h
   on_boot:
     priority: -100
     then:

@@ -22,5 +22,6 @@
   "nano-lcd101": "esp32-p4-nano-lcd101-pax-web.yaml",
   "m3-lcd101": "esp32-p4-m3-lcd101-pax-web.yaml",
   "jc1060-iwy": "esp32-p4-jc1060-iwy-pax-web.yaml",
-  "module-devkit-lcd101": "esp32-p4-module-devkit-lcd101-pax-web.yaml"
+  "module-devkit-lcd101": "esp32-p4-module-devkit-lcd101-pax-web.yaml",
+  "nano-lcd43": "esp32-p4-nano-lcd43-pax-web.yaml"
 }

@@ -1,10 +1,10 @@
 {
-  "built_at": "2026-10-18",
+  "built_at": "2026-10-21",
   "repositories": {
-    "pax-esphome": "e73abaada0118d5ca1faacf62672b0c7c8e6d2f3",
-    "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-    "pax-tools": "f07cd5a84154c27822d667029f17470142d52ffd",
-    "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
+    "pax-esphome": "10663e45e2685d43a966618b8686b98cddb6b445",
+    "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
+    "pax-tools": "03a9a850e3ab525eea5b78838f91d02d2349c14d",
+    "pax-modules": "9f1abcdc7b3bc7471f16d7802bafba2b39fd5c05"
   },
   "firmware": [
     {
@@ -475,6 +475,42 @@
         "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
         "pax-tools": "f07cd5a84154c27822d667029f17470142d52ffd",
         "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
+      }
+    },
+    {
+      "built_at": "2026-10-21",
+      "cpu_frequency_mhz": 360,
+      "board": "nano-lcd43",
+      "network_priority": [
+        "ethernet",
+        "wifi"
+      ],
+      "yaml": "esp32-p4-nano-lcd43-pax-web.yaml",
+      "bytes": 2103168,
+      "sha256": "1dc1b6f3a02bcf350192abba79307d6bd886201d8afd62367710933d5d90f510",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false,
+      "serial_sd_upload": true,
+      "serial_sd_transfer_tested": false,
+      "browser_store_install": true,
+      "hardware_validation": {
+        "date": "2026-10-21",
+        "chip_revision": "1.0",
+        "display": true,
+        "touch_polling": true,
+        "touch_interaction": false,
+        "sd": false,
+        "network": false,
+        "audio": false,
+        "app_launch": false
+      },
+      "repositories": {
+        "pax-esphome": "10663e45e2685d43a966618b8686b98cddb6b445",
+        "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
+        "pax-tools": "03a9a850e3ab525eea5b78838f91d02d2349c14d",
+        "pax-modules": "9f1abcdc7b3bc7471f16d7802bafba2b39fd5c05"
       }
     }
   ]

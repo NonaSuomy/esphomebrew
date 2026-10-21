@@ -1,6 +1,6 @@
 from pathlib import Path
 import json,re,hashlib,argparse,importlib.util
-from esphome import yaml_util
+from esphome import yaml_util, config_validation as cv
 from esphome.core import CORE
 from esphome.components.packages import do_packages_pass,merge_packages
 from esphome.components.substitutions import do_substitution_pass
@@ -59,6 +59,13 @@ for key,file in profiles.items():
  if 'hdmi' in file or key in ['nano','nano1080','nano-wifi']:
   assert not c.get('touchscreen') and c['lvgl']['touchscreens']==[],key
   assert c['display'][0]['video_mode_only'],key
+ if key=='nano-lcd43':
+  display=n['display'][0]; touch=n['touchscreen'][0];bus=n['i2c'][-1]
+  assert (loader['panel_width'],loader['panel_height'])==(800,480),key
+  assert display['continuous_clock'] and display['double_buffer'] and display['video_mode_only'],key
+  assert display['hsync_front_porch']==2 and display['hsync_back_porch']==46 and display['vsync_back_porch']==21,key
+  assert touch['address']==0x38 and touch['transform']=={'mirror_x':True,'mirror_y':True},key
+  assert cv.frequency(bus['frequency'])==100000.0 and not bus['sda_pullup_enabled'] and not bus['scl_pullup_enabled'],key
  if key=='nano-lcd101':
   assert n['display'][0]['model']=='WAVESHARE-P4-NANO-10.1',key
   assert n['display'][0]['rotation']==90 and loader['panel_width']==1280 and loader['panel_height']==800,key
