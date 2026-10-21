@@ -1,10 +1,10 @@
 {
   "built_at": "2026-10-21",
   "repositories": {
-    "pax-esphome": "f922f49f1b25985c1d88e9821977b6fc99dcb9d3",
+    "pax-esphome": "8e89e2306febaf15357c2741ac4c2e4cd0f932ff",
     "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
-    "pax-tools": "26fdc1f1059c1443074ff0c2364474ea96c17412",
-    "pax-modules": "9f1abcdc7b3bc7471f16d7802bafba2b39fd5c05"
+    "pax-tools": "7f7a6fe3cba80795febabc5564c833c9140cfbad",
+    "pax-modules": "220e0b17ccd041429e07fe857f65937e53df9128"
   },
   "firmware": [
     {
@@ -486,8 +486,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-lcd43-pax-web.yaml",
-      "bytes": 2104320,
-      "sha256": "e4e35b912ea4230809cd64a069f5df5f5474855d77cf37112d50094bc9e5746d",
+      "bytes": 2104400,
+      "sha256": "41cccb216626a707b314eb7e066bfcbccef7c9c08968665b006fa79ee143c154",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -502,16 +502,20 @@
         "touch_polling": true,
         "touch_interaction": true,
         "sd_mount": true,
-        "sd": false,
-        "network": false,
+        "sd": true,
+        "sd_write": true,
+        "network": true,
+        "ethernet": true,
+        "wifi": false,
+        "usb_input": false,
         "audio": false,
-        "app_launch": false
+        "app_launch": true
       },
       "repositories": {
-        "pax-esphome": "f922f49f1b25985c1d88e9821977b6fc99dcb9d3",
+        "pax-esphome": "8e89e2306febaf15357c2741ac4c2e4cd0f932ff",
         "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
-        "pax-tools": "26fdc1f1059c1443074ff0c2364474ea96c17412",
-        "pax-modules": "9f1abcdc7b3bc7471f16d7802bafba2b39fd5c05"
+        "pax-tools": "7f7a6fe3cba80795febabc5564c833c9140cfbad",
+        "pax-modules": "220e0b17ccd041429e07fe857f65937e53df9128"
       }
     }
   ]

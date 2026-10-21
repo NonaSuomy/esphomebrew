@@ -6567,10 +6567,16 @@ static int build_ui_on_host(void *arg)
   }
 
   lv_obj_t *brand = lv_label_create(topbar);
+  const int brand_width = ui_px(112);
+  const lv_font_t *brand_font = &lv_font_montserrat_28;
+  lv_point_t brand_size;
+  lv_text_get_size(&brand_size, "ESPHOMEBREW", brand_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  if (brand_size.x > brand_width) brand_font = &lv_font_montserrat_20;
   lv_label_set_text(brand, "ESPHOMEBREW");
-  lv_obj_set_width(brand, ui_px(112));
+  lv_label_set_long_mode(brand, LV_LABEL_LONG_CLIP);
+  lv_obj_set_width(brand, brand_width);
   lv_obj_set_style_text_color(brand, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
-  lv_obj_set_style_text_font(brand, &lv_font_montserrat_28, LV_PART_MAIN);
+  lv_obj_set_style_text_font(brand, brand_font, LV_PART_MAIN);
   lv_obj_set_style_text_align(brand, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   lv_obj_align(brand, LV_ALIGN_CENTER, 0, 0);
 
