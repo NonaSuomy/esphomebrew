@@ -6585,13 +6585,36 @@ static int build_ui_on_host(void *arg)
    * top-aligned inside their boxes, so center-aligning the boxes alone leaves
    * the right-hand status row looking high next to the brand. */
   const int status_item_y = (status_h - status_item_h) / 2 + ui_px(5);
+  /* Reserve the widest time before laying out the row. Font metrics are in
+   * physical pixels, unlike ui_px(), and 10:00 AM exceeds the old 44-unit box.
+   * Check every digit and suffix so the row stays still as the time changes;
+   * the same box also accommodates 24-hour HH:MM strings. */
+  int clock_width = ui_px(44);
+  for (char digit = '0'; digit <= '9'; ++digit) {
+    char sample[] = "00:00 AM";
+    sample[0] = sample[1] = sample[3] = sample[4] = digit;
+    for (int pm = 0; pm < 2; ++pm) {
+      sample[6] = pm ? 'P' : 'A';
+      lv_point_t size;
+      lv_text_get_size(&size, sample, &lv_font_montserrat_20, 0, 0,
+                       LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+      if (size.x + ui_px(2) > clock_width) clock_width = size.x + ui_px(2);
+    }
+  }
+  const int clock_x = ui_px(logical_width - 84) - clock_width;
+  const int clock_icon_x = clock_x - ui_px(18);
+  /* Keep the centered brand clear of the time on narrower panels. */
+  const int brand_right = clock_icon_x - ui_px(4);
+  if ((g_canvas_w + brand_width) / 2 > brand_right)
+    lv_obj_set_x(brand, brand_right - brand_width - (g_canvas_w - brand_width) / 2);
   g_status_clock_icon = create_fa_label(topbar, 0xf017U, lv_color_hex(COL_ACCENT));
   lv_obj_set_size(g_status_clock_icon, ui_px(16), status_item_h);
-  lv_obj_set_pos(g_status_clock_icon, ui_px(logical_width - 148), status_item_y);
+  lv_obj_set_pos(g_status_clock_icon, clock_icon_x, status_item_y);
   lv_obj_set_style_text_align(g_status_clock_icon, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
   g_status_clock = lv_label_create(topbar);
-  lv_obj_set_size(g_status_clock, ui_px(44), status_item_h);
-  lv_obj_set_pos(g_status_clock, ui_px(logical_width - 130), status_item_y);
+  lv_label_set_long_mode(g_status_clock, LV_LABEL_LONG_CLIP);
+  lv_obj_set_size(g_status_clock, clock_width, status_item_h);
+  lv_obj_set_pos(g_status_clock, clock_x, status_item_y);
   lv_obj_set_style_text_color(g_status_clock, lv_color_hex(COL_TEXT), LV_PART_MAIN);
   lv_obj_set_style_text_font(g_status_clock, &lv_font_montserrat_20, LV_PART_MAIN);
   lv_obj_set_style_text_align(g_status_clock, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
