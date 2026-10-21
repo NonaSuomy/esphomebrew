@@ -273,6 +273,8 @@ static extract_recipe_t g_detail_extract_recipe;
 static int g_detail_action_count = DETAIL_ACTIONS_DEFAULT;
 static const pax_rom_profile_t *g_rom_picker_profile;
 static bool g_rom_picker_active;
+static bool g_rom_prepare_busy;
+static uint64_t g_rom_prepare_started;
 static bool g_rom_picker_rom_selected;
 static int g_rom_picker_count;
 static int g_rom_picker_app_index = -1;
@@ -4618,6 +4620,7 @@ static void rom_picker_button_event(lv_event_t *event)
     g_open_index = -61;
     return;
   }
+  if (g_rom_prepare_busy) return;
   const int index = g_rom_picker_first + (int)row;
   if (index >= 0 && index < g_rom_picker_count) {
     g_rom_picker_selected = index;
@@ -4643,11 +4646,19 @@ static int update_rom_picker_on_host(void *unused)
       continue;
     }
     lv_obj_clear_flag(g_rom_picker_rows[row], LV_OBJ_FLAG_HIDDEN);
+    if (g_rom_prepare_busy) lv_obj_add_state(g_rom_picker_rows[row], LV_STATE_DISABLED);
+    else lv_obj_clear_state(g_rom_picker_rows[row], LV_STATE_DISABLED);
     style_button(g_rom_picker_rows[row], g_rom_picker_first + row == g_rom_picker_selected);
     lv_label_set_text(g_rom_picker_row_labels[row], host_names[row]);
   }
   if (g_rom_picker_status != NULL) {
-    if (g_rom_picker_count == 0)
+    if (g_rom_prepare_busy) {
+      const uint64_t elapsed = g_svc->get_time_us() - g_rom_prepare_started;
+      static const char *const phases[] = {".", "..", "...", "...."};
+      lv_label_set_text_fmt(g_rom_picker_status, "Preparing ROM%s  %us  |  B BACK (after preparation)",
+                            phases[(elapsed / 250000U) % 4], (unsigned)(elapsed / 1000000U));
+    } else if (g_install_status[0]) lv_label_set_text(g_rom_picker_status, g_install_status);
+    else if (g_rom_picker_count == 0)
       lv_label_set_text_fmt(g_rom_picker_status, "No games found in roms/%s/ on SD or USB. Formats: %s ZIP",
                             g_rom_picker_profile->id, g_rom_picker_profile->extensions);
     else
@@ -4701,6 +4712,7 @@ static void rom_picker_add_folder(const char *folder, const char *storage_tag)
 static void rom_picker_load_games(const char *app_path)
 {
   g_rom_picker_count = 0;
+  g_install_status[0] = '\0';
   g_rom_picker_selected = 0;
   g_rom_picker_first = 0;
   g_rom_picker_rows_shown = ROM_PICKER_VISIBLE_ROWS;
@@ -4723,9 +4735,21 @@ static void rom_picker_load_games(const char *app_path)
   }
 }
 
+/* Inputs and output belong to the waiting entry task. The worker never reads
+ * mutable picker selection/profile state or publishes a ROM preference. */
+typedef struct {
+  char path[PATH_BYTES], extensions[128], stem[64], extracted[PATH_BYTES];
+} RomPrepareJob;
+static int rom_prepare_job(void *argument)
+{
+  RomPrepareJob *job = argument;
+  return g_svc->file_zip_extract_first(job->path, job->extensions,
+      "/sd/roms/pax/.zipcache", job->stem, job->extracted, sizeof(job->extracted));
+}
+
 static bool rom_picker_set_selected_game(void)
 {
-  if (g_rom_picker_selected < 0 || g_rom_picker_selected >= g_rom_picker_count)
+  if (mutations_busy() || g_rom_picker_selected < 0 || g_rom_picker_selected >= g_rom_picker_count)
     return false;
   char launch_path[PATH_BYTES];
   copy_text(launch_path, sizeof(launch_path), g_rom_picker_paths[g_rom_picker_selected]);
@@ -4743,15 +4767,26 @@ static bool rom_picker_set_selected_game(void)
     copy_text(cache_stem, sizeof(cache_stem), g_rom_picker_profile->id);
     append_text(cache_stem, sizeof(cache_stem), "_00000000");
     const size_t hash_start = strlen(cache_stem) - 8;
-    char extracted[PATH_BYTES];
     for (int digit = 0; digit < 8; digit++)
       cache_stem[hash_start + digit] = hex[(hash >> (28 - digit * 4)) & 0x0fU];
-    if (g_svc->file_zip_extract_first(launch_path, g_rom_picker_profile->extensions, "/sd/roms/pax/.zipcache",
-                                     cache_stem, extracted, sizeof(extracted)) != 0) {
+    RomPrepareJob job = {0};
+    copy_text(job.path, sizeof(job.path), launch_path);
+    copy_text(job.extensions, sizeof(job.extensions), g_rom_picker_profile->extensions);
+    copy_text(job.stem, sizeof(job.stem), cache_stem);
+    g_rom_prepare_busy = true;
+    g_rom_prepare_started = g_svc->get_time_us();
+    (void)g_svc->ui_call_sync(update_rom_picker_on_host, NULL, 1000);
+    const int result = run_action(rom_prepare_job, &job, "Preparing ROM... Please wait");
+    g_rom_prepare_busy = false;
+    /* Finish the cache write safely, then honor Back/navigation without
+     * changing the selected ROM or launching the previously selected app. */
+    if (g_discard_io) return false;
+    if (result != 0 || !job.extracted[0]) {
       copy_text(g_install_status, sizeof(g_install_status), "No compatible ROM could be extracted from that ZIP.");
+      (void)g_svc->ui_call_sync(update_rom_picker_on_host, NULL, 1000);
       return false;
     }
-    copy_text(launch_path, sizeof(launch_path), extracted);
+    copy_text(launch_path, sizeof(launch_path), job.extracted);
   }
   if (g_svc->settings_rom_path_set == NULL) {
     copy_text(g_install_status, sizeof(g_install_status), "This firmware cannot save the ROM selection.");
@@ -7811,10 +7846,10 @@ static bool poll_controller(void)
   const int previous_action=g_open_index;
   const bool toolbar_was_active = g_toolbar_focus >= 0;
   if (g_rom_picker_active) {
-    if (up && !g_pad_last[PAX_INPUT_UP] && g_rom_picker_count > 0) {
+    if (!g_rom_prepare_busy && up && !g_pad_last[PAX_INPUT_UP] && g_rom_picker_count > 0) {
       g_rom_picker_selected = (g_rom_picker_selected + g_rom_picker_count - 1) % g_rom_picker_count;
       changed = true;
-    } else if (down && !g_pad_last[PAX_INPUT_DOWN] && g_rom_picker_count > 0) {
+    } else if (!g_rom_prepare_busy && down && !g_pad_last[PAX_INPUT_DOWN] && g_rom_picker_count > 0) {
       g_rom_picker_selected = (g_rom_picker_selected + 1) % g_rom_picker_count;
       changed = true;
     }
@@ -7825,7 +7860,7 @@ static bool poll_controller(void)
         g_rom_picker_first = g_rom_picker_selected - g_rom_picker_rows_shown + 1;
       (void)g_svc->ui_call_sync(update_rom_picker_on_host, NULL, 1000);
     }
-    if (a && !g_pad_last[PAX_INPUT_A] && g_rom_picker_count > 0) g_open_index = -60;
+    if (!g_rom_prepare_busy && a && !g_pad_last[PAX_INPUT_A] && g_rom_picker_count > 0) g_open_index = -60;
     if ((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3)
       g_open_index = -61;
   } else if (g_detail_index >= 0) {
@@ -8225,11 +8260,14 @@ static bool flush_metadata_updates(bool force)
 
 static void io_ui_pulse(void)
 {
-  static uint32_t last_ui,last_status,last_transfer;
+  static uint32_t last_ui,last_status,last_transfer,last_rom;
   if(!g_display)return;
   uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
   if((uint32_t)(now-last_ui)<16)return;
   last_ui=now;
+  if(g_rom_prepare_busy && (uint32_t)(now-last_rom)>=250){
+    (void)g_svc->ui_call_sync(update_rom_picker_on_host,NULL,1000);last_rom=now;
+  }
   if(g_transfer_busy && (uint32_t)(now-last_transfer)>=250){poll_install_status();last_transfer=now;}
   bool changed=poll_usb_keyboard();changed=poll_controller() || changed;
   const int wheel=__atomic_exchange_n(&g_mouse_wheel_pending,0,__ATOMIC_ACQ_REL);
@@ -8525,7 +8563,8 @@ int app_entry(const app_services_t *svc)
     const bool loading_detail=built_plain_list && !detail_mode && (chosen==-18 || chosen==-4);
     const bool retain_install=g_display && detail_mode && chosen==1 && g_detail_is_remote;
     const bool retain_page=g_display && !detail_mode && !g_rom_picker_active && chosen<=-3 && chosen!=-49;
-    if(!retain_install && !retain_page && !reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
+    const bool preparing_rom=g_rom_picker_active && chosen==-60;
+    if(!preparing_rom && !retain_install && !retain_page && !reuse_list_ui && !loading_detail)(void)svc->ui_call_sync(teardown_ui_on_host, NULL, 2000);
     if (g_rom_picker_active && chosen == -61) {
       g_rom_picker_active = false;
       wait_for_input_release();
@@ -8533,7 +8572,8 @@ int app_entry(const app_services_t *svc)
     }
     if (g_rom_picker_active && chosen == -60) {
       if (!rom_picker_set_selected_game()) {
-        g_rom_picker_active = false;
+        if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
+        /* Keep the picker and error visible so another ROM can be selected. */
         wait_for_input_release();
         continue;
       }
@@ -8931,6 +8971,7 @@ int app_entry(const app_services_t *svc)
     }
     break;
   }
+  if(g_display)(void)svc->ui_call_sync(teardown_ui_on_host,NULL,2000);
   if (g_background_pixels != NULL) {
     svc->mem_free(g_background_pixels);
     g_background_pixels = NULL;

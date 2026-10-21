@@ -16,6 +16,8 @@ class RomPickerTests(unittest.TestCase):
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <pthread.h>
+#include <unistd.h>
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "rom_profiles.h"
@@ -30,7 +32,29 @@ static int g_rom_picker_count,g_rom_picker_selected,g_rom_picker_first,g_rom_pic
 static bool g_rom_picker_rom_selected;
 static char g_rom_picker_paths[128][256],g_rom_picker_names[128][64],g_listing[4096],g_install_status[256];
 static char configured[256],sidecar_path[256],cache_name[64],filter[128];
-static int extracted,writes,fail_extract;
+static int extracted,writes,fail_extract,jobs,pulses;
+static bool busy,navigate,g_rom_prepare_busy;
+static uint64_t g_rom_prepare_started;
+static pthread_t worker_thread;
+static void (*worker_entry)(void *);
+static int g_open_index=-1;
+static void delay(int32_t ms){usleep(ms*1000);}
+static void *thread_entry(void *unused){(void)unused;worker_entry(NULL);return NULL;}
+static int32_t create(void (*fn)(void *),const char *name,uint32_t stack,void *arg,int32_t priority,void *out,int32_t core){
+ (void)name;(void)stack;(void)arg;(void)priority;(void)core;worker_entry=fn;
+ assert(!pthread_create(&worker_thread,NULL,thread_entry,NULL));*(void **)out=&worker_thread;return 0;
+}
+static void destroy(void *handle){assert(handle==&worker_thread);pthread_cancel(worker_thread);pthread_join(worker_thread,NULL);}
+#include "async_io.h"
+static void io_ui_pulse(void){pulses++;if(navigate && pulses==5)g_open_index=-61;}
+static bool mutations_busy(void){return busy;}
+static int update_rom_picker_on_host(void *unused){(void)unused;assert(!pthread_equal(pthread_self(),worker_thread));return 0;}
+static int ui(int (*fn)(void *),void *arg,uint32_t timeout){(void)timeout;assert(!pthread_equal(pthread_self(),worker_thread));return fn(arg);}
+static int64_t now(void){return 100;}
+static int run_action(int (*fn)(void *),void *arg,const char *message){
+ assert(g_rom_prepare_busy && strstr(message,"Preparing ROM"));jobs++;g_open_index=-1;pulses=0;
+ int result=io_run_committed(fn,arg);assert(pulses>10);return result;
+}
 static void copy_text(char *out,size_t n,const char *text){snprintf(out,n,"%s",text);}
 static void append_text(char *out,size_t n,const char *text){snprintf(out+strlen(out),n-strlen(out),"%s",text);}
 static bool extract_ends_with_ci(const char *name,const char *ext){size_t a=strlen(name),b=strlen(ext);return a>=b&&!strcasecmp(name+a-b,ext);}
@@ -40,17 +64,19 @@ static int list(const char *folder,char *out,int n){
  assert(n>(int)sizeof(entries));memcpy(out,entries,sizeof(entries));return 6;
 }
 static int zip(const char *path,const char *extensions,const char *folder,const char *stem,char *out,size_t n){
- (void)path;assert(!strcmp(folder,"/sd/roms/pax/.zipcache"));extracted++;
+ (void)path;assert(pthread_equal(pthread_self(),worker_thread));usleep(60000);assert(!strcmp(folder,"/sd/roms/pax/.zipcache"));extracted++;
  copy_text(cache_name,sizeof(cache_name),stem);copy_text(filter,sizeof(filter),extensions);
  snprintf(out,n,"/sd/roms/pax/.zipcache/%s.gbc",stem);return fail_extract?-1:0;
 }
-static void set(const char *path){copy_text(configured,sizeof(configured),path);}
+static void set(const char *path){assert(!pthread_equal(pthread_self(),worker_thread) && !g_discard_io);copy_text(configured,sizeof(configured),path);}
 static void *open_file(const char *path,const char *mode){assert(!strcmp(mode,"wb"));copy_text(sidecar_path,sizeof(sidecar_path),path);return &services;}
 static size_t write_file(const void *ptr,size_t size,size_t count,void *f){(void)ptr;(void)f;writes++;return size*count;}
 static int close_file(void *f){(void)f;return 0;}
 static int log_text(const char *text,...){(void)text;return 0;}
 """+routines+r"""
 int main(){
+ services.task_create=create;services.task_delete=destroy;services.delay_ms=delay;assert(io_start());
+ services.ui_call_sync=ui;services.get_time_us=now;
  services.file_list_dir=list;services.file_zip_extract_first=zip;services.settings_rom_path_set=set;
  services.file_open=open_file;services.file_write=write_file;services.file_close=close_file;services.log_printf=log_text;
  assert(pax_rom_profile_for_app("/sd/roms/pax/nes.pax"));
@@ -71,11 +97,15 @@ int main(){
  assert(strstr(g_rom_picker_paths[2],"still_be_selectable.GBC"));
  assert(!strcmp(g_rom_picker_paths[0],"/sd/roms/gb/game.GBC"));g_rom_picker_selected=1;
  assert(rom_picker_set_selected_game());assert(extracted==1);assert(!strcmp(filter,".gb|.gbc|"));assert(!strncmp(cache_name,"gb_",3));assert(!strcmp(sidecar_path,"/sd/roms/pax/gb.rom"));
+ int old_writes=writes;configured[0]=0;navigate=true;
+ assert(!rom_picker_set_selected_game() && !configured[0] && writes==old_writes && !g_rom_prepare_busy);
+ navigate=g_discard_io=false;busy=true;assert(!rom_picker_set_selected_game() && jobs==2);busy=false;
  fail_extract=1;configured[0]=0;assert(!rom_picker_set_selected_game());assert(!configured[0]);fail_extract=0;
  rom_picker_load_games("neogeo.pax");assert(g_rom_picker_count==2);assert(rom_picker_set_selected_game());
- assert(extracted==2);assert(!strcmp(configured,"/sd/roms/neogeo/set.ZIP"));assert(!strcmp(sidecar_path,"/sd/roms/pax/neogeo.rom"));
+ assert(extracted==3 && jobs==3);assert(!strcmp(configured,"/sd/roms/neogeo/set.ZIP"));assert(!strcmp(sidecar_path,"/sd/roms/pax/neogeo.rom"));
  rom_picker_load_games("nesplus.pax");assert(g_rom_picker_count==4);assert(strstr(g_rom_picker_paths[0],"/roms/nes/"));
  g_rom_picker_count=0;assert(!rom_picker_set_selected_game());
+ io_finish();assert(!g_io_task);
  return 0;
 }
 """
@@ -83,7 +113,7 @@ int main(){
         if not sdk.exists():sdk=ROOT/'esphome/components/pax_loader'
         with tempfile.TemporaryDirectory() as td:
             path=Path(td);(path/'test.c').write_text(harness)
-            subprocess.run(['cc','-std=gnu11','-Werror','-include','strings.h','-I'+str(sdk),'-I'+str(ROOT/'apps/launcher_ui'),str(path/'test.c'),'-o',str(path/'test')],check=True)
+            subprocess.run(['cc','-std=gnu11','-pthread','-Werror','-include','strings.h','-I'+str(sdk),'-I'+str(ROOT/'apps/launcher_ui'),str(path/'test.c'),'-o',str(path/'test')],check=True)
             subprocess.run([str(path/'test')],check=True)
 
     def test_profiles_match_active_emulator_formats(self):
