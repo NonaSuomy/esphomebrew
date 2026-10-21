@@ -16,4 +16,12 @@ with zipfile.ZipFile(root/'sd/pax-sd-starter.zip') as z:
  assert z.testzip() is None
  for name in ('launcher_ui','recipe'):
   for suffix in ('.pax','.json'):assert z.read('roms/pax/'+name+suffix)==(root/'sd'/(name+suffix)).read_bytes()
+for board in boards:
+ for key,relative in board.get('starters',{}).items():
+  assert key in {profile[0] for profile in board['profiles']}
+  archive=(root/relative).resolve();assert root.resolve() in archive.parents
+  with zipfile.ZipFile(archive) as z:
+   assert z.testzip() is None
+   for name in ('launcher_ui','recipe'):
+    for suffix in ('.pax','.json'):assert z.read('roms/pax/'+name+suffix)==(archive.parent/(name+suffix)).read_bytes()
 print('Validated '+str(len(keys))+' ESP32-P4 manifests, firmware hashes, flash kits and SD files')

@@ -34,11 +34,11 @@
   {
     "id": "nano",
     "title": "ESP32-P4-NANO",
-    "subtitle": "10.1-inch touchscreen or HDMI, C6 Wi-Fi or Ethernet",
+    "subtitle": "4.3-inch / 10.1-inch touchscreen or HDMI, C6 Wi-Fi or Ethernet",
     "photo": "https://docs.waveshare.com/assets/images/ESP32-P4-NANO-details-intro-23027e78f7ed1654d68fc7e5bdc4362a.webp",
-    "status": "Untested",
+    "status": "4.3-inch PAX tested",
     "experimental": true,
-    "note": "Select the display fitted to your NANO. The 10.1-inch JD9365/GT911 profile uses onboard C6 Wi-Fi and the panel I2C power controller at 0x45. HDMI profiles require the EBYTE ECA20-MHA1-I (GSV1172) with two-lane input and a correctly wired adapter. HDMI 720p/1080p use Ethernet; nano-wifi uses C6 Wi-Fi. Audio uses the board codec; HDMI audio is not configured. Chip revision: 0/1; production rev3 needs a separate build. All NANO profiles are untested.",
+    "note": "Select the display fitted to your NANO. The 10.1-inch JD9365/GT911 profile uses onboard C6 Wi-Fi and the panel I2C power controller at 0x45. HDMI profiles require the EBYTE ECA20-MHA1-I (GSV1172) with two-lane input and a correctly wired adapter. HDMI 720p/1080p use Ethernet; nano-wifi uses C6 Wi-Fi. Audio uses the board codec; HDMI audio is not configured. Chip revision: 0/1; production rev3 needs a separate build. The 4.3-inch Raspberry Pi DSI panel uses one 800Mbps lane, continuous HS clock and FT5x06 touch at 100kHz; the PAX launcher picture was verified on rev1.0 with double-buffered RGB888 output. PAX display, physical launcher button taps, SD read/write, Ethernet and the native 800x480 launcher were verified. The profile uses active-low SD power and 3.3V LDO4 passthrough. C6 Wi-Fi, USB input and audible output remain untested. Other NANO profiles remain untested.",
     "profiles": [
       [
         "nano720",
@@ -55,9 +55,16 @@
       [
         "nano-lcd101",
         "10.1-inch touchscreen, 1280 x 800, C6 Wi-Fi (untested)"
+      ],
+      [
+        "nano-lcd43",
+        "4.3-inch Raspberry Pi DSI, 800 x 480"
       ]
     ],
-    "manufacturer": "Waveshare"
+    "manufacturer": "Waveshare",
+    "starters": {
+      "nano-lcd43": "sd/releases/20261021/pax-sd-starter.zip"
+    }
   },
   {
     "id": "module-devkit",
