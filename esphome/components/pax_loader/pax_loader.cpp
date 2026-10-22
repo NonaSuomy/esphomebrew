@@ -11319,6 +11319,9 @@ bool PaxLoader::begin_web_transfer() {
 }
 
 void PaxLoader::end_web_transfer() {
+  // Starter downloads share the loader's progress panel. The last file can
+  // finish with active=true; clear it before handing the screen back.
+  this->set_progress_(false, 0, 0, "%s", "");
   this->web_storage_busy_ = false;
   this->refresh_catalog();
 }
