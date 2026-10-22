@@ -19,6 +19,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: SD setup progress completion regressions
+        run: |
+          python esphome/tests/test_web_transfer_progress.py
+          node esphome/tests/test_web_progress.cjs
       - run: pip install esphome==2026.8.2
       # Validates the store page package and the pax_loader schema, then
       # generates C++ so lambdas are checked against the real widget types.

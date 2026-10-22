@@ -12,7 +12,7 @@ if(typeof document!=="undefined"){
 const $=id=>document.getElementById(id),token=document.querySelector('meta[name="pax-token"]').content;
 let busy=false,chosen=[],queue=[];
 const message=text=>$("status").textContent=text;
-function lock(value){busy=value;["starter","upload","close","files","folder","destination","replace","store-install"].forEach(id=>$(id).disabled=value);}
+function lock(value){busy=value;$("progress").hidden=!value;if(value)$("progress").value=0;["starter","upload","close","files","folder","destination","replace","store-install"].forEach(id=>$(id).disabled=value);}
 function preview(){queue=[];$("preview").replaceChildren();try{for(const file of chosen){if(file.size>1073741824)throw Error("File exceeds 1 GiB: "+file.name);const path=paxTarget($("destination").value,file.webkitRelativePath||file.name);queue.push({file,path});const li=document.createElement("li");li.textContent=path.slice(3)+" ("+file.size.toLocaleString()+" bytes)";$("preview").append(li);}const seen=new Set();for(const item of queue){const key=item.path.toLowerCase();if(seen.has(key))throw Error("Duplicate SD path: "+item.path);seen.add(key);}}catch(error){queue=[];message(error.message);}}
 $("files").addEventListener("change",()=>{chosen=Array.from($("files").files);$("folder").value="";preview();});$("folder").addEventListener("change",()=>{chosen=Array.from($("folder").files);$("files").value="";preview();});$("destination").addEventListener("input",preview);
 async function command(path){const response=await fetch(path,{method:"POST",headers:{"X-PAX-Token":token}});const text=await response.text();if(!response.ok)throw Error(text);return text;}

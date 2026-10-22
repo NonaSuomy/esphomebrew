@@ -25,7 +25,7 @@ This source package targets Linux x86_64 (or Ubuntu in WSL2, with USB passed thr
    ./pax-tools/build-firmware.sh upload elecrow --device 192.168.0.241
    ```
    Replace the IP with **your board's** address. Both serial and OTA are supported. `upload` sends the most recent build; `run` compiles and uploads together. A factory image is for initial serial installation; the normal firmware image is for OTA. Private and Wi-Fi builds are kept under `pax-dev/firmware-local/<yaml-name>/`; Ethernet builds use `pax-dev/firmware/<yaml-name>/`. Public installer staging separately verifies the complete configuration and binary for private credentials.
-7. Format an SD card FAT32; copy the **contents** of `sd-card/` to its root. This creates `/roms/pax/launcher_ui.pax` and its JSON metadata, plus `recipe.pax`. Insert it, reboot, then select Storage to launch the UI. Additional apps and legitimate data files can be installed through the store and Recipe. No game ROMs, ISOs, keys or copyrighted game assets are included.
+7. Format an SD card FAT32; copy the **contents** of `sd-card/` to its root. This creates `/roms/pax/launcher_ui.pax` and its JSON metadata, plus `recipe.pax` and `/backgrounds/bluegamingbackground1024x600.png`. Insert it, reboot, then select Storage to launch the UI. Additional apps and legitimate data files can be installed through the store and Recipe. No game ROMs, ISOs, keys or copyrighted game assets are included.
 8. To serve the included launcher from your computer:
    ```sh
    ./pax-tools/serve-dev.sh 8000
@@ -42,7 +42,7 @@ ESP32-P4 has no built-in radio. Its ESP32-C6 must already run compatible ESP-Hos
 
 ## Browser installation and public firmware
 
-Open https://nonasuomy.github.io/esphomebrew/install/ in a desktop browser with Web Serial support. Select your exact board/display, connect its programming USB port, acknowledge the hardware-test status, then click Connect & install. Public Wi-Fi builds use Improv Serial provisioning and a temporary setup hotspot; they contain no station credentials. The C6 still requires compatible ESP-Hosted firmware. Dual-network boards prefer Ethernet DHCP and automatically fall back to provisioned Wi-Fi. Both interfaces remain enabled. Download the SD starter or the selected board flash kit on that page.
+Open https://nonasuomy.github.io/esphomebrew/install/ in a desktop browser with Web Serial support. Select your exact board/display, connect its programming USB port, acknowledge the hardware-test status, then click Connect & install. Public Wi-Fi builds use Improv Serial provisioning and a temporary setup hotspot; they contain no station credentials. The C6 still requires compatible ESP-Hosted firmware. Dual-network boards prefer Ethernet DHCP and automatically fall back to provisioned Wi-Fi. Both interfaces remain enabled. Download the SD starter or the selected board flash kit on that page. Copy both `roms/` and `backgrounds/` to the SD root. The blue gaming background is selected automatically on a new card; existing background preferences, including None, are respected. The device SD starter downloads the same image with size and SHA-256 verification. Its progress panel clears when the transfer finishes, and the browser keeps the completion or error message visible.
 
 To rebuild the public installer locally:
 ```sh
