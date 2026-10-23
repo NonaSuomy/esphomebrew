@@ -96,6 +96,12 @@ def bootstrap():
             (destination / 'version.txt').write_text('v' + item['version'] + '\n')
         # Write after each dependency so an interrupted second checkout remains clear.
         write(stamp, receipts)
+    # The upstream IDF checkout lacks PlatformIO's package manifest. The local
+    # tested framework had this generated file outside Git; reproduce it here.
+    write(WORK / 'esp-idf/package.json', {
+        'name': 'framework-espidf', 'version': spec['esp_idf']['version'],
+        'description': 'Pinned patched ESP-IDF for PAX device builds',
+        'keywords': ['framework', 'esp32', 'esp32p4'], 'license': 'Apache-2.0'})
     print('Pinned ESPHome and ESP-IDF sources ready')
 
 def environment():

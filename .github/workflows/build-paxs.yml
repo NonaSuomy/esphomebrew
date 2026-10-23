@@ -3,6 +3,7 @@ name: Build PAXs
 on:
   push:
     branches: [main]
+    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", ".github/workflows/build-paxs.yml"]
   pull_request:
   workflow_dispatch:
 
@@ -22,7 +23,9 @@ jobs:
         with:
           path: .cache
           key: pax-sources-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py') }}
-          restore-keys: pax-sources-
+          restore-keys: |
+            pax-sources-
+            papp-sources-
 
       - name: Build every app
         shell: bash
