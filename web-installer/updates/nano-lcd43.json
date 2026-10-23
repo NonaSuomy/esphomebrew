@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 39981751824,
-  "source_commit": "ac5590b3969302362834254678dd24076366275e",
+  "build_id": 40003346781,
+  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,6 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-nano-lcd43.ota.bin",
-  "bytes": 2080304,
-  "sha256": "e23ebc4ed25d8349b0f4bfdf6bf9e65c90064dd5fec7f028abde8ca9ccf7a183"
+  "bytes": 2080832,
+  "sha256": "571e61493dc09a6484979660b2a1f5826bff6ced6345a3e0b1c99e6fb5124590"
 }

@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 39981751824,
-  "source_commit": "ac5590b3969302362834254678dd24076366275e",
+  "build_id": 40003346781,
+  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,6 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-tab5.ota.bin",
-  "bytes": 2038448,
-  "sha256": "6ca3ef4ac7d71afc1da92bd86b42fcf4ceeddf3e93939f15eda127e4096f5a41"
+  "bytes": 2038960,
+  "sha256": "e3ec3bbcbeaa39ce59f070d9eac7e8d950803a91e8f22732632686b9a0e391e8"
 }

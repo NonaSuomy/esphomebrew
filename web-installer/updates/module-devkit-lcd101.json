@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 39981751824,
-  "source_commit": "ac5590b3969302362834254678dd24076366275e",
+  "build_id": 40003346781,
+  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,6 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-module-devkit-lcd101.ota.bin",
-  "bytes": 2081856,
-  "sha256": "cc4f00b2e6a2f0d6d3e97cb2467791dfdc0bb0061a345365d04af1b7fac8f8ef"
+  "bytes": 2082496,
+  "sha256": "ad0ad5b95ff2931454e1b1bb6823d2596adbe1ad0e0572e77c77daa049842378"
 }

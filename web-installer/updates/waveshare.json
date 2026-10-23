@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 39981751824,
-  "source_commit": "ac5590b3969302362834254678dd24076366275e",
+  "build_id": 40003346781,
+  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,6 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-waveshare.ota.bin",
-  "bytes": 2039968,
-  "sha256": "169007d15c5e2dafb5df63fecd48ceace2a89ca86864e5ca671cea9dc747e41e"
+  "bytes": 2040480,
+  "sha256": "171676cb8061a57720400ffa6ec7d4d2593f6f9a7840095e26b99d9a8f4d709d"
 }

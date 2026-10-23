@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 39981751824,
-  "source_commit": "ac5590b3969302362834254678dd24076366275e",
+  "build_id": 40003346781,
+  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,6 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-m3-hdmi720.ota.bin",
-  "bytes": 2055488,
-  "sha256": "97b2ee8fd820da3c0e9e50b9065dcd9895331992e5c9d61ff34dc5d868532b2a"
+  "bytes": 2056144,
+  "sha256": "cb21557fb9d1ee3d2fe89e4c16c7a7839aff8556cd5250b7d54265ffe31a93a5"
 }

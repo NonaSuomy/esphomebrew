@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 39981751824,
-  "source_commit": "ac5590b3969302362834254678dd24076366275e",
+  "build_id": 40003346781,
+  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,6 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-nano1080.ota.bin",
-  "bytes": 2062224,
-  "sha256": "4fcb8cace8eac88ad879bc4cb0a6289632588214d46f9ce7fa140e389ca19d8b"
+  "bytes": 2062864,
+  "sha256": "b5faa08cf9845197bd1c0bcce3c8b66aea6533e58af4a6d2b68ab36d5cb52181"
 }
