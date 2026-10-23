@@ -120,4 +120,27 @@ int main(){
             path=Path(folder);(path/'test.cpp').write_text(code)
             subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(path/'test.cpp'),'-o',str(path/'test')],check=True)
             subprocess.run([str(path/'test')],check=True)
+    def test_network_preflight_uses_active_dns_before_starting_worker(self):
+        source=(ROOT/'components/pax_loader/pax_loader.cpp').read_text()
+        start=source.index('bool PaxLoader::request_firmware_update(')
+        method=source[start:source.index('\n}',start)+2]
+        code=r'''#include <cassert>
+#include <cstdio>
+#include "pax_firmware_update.h"
+int restored=0;
+bool restore_active_dns_if_missing_(){restored++;return true;}
+namespace pax_c6 {bool busy(){return false;}}
+namespace pax_firmware {FILE *open(const char *){assert(restored==1);return tmpfile();}}
+struct PaxLoader {bool install_task_handle_=false,web_storage_busy_=false;bool request_firmware_update(uint32_t,uint64_t);};
+'''+method+r'''
+int main(){PaxLoader loader;assert(loader.request_firmware_update(PAX_FIRMWARE_CHECK,0));
+ loader.web_storage_busy_=true;assert(!loader.request_firmware_update(PAX_FIRMWARE_CHECK,0));assert(restored==1);}
+'''
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder);(path/'test.cpp').write_text(code)
+            subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror','-I'+str(ROOT/'components/pax_loader'),str(path/'test.cpp'),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True)
+        start=source.index('void *PaxLoader::svc_file_open(')
+        prefix=source[start:source.index('PAX_C6_UPDATE_FILE',start)]
+        self.assertLess(prefix.index('restore_active_dns_if_missing_'),prefix.index('pax_firmware::open'))
 if __name__=='__main__': unittest.main()
