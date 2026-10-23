@@ -327,6 +327,9 @@ esp32:
       CONFIG_SPIRAM_XIP_FROM_PSRAM: "y"
       CONFIG_ESP32_SPIRAM_SUPPORT: "y"
       CONFIG_SPIRAM_USE_MALLOC: "y"
+      # Keep ordinary file/network buffers in PSRAM; peripheral DMA and
+      # explicitly internal allocations still use the internal heap.
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "1024"
       CONFIG_SPIRAM_SPEED_200M: "y"
       CONFIG_SPIRAM_SPEED: "200"
       CONFIG_FATFS_LFN_HEAP: "y"

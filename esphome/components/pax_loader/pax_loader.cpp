@@ -45,6 +45,7 @@
 #include "esp_mmu_map.h"
 #include "esp_vfs_fat.h"
 #include "driver/ppa.h"
+#include "pax_jpeg.h"
 #if CONFIG_MBEDTLS_CERTIFICATE_BUNDLE
 #include "esp_crt_bundle.h"
 #endif
@@ -627,6 +628,7 @@ static void close_pax_files() {
   }
 }
 static void release_pax_resources() {
+  jpeg_accelerator.reset();
   portENTER_CRITICAL(&pax_ownership_mux);
   auto *blocks=pax_allocations.detach();
   portEXIT_CRITICAL(&pax_ownership_mux);
@@ -1708,6 +1710,7 @@ void PaxLoader::apply_canvas_(int width, int height, bool blank_panel) {
                   ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_INVALIDATE);
   this->direct_frame_[2] = 0;  // the direct path clears its border again
   this->last_frame_direct_ = false;
+  this->native_rgb888_frame_ = nullptr;
   if (blank_panel && this->display_ != nullptr) {
     // A full-panel clear (or another full-canvas PAX) may have changed either
     // DSI scanout buffer since it was last initialized. Do not trust the
@@ -5837,6 +5840,7 @@ void PaxLoader::flush_framebuffer_() {
     const size_t bytes = canvas::sync_bytes(size_t(dirty.w) * dirty.h * sizeof(uint16_t), this->frame_alloc_bytes_);
     esp_cache_msync(this->rotated_framebuffer_, bytes, ESP_CACHE_MSYNC_FLAG_DIR_C2M);
     this->last_frame_direct_ = false;
+  this->native_rgb888_frame_ = nullptr;
     ++this->pax_frame_count_;
     this->send_display_buffer_(this->rotated_framebuffer_, start,
         this->geometry_.raw_x() + this->geometry_.canvas_w - dirty.x - dirty.w,
@@ -5873,6 +5877,7 @@ void PaxLoader::flush_framebuffer_() {
   const int64_t transform_start_us = esp_timer_get_time();
   const uint16_t *display_buffer = this->rotated_framebuffer_;
   this->last_frame_direct_ = false;
+  this->native_rgb888_frame_ = nullptr;
   bool ppa_ok = false;
   bool panel_frame_buffer = false;
   uint16_t *panel_back_buffer = nullptr;
@@ -6345,7 +6350,16 @@ bool PaxLoader::capture_screenshot(uint16_t *&copy, uint16_t &width, uint16_t &h
     const size_t frame_bytes = canvas::frame_bytes(canvas_w, canvas_h);
     copy = static_cast<uint16_t *>(heap_caps_malloc(frame_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
     if (copy != nullptr) {
-      if (this->last_frame_direct_) {
+      if (this->native_rgb888_frame_ != nullptr) {
+        const int left = this->geometry_.x(), top = this->geometry_.y();
+        for (int y = 0; y < canvas_h; ++y) {
+          const uint8_t *row = this->native_rgb888_frame_ +
+              (size_t(y + top) * this->geometry_.panel_w + left) * 3;
+          for (int x = 0; x < canvas_w; ++x)
+            copy[size_t(y) * canvas_w + x] = uint16_t((row[x * 3 + 2] >> 3) << 11) |
+                uint16_t((row[x * 3 + 1] >> 2) << 5) | (row[x * 3] >> 3);
+        }
+      } else if (this->last_frame_direct_) {
         // The direct PPA path keeps only the turned/rotated visible rectangle
         // in ppa_framebuffer_. Rebuild the logical canvas for screenshots,
         // including its black letterbox, without reading outside the compact
@@ -6721,6 +6735,30 @@ void PaxLoader::render_custom_(const uint16_t *buffer, uint16_t in_w, uint16_t i
   };
   fit();
 
+  this->native_rgb888_frame_ = nullptr;
+  // Native RGB888 panels can scale/convert into the scanout back buffer in
+  // one PPA pass, avoiding both legacy rotations and intermediate copies.
+  if (this->native_mipi_dsi_ != nullptr && ppa_size_exact && !byte_swap &&
+      !this->control_overlay_rendered_ && !this->control_overlay_repaint_pending_ &&
+      !this->game_menu_open_ && !this->stream_client_connected_) {
+    if (this->display_mutex_ != nullptr)
+      xSemaphoreTakeRecursive(this->display_mutex_, portMAX_DELAY);
+    fit();
+    const bool sent = this->native_mipi_dsi_->draw_scaled_rgb565(
+        this->geometry_.x() + x0, this->geometry_.y() + y0, out_w, out_h, buffer, in_w, in_h,
+        &this->native_rgb888_frame_);
+    if (sent) {
+      ++this->pax_frame_count_;
+      this->last_frame_direct_ = false;
+    }
+    if (this->display_mutex_ != nullptr)
+      xSemaphoreGiveRecursive(this->display_mutex_);
+    if (sent) {
+      this->log_render_time_(render_start_us, in_w, in_h, scale);
+      return;
+    }
+  }
+
   // Fast path: one PPA pass scales the frame, turns it 180 degrees for the
   // panel and writes only the visible rectangle into ppa_framebuffer_. The
   // panel then receives that rectangle instead of the old canvas-sized
@@ -6902,6 +6940,10 @@ void PaxLoader::log_render_time_(int64_t render_start_us, uint16_t in_w, uint16_
              static_cast<long long>(render_total_us / render_frames),
              static_cast<long long>(render_worst_us), static_cast<long long>(render_us),
              static_cast<unsigned>(in_w), static_cast<unsigned>(in_h), scale);
+    ESP_LOGI(TAG, "PAX native path: configured=%d used=%d overlay=%d repaint=%d menu=%d recorder=%d",
+             this->native_mipi_dsi_ != nullptr, this->native_rgb888_frame_ != nullptr,
+             this->control_overlay_rendered_, this->control_overlay_repaint_pending_,
+             this->game_menu_open_, this->stream_client_connected_);
     render_frames = 0;
     render_total_us = 0;
     render_worst_us = 0;
@@ -7463,13 +7505,18 @@ int PaxLoader::read_touch_(int *x, int *y) {
 void PaxLoader::audio_init_(int sample_rate) {
   if (this->speaker_ == nullptr || sample_rate <= 0)
     return;
-  if (this->audio_sample_rate_ != sample_rate) {
+  const bool rate_changed = this->audio_sample_rate_ != sample_rate;
+  if (rate_changed) {
     this->audio_sample_rate_ = sample_rate;
     this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, 2, sample_rate));
     ESP_LOGI(TAG, "PAX audio initialized: %d Hz stereo 16-bit", sample_rate);
   }
   this->speaker_->set_mute_state(this->game_menu_open_ || this->master_volume_ == 0);
   this->speaker_->set_volume(static_cast<float>(this->master_volume_) / 100.0f);
+  // Repeated app initialization must not restart a healthy audio chain.
+  // A stopped chain still needs start(), including after a long silence.
+  if (!rate_changed && this->speaker_->is_running())
+    return;
   // The speaker's I2S channel and DMA buffers are allocated from internal
   // DMA-capable RAM as it starts: what is left for them.
   log_heap("as the app starts audio");
@@ -7619,6 +7666,10 @@ void PaxLoader::update_hardware_() {
     auto *output=this->hardware_[command.index].output;
     if(output)output->make_call().set_value(command.value).perform();
   }
+}
+int PaxLoader::svc_jpeg_decode_rgb565(const uint8_t *data, uint32_t size, uint16_t *out,
+                                      uint32_t capacity, int width, int height, int stride) {
+  return jpeg_accelerator.decode(data, size, out, capacity, width, height, stride);
 }
 int PaxLoader::svc_hardware_count() {return active_?active_->hardware_.size():0;}
 int PaxLoader::svc_hardware_info(int index,pax_hardware_info_t *out) {
@@ -10007,6 +10058,7 @@ void PaxLoader::populate_services(app_services_t *services) {
   services->net_tcp_recv = &PaxServiceGate<&PaxLoader::svc_net_tcp_recv>::call;
   services->net_poll = &PaxServiceGate<&PaxLoader::svc_net_poll>::call;
   services->net_resolve = &PaxServiceGate<&PaxLoader::svc_net_resolve>::call;
+  services->jpeg_decode_rgb565 = &PaxServiceGate<&PaxLoader::svc_jpeg_decode_rgb565>::call;
   services->hardware_count = &PaxServiceGate<&PaxLoader::svc_hardware_count>::call;
   services->hardware_info = &PaxServiceGate<&PaxLoader::svc_hardware_info>::call;
   services->hardware_read = &PaxServiceGate<&PaxLoader::svc_hardware_read>::call;

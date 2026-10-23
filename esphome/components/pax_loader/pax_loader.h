@@ -169,6 +169,19 @@ class PaxLoader : public Component {
     ESP_LOGI("pax_loader", "Launch requested from menu: %s", path.c_str());
   }
   void request_launch_url(const std::string &url) { this->request_launch(url); }
+  // Remote app arguments use the same hand-off ABI as the launcher, without
+  // adding a return chain. Runs on the ESPHome main loop like request_launch.
+  void request_launch_with_arg(const std::string &path, const std::string &arg) {
+    if (arg.size() >= PAX_APP_ARG_MAX || this->launched_ || this->launch_pending_ || this->web_storage_busy_)
+      return;
+    this->request_launch(path);
+    if (!this->launch_pending_) return;
+    if (this->handoff_mutex_) xSemaphoreTake(this->handoff_mutex_, portMAX_DELAY);
+    this->chain_.reset();
+    this->next_arg_ = arg;
+    this->chain_launch_ = true;
+    if (this->handoff_mutex_) xSemaphoreGive(this->handoff_mutex_);
+  }
   // Select a local emulator PAX and a ROM/game path from ESPHome's native API
   // or a template text entity. The ROM path must be under /sd or /usb0; the
   // loader stores it in the shared PAX setting before starting the emulator.
@@ -256,6 +269,7 @@ class PaxLoader : public Component {
   }
   void set_display(display::Display *display) { this->display_ = display; }
   void set_mipi_dsi(mipi_dsi::MIPI_DSI *display) { this->mipi_dsi_ = display; }
+  void set_native_mipi_dsi(mipi_dsi::MIPI_DSI *display) { this->native_mipi_dsi_ = display; }
   void set_touchscreen(touchscreen::Touchscreen *touchscreen) { this->touchscreen_ = touchscreen; }
   void set_speaker(speaker::Speaker *speaker) { this->speaker_ = speaker; }
   // Master output volume shared by every PAX. The value is a percentage and
@@ -456,6 +470,8 @@ class PaxLoader : public Component {
   static void svc_display_write_frame_custom(const uint16_t *buffer, uint16_t in_w, uint16_t in_h,
                                              float scale, bool byte_swap);
   static void svc_display_write_rect(int x, int y, int w, int h, const uint16_t *data);
+  static int svc_jpeg_decode_rgb565(const uint8_t *data, uint32_t size, uint16_t *out,
+                                    uint32_t capacity, int width, int height, int stride);
   static int svc_hardware_count();
   static int svc_hardware_info(int index,pax_hardware_info_t *out);
   static int svc_hardware_read(const char *name,float *value);
@@ -765,6 +781,8 @@ class PaxLoader : public Component {
   std::string path_;
   display::Display *display_{nullptr};
   mipi_dsi::MIPI_DSI *mipi_dsi_{nullptr};
+  mipi_dsi::MIPI_DSI *native_mipi_dsi_{nullptr};
+  const uint8_t *native_rgb888_frame_{nullptr};
   touchscreen::Touchscreen *touchscreen_{nullptr};
   speaker::Speaker *speaker_{nullptr};
 #ifdef PAX_LOADER_USE_LVGL

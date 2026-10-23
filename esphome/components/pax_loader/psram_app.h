@@ -715,6 +715,13 @@ typedef struct {
      * firmware. Returns 0 on success, -1 for invalid/short output, -2 until
      * wall-clock time is synchronized. Uses the same timezone as local_time. */
     int (*device_date_get)(char *out, uint32_t capacity);
+    /* Optional P4 JPEG accelerator. Decode baseline JPEG into RGB565 LE.
+     * width/height must match the encoded image; stride is bytes per row.
+     * capacity includes all output rows. Returns 0 on success, negative on
+     * unsupported image, invalid dimensions, allocation or hardware failure.
+     * The loader owns/caches DMA buffers and reclaims them on app exit. */
+    int (*jpeg_decode_rgb565)(const uint8_t *data, uint32_t size, uint16_t *out,
+                              uint32_t capacity, int width, int height, int stride);
 } app_services_t;
 
 /* Relative HID movement is already in the visible direction. The loader's

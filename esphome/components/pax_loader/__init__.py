@@ -324,6 +324,7 @@ async def to_code(config):
     # esp_http_client is intentionally omitted from ESPHome's default P4
     # component set. Pull it in here because network PAX loading uses it
     # directly, and enable the IDF TLS component for HTTPS URLs.
+    esp32.include_builtin_idf_component("esp_driver_jpeg")
     esp32.include_builtin_idf_component("esp_http_client")
     esp32.include_builtin_idf_component("esp-tls")
     # ESPHome renamed this helper between releases. Either variant enables

@@ -81,4 +81,5 @@ esphome:
         - lambda: |-
             static esphome::pax_native::NativePanel panel(id(main_display));
             id(pax_runtime)->set_mipi_dsi(nullptr);
+            id(pax_runtime)->set_native_mipi_dsi(id(main_display));
             id(pax_runtime)->set_display(&panel);

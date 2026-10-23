@@ -1,0 +1,38 @@
+diff --git a/config/components/i2s_audio/speaker/i2s_audio_speaker.cpp b/config/components/i2s_audio/speaker/i2s_audio_speaker.cpp
+index a996702f8..d195c65b4 100644
+--- a/config/components/i2s_audio/speaker/i2s_audio_speaker.cpp
++++ b/config/components/i2s_audio/speaker/i2s_audio_speaker.cpp
+@@ -20,7 +20,13 @@
+ namespace esphome {
+ namespace i2s_audio {
+ 
++#ifdef USE_ESP32_VARIANT_ESP32P4
++// Four 5 ms DMA buffers leave internal RAM for P4 image accelerators. The
++// larger PSRAM ring still absorbs producer jitter.
++static const uint32_t DMA_BUFFER_DURATION_MS = 5;
++#else
+ static const uint32_t DMA_BUFFER_DURATION_MS = 15;
++#endif
+ static const size_t DMA_BUFFERS_COUNT = 4;
+ 
+ static const size_t TASK_STACK_SIZE = 4096;
+@@ -331,7 +337,7 @@ void I2SAudioSpeaker::speaker_task(void *params) {
+       if (this_speaker->pause_state_) {
+         // Pause state is accessed atomically, so thread safe
+         // Delay so the task yields, then skip transferring audio data
+-        vTaskDelay(pdMS_TO_TICKS(DMA_BUFFER_DURATION_MS));
++        vTaskDelay(std::max<TickType_t>(1, pdMS_TO_TICKS(DMA_BUFFER_DURATION_MS)));
+         continue;
+       }
+ 
+@@ -390,7 +396,9 @@ void I2SAudioSpeaker::speaker_task(void *params) {
+         if (stop_gracefully && tx_dma_underflow) {
+           break;
+         }
+-        vTaskDelay(pdMS_TO_TICKS(DMA_BUFFER_DURATION_MS / 2));
++        // Sub-tick DMA periods must still block; a zero delay only yields
++        // and lets this high-priority task starve image presentation.
++        vTaskDelay(std::max<TickType_t>(1, pdMS_TO_TICKS(DMA_BUFFER_DURATION_MS / 2)));
+       } else {
+         size_t bytes_written = 0;
+ #ifdef USE_I2S_LEGACY
