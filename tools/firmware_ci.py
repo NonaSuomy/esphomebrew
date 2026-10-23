@@ -105,7 +105,8 @@ def bootstrap():
     print('Pinned ESPHome and ESP-IDF sources ready')
 
 def environment():
-    return dict(PYTHONPATH=str(FW / 'dependencies/esphome'),
+    return dict(PYTHONPATH=os.pathsep.join([str(CI), str(FW / 'dependencies/esphome'),
+                str(WORK / 'platformio/tools/tool-esptoolpy')]),
                 PAX_IDF_SOURCE='symlink://' + str(WORK / 'esp-idf'),
                 PAX_IDF_COMPAT='pre:' + str(FW / 'tools/idf61_compat.py'),
                 PLATFORMIO_CORE_DIR=str(WORK / 'platformio'),
