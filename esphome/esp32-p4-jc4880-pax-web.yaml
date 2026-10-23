@@ -1,0 +1,37 @@
+# Experimental public PAX profile. Hardware testing pending.
+substitutions:
+  device_name: pax-jc4880
+  friendly_name: PAX jc4880
+  launcher_network_url: http://192.168.1.2:8000/launcher_ui.pax
+  launcher_github_url: https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax
+  pointer_dimensions: (480, 800)
+  panel_width: '480'
+  panel_height: '800'
+  canvas_width: '480'
+  canvas_height: '600'
+  button_width: '360'
+  button_height: '150'
+  storage_x: '60'
+  network_x: '60'
+  github_x: '60'
+  storage_y: '135'
+  network_y: '325'
+  github_y: '515'
+
+packages:
+  pax_base: !include packages/pax-base.yaml
+  hardware: !include boards/guition/jc4880.yaml
+  pax_audio: !include packages/pax-audio.yaml
+  pax_backlight: !include packages/pax-backlight.yaml
+
+esphome:
+  name_add_mac_suffix: true
+  project:
+    name: nonasuomy.pax
+    version: "2026.10.11"
+
+wifi:
+  ap:
+    ssid: "PAX jc4880 Setup"
+    password: "pax-setup"
+captive_portal:

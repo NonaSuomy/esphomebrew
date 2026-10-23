@@ -1,0 +1,21 @@
+# Shared brightness control; board supplies display_backlight.
+number:
+  - platform: template
+    name: "PAX Display Brightness"
+    id: pax_display_brightness
+    internal: true
+    min_value: 5
+    max_value: 100
+    step: 5
+    initial_value: 100
+    restore_value: true
+    optimistic: true
+    on_value:
+      - light.turn_on:
+          id: display_backlight
+          brightness: !lambda return x / 100.0f;
+
+
+
+pax_loader:
+  brightness_number: pax_display_brightness

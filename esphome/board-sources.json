@@ -1,0 +1,94 @@
+{
+  "format": 1,
+  "retrieved": "2026-10-11",
+  "examples": {
+    "repository": "https://github.com/jtenniswood/esphome-lvgl",
+    "commit": "66977d45b8882f5ebe321d1f010292e397db83f1",
+    "boards": [
+      "guition-esp32-p4-jc8012p4a1",
+      "guition-esp32-p4-jc4880p443",
+      "guition-esp32-p4-jc1060p470",
+      "waveshare-esp32-p4-wifi6-touch-lcd-4b"
+    ]
+  },
+  "vendors": {
+    "waveshare": {
+      "repository": "https://github.com/waveshareteam/Waveshare-ESP32-components",
+      "commit": "30d0ac3b8b6b27ebd402c5852819cbe0dab92749"
+    },
+    "tab5": {
+      "repository": "https://github.com/m5stack/M5Tab5-UserDemo",
+      "commit": "b4e356bc491ca070d54004718dad789c07d5fc93"
+    },
+    "guition-schematics": {
+      "repository": "https://github.com/p1ngb4ck/unofficial_guition_esp32p4_repo",
+      "commit": "89b928eec1dcbc5600d3e84fb48edff8e4f762c4"
+    },
+    "espressif": {
+      "repository": "https://github.com/espressif/esp-bsp",
+      "commit": "f259a6abd5808019b1903a422092a4234ca95a51"
+    },
+    "olimex": {
+      "repository": "https://github.com/OLIMEX/ESP32-P4-DevKit",
+      "commit": "26705d36407a07324348927dfd30fbf4ffc1d94c"
+    },
+    "esp-dev-kits": {
+      "repository": "https://github.com/espressif/esp-dev-kits",
+      "commit": "6f4b0f6ef304d76246325e9a9f94c1ddad8ed39c"
+    }
+  },
+  "references": [
+    "https://devices.esphome.io/devices/waveshare-esp32-p4-nano/",
+    "https://devices.esphome.io/devices/waveshare-esp32-p4-eth/",
+    "https://devices.esphome.io/devices/m5stack-tab5/",
+    "https://devices.esphome.io/devices/guition-esp32-p4-m3-dev/",
+    "https://docs.waveshare.com/ESP32-P4-WIFI6-Touch-LCD-4B",
+    "https://docs.waveshare.com/ESP32-P4-ETH",
+    "https://github.com/ultramcu/guition-jc4880p4-bsp",
+    "https://wiki.dfrobot.com/dfr1172/",
+    "https://dfimg.dfrobot.com/wiki/21103/DFR1172_firebeetle-esp32-p4r32-development-board_schematics_V1.0.pdf",
+    "https://www.olimex.com/Products/IoT/ESP32-P4/ESP32-P4-DevKit/open-source-hardware",
+    "https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32p4/esp32-p4-function-ev-board/user_guide.html",
+    "https://docs.waveshare.com/ESP32-P4-Module-DEV-KIT",
+    "https://files.waveshare.com/wiki/ESP32-P4-Module-DEV-KIT/ESP32-P4-Module-DEV-KIT.pdf"
+  ],
+  "notes": [
+    "ETH uses vendor-confirmed 32MB flash, not the 16MB example.",
+    "JC4880 SD LDO4 uses passthrough; GPIO45 is not populated in the reference schematic.",
+    "Bare ETH and M3 profiles explicitly require the ECA20-MHA1-I HDMI bridge, not an unspecified DSI panel.",
+    "4B SDIO Wi-Fi follows the supplied example; vendor documentation has a conflicting signal summary, so hardware confirmation is required.",
+    "Tab5 profile targets the original ILI9881C/GT911 revision only.",
+    "JC8012 GSL3680 source is pinned in components/gsl3680/UPSTREAM.json.",
+    "Espressif Function EV v1.5.2 with supplied 7-inch EK79007/GT911; P4X rev3 is separate.",
+    "Olimex profile follows PCB rev D1 and iperf sdkconfig: IP101 PHY address1, no Wi-Fi or codec.",
+    "DFRobot FireBeetle 2 is specifically ESP32-P4 SKU DFR1172, not its C5/C6/S3 relatives.",
+    "All three profiles use active-low GPIO45 SD power from PMOS gate wiring.",
+    "Olimex and FireBeetle HDMI profiles require ECA20-MHA1-I with a board-specific adapter; no onboard audio or HDMI audio.",
+    "NANO 10.1-inch JD9365/GT911: user-supplied configuration 2026-10-16; GPIO7/8 I2C at 400 kHz, panel power/backlight at 0x45 registers 0x95/0x96, LDO3 2.5 V. Existing pinned WAVESHARE-P4-NANO-10.1 model, native 800x1280 rotated to 1280x800. Hardware untested.",
+    "M3 10.1-inch display variant: user-supplied ESP-Tab10.1-Demo YAML 2026-10-16. Native 800x1280 JD9365 rotated 270 degrees, GT911 swap_xy/mirror_x, IP101 Ethernet GPIO31/52/50/51 address1, 16MB DIO flash at 400MHz, LDO3 2.5V and LDO4 2.7V, GPIO53 speaker amplifier. Hardware untested; does not alter the HDMI M3 profile.",
+    "CPU revision correction 2026-10-16: 400MHz requires P4 revision 3.0/X. Early revision 0/1 profiles, including M3 LCD101, use 360MHz. The supplied M3 example 400MHz value is not used by the early-silicon build.",
+    "JC8012P4A1C_I_W_Y user reference audited 2026-10-16: reset27, GSL3680 reset22/IRQ21 and mirrorY, backlight23, I2C7/8; applied 180-degree UI rotation, linear immediate brightness, disabled internal pull-ups and explicit DIO. Early P4 remains 360MHz.",
+    "JC1060P470_I_W_Y user reference audited 2026-10-16: separate jc1060-iwy Ethernet profile with LCD reset0, PA11, LDO4 2.7V, I2C7/8 external pull-ups, IP101 MDC31/MDIO52/clock50/power51 address1, GT911 polling. Original jc1060 pin reference preserved separately. PAX native-orientation adapter aligns app and UI coordinates.",
+    "2026-10-16 dual networking: Elecrow prior Ethernet YAML; NANO and M3 ESPHome device pinouts; supplied JC1060 I_W_Y reference and Espressif Function EV IP101 pinout. Shared priority ethernet,wifi, both enabled, per-interface reboot disabled. NANO SD moved to slot0 to avoid hosted slot1. Hardware failover untested.",
+    "Module Dev Kit 10.1-inch, 2026-10-18: user 101-tab-dev.yaml JD9365/GT911 at 270 degrees; I2C7/8 panel power0x45, LDO3 2.5V, LDO4 2.7V, 4-bit SD43/44/39/40/41/42 slot0 with schematic-confirmed active-low GPIO45 power; hosted C6 reset54 SDIO18/19/14/15/16/17 slot1. Official schematic confirms IP10131/52/50/51 PHY1 and amplifier53, ES8311 I2S13/12/10/9. UART0 programming, 16MB DIO, early rev0/1 at360MHz. Shared M3 adapter reused for identical panel mapping; no camera/microphone/USB serial demo services. Hardware untested."
+  ],
+  "documents": [
+    {
+      "board": "DFRobot DFR1172",
+      "revision": "V1.0.0",
+      "url": "https://dfimg.dfrobot.com/wiki/21103/DFR1172_firebeetle-esp32-p4r32-development-board_schematics_V1.0.pdf",
+      "sha256": "c1e204cec18000a60c67df70a40fd08f81ae328e24ba909784ac55e5584eb9fe"
+    },
+    {
+      "board": "Olimex ESP32-P4-DevKit",
+      "revision": "D1",
+      "url": "https://github.com/OLIMEX/ESP32-P4-DevKit/blob/26705d36407a07324348927dfd30fbf4ffc1d94c/HARDWARE/ESP32-P4-DevKit-Rev.D1/ESP32-P4-DevKit_Rev_D1.pdf",
+      "sha256": "1ce14b47c5717dfc1c98a1e1038ca700ff4b9361ec83cbf8a1feffbe910075f9"
+    },
+    {
+      "board": "Waveshare ESP32-P4-Module-DEV-KIT",
+      "url": "https://files.waveshare.com/wiki/ESP32-P4-Module-DEV-KIT/ESP32-P4-Module-DEV-KIT.pdf",
+      "sha256": "9c0d24ff8f68ad32621f0a07a799ddfb9abc424959cca0ce331bad4acbc173fe"
+    }
+  ]
+}

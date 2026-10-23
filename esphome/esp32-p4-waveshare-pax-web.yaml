@@ -1,0 +1,28 @@
+# PAX profile: shared launcher plus board hardware.
+substitutions:
+  idf_source: !env_var PAX_IDF_SOURCE
+  idf_compat_script: !env_var PAX_IDF_COMPAT
+  device_name: pax-waveshare-web
+  friendly_name: "ESP32-P4 Waveshare 7-inch PAX Quick Launcher"
+  launcher_network_url: "http://192.168.1.2:8000/launcher_ui.pax"
+  launcher_github_url: "https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax"
+
+# Retain the ESPHome API actions for saving PAXs and arbitrary files to /sd.
+
+packages:
+  pax_base: !include packages/pax-base.yaml
+  hardware: !include boards/waveshare/wifi6-7inch.yaml
+  pax_audio: !include packages/pax-audio.yaml
+
+esphome:
+  name_add_mac_suffix: true
+  project:
+    name: nonasuomy.pax
+    version: "2026.10.11"
+
+wifi:
+  ap:
+    ssid: "PAX Waveshare Setup"
+    password: "pax-setup"
+
+captive_portal:

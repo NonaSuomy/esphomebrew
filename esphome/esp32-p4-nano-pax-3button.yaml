@@ -1,0 +1,18 @@
+# PAX profile: shared launcher plus board hardware.
+substitutions:
+  idf_source: !env_var PAX_IDF_SOURCE
+  idf_compat_script: !env_var PAX_IDF_COMPAT
+  device_name: esp32-p4-nano-pax-hd720
+  friendly_name: "ESP32-P4 NANO HDMI 720p PAX Quick Launcher"
+  launcher_network_url: "http://192.168.1.2:8000/launcher_ui.pax"
+  launcher_github_url: "https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax"
+
+# Retain the ESPHome API actions for saving PAXs and arbitrary files to /sd.
+  pointer_dimensions: "(1280, 720)"
+  panel_width: "1280"
+  panel_height: "720"
+
+packages:
+  pax_base: !include packages/pax-base.yaml
+  hardware: !include boards/waveshare/nano-hdmi720.yaml
+  pax_audio: !include packages/pax-audio.yaml

@@ -1,0 +1,31 @@
+# Experimental public PAX profile. Hardware testing pending.
+substitutions:
+  device_name: pax-jc1060-iwy
+  friendly_name: PAX JC1060P470 I_W_Y Ethernet
+  launcher_network_url: http://192.168.1.2:8000/launcher_ui.pax
+  launcher_github_url: https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax
+  pointer_dimensions: (1024, 600)
+  panel_width: '1024'
+  panel_height: '600'
+  canvas_width: '1024'
+  canvas_height: '600'
+  button_width: '270'
+  button_height: '150'
+  storage_x: '53'
+  network_x: '376'
+  github_x: '699'
+  storage_y: '225'
+  network_y: '225'
+  github_y: '225'
+
+packages:
+  pax_base: !include packages/pax-base.yaml
+  hardware: !include boards/guition/jc1060-iwy.yaml
+  pax_audio: !include packages/pax-audio.yaml
+  pax_backlight: !include packages/pax-backlight.yaml
+
+esphome:
+  name_add_mac_suffix: true
+  project:
+    name: nonasuomy.pax
+    version: "2026.10.16"

@@ -1,0 +1,4 @@
+# NANO HDMI 1080 entry hardware combination.
+packages:
+  board: !include nano.yaml
+  panel: !include ../../displays/hdmi1080.yaml

@@ -1,0 +1,329 @@
+# Elecrow onboard I/O exposed as named PAX channels. Shared I2C bus is owned by aio.yaml.
+# GPIO2/7 are reserved by the hosted radio; see scratch-local-inputs.yaml for non-radio setups.
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [esp32_rmt_led_strip]
+
+sensor:
+  - platform: ultrasonic
+    trigger_pin: GPIO13
+    echo_pin: GPIO12
+    id: scratch_distance
+    internal: true
+    update_interval: 500ms
+    filters:
+      - multiply: 100.0
+    unit_of_measurement: cm
+  - platform: bh1750
+    i2c_id: bsp2_bus
+    address: 0x5C
+    id: scratch_lux
+    internal: true
+    update_interval: 1s
+  - platform: aht10
+    i2c_id: bsp2_bus
+    variant: AHT20
+    address: 0x38
+    temperature:
+      id: scratch_temperature
+      internal: true
+    humidity:
+      id: scratch_humidity
+      internal: true
+    update_interval: 5s
+  - platform: adc
+    pin: GPIO17
+    attenuation: 12db
+    id: scratch_gas
+    internal: true
+    update_interval: 1s
+  - platform: template
+    id: scratch_mic_level
+    internal: true
+    unit_of_measurement: "%"
+    update_interval: never
+  - platform: motion
+    motion_id: scratch_imu
+    type: acceleration_x
+    id: scratch_accel_x
+    internal: true
+  - platform: motion
+    motion_id: scratch_imu
+    type: acceleration_y
+    id: scratch_accel_y
+    internal: true
+  - platform: motion
+    motion_id: scratch_imu
+    type: acceleration_z
+    id: scratch_accel_z
+    internal: true
+  - platform: motion
+    motion_id: scratch_imu
+    type: angular_rate_x
+    id: scratch_gyro_x
+    internal: true
+  - platform: motion
+    motion_id: scratch_imu
+    type: angular_rate_y
+    id: scratch_gyro_y
+    internal: true
+  - platform: motion
+    motion_id: scratch_imu
+    type: angular_rate_z
+    id: scratch_gyro_z
+    internal: true
+
+motion:
+  - platform: lsm6ds
+    id: scratch_imu
+    i2c_id: bsp2_bus
+    address: 0x6B
+    update_interval: 100ms
+
+binary_sensor:
+  - platform: gpio
+    pin: GPIO24
+    id: scratch_pir
+    internal: true
+
+switch:
+  - platform: gpio
+    pin: GPIO42
+    id: scratch_relay
+    internal: true
+    restore_mode: ALWAYS_OFF
+
+output:
+  - platform: ledc
+    pin: GPIO25
+    frequency: 50Hz
+    # Channels 0/1 share timer 0; channel 2 uses timer 1.
+    channel: 2
+    id: scratch_servo_pwm
+
+servo:
+  - id: scratch_servo
+    output: scratch_servo_pwm
+    # Normalized -100..100 supports both continuous and positional revisions.
+    restore: false
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: scratch_rgbw
+    pin: GPIO8
+    num_leds: 1
+    # WS2814 timings from the board's documented complete example.
+    bit0_high: 400ns
+    bit0_low: 900ns
+    bit1_high: 600ns
+    bit1_low: 700ns
+    reset_low: 300us
+    channel_colors: WRGB
+    color_interlock: true
+    rmt_symbols: 192
+    default_transition_length: 0s
+    internal: true
+    restore_mode: ALWAYS_OFF
+
+i2s_audio:
+  - id: scratch_mic_bus
+    i2s_lrclk_pin: GPIO3
+
+microphone:
+  - platform: i2s_audio
+    id: scratch_microphone
+    i2s_audio_id: scratch_mic_bus
+    i2s_din_pin: GPIO4
+    adc_type: external
+    pdm: true
+    sample_rate: 16000
+    bits_per_sample: 16bit
+    on_data:
+      - lambda: |-
+          // RMS relative to full-scale PCM16, 0..100. Not calibrated dB SPL.
+          double sum=0;
+          size_t samples=x.size()/2;
+          for(size_t i=0;i<samples;i++) {
+            int16_t sample=static_cast<int16_t>(uint16_t(x[i*2])|(uint16_t(x[i*2+1])<<8));
+            sum+=double(sample)*sample;
+          }
+          if(samples)id(scratch_mic_level).publish_state(100.0*sqrt(sum/samples)/32768.0);
+
+number:
+  - platform: template
+    id: scratch_relay_output
+    internal: true
+    min_value: 0
+    max_value: 1
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'if(x>=0.5)id(scratch_relay).turn_on();else id(scratch_relay).turn_off();'
+  - platform: template
+    id: scratch_servo_output
+    internal: true
+    min_value: -100
+    max_value: 100
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'id(scratch_servo).write(x/100.0f);'
+  - platform: template
+    id: scratch_speaker_enabled_output
+    internal: true
+    min_value: 0
+    max_value: 1
+    step: 1
+    optimistic: true
+    initial_value: 1
+    restore_value: false
+    set_action:
+      - lambda: 'if(x>=0.5)id(speaker_enable).turn_on();else id(speaker_enable).turn_off();'
+  - platform: template
+    id: scratch_microphone_enabled_output
+    internal: true
+    min_value: 0
+    max_value: 1
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'if(x>=0.5)id(scratch_microphone).start();else {id(scratch_microphone).stop();id(scratch_mic_level).publish_state(NAN);}'
+  - platform: template
+    id: scratch_led_brightness_output
+    internal: true
+    min_value: 0
+    max_value: 100
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'id(scratch_rgbw).turn_on().set_brightness(x/100.0f).perform();'
+  - platform: template
+    id: scratch_led_red_output
+    internal: true
+    min_value: 0
+    max_value: 100
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_red(x/100.0f).perform();'
+  - platform: template
+    id: scratch_led_green_output
+    internal: true
+    min_value: 0
+    max_value: 100
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_green(x/100.0f).perform();'
+  - platform: template
+    id: scratch_led_blue_output
+    internal: true
+    min_value: 0
+    max_value: 100
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_blue(x/100.0f).perform();'
+  - platform: template
+    id: scratch_led_white_output
+    internal: true
+    min_value: 0
+    max_value: 100
+    step: 1
+    optimistic: true
+    initial_value: 0
+    restore_value: false
+    set_action:
+      - lambda: 'id(scratch_rgbw).turn_on().set_color_mode(light::ColorMode::RGB_WHITE).set_white(x/100.0f).perform();'
+
+pax_loader:
+  ambient_light_sensor: scratch_lux
+  hardware:
+    - name: distance_cm
+      unit: "cm"
+      sensor_id: scratch_distance
+    - name: light_lux
+      unit: "lux"
+      sensor_id: scratch_lux
+    - name: temperature_c
+      unit: "C"
+      sensor_id: scratch_temperature
+    - name: humidity_pct
+      unit: "%"
+      sensor_id: scratch_humidity
+    - name: gas_voltage
+      unit: "V"
+      sensor_id: scratch_gas
+    - name: buttons_voltage
+      unit: "V"
+      sensor_id: pax_adc_buttons
+    - name: motion
+      unit: ""
+      binary_sensor_id: scratch_pir
+    - name: microphone_level
+      unit: "%"
+      sensor_id: scratch_mic_level
+    - name: accel_x
+      unit: "g"
+      sensor_id: scratch_accel_x
+    - name: accel_y
+      unit: "g"
+      sensor_id: scratch_accel_y
+    - name: accel_z
+      unit: "g"
+      sensor_id: scratch_accel_z
+    - name: gyro_x
+      unit: "deg/s"
+      sensor_id: scratch_gyro_x
+    - name: gyro_y
+      unit: "deg/s"
+      sensor_id: scratch_gyro_y
+    - name: gyro_z
+      unit: "deg/s"
+      sensor_id: scratch_gyro_z
+    - name: relay
+      unit: ""
+      number_id: scratch_relay_output
+    - name: servo
+      unit: "%"
+      number_id: scratch_servo_output
+    - name: speaker_enabled
+      unit: ""
+      number_id: scratch_speaker_enabled_output
+    - name: microphone_enabled
+      unit: ""
+      number_id: scratch_microphone_enabled_output
+    - name: led_brightness
+      unit: "%"
+      number_id: scratch_led_brightness_output
+    - name: led_red
+      unit: "%"
+      number_id: scratch_led_red_output
+    - name: led_green
+      unit: "%"
+      number_id: scratch_led_green_output
+    - name: led_blue
+      unit: "%"
+      number_id: scratch_led_blue_output
+    - name: led_white
+      unit: "%"
+      number_id: scratch_led_white_output
+    - name: display_brightness
+      unit: "%"
+      number_id: pax_display_brightness

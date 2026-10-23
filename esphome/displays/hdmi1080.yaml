@@ -1,0 +1,34 @@
+# ECA20-MHA1-I two-lane RGB888 video mode. Adapter and bridge firmware must match.
+display:
+  - platform: mipi_dsi
+    id: main_display
+    show_test_card: false
+    model: CUSTOM
+    update_interval: never
+    video_mode_only: true
+    continuous_clock: true
+    rotation: 0
+    transform: disabled
+    auto_clear_enabled: false
+    lanes: 2
+    lane_bit_rate: 1000Mbps
+    color_order: rgb
+    # RGB565 framebuffer; the DPI bridge expands to RGB888 on the wire.
+    color_depth: 16
+    pixel_mode: 24bit
+    pclk_frequency: 74.25MHz
+    hsync_front_porch: 88
+    hsync_pulse_width: 44
+    hsync_back_porch: 148
+    vsync_front_porch: 4
+    vsync_pulse_width: 5
+    vsync_back_porch: 36
+    dimensions:
+      width: 1920
+      height: 1080
+    init_sequence: []
+
+
+
+lvgl:
+  touchscreens: []

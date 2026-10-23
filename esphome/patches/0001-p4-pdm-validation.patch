@@ -1,0 +1,13 @@
+diff --git a/config/components/i2s_audio/microphone/__init__.py b/config/components/i2s_audio/microphone/__init__.py
+index bf583b9f8..e1e0447dd 100644
+--- a/config/components/i2s_audio/microphone/__init__.py
++++ b/config/components/i2s_audio/microphone/__init__.py
+@@ -38,7 +38,7 @@ I2SAudioMicrophone = i2s_audio_ns.class_(
+ )
+ 
+ INTERNAL_ADC_VARIANTS = [esp32.VARIANT_ESP32]
+-PDM_VARIANTS = [esp32.VARIANT_ESP32, esp32.VARIANT_ESP32S3]
++PDM_VARIANTS = [esp32.VARIANT_ESP32, esp32.VARIANT_ESP32S3, esp32.VARIANT_ESP32P4]
+ 
+ 
+ def _validate_esp32_variant(config):

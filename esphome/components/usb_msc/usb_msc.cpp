@@ -30,7 +30,9 @@ void UsbMsc::event_callback_(const msc_host_event_t *event, void *arg) {
   auto *self = static_cast<UsbMsc *>(arg);
   if (event->event == msc_host_event_t::MSC_DEVICE_CONNECTED) {
     self->connected_address_ = event->device.address;
+    self->connected_ = true;
   } else if (event->event == msc_host_event_t::MSC_DEVICE_DISCONNECTED) {
+    self->connected_ = false;
     self->disconnected_ = true;
   }
 }
@@ -46,6 +48,7 @@ void UsbMsc::loop() {
       msc_host_uninstall_device(this->device_);
       this->device_ = nullptr;
     }
+    this->connected_address_ = 0;
     ESP_LOGI(TAG, "USB stick removed; %s unmounted", this->mount_point_.c_str());
   }
   const uint8_t address = this->connected_address_;
@@ -109,8 +112,9 @@ void UsbMsc::dump_config() {
   ESP_LOGCONFIG(TAG, "USB mass storage:");
   ESP_LOGCONFIG(TAG, "  Mount point: %s", this->mount_point_.c_str());
   ESP_LOGCONFIG(TAG, "  Max open files: %d", this->max_files_);
-  if (this->is_failed())
+  if (this->is_failed()) {
     ESP_LOGCONFIG(TAG, "  Driver failed to start");
+  }
 }
 
 }  // namespace usb_msc

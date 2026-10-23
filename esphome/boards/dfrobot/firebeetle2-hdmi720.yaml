@@ -1,0 +1,36 @@
+# Experimental hardware profile. See docs/pinouts.md.
+packages:
+  panel: !include ../../displays/hdmi720.yaml
+esp_ldo:
+- channel: 3
+  voltage: 2.5V
+- channel: 4
+  voltage: passthrough
+sd_mmc_card:
+  id: sd_card
+  clk_pin: GPIO43
+  cmd_pin: GPIO44
+  data0_pin: GPIO39
+  mode_1bit: true
+  slot: 0
+  power_ctrl_pin:
+    number: GPIO45
+    inverted: true
+esp32:
+  flash_size: 16MB
+  engineering_sample: true
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+esp32_hosted:
+  variant: ESP32C6
+  type: sdio
+  use_psram: true
+  active_high: true
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  slot: 1

@@ -1,0 +1,203 @@
+# Hardware package; include packages/pax-base.yaml and pax-audio.yaml from the entry point.
+# Retain the preference slot used by the existing Elecrow firmware. Do not tie
+# runtime Wi-Fi credentials to the YAML hash; firmware updates must retain them.
+esphome:
+  platformio_options:
+    build_flags:
+      - -DPAX_WIFI_PREFERENCE_KEY=0x7a054ed1UL
+
+esp_ldo:
+  - channel: 3
+    voltage: 2.5V
+  - channel: 4
+    voltage: 2.5V
+
+
+sd_mmc_card:
+  id: sd_card
+  clk_pin: GPIO43
+  cmd_pin: GPIO44
+  data0_pin: GPIO39
+  mode_1bit: true
+  slot: 1
+
+
+i2c:
+  - id: bsp2_bus
+    sda: GPIO18
+    scl: GPIO19
+    frequency: 400kHz
+
+
+touchscreen:
+  - platform: gt911
+    id: touch_panel
+    i2c_id: bsp2_bus
+    address: 0x5D
+    reset_pin: GPIO40
+    interrupt_pin:
+      number: GPIO41
+      mode: INPUT
+    transform:
+      swap_xy: false
+      mirror_x: false
+      mirror_y: false
+    calibration:
+      x_min: 0
+      x_max: 1024
+      y_min: 0
+      y_max: 600
+    update_interval: 50ms
+
+
+display:
+  - platform: mipi_dsi
+    id: main_display
+    double_buffer: true
+    model: CUSTOM
+    reset_pin:
+      number: GPIO05
+      inverted: false
+    rotation: 180
+    transform: disabled
+    auto_clear_enabled: false
+    lanes: 2
+    lane_bit_rate: 1000Mbps
+    color_order: rgb
+    pclk_frequency: 51MHz
+    dimensions:
+      width: 1024
+      height: 600
+    hsync_back_porch: 160
+    hsync_pulse_width: 70
+    hsync_front_porch: 160
+    vsync_back_porch: 23
+    vsync_pulse_width: 10
+    vsync_front_porch: 12
+    init_sequence:
+      - [0xB2, 0x10]
+      - [0x80, 0x8B]
+      - [0x81, 0x78]
+      - [0x82, 0x84]
+      - [0x83, 0x88]
+      - [0x84, 0xA8]
+      - [0x85, 0xE3]
+      - [0x86, 0x88]
+      - [0x11]
+
+
+output:
+  - platform: ledc
+    pin: GPIO20
+    id: backlight_pwm
+    # Keep the backlight on a different LEDC timer from the 50 Hz servo.
+    channel: 0
+    frequency: 30000Hz
+
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    name: "Display Backlight"
+    id: display_backlight
+    internal: true
+    restore_mode: ALWAYS_ON
+
+
+switch:
+  - platform: gpio
+    pin:
+      number: GPIO6
+      inverted: true
+    name: "Speaker Enable"
+    id: speaker_enable
+    internal: true
+    restore_mode: ALWAYS_ON
+
+
+i2s_audio:
+  - id: i2s_output
+    i2s_lrclk_pin: GPIO21
+    i2s_bclk_pin: GPIO22
+
+
+esp32_hosted:
+  variant: ESP32C6
+  use_psram: true
+  active_high: true
+
+  # SPI Full Duplex (Don't use half-duplex)
+  type: spi
+  reset_pin: GPIO2 # EN Wireless Module Reset
+  cs_pin: GPIO14 #19 Wireless Module CS
+  clk_pin: GPIO15 #18 Wireless Module CLK
+  mosi_pin: GPIO7 # 20 Wireless Module MOSI
+  miso_pin: GPIO9 # 21 Wireless Module MISO
+  data_ready_pin: GPIO10 # 22 Wireless Module Ready
+  handshake_pin: GPIO11 # 23 Wireless Module Handshake
+
+  # SDIO
+#  sdio_frequency: 10MHz
+#  reset_pin: GPIO2
+#  cmd_pin: GPIO15
+#  clk_pin: GPIO14
+#  d0_pin: GPIO7
+#  d1_pin: GPIO9
+#  d2_pin: GPIO10
+#  d3_pin: GPIO11
+
+
+esp32:
+  flash_size: 16MB
+  engineering_sample: true
+
+speaker:
+  - platform: i2s_audio
+    id: speaker_output
+    i2s_audio_id: i2s_output
+    dac_type: external
+    i2s_dout_pin: GPIO23
+    channel: stereo
+    buffer_duration: 100ms
+    timeout: 5s
+    bits_per_sample: 16bit
+    sample_rate: 48000
+
+number:
+  - platform: template
+    name: "PAX Display Brightness"
+    id: pax_display_brightness
+    internal: true
+    min_value: 5
+    max_value: 100
+    step: 5
+    initial_value: 100
+    restore_value: true
+    optimistic: true
+    on_value:
+      - light.turn_on:
+          id: display_backlight
+          brightness: !lambda return x / 100.0f;
+
+
+sensor:
+  - platform: adc
+    pin: GPIO16
+    id: pax_adc_buttons
+    internal: true
+    update_interval: 50ms
+    attenuation: 12db
+    filters:
+      - median:
+          window_size: 5
+          send_every: 1
+
+
+pax_loader:
+  touchscreen_id: touch_panel
+  brightness_number: pax_display_brightness
+  adc_button_sensor: pax_adc_buttons
+
+packages:
+  networking: !include ../../packages/pax-network-dual.yaml
+  scratch_io: !include scratch-io.yaml

@@ -1,0 +1,37 @@
+# Experimental public PAX profile. Hardware testing pending.
+substitutions:
+  device_name: pax-tab5
+  friendly_name: PAX tab5
+  launcher_network_url: http://192.168.1.2:8000/launcher_ui.pax
+  launcher_github_url: https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax
+  pointer_dimensions: (720, 1280)
+  panel_width: '720'
+  panel_height: '1280'
+  canvas_width: '720'
+  canvas_height: '600'
+  button_width: '600'
+  button_height: '150'
+  storage_x: '60'
+  network_x: '60'
+  github_x: '60'
+  storage_y: '375'
+  network_y: '565'
+  github_y: '755'
+
+packages:
+  pax_base: !include packages/pax-base.yaml
+  hardware: !include boards/m5stack/tab5.yaml
+  pax_audio: !include packages/pax-audio.yaml
+  pax_backlight: !include packages/pax-backlight.yaml
+
+esphome:
+  name_add_mac_suffix: true
+  project:
+    name: nonasuomy.pax
+    version: "2026.10.11"
+
+wifi:
+  ap:
+    ssid: "PAX tab5 Setup"
+    password: "pax-setup"
+captive_portal:

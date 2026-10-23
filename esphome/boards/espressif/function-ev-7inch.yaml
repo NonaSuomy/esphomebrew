@@ -1,0 +1,151 @@
+# Experimental hardware profile. See docs/pinouts.md.
+esp_ldo:
+- channel: 3
+  voltage: 2.5V
+- channel: 4
+  voltage: passthrough
+sd_mmc_card:
+  id: sd_card
+  clk_pin: GPIO43
+  cmd_pin: GPIO44
+  data0_pin: GPIO39
+  mode_1bit: true
+  slot: 0
+  power_ctrl_pin:
+    number: GPIO45
+    inverted: true
+i2c:
+- id: bsp2_bus
+  sda: GPIO07
+  scl: GPIO08
+  frequency: 400kHz
+touchscreen:
+- platform: gt911
+  id: touch_panel
+  i2c_id: bsp2_bus
+  address: 93
+  transform:
+    swap_xy: false
+    mirror_x: true
+    mirror_y: true
+  calibration:
+    x_min: 0
+    x_max: 1024
+    y_min: 0
+    y_max: 600
+  update_interval: 8ms
+display:
+- platform: mipi_dsi
+  id: main_display
+  show_test_card: false
+  model: CUSTOM
+  update_interval: never
+  reset_pin:
+    number: GPIO27
+  rotation: 0
+  transform: disabled
+  auto_clear_enabled: false
+  hsync_back_porch: 160
+  lane_bit_rate: 900Mbps
+  color_order: rgb
+  lanes: 2
+  hsync_pulse_width: 10
+  hsync_front_porch: 160
+  vsync_back_porch: 23
+  vsync_pulse_width: 1
+  vsync_front_porch: 12
+  pclk_frequency: 52MHz
+  dimensions:
+    width: 1024
+    height: 600
+  init_sequence:
+  - - 178
+    - 16
+  - - 128
+    - 139
+  - - 129
+    - 120
+  - - 130
+    - 132
+  - - 131
+    - 136
+  - - 132
+    - 168
+  - - 133
+    - 227
+  - - 134
+    - 136
+  - - 17
+    - 0
+  - delay 120ms
+  - - 41
+output:
+- platform: ledc
+  pin: GPIO26
+  id: backlight_pwm
+  frequency: 5000Hz
+  inverted: false
+light:
+- platform: monochromatic
+  output: backlight_pwm
+  name: Display Backlight
+  id: display_backlight
+  internal: true
+  restore_mode: ALWAYS_ON
+switch:
+- platform: gpio
+  pin:
+    number: GPIO53
+    inverted: false
+  name: Speaker Enable
+  id: speaker_enable
+  internal: true
+  restore_mode: ALWAYS_ON
+i2s_audio:
+- id: i2s_output
+  i2s_lrclk_pin: GPIO10
+  i2s_bclk_pin: GPIO12
+  i2s_mclk_pin: GPIO13
+audio_dac:
+- platform: es8311
+  id: speaker_codec
+  i2c_id: bsp2_bus
+  address: 24
+  sample_rate: 48000
+  bits_per_sample: 16bit
+  use_mclk: true
+esp32_hosted:
+  variant: ESP32C6
+  type: sdio
+  use_psram: true
+  active_high: true
+  reset_pin: GPIO54
+  cmd_pin: GPIO19
+  clk_pin: GPIO18
+  d0_pin: GPIO14
+  d1_pin: GPIO15
+  d2_pin: GPIO16
+  d3_pin: GPIO17
+  slot: 1
+esp32:
+  flash_size: 16MB
+  engineering_sample: true
+speaker:
+- platform: i2s_audio
+  id: speaker_output
+  i2s_audio_id: i2s_output
+  dac_type: external
+  i2s_dout_pin: GPIO9
+  audio_dac: speaker_codec
+  channel: stereo
+  buffer_duration: 100ms
+  timeout: 5s
+  bits_per_sample: 16bit
+  sample_rate: 48000
+pax_loader:
+  touchscreen_id: touch_panel
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+
+packages:
+  networking: !include ../../packages/pax-network-dual.yaml

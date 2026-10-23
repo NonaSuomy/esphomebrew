@@ -1,62 +1,65 @@
-# Remote control for the PAPP loader over the ESPHome native API.
+# Remote control for the PAX loader over the ESPHome native API.
 #
 # Adds API actions that the ESP bridge (tools/esp_bridge), the helper in
-# tools/papp_device.py, or Home
+# tools/pax_device.py, or Home
 # Assistant can call:
-#   papp_launch(url)       stream and start a .papp from a URL
-#   papp_launch_rom(emulator, rom)
-#                          select an emulator PAPP and a local game path
+#   pax_launch(url)       stream and start a .pax from a URL
+#   pax_launch_rom(emulator, rom)
+#                          select an emulator PAX and a local game path
 #                          under /sd or /usb0, then start it
-#   papp_install_url(url, name, size, digest)
-#                            verify and save a .papp under /sd/roms/papp
-#   papp_upload_file(url, path, size, digest)
+#   pax_install_url(url, name, size, digest)
+#                            verify and save a .pax under /sd/roms/pax
+#   pax_upload_file(url, path, size, digest)
 #                            verify and save any file under a path below /sd
-#   papp_close()           close the running PAPP
-#   papp_refresh_catalog() reload the store catalog
-#   papp_screenshot()      send one 800x480 capture of the running PAPP to the
+#   pax_close()           close the running PAX
+#   pax_refresh_catalog() reload the store catalog
+#   pax_screenshot()      send one 800x480 capture of the running PAX to the
 #                          diagnostic stream on TCP port 3233 (bridge `screenshot`)
-#   papp_read_file(path)   send one SD card file under /sd/ (or a listing, for a
+#   pax_read_file(path)   send one SD card file under /sd/ (or a listing, for a
 #                          path ending in /) to the same stream (bridge `readfile`)
-#   papp_write_file(path, data)
+#   pax_write_file(path, data)
 #                          replace a small text file under /sd/ (.ini, .cfg, .txt,
 #                          .json, ...), keeping the old one as .bak; refused while
 #                          an app runs (bridge `writefile`)
-#   papp_delete_file(path) remove one of those files, or a leftover .bak/.log,
+#   pax_delete_file(path) remove one of those files, or a leftover .bak/.log,
 #                          under /sd/; refused while an app runs (bridge `deletefile`)
 #
-# Include it from the device YAML (the device must already have `api:`; this
-# package only adds actions to it). The long form with refresh: 0s picks up new
-# actions at once; the short github:// form is re-downloaded only once a day.
+# The central packages/pax-base.yaml includes this local package. To use the
+# same actions from another entry point in this directory:
 #
-#   packages:
-#     papp_control:
-#       url: https://github.com/NonaSuomy/esphomebrew
-#       ref: main
-#       files: [esphome/device_control.yaml]
-#       refresh: 0s
-
+# packages:
+#   pax_control: !include device_control.yaml
+#
 substitutions:
-  papp_loader_id: papp_runtime
+  idf_source: !env_var PAX_IDF_SOURCE
+  idf_compat_script: !env_var PAX_IDF_COMPAT
+  pax_loader_id: pax_runtime
 
 api:
   actions:
-    - action: papp_launch
+    - action: pax_launch
       variables:
         url: string
       then:
-        - papp_loader.launch_url:
-            id: ${papp_loader_id}
+        - pax_loader.launch_url:
+            id: ${pax_loader_id}
             url: !lambda return url;
-    - action: papp_launch_rom
+    - action: pax_launch_with_arg
+      variables:
+        path: string
+        arg: string
+      then:
+        - lambda: id(${pax_loader_id}).request_launch_with_arg(path, arg);
+    - action: pax_launch_rom
       variables:
         emulator: string
         rom: string
       then:
-        - papp_loader.launch_rom:
-            id: ${papp_loader_id}
+        - pax_loader.launch_rom:
+            id: ${pax_loader_id}
             emulator: !lambda return emulator;
             rom: !lambda return rom;
-    - action: papp_install_url
+    - action: pax_install_url
       variables:
         url: string
         name: string
@@ -64,8 +67,8 @@ api:
         digest: string
       then:
         - lambda: |-
-            id(${papp_loader_id})->request_install_url(url, name, static_cast<uint32_t>(size), digest);
-    - action: papp_upload_file
+            id(${pax_loader_id})->request_install_url(url, name, static_cast<uint32_t>(size), digest);
+    - action: pax_upload_file
       variables:
         url: string
         path: string
@@ -73,29 +76,34 @@ api:
         digest: string
       then:
         - lambda: |-
-            id(${papp_loader_id})->request_upload_url(url, path, static_cast<uint32_t>(size), digest);
-    - action: papp_close
+            id(${pax_loader_id})->request_upload_url(url, path, static_cast<uint32_t>(size), digest);
+    - action: pax_close
       then:
-        - lambda: id(${papp_loader_id})->request_close();
-    - action: papp_refresh_catalog
+        - lambda: id(${pax_loader_id})->request_close();
+    - action: pax_refresh_catalog
       then:
-        - lambda: id(${papp_loader_id})->refresh_catalog();
-    - action: papp_screenshot
+        - lambda: id(${pax_loader_id})->refresh_catalog();
+    - action: pax_screenshot
       then:
-        - lambda: id(${papp_loader_id})->request_screenshot();
-    - action: papp_read_file
+        - lambda: id(${pax_loader_id})->request_screenshot();
+    - action: pax_read_file
       variables:
         path: string
       then:
-        - lambda: id(${papp_loader_id})->request_file(path);
-    - action: papp_write_file
+        - lambda: id(${pax_loader_id})->request_file(path);
+    - action: pax_write_file
       variables:
         path: string
         data: string
       then:
-        - lambda: id(${papp_loader_id})->write_file(path, data);
-    - action: papp_delete_file
+        - lambda: id(${pax_loader_id})->write_file(path, data);
+    - action: pax_delete_file
       variables:
         path: string
       then:
-        - lambda: id(${papp_loader_id})->delete_file(path);
+        - lambda: id(${pax_loader_id})->delete_file(path);
+
+# Local browser setup and SD transfers share the loader used by the debug API.
+pax_web:
+  pax_loader_id: ${pax_loader_id}
+  port: 8080

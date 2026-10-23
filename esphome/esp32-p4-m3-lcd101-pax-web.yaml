@@ -1,0 +1,30 @@
+# Experimental public PAX profile. Hardware testing pending.
+substitutions:
+  device_name: pax-m3-lcd101
+  friendly_name: PAX M3 10.1-inch Touchscreen Ethernet
+  launcher_network_url: http://192.168.1.2:8000/launcher_ui.pax
+  launcher_github_url: https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax
+  pointer_dimensions: (1280, 800)
+  panel_width: '1280'
+  panel_height: '800'
+  canvas_width: '1280'
+  canvas_height: '800'
+  button_width: '270'
+  button_height: '150'
+  storage_x: '117'
+  network_x: '504'
+  github_x: '891'
+  storage_y: '325'
+  network_y: '325'
+  github_y: '325'
+
+packages:
+  pax_base: !include packages/pax-base.yaml
+  hardware: !include boards/guition/m3-lcd101.yaml
+  pax_audio: !include packages/pax-audio.yaml
+
+esphome:
+  name_add_mac_suffix: true
+  project:
+    name: nonasuomy.pax
+    version: "2026.10.16"

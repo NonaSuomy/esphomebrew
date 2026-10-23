@@ -1,34 +1,175 @@
-name: ESPHome compile (P4)
+name: Build device firmware
 
 on:
   push:
     branches: [main]
-    paths: ["esphome/components/**", "esphome/tests/p4_loader_compile.yaml", ".github/workflows/esphome-compile.yml"]
+    paths: ["esphome/**", "tools/firmware_ci.py", "tools/firmware-config.py", "tools/ci/**", "tests/test_firmware_ci.py", "tools/check_web_installer.py", "web-installer/boards.json", "web-installer/sd/**", ".github/workflows/esphome-compile.yml"]
   pull_request:
-    paths: ["esphome/components/**", "esphome/tests/p4_loader_compile.yaml", ".github/workflows/esphome-compile.yml"]
+    paths: ["esphome/**", "tools/firmware_ci.py", "tools/firmware-config.py", "tools/ci/**", "tests/test_firmware_ci.py", "tools/check_web_installer.py", "web-installer/boards.json", "web-installer/sd/**", ".github/workflows/esphome-compile.yml"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: device-firmware-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  compile:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Cache ESP-IDF and build
-        uses: actions/cache@v4
+          cache: pip
+          cache-dependency-path: tools/ci/requirements-firmware.txt
+      - run: python -m pip install -r tools/ci/requirements-firmware.txt 2>&1 | tee firmware-setup.log
+      - name: Validate complete public profile registry
+        id: matrix
+        run: |
+          echo "matrix=$(python tools/firmware_ci.py matrix)" >> "$GITHUB_OUTPUT"
+          python -m unittest discover -s tests -p test_firmware_ci.py -v
+      - uses: actions/cache@v4
         with:
           path: |
-            ~/.platformio
-            ~/.esphome
-            esphome/tests/.esphome
-          key: esphome-p4-2026.8.2-${{ hashFiles('esphome/components/**') }}
-          restore-keys: esphome-p4-2026.8.2-
-      - run: pip install esphome==2026.8.2
-      # Builds the papp_loader C++ (including report_url) for the ESP32-P4.
-      - run: esphome compile esphome/tests/p4_loader_compile.yaml
+            esphome/dependencies/esphome
+            .firmware-ci/esp-idf
+            .firmware-ci/sources.json
+          key: firmware-sources-v1-${{ runner.os }}-${{ hashFiles('tools/ci/firmware-sources.json', 'tools/ci/*.patch') }}
+      - run: python tools/firmware_ci.py bootstrap 2>&1 | tee firmware-bootstrap.log
+
+      - name: Report setup failure
+        if: failure()
+        run: |
+          python - <<'PYTHON'
+          from pathlib import Path
+          text = '\n'.join(p.read_text(errors='replace')[-14000:] for p in map(Path, ['firmware-setup.log', 'firmware-bootstrap.log']) if p.exists())
+          print('::error title=Firmware setup failed::' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PYTHON
+
+  build:
+    name: Firmware / ${{ matrix.profile }}
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/ci/requirements-firmware.txt
+      - run: python -m pip install -r tools/ci/requirements-firmware.txt 2>&1 | tee firmware-setup.log
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            esphome/dependencies/esphome
+            .firmware-ci/esp-idf
+            .firmware-ci/sources.json
+          key: firmware-sources-v1-${{ runner.os }}-${{ hashFiles('tools/ci/firmware-sources.json', 'tools/ci/*.patch') }}
+          fail-on-cache-miss: true
+      - run: python tools/firmware_ci.py bootstrap 2>&1 | tee firmware-bootstrap.log
+      - uses: actions/cache@v4
+        with:
+          path: .firmware-ci/platformio
+          key: firmware-tools-v1-${{ runner.os }}-${{ hashFiles('tools/ci/firmware-sources.json', 'tools/ci/requirements-firmware.txt') }}
+      - name: Compile and package public firmware
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: python tools/firmware_ci.py build "$PROFILE" 2>&1 | tee firmware-build.log
+      - name: Report compiler failure
+        if: failure()
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          python - <<'PYTHON'
+          from pathlib import Path
+          import os
+          text = '\n'.join(p.read_text(errors='replace')[-18000:] for p in map(Path, ['firmware-setup.log', 'firmware-build.log']) if p.exists())
+          print('::error title=Firmware ' + os.environ['PROFILE'] + ' failed::' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.profile }}
+          path: firmware-dist/${{ matrix.profile }}/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: firmware-log-${{ matrix.profile }}
+          path: firmware-build.log
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
+
+  assemble:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install PyYAML==6.0.3
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          path: firmware-artifacts
+      - name: Require every profile and verify firmware hashes
+        run: |
+          python tools/firmware_ci.py collect firmware-artifacts firmware-overlay
+          python tools/firmware_ci.py promote firmware-overlay
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-installer
+          path: firmware-overlay/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  publish:
+    needs: assemble
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    concurrency:
+      group: firmware-installer-promotion
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install PyYAML==6.0.3
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware-installer
+          path: firmware-overlay
+      - name: Commit complete installer update against current main
+        run: |
+          python tools/firmware_ci.py promote firmware-overlay
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web-installer/firmware web-installer/ota web-installer/kits web-installer/manifests web-installer/build-info.json
+          git commit -m "Publish all device firmware from $GITHUB_SHA"
+          git push origin HEAD:main
+      # GITHUB_TOKEN pushes do not trigger push workflows; explicitly deploy the updated installer.
+      - name: Deploy installer through the existing Pages publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish-store.yml --ref main --repo "$GITHUB_REPOSITORY"

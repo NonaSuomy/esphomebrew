@@ -1,0 +1,150 @@
+# Shared LVGL screen for ESP32-P4 firmware and the SDL desktop preview.
+lvgl:
+  id: lvgl_component
+  default_group: pax_focus_group
+  resume_on_input: false
+  use_ppa: false
+  buffer_size: 0.15
+  update_interval: 33ms
+  color_depth: 16
+  byte_order: little_endian
+  default_font: montserrat_20
+  log_level: WARN
+  keypads:
+    - id: launcher_keyboard_tab
+      next: launcher_key_tab
+      enter: launcher_key_enter
+      initial_focus: storage_button
+    - id: launcher_keyboard_horizontal
+      next: launcher_key_right
+      prev: launcher_key_left
+      enter: launcher_key_space
+    - id: launcher_keyboard_vertical
+      next: launcher_key_down
+      prev: launcher_key_up
+    - id: launcher_gamepad_horizontal
+      next: pax_dpad_right
+      prev: pax_dpad_left
+      enter: pax_a
+      esc: pax_b
+    - id: launcher_gamepad_vertical
+      next: pax_dpad_down
+      prev: pax_dpad_up
+  theme:
+    button:
+      bg_color: 0x0B2A4A
+      bg_opa: 86%
+      border_color: 0x1EA7D7
+      border_width: 2
+      radius: 14
+      text_color: 0xD7F3FF
+      focused:
+        bg_color: 0x14527A
+        bg_opa: 100%
+        border_color: 0x55D6FF
+        border_width: 4
+        outline_color: 0x38BDF8
+        outline_width: 2
+  pages:
+    - id: quick_launch_page
+      width: ${panel_width}
+      height: ${panel_height}
+      scrollable: false
+      scrollbar_mode: "OFF"
+      bg_color: 0x061326
+      bg_opa: COVER
+      on_load:
+        - lambda: |-
+            const int w = lv_display_get_horizontal_resolution(lv_obj_get_display(id(storage_button)));
+            const int h = lv_display_get_vertical_resolution(lv_obj_get_display(id(storage_button)));
+            const auto layout = esphome::pax_launcher::launcher_layout(w, h);
+            lv_obj_t *buttons[] = {id(storage_button), id(network_button), id(github_button)};
+            for (unsigned i = 0; i < 3; i++) {
+              lv_obj_set_size(buttons[i], layout.width, layout.height);
+              lv_obj_set_pos(buttons[i], layout.x[i], layout.y[i]);
+            }
+            if (auto *group = lv_group_get_default()) {
+              lv_group_add_obj(group, id(storage_button));
+              lv_group_add_obj(group, id(network_button));
+              lv_group_add_obj(group, id(github_button));
+              lv_group_focus_obj(id(storage_button));
+            }
+      widgets:
+        # The shared PAX loader references these LVGL widget APIs for its
+        # runtime overlays and selectors. Keep their support compiled while
+        # leaving only the three launch buttons visible on this page.
+        - textarea:
+            id: hidden_search_stub
+            x: 0
+            y: 0
+            width: 1
+            height: 1
+            hidden: true
+        - keyboard:
+            id: hidden_keyboard_stub
+            x: 0
+            y: 0
+            width: 1
+            height: 1
+            hidden: true
+            textarea: hidden_search_stub
+            mode: text_lower
+        - list:
+            id: hidden_list_stub
+            x: 0
+            y: 0
+            width: 1
+            height: 1
+            hidden: true
+        - slider:
+            id: hidden_slider_stub
+            x: 0
+            y: 0
+            width: 1
+            height: 1
+            hidden: true
+            min_value: 0
+            max_value: 100
+        - button:
+            id: storage_button
+            width: ${button_width}
+            height: ${button_height}
+            x: ${storage_x}
+            y: ${storage_y}
+            on_click:
+              - lambda: id(pax_runtime)->request_launch("/sd/roms/pax/launcher_ui.pax");
+            widgets:
+              - label:
+                  text: "STORAGE"
+                  align: CENTER
+                  text_font: montserrat_20
+                  text_color: 0xD7F3FF
+        - button:
+            id: network_button
+            width: ${button_width}
+            height: ${button_height}
+            x: ${network_x}
+            y: ${network_y}
+            on_click:
+              - lambda: id(pax_runtime)->request_launch("${launcher_network_url}");
+            widgets:
+              - label:
+                  text: "NETWORK"
+                  align: CENTER
+                  text_font: montserrat_20
+                  text_color: 0xD7F3FF
+        - button:
+            id: github_button
+            width: ${button_width}
+            height: ${button_height}
+            x: ${github_x}
+            y: ${github_y}
+            on_click:
+              - lambda: id(pax_runtime)->request_launch("${launcher_github_url}");
+            widgets:
+              - label:
+                  text: "GITHUB STORE"
+                  align: CENTER
+                  text_font: montserrat_20
+                  text_color: 0xD7F3FF
+

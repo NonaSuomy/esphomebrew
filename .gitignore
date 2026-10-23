@@ -3,3 +3,11 @@ dev-papps/
 .cache/
 .cache-test/
 __pycache__/
+
+# CI dependency sources and temporary firmware build products
+.firmware-ci/
+firmware-dist/
+firmware-artifacts/
+firmware-overlay/
+firmware-build.log
+esphome/dependencies/

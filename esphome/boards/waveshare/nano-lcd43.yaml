@@ -1,0 +1,23 @@
+packages:
+  nano: !include nano.yaml
+  panel: !include ../../displays/nano-lcd43.yaml
+  backlight: !include ../../packages/pax-backlight.yaml
+
+i2c:
+  - id: !extend bsp2_bus
+    frequency: 100kHz
+    sda_pullup_enabled: false
+    scl_pullup_enabled: false
+
+esp32:
+  cpu_frequency: 360MHz
+
+# NANO Q1 is a P-channel switch; low enables the card supply from LDO4.
+esp_ldo:
+  - id: !extend nano_sd_supply
+    voltage: passthrough
+
+sd_mmc_card:
+  power_ctrl_pin:
+    number: GPIO45
+    inverted: true

@@ -1,0 +1,12 @@
+# JC1060 UI/touch use native 1024x600 coordinates. Undo the legacy PAX 180-degree output transform.
+esphome:
+  includes:
+    - jc1060_native_adapter.h
+  on_boot:
+    priority: -200
+    then:
+      - lambda: |-
+          static esphome::pax_jc1060::NativePanel panel(id(main_display));
+          // The proxy owns presentation; bypass direct native-buffer handoff.
+          id(pax_runtime)->set_mipi_dsi(nullptr);
+          id(pax_runtime)->set_display(&panel);

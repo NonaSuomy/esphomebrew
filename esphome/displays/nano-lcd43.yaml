@@ -1,0 +1,85 @@
+# Waveshare Raspberry Pi 4.3-inch DSI, tested 800x480 timing.
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [waveshare43]
+
+waveshare43:
+  id: display_control
+  i2c_id: bsp2_bus
+  address: 0x45
+
+display:
+  - platform: mipi_dsi
+    id: main_display
+    model: CUSTOM
+    dimensions: {width: 800, height: 480}
+    lanes: 1
+    lane_bit_rate: 800Mbps
+    pclk_frequency: 26MHz
+    hsync_front_porch: 2
+    hsync_pulse_width: 2
+    hsync_back_porch: 46
+    vsync_front_porch: 7
+    vsync_pulse_width: 2
+    vsync_back_porch: 21
+    color_depth: 16
+    pixel_mode: 24
+    color_order: RGB
+    byte_order: little_endian
+    video_mode_only: true
+    continuous_clock: true
+    double_buffer: true
+    init_sequence: []
+    rotation: 0
+    transform: disabled
+    auto_clear_enabled: false
+    update_interval: never
+
+touchscreen:
+  - platform: waveshare43
+    id: touch_panel
+    display: main_display
+    i2c_id: bsp2_bus
+    address: 0x38
+    update_interval: 20ms
+    calibration: {x_min: 0, x_max: 799, y_min: 0, y_max: 479}
+    transform: {mirror_x: true, mirror_y: true}
+
+output:
+  - platform: template
+    id: display_backlight_output
+    type: float
+    write_action:
+      - lambda: id(display_control)->set_brightness(state);
+light:
+  - platform: monochromatic
+    id: display_backlight
+    name: Display Backlight
+    output: display_backlight_output
+    gamma_correct: 1.0
+    default_transition_length: 0s
+    restore_mode: RESTORE_DEFAULT_ON
+
+lvgl:
+  displays: [main_display]
+  touchscreens: [touch_panel]
+  full_refresh: true
+  buffer_size: 100%
+
+pax_loader:
+  touchscreen_id: touch_panel
+
+# Keep apps upright after the common renderer's legacy 180-degree transform.
+esphome:
+  includes:
+    - pax_native_panel.h
+  on_boot:
+    - priority: -200
+      then:
+        - lambda: |-
+            static esphome::pax_native::NativePanel panel(id(main_display));
+            id(pax_runtime)->set_mipi_dsi(nullptr);
+            id(pax_runtime)->set_native_mipi_dsi(id(main_display));
+            id(pax_runtime)->set_display(&panel);
