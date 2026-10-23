@@ -8,6 +8,10 @@ on:
     paths: ["esphome/**", "tools/firmware_ci.py", "tools/firmware-config.py", "tools/ci/**", "tests/test_firmware_ci.py", "tools/check_web_installer.py", "web-installer/boards.json", "web-installer/sd/**", ".github/workflows/esphome-compile.yml"]
   workflow_dispatch:
 
+defaults:
+  run:
+    shell: bash
+
 permissions:
   contents: read
 
