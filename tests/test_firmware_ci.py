@@ -4,12 +4,16 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import struct
+from unittest.mock import patch
 import sys
 import tempfile
 import unittest
 import zipfile
 
 TOOLS = Path(__file__).resolve().parents[1] / 'tools'
+if not (TOOLS / 'firmware_ci.py').is_file():
+    TOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOLS))
 import firmware_ci as ci
 
@@ -45,6 +49,8 @@ class FirmwareCI(unittest.TestCase):
             for name, data in [('firmware/pax-' + key + '.factory.bin', factory),
                                ('ota/pax-' + key + '.ota.bin', ota)]:
                 p = base / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_bytes(data)
+            ci.write(base / 'updates' / (key + '.json'), dict(profile=key, bytes=len(ota),
+                sha256=ci.sha(ota),url='https://nonasuomy.github.io/esphomebrew/install/ota/pax-' + key + '.ota.bin'))
             ci.write(base / 'manifests' / (key + '.json'), {})
             (base / 'kits').mkdir()
             with zipfile.ZipFile(base / 'kits' / ('pax-' + key + '-flash-kit.zip'), 'w') as z:
@@ -60,12 +66,37 @@ class FirmwareCI(unittest.TestCase):
         entry = scripts / 'esptool'
         entry.write_text('from esptool import FROM_STABLE_SOURCE\nassert FROM_STABLE_SOURCE\n')
         env = os.environ.copy(); env['PLATFORMIO_CORE_DIR'] = str(core)
-        env['PYTHONPATH'] = str(self.saved[2])
+        env['PYTHONPATH'] = str(TOOLS / 'ci')
         subprocess.run([sys.executable, str(entry)], env=env, check=True)
         env['PYTHONPATH'] = str(stable)
         bad = subprocess.run([sys.executable, str(entry)], env=env, capture_output=True)
         self.assertNotEqual(bad.returncode, 0)
         self.assertIn(b'shadow wrapper', bad.stderr)
+
+    def test_update_manifest_uses_actual_image_and_layout(self):
+        image = bytearray(100)
+        image[0] = 0xe9
+        struct.pack_into('<H', image, 12, 18)
+        struct.pack_into('<HH', image, 15, 100, 299)
+        table = b''.join(struct.pack('<HBBII16sI', 0x50aa, 0, 16+i,
+                         0x10000+i*0x7c0000, 0x7c0000, ('app'+str(i)).encode(), 0) for i in range(2))
+        with patch.dict(os.environ, {'PAX_FIRMWARE_BUILD_ID': '39969382944'}):
+            manifest = ci.update_manifest('nano-lcd43', image, table)
+        self.assertEqual(manifest['build_id'], 39969382944)
+        self.assertEqual((manifest['min_revision'], manifest['max_revision']), (100, 299))
+        self.assertEqual(manifest['partitions'][1]['address'], 0x7d0000)
+        self.assertEqual(manifest['sha256'], ci.sha(image))
+        with self.assertRaisesRegex(ValueError, 'two sufficiently'):
+            ci.update_manifest('nano-lcd43', image, table[:32])
+        image[12]=0
+        with self.assertRaisesRegex(ValueError, 'ESP32-P4'):
+            ci.update_manifest('nano-lcd43', image, table)
+
+    def test_wrong_update_profile_rejected(self):
+        path=self.artifacts/'one/updates/one.json'
+        manifest=ci.load(path);manifest['profile']='two';ci.write(path,manifest)
+        with self.assertRaisesRegex(ValueError,'manifest mismatch'):
+            ci.collect(self.artifacts,self.root/'overlay')
 
     def test_complete_matrix(self):
         out = self.root / 'overlay'

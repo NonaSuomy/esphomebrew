@@ -1,0 +1,12 @@
+{
+  "name": "My custom theme",
+  "background": "#071525",
+  "panel": "#102844",
+  "selected": "#15699D",
+  "accent": "#25C7FF",
+  "text": "#F2F7FF",
+  "muted": "#8BA7C4",
+  "ok": "#4ADE80",
+  "warn": "#FBBF24",
+  "error": "#F87171"
+}

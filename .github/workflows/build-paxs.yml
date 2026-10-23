@@ -3,7 +3,7 @@ name: Build PAXs
 on:
   push:
     branches: [main]
-    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", ".github/workflows/build-paxs.yml"]
+    paths: ["apps/**", "!apps/launcher_ui/**", "tools/build_pax.py", "tools/make_listing.py", ".github/workflows/build-paxs.yml"]
   pull_request:
   workflow_dispatch:
 

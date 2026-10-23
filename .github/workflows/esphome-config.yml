@@ -27,6 +27,7 @@ jobs:
         run: |
           python tests/test_firmware_web_progress.py
           node tests/test_firmware_web_progress.cjs
+          python esphome/tests/test_firmware_update.py
       - name: Validate every public profile and credential-free include closure
         run: python tools/firmware_ci.py matrix
       - name: Validate publication guards

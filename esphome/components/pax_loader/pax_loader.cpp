@@ -73,6 +73,7 @@ struct psram_app {
 
 #include "pax_wifi_stream.h"
 #include "pax_c6_update.h"
+#include "pax_firmware_update.h"
 
 namespace esphome {
 namespace pax_loader {
@@ -299,6 +300,10 @@ static constexpr int BRIGHTNESS_SLIDER_WIDTH = canvas::BRIGHTNESS_SLIDER_WIDTH;
 static constexpr int BRIGHTNESS_SLIDER_HEIGHT = canvas::BRIGHTNESS_SLIDER_HEIGHT;
 alignas(64) static uint16_t brightness_overlay_buffer[BRIGHTNESS_BUTTON_SIZE * BRIGHTNESS_BUTTON_SIZE] = {};
 alignas(64) static uint16_t brightness_slider_overlay_buffer[BRIGHTNESS_SLIDER_WIDTH * BRIGHTNESS_SLIDER_HEIGHT] = {};
+// Stable across firmware/configuration hashes, including updates from GitHub.
+struct SavedRuntimeSettings { uint32_t magic; uint8_t volume, automatic, reserved[2]; };
+static constexpr uint32_t RUNTIME_SETTINGS_KEY=0x50415853U, RUNTIME_SETTINGS_MAGIC=0x50524631U;
+static SavedRuntimeSettings saved_runtime_settings{};
 static int32_t s_brightness = 100;
 static constexpr int GAME_MENU_FRAME_WIDTH = 400;
 static constexpr int GAME_MENU_FRAME_HEIGHT = 280;
@@ -1516,6 +1521,16 @@ void PaxLoader::setup() {
   }
 
   PaxLoader::active_ = this;
+  if(esphome::global_preferences){
+    auto preference=esphome::global_preferences->make_preference<SavedRuntimeSettings>(RUNTIME_SETTINGS_KEY,true);
+    SavedRuntimeSettings restored{};
+    if(preference.load(&restored) && restored.magic==RUNTIME_SETTINGS_MAGIC && restored.volume<=100 && restored.automatic<=1){
+      this->master_volume_=restored.volume;
+      this->set_auto_brightness_enabled(restored.automatic!=0);
+      saved_runtime_settings=restored;
+      ESP_LOGI(TAG,"Restored volume %u%% and automatic brightness %s",restored.volume,restored.automatic ? "on" : "off");
+    }
+  }
 #ifdef PAX_LOADER_USE_USB_HIDX
   if (this->usb_hidx_ != nullptr) {
     this->game_menu_button_ = this->usb_hidx_->get_gamepad_button_capture_sensor();
@@ -1957,8 +1972,25 @@ void PaxLoader::process_ui_call_() {
 
 void PaxLoader::loop() {
   this->update_hardware_();
+  SavedRuntimeSettings current{RUNTIME_SETTINGS_MAGIC,static_cast<uint8_t>(this->master_volume_),
+                               static_cast<uint8_t>(this->auto_brightness_enabled_),{0,0}};
+  if(esphome::global_preferences && memcmp(&current,&saved_runtime_settings,sizeof(current))){
+    auto preference=esphome::global_preferences->make_preference<SavedRuntimeSettings>(RUNTIME_SETTINGS_KEY,true);
+    if(preference.save(&current))saved_runtime_settings=current;
+  }
   pax_wifi::loop();
   pax_c6::loop();
+  if (pax_firmware::pending() && this->app_handle_ != nullptr && !this->global_close_requested_)
+    this->request_close();
+  pax_firmware::loop(this->app_handle_ == nullptr && this->pax_task_handle_ == nullptr &&
+                     this->pax_load_task_handle_ == nullptr && !this->pax_loading_);
+  static uint32_t last_firmware_state = PAX_FIRMWARE_IDLE, last_firmware_done = 0;
+  auto firmware = pax_firmware::snapshot();
+  if (firmware.state >= PAX_FIRMWARE_INSTALLING &&
+      (firmware.state != last_firmware_state || firmware.done != last_firmware_done)) {
+    this->set_progress_(firmware.state != PAX_FIRMWARE_ERROR, firmware.done, firmware.total, "%s", firmware.message);
+  }
+  last_firmware_state = firmware.state; last_firmware_done = firmware.done;
   // Tiny active profile: refresh independently of the running app and keep the
   // raw overlays in the same theme as the launcher without adding SDK services.
   static int64_t last_theme_check=0;
@@ -2758,6 +2790,7 @@ void PaxLoader::refresh_archive() {
 }
 
 bool PaxLoader::launch_() {
+  if (pax_firmware::busy()) { this->launched_ = false; return false; }
   const std::string source = this->path_;
 #ifdef PAX_LOADER_USE_LVGL
   // Evict the launcher before reading/mapping the next PAX. This gives the
@@ -8561,7 +8594,7 @@ int PaxLoader::svc_storage_status_get(int32_t storage, pax_storage_status_t *out
 int PaxLoader::svc_storage_set_mounted(int32_t storage, int32_t mounted) {
   // A transfer owns files on the volume. Never unmount or remount underneath
   // its install/upload task, including when the launcher has been reopened.
-  if (pax_c6::busy() || (PaxLoader::active_ != nullptr &&
+  if (pax_c6::busy() || pax_firmware::busy() || (PaxLoader::active_ != nullptr &&
       (PaxLoader::active_->install_task_handle_ != nullptr || PaxLoader::active_->web_storage_busy_))) return -4;
   if (storage < 0 || storage >= PAX_STORAGE_COUNT || PaxLoader::active_ == nullptr)
     return -1;
@@ -9604,8 +9637,15 @@ int PaxLoader::svc_file_zip_extract_first_impl(
 }
 
 void *PaxLoader::svc_file_open(const char *path, const char *mode) {
-  if(path && std::strcmp(path,PAX_C6_UPDATE_FILE)==0)
+  if(path && std::strcmp(path,PAX_FIRMWARE_FILE)==0) {
+    if(mode && mode[0]=='w' && (pax_c6::busy() || (active_ &&
+       (active_->install_task_handle_ || active_->web_storage_busy_))))return nullptr;
+    return own_pax_file(pax_firmware::open(mode));
+  }
+  if(path && std::strcmp(path,PAX_C6_UPDATE_FILE)==0) {
+    if(mode && mode[0]=='w' && pax_firmware::busy())return nullptr;
     return own_pax_file(pax_c6::open(mode));
+  }
   if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
     return own_pax_file(pax_wifi::open(mode));
   const std::string mapped = runtime_path(path);
@@ -11410,8 +11450,16 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
 }
 
 
+bool PaxLoader::request_firmware_update(uint32_t command, uint64_t expected_build) {
+  if (pax_c6::busy() || this->install_task_handle_ || this->web_storage_busy_) return false;
+  pax_firmware_request_t request{PAX_FIRMWARE_MAGIC,command,expected_build};
+  FILE *file=pax_firmware::open("wb");if(!file)return false;
+  bool ok=fwrite(&request,1,sizeof(request),file)==sizeof(request);
+  return fclose(file)==0 && ok;
+}
+
 bool PaxLoader::begin_web_transfer() {
-  if (this->web_storage_busy_ || this->launched_ || this->pax_loading_ || this->launch_pending_ ||
+  if (pax_firmware::busy() || this->web_storage_busy_ || this->launched_ || this->pax_loading_ || this->launch_pending_ ||
       this->install_task_handle_ != nullptr || this->archive_loading_)
     return false;
   this->global_close_requested_ = false;

@@ -1,0 +1,12 @@
+{
+  "name": "Cyberpunk",
+  "background": "#090615",
+  "panel": "#18112B",
+  "selected": "#4F1E68",
+  "accent": "#FF2BD6",
+  "text": "#F7EDFF",
+  "muted": "#9D8BB5",
+  "ok": "#00F0FF",
+  "warn": "#FFE600",
+  "error": "#FF4A6E"
+}

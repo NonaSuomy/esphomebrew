@@ -1,6 +1,6 @@
 # PAX on NANO with Waveshare Raspberry Pi 4.3-inch DSI panel.
 substitutions:
-  launcher_github_url: https://nonasuomy.github.io/esphomebrew/install/sd/releases/20261021/launcher_ui.pax
+  launcher_github_url: https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax
   device_name: pax-nano-lcd43
   friendly_name: PAX NANO 4.3-inch Touchscreen
   pointer_dimensions: (800, 480)

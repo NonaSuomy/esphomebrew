@@ -1,4 +1,6 @@
 #include "pax_web.h"
+#include "esphome/components/pax_loader/pax_firmware_update.h"
+#include "esphome/components/json/json_util.h"
 #include "esp_random.h"
 #include "esp_heap_caps.h"
 #include "esphome/components/pax_loader/pax_data.h"
@@ -15,6 +17,8 @@
 #include <lwip/sockets.h>
 #include <algorithm>
 #include <cstdio>
+#include <cerrno>
+#include <cstdlib>
 #include <cstring>
 #include <sys/stat.h>
 
@@ -46,7 +50,7 @@ void PaxWeb::setup() {
   config.server_port = port_;
   config.ctrl_port = 32769;
   config.stack_size = 12288;
-  config.max_uri_handlers = 8;
+  config.max_uri_handlers = 11;
   config.max_open_sockets = 3;
   config.lru_purge_enable = true;
   config.recv_wait_timeout = 20;
@@ -64,6 +68,9 @@ void PaxWeb::setup() {
                           {"/pax.js", HTTP_GET},
                           {"/pax-store.js", HTTP_GET},
                           {"/pax/status", HTTP_GET},
+                          {"/pax/firmware", HTTP_GET},
+                          {"/pax/firmware/check", HTTP_POST},
+                          {"/pax/firmware/install", HTTP_POST},
                           {"/pax/starter", HTTP_POST},
                           {"/pax/upload", HTTP_POST},
                           {"/pax/close", HTTP_POST}};
@@ -247,6 +254,16 @@ esp_err_t PaxWeb::serve_(httpd_req_t *req) {
       }
       return reply_(req, "200 OK", message.c_str());
     }
+    if (std::strcmp(req->uri,"/pax/firmware")==0) {
+      auto status=pax_firmware::snapshot();
+      JsonDocument document;document["state"]=status.state;document["done"]=status.done;document["total"]=status.total;
+      // Decimal strings keep 64-bit build IDs intact in browsers.
+      document["installed_build"]=std::to_string(status.installed_build);document["latest_build"]=std::to_string(status.latest_build);
+      document["profile"]=status.profile;document["message"]=status.message;
+      document["volume_percent"]=loader_->get_master_volume();document["auto_brightness"]=loader_->auto_brightness_enabled();
+      std::string body;serializeJson(document,body);httpd_resp_set_type(req,"application/json");
+      return httpd_resp_send(req,body.data(),body.size());
+    }
     std::string page(WEB_HTML);
     const auto pos = page.find("PAX_SESSION_TOKEN");
     if (pos != std::string::npos)
@@ -257,6 +274,21 @@ esp_err_t PaxWeb::serve_(httpd_req_t *req) {
   if (!authorized_(req))
     return reply_(req, "403 Forbidden",
                   "Reload the device page before transferring files");
+  if (!std::strcmp(req->uri,"/pax/firmware/check") || !std::strcmp(req->uri,"/pax/firmware/install")) {
+    if(req->content_len!=0)return reply_(req,"400 Bad Request","Firmware request must have no body");
+    bool install=!std::strcmp(req->uri,"/pax/firmware/install");
+    uint64_t expected=0;
+    if(install){
+      std::string value=header(req,"X-PAX-Build",24);
+      if(value.empty() || value.size()>20 || value.find_first_not_of("0123456789")!=std::string::npos)
+        return reply_(req,"400 Bad Request","Confirm the checked firmware build first");
+      char *end=nullptr;errno=0;expected=strtoull(value.c_str(),&end,10);
+      if(errno || !end || *end)return reply_(req,"400 Bad Request","Invalid build ID");
+    }
+    if(transfer_.load()!=0 || !loader_->request_firmware_update(install ? PAX_FIRMWARE_INSTALL : PAX_FIRMWARE_CHECK,expected))
+      return reply_(req,"409 Conflict","Device busy or firmware confirmation expired; check again");
+    return reply_(req,"202 Accepted",install ? "Firmware update accepted; settings and SD files will be kept" : "Checking GitHub for firmware");
+  }
   if (std::strcmp(req->uri, "/pax/close") == 0) {
     close_requested_ = true;
     return reply_(

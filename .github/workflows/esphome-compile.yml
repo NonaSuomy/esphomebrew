@@ -171,7 +171,7 @@ jobs:
           python tools/firmware_ci.py promote firmware-overlay
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web-installer/firmware web-installer/ota web-installer/kits web-installer/manifests web-installer/build-info.json
+          git add web-installer/updates web-installer/firmware web-installer/ota web-installer/kits web-installer/manifests web-installer/build-info.json
           git commit -m "Publish all device firmware from $GITHUB_SHA"
           git push origin HEAD:main
       # GITHUB_TOKEN pushes do not trigger push workflows; explicitly deploy the updated installer.
