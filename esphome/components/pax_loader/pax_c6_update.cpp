@@ -42,6 +42,17 @@ static void report(uint32_t state, const char *message, uint32_t done = 0, uint3
   snprintf(status.message, sizeof(status.message), "%s", message);
   portEXIT_CRITICAL(&lock);
 }
+static esp_err_t query_version(esp_hosted_coprocessor_fwver_t &current) {
+  esp_err_t result=esp_hosted_get_coprocessor_fwversion(&current);
+  if(result==ESP_OK)return result;
+  // Ethernet can leave the hosted link disconnected: a failed RPC alone
+  // does not establish that the radio needs recovery firmware.
+  report(PAX_C6_BUSY,"Connecting to C6 to read installed version");
+  result=esp_hosted_init();
+  if(result==ESP_OK)result=esp_hosted_connect_to_slave();
+  if(result==ESP_OK)result=esp_hosted_get_coprocessor_fwversion(&current);
+  return result;
+}
 static bool copy_source(const char *source) {
   bool web = !strncmp(source, "http://", 7) || !strncmp(source, "https://", 8);
   FILE *input = nullptr;
@@ -145,11 +156,12 @@ static void worker(void *arg) {
     } else {
       report(PAX_C6_BUSY,"Image verified; checking C6 connection",size,size);
       ESP_LOGI("pax_c6","Image verified (%lu bytes); querying C6",static_cast<unsigned long>(size));
-      esp_err_t result = esp_hosted_get_coprocessor_fwversion(&current);
+      esp_err_t result = query_version(current);
       ESP_LOGI("pax_c6","C6 version query: %s",esp_err_to_name(result));
       if (result != ESP_OK) {
         remove(STAGE);
-        report(PAX_C6_ERROR, "C6 not responding; initial/recovery flashing requires USB/UART");
+        snprintf(message,sizeof(message),"Could not read C6 version (%s). Check radio link/firmware; USB/UART may be needed for initial setup.",esp_err_to_name(result));
+        report(PAX_C6_ERROR,message);
       }
       else {
         char installed[32];snprintf(installed,sizeof(installed),"%lu.%lu.%lu",(unsigned long)current.major1,(unsigned long)current.minor1,(unsigned long)current.patch1);
