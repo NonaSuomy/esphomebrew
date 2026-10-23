@@ -9640,6 +9640,7 @@ void *PaxLoader::svc_file_open(const char *path, const char *mode) {
   if(path && std::strcmp(path,PAX_FIRMWARE_FILE)==0) {
     if(mode && mode[0]=='w' && (pax_c6::busy() || (active_ &&
        (active_->install_task_handle_ || active_->web_storage_busy_))))return nullptr;
+    if(mode && mode[0]=='w')(void)restore_active_dns_if_missing_();
     return own_pax_file(pax_firmware::open(mode));
   }
   if(path && std::strcmp(path,PAX_C6_UPDATE_FILE)==0) {
@@ -11461,6 +11462,7 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
 
 bool PaxLoader::request_firmware_update(uint32_t command, uint64_t expected_build) {
   if (pax_c6::busy() || this->install_task_handle_ || this->web_storage_busy_) return false;
+  (void)restore_active_dns_if_missing_();
   pax_firmware_request_t request{PAX_FIRMWARE_MAGIC,command,expected_build};
   FILE *file=pax_firmware::open("wb");if(!file)return false;
   bool ok=fwrite(&request,1,sizeof(request),file)==sizeof(request);

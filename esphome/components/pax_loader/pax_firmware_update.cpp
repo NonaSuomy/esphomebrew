@@ -79,9 +79,11 @@ struct Connection {
     handle = esp_http_client_init(&cfg);
     if (handle)
       esp_http_client_set_header(handle, "Cache-Control", "no-cache");
-    if (!handle || esp_http_client_open(handle, 0) != ESP_OK)
-      return false;
+    if (!handle) { ESP_LOGW(TAG,"HTTP client allocation failed"); return false; }
+    esp_err_t opened=esp_http_client_open(handle,0);
+    if (opened!=ESP_OK) { ESP_LOGW(TAG,"HTTP connection failed: %s",esp_err_to_name(opened)); return false; }
     length = esp_http_client_fetch_headers(handle);
+    ESP_LOGI(TAG,"HTTP response %d, length %lld",esp_http_client_get_status_code(handle),static_cast<long long>(length));
     return esp_http_client_get_status_code(handle) == 200 && length > 0 &&
            length <= limit;
   }
@@ -97,8 +99,7 @@ static bool partitions_match(JsonArray array) {
     count++;
     iterator = esp_partition_next(iterator);
   }
-  if (count != array.size())
-    return false;
+  if (count != array.size()) {ESP_LOGW(TAG,"Partition count %u != %u",unsigned(count),unsigned(array.size()));return false;}
   for (JsonObject entry : array) {
     const char *label = entry["label"] | "";
     unsigned matches = 0;
@@ -156,8 +157,10 @@ static bool check(Candidate &out) {
         !json["max_revision"].is<unsigned>() ||
         chip.revision < json["min_revision"].as<unsigned>() ||
         chip.revision > json["max_revision"].as<unsigned>() ||
-        !partitions_match(json["partitions"].as<JsonArray>()))
+        !partitions_match(json["partitions"].as<JsonArray>())) {
+      ESP_LOGW(TAG,"Manifest rejected: profile=%s chip=%s build=%llu rev=%u min=%u max=%u bytes=%u slot=%u",profile,chip_name,(unsigned long long)build,chip.revision,json["min_revision"].as<unsigned>(),json["max_revision"].as<unsigned>(),unsigned(bytes),unsigned(partition ? partition->size : 0));
       return false;
+    }
     for (size_t i = 0; i < 64; i++)
       if (!((hash[i] >= '0' && hash[i] <= '9') ||
             (hash[i] >= 'a' && hash[i] <= 'f')))
@@ -168,6 +171,7 @@ static bool check(Candidate &out) {
     snprintf(out.hash, sizeof(out.hash), "%s", hash);
     return true;
   });
+  if(!parsed)ESP_LOGW(TAG,"Manifest parse or compatibility check failed (%u bytes)",unsigned(body.size()));
   return parsed;
 }
 static bool install(const Candidate &image) {
