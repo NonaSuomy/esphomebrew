@@ -1,0 +1,217 @@
+diff --git a/components/esp_hal_usb/esp32p4/include/hal/usb_dwc_ll.h b/components/esp_hal_usb/esp32p4/include/hal/usb_dwc_ll.h
+index f5b7b79f..f5e42c7f 100644
+--- a/components/esp_hal_usb/esp32p4/include/hal/usb_dwc_ll.h
++++ b/components/esp_hal_usb/esp32p4/include/hal/usb_dwc_ll.h
+@@ -502,9 +502,47 @@ static inline void usb_dwc_ll_hcfg_en_scatt_gatt_dma(usb_dwc_dev_t *hw)
+     hw->hcfg_reg.descdma = 1;
+ }
+ 
+-static inline void usb_dwc_ll_hcfg_set_fsls_supp_only(usb_dwc_dev_t *hw)
++static inline bool usb_dwc_ll_is_hs_controller(usb_dwc_dev_t *hw)
++{
++    return hw == &USB_DWC_HS;
++}
++
++/**
++ * @brief Configure HS UTMI port for FS/LS-only host mode (HCFG.FSLSSupp)
++ *
++ * This skips the HS chirp so FS/LS devices behind a TT hub can enumerate.
++ * The controller may clear FSLSSupp during reset, so this is also reapplied
++ * immediately before each port reset.
++ */
++static inline void usb_dwc_ll_hcfg_init_hs_fsls_host(usb_dwc_dev_t *hw)
+ {
+     hw->hcfg_reg.fslssupp = 1;
++    hw->hcfg_reg.fslspclksel = 0; // UTMI 16-bit interface: 30 MHz
++}
++
++/**
++ * @brief Select the UTMI FS/LS clock after the port speed is known.
++ */
++static inline void usb_dwc_ll_hcfg_set_utmi_fsls_phy_clock(usb_dwc_dev_t *hw)
++{
++    // Keep the P4 HS USB-A root controller on the FS/LS 30 MHz UTMI clock.
++    // PrtSpd can transiently read LOW while an FS hub is completing reset;
++    // selecting the 6 MHz LS clock here breaks the root link. Downstream LS
++    // devices are selected per channel using LSpdDev and TT split phases.
++    hw->hcfg_reg.fslspclksel = 0;
++}
++
++/**
++ * @brief Set the UTMI FS/LS host frame interval after the port speed is known.
++ */
++static inline void usb_dwc_ll_hfir_set_utmi_frame_interval(usb_dwc_dev_t *hw)
++{
++    usb_dwc_hfir_reg_t hfir;
++    hfir.val = hw->hfir_reg.val;
++    hfir.hfirrldctrl = 0;
++    // Keep the root controller on the FS frame clock; TT handles LS pipes.
++    hfir.frint = 29999;
++    hw->hfir_reg.val = hfir.val;
+ }
+ 
+ /**
+@@ -628,7 +666,12 @@ static inline uint32_t usb_dwc_ll_hflbaddr_get_base_addr(usb_dwc_dev_t *hw)
+ 
+ static inline usb_dwc_speed_t usb_dwc_ll_hprt_get_speed(usb_dwc_dev_t *hw)
+ {
+-    return (usb_dwc_speed_t)hw->hprt_reg.prtspd;
++    usb_dwc_speed_t speed = (usb_dwc_speed_t)hw->hprt_reg.prtspd;
++    // PrtSpd can still report HS after FS link-up on the HS UTMI root port.
++    if (usb_dwc_ll_is_hs_controller(hw) && speed == USB_DWC_SPEED_HIGH) {
++        speed = USB_DWC_SPEED_FULL;
++    }
++    return speed;
+ }
+ 
+ static inline uint32_t usb_dwc_ll_hprt_get_test_ctl(usb_dwc_dev_t *hw)
+@@ -667,6 +710,9 @@ static inline uint32_t usb_dwc_ll_hprt_get_pwr_line_status(usb_dwc_dev_t *hw)
+ 
+ static inline void usb_dwc_ll_hprt_set_port_reset(usb_dwc_dev_t *hw, bool reset)
+ {
++    if (reset && usb_dwc_ll_is_hs_controller(hw)) {
++        usb_dwc_ll_hcfg_init_hs_fsls_host(hw);
++    }
+     usb_dwc_hprt_reg_t hprt;
+     hprt.val = hw->hprt_reg.val;
+     hprt.prtrst = reset;
+diff --git a/components/esp_hal_usb/usb_dwc_hal.c b/components/esp_hal_usb/usb_dwc_hal.c
+index 6f3c6a71..95e2ddd6 100644
+--- a/components/esp_hal_usb/usb_dwc_hal.c
++++ b/components/esp_hal_usb/usb_dwc_hal.c
+@@ -148,6 +148,12 @@ static void set_defaults(usb_dwc_hal_context_t *hal)
+     //Enable host mode
+     usb_dwc_ll_gusbcfg_force_host_mode(hal->dev);
+ 
++#if SOC_IS(ESP32P4) || SOC_IS(ESP32S31)
++    if (usb_dwc_ll_is_hs_controller(hal->dev)) {
++        usb_dwc_ll_hcfg_init_hs_fsls_host(hal->dev);
++    }
++#endif // SOC_IS(ESP32P4) || SOC_IS(ESP32S31)
++
+ #if SOC_IS(ESP32P4)
+     if (hnp_cap && hal->constant_config.hsphy_type != 0 && !ESP_CHIP_REV_ABOVE(efuse_hal_chip_revision(), 300)) {
+         // ESP32-P4 HW rev < 3.0, HS DWC + UTMI: no GPIO-matrix OTG sense for this instance; when HNPCap is enabled, anchor the A-host session
+@@ -307,10 +313,15 @@ void usb_dwc_hal_port_enable(usb_dwc_hal_context_t *hal)
+     usb_dwc_ll_hcfg_en_scatt_gatt_dma(hal->dev); // Enable Scatther-Gather DMA mode
+     usb_dwc_ll_hcfg_dis_perio_sched(hal->dev);   // Disable Periodic Scheduler (for now)
+ 
+-    // Configure PHY clock: Only for USB-DWC with FSLS PHY
++    // Configure PHY clock and frame interval once the port speed is known
+     if (hal->constant_config.hsphy_type == 0) {
+         usb_dwc_ll_hcfg_set_fsls_phy_clock(hal->dev);
+         usb_dwc_ll_hfir_set_frame_interval(hal->dev);
++#if SOC_IS(ESP32P4) || SOC_IS(ESP32S31)
++    } else if (usb_dwc_ll_is_hs_controller(hal->dev)) {
++        usb_dwc_ll_hcfg_set_utmi_fsls_phy_clock(hal->dev);
++        usb_dwc_ll_hfir_set_utmi_frame_interval(hal->dev);
++#endif // SOC_IS(ESP32P4) || SOC_IS(ESP32S31)
+     }
+ }
+ 
+diff --git a/components/esp_system/CMakeLists.txt b/components/esp_system/CMakeLists.txt
+index cc435662..3156ebde 100644
+--- a/components/esp_system/CMakeLists.txt
++++ b/components/esp_system/CMakeLists.txt
+@@ -89,7 +89,7 @@ else()
+ 
+     idf_component_register(SRCS "${srcs}"
+                         INCLUDE_DIRS include
+-                        PRIV_REQUIRES spi_flash esp_timer esp_mm
++                        PRIV_REQUIRES spi_flash esp_timer esp_mm esp_common
+                                       esp_hal_mspi esp_hal_wdt esp_hal_uart esp_hal_clock esp_hal_dma
+                                     # [refactor-todo] requirements due to init code,
+                                     # should be removable once using component init functions
+diff --git a/components/fatfs/Kconfig b/components/fatfs/Kconfig
+index fea650b0..55069640 100644
+--- a/components/fatfs/Kconfig
++++ b/components/fatfs/Kconfig
+@@ -240,12 +240,12 @@ menu "FAT Filesystem support"
+     config FATFS_PRINT_LLI
+         depends on !FATFS_USE_STRFUNC_NONE
+         bool "Make fatfs f_printf() support long long argument"
+-        default 0
++        default n
+ 
+     config FATFS_PRINT_FLOAT
+         depends on !FATFS_USE_STRFUNC_NONE
+         bool "Make fatfs f_printf() support floating point argument"
+-        default 0
++        default n
+ 
+     choice FATFS_STRF_ENCODE_CHOICE
+         prompt "FatFS string functions: convert character encoding"
+diff --git a/components/fatfs/src/ffconf.h b/components/fatfs/src/ffconf.h
+index b8ae97bb..b0027b39 100644
+--- a/components/fatfs/src/ffconf.h
++++ b/components/fatfs/src/ffconf.h
+@@ -52,7 +52,11 @@
+ /  (0:Disable or 1:Enable) Also FF_FS_READONLY needs to be 0 to enable this option. */
+ 
+ 
++#ifdef CONFIG_FATFS_USE_LABEL
+ #define FF_USE_LABEL	CONFIG_FATFS_USE_LABEL
++#else
++#define FF_USE_LABEL	0
++#endif
+ /* This option switches volume label API functions, f_getlabel() and f_setlabel().
+ /  (0:Disable or 1:Enable) */
+ 
+@@ -291,7 +295,7 @@
+ /  buffer in the filesystem object (FATFS) is used for the file data transfer. */
+ 
+ 
+-#define FF_FS_EXFAT		0
++#define FF_FS_EXFAT		1
+ /* This option switches support for exFAT filesystem. (0:Disable or 1:Enable)
+ /  To enable exFAT, also LFN needs to be enabled. (FF_USE_LFN >= 1)
+ /  Note that enabling exFAT discards ANSI C (C89) compatibility. */
+diff --git a/tools/tools.json b/tools/tools.json
+index cd9a7963..d48735d4 100644
+--- a/tools/tools.json
++++ b/tools/tools.json
+@@ -10,7 +10,7 @@
+       ],
+       "export_vars": {},
+       "info_url": "https://github.com/espressif/binutils-gdb",
+-      "install": "always",
++      "install": "on_request",
+       "license": "GPL-3.0-or-later",
+       "name": "xtensa-esp-elf-gdb",
+       "supported_targets": [
+@@ -90,7 +90,7 @@
+       ],
+       "export_vars": {},
+       "info_url": "https://github.com/espressif/binutils-gdb",
+-      "install": "always",
++      "install": "on_request",
+       "license": "GPL-3.0-or-later",
+       "name": "riscv32-esp-elf-gdb",
+       "supported_targets": [
+@@ -390,8 +390,6 @@
+       "license": "GPL-3.0-with-GCC-exception",
+       "name": "riscv32-esp-elf",
+       "supported_targets": [
+-        "esp32s2",
+-        "esp32s3",
+         "esp32c3",
+         "esp32c2",
+         "esp32c6",
+@@ -470,7 +468,7 @@
+       ],
+       "export_vars": {},
+       "info_url": "https://github.com/espressif/binutils-gdb",
+-      "install": "always",
++      "install": "on_request",
+       "license": "GPL-3.0-or-later",
+       "name": "esp32ulp-elf",
+       "supported_targets": [
+@@ -672,7 +670,7 @@
+         "OPENOCD_SCRIPTS": "${TOOL_PATH}/openocd-esp32/share/openocd/scripts"
+       },
+       "info_url": "https://github.com/espressif/openocd-esp32",
+-      "install": "always",
++      "install": "on_request",
+       "license": "GPL-2.0-only",
+       "name": "openocd-esp32",
+       "platform_overrides": [

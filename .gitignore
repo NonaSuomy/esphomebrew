@@ -16,3 +16,11 @@ __pycache__/
 /backups/
 secrets.yaml
 local.env
+
+# Standalone firmware CI caches and output
+.firmware-ci/
+firmware-dist/
+firmware-artifacts/
+firmware-overlay/
+firmware-build.log
+esphome/dependencies/
