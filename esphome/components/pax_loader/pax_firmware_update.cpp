@@ -359,7 +359,10 @@ bool busy() {
 }
 void loop(bool app_closed) {
   if (pending() && app_closed) {
-    esphome::global_preferences->sync();
+    if (!esphome::global_preferences || !esphome::global_preferences->sync()) {
+      report(PAX_FIRMWARE_ERROR, "Could not save pending settings; update cancelled");
+      return;
+    }
     report(PAX_FIRMWARE_INSTALLING, "Starting firmware download...");
     if (xTaskCreate(install_worker, "pax_fw_install", 16384, nullptr, 3,
                     nullptr) != pdPASS)

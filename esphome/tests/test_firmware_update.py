@@ -84,4 +84,40 @@ int main(){
             path=Path(folder);(path/'test.cpp').write_text(code)
             subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(path/'test.cpp'),'-o',str(path/'test')],check=True)
             subprocess.run([str(path/'test')],check=True)
+    def test_failed_settings_sync_prevents_installation(self):
+        source=(ROOT/'components/pax_loader/pax_firmware_update.cpp').read_text()
+        start=source.index('void loop(bool app_closed)')
+        method=source[start:source.index('\n}',start)+2]
+        code=r'''#include <cassert>
+#include <cstdint>
+#define PAX_FIRMWARE_WAITING 4U
+#define PAX_FIRMWARE_INSTALLING 5U
+#define PAX_FIRMWARE_ERROR 7U
+#define portENTER_CRITICAL(x) ((void)(x))
+#define portEXIT_CRITICAL(x) ((void)(x))
+#define pdPASS 1
+int lock=0,tasks=0;int64_t reboot_at=0;unsigned state=4;
+bool pending(){return state==4;}
+void report(unsigned next,const char *){state=next;}
+void install_worker(void *){}
+int xTaskCreate(void (*)(void *),const char *,int,void *,int,void *){tasks++;return 1;}
+int64_t esp_timer_get_time(){return 0;}
+namespace esphome {
+struct Prefs {bool ok=true;int calls=0;bool sync(){calls++;return ok;}} prefs;
+Prefs *global_preferences=&prefs;
+struct Application {int reboots=0;void safe_reboot(){reboots++;}} App;
+}
+'''+method+r'''
+int main(){
+ loop(false);assert(!tasks && !esphome::prefs.calls);
+ esphome::prefs.ok=false;loop(true);assert(!tasks && state==7 && !esphome::App.reboots);
+ state=4;esphome::global_preferences=nullptr;loop(true);assert(!tasks && state==7);
+ state=4;esphome::global_preferences=&esphome::prefs;esphome::prefs.ok=true;
+ loop(true);assert(tasks==1 && state==5 && !esphome::App.reboots);
+}
+'''
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder);(path/'test.cpp').write_text(code)
+            subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(path/'test.cpp'),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True)
 if __name__=='__main__': unittest.main()
