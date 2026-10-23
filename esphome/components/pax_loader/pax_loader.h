@@ -139,6 +139,7 @@ class PaxLoader : public Component {
   // The web component reserves storage on the main loop before doing I/O on its worker.
   bool begin_web_transfer();
   bool request_firmware_update(uint32_t command, uint64_t expected_build);
+  bool request_c6_update(uint32_t command);
   void end_web_transfer();
   // Worker-only snapshot; caller owns the returned heap_caps allocation.
   bool capture_screenshot(uint16_t *&copy, uint16_t &width, uint16_t &height);

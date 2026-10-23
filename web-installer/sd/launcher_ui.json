@@ -11,16 +11,16 @@
   "source": {
     "path": "pax-modules/apps/launcher_ui",
     "repository": "pax-modules",
-    "ref": "57af117b2ef253327aefda612daafa49e42df288"
+    "ref": "5c42296023f20e113ab8d77185ea31b9818396fc"
   },
-  "size": 496040,
-  "sha256": "b2511511d6952c1fd10d0e6d069095402afcff3f55b7d176e27da3d3bf6ddb06",
+  "size": 496412,
+  "sha256": "8e979b506b0d08909d08c3973736094c53df325d5b484c85a39b01c4992d9d31",
   "compatibility_report": "validation/module-compatibility.md (workspace root)",
   "title": "Launcher UI",
   "active_source": {
     "path": "pax-modules/apps/launcher_ui",
     "repository": "pax-modules",
-    "ref": "57af117b2ef253327aefda612daafa49e42df288"
+    "ref": "5c42296023f20e113ab8d77185ea31b9818396fc"
   },
   "extract": {
     "version": 2,
@@ -35,5 +35,5 @@
   },
   "install_recipe_source": "pax-modules/apps/launcher_ui/install-recipe.json",
   "requires": [],
-  "install_recipe_ref": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
+  "install_recipe_ref": "5c42296023f20e113ab8d77185ea31b9818396fc"
 }

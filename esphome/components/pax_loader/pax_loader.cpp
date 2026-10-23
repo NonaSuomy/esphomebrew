@@ -9644,7 +9644,9 @@ void *PaxLoader::svc_file_open(const char *path, const char *mode) {
     return own_pax_file(pax_firmware::open(mode));
   }
   if(path && std::strcmp(path,PAX_C6_UPDATE_FILE)==0) {
-    if(mode && mode[0]=='w' && pax_firmware::busy())return nullptr;
+    if(mode && mode[0]=='w' && (pax_firmware::busy() || (active_ &&
+       (active_->install_task_handle_ || active_->web_storage_busy_))))return nullptr;
+    if(mode && mode[0]=='w')(void)restore_active_dns_if_missing_();
     return own_pax_file(pax_c6::open(mode));
   }
   if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
@@ -11460,6 +11462,17 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
 }
 
 
+bool PaxLoader::request_c6_update(uint32_t command) {
+  if(command!=PAX_C6_PREPARE && command!=PAX_C6_INSTALL)return false;
+  if(pax_firmware::busy() || install_task_handle_ || web_storage_busy_)return false;
+  (void)restore_active_dns_if_missing_();
+  pax_c6_request_t request{};request.magic=PAX_C6_UPDATE_MAGIC;request.command=command;
+  snprintf(request.source,sizeof(request.source),"%s",PAX_C6_RECOMMENDED);
+  FILE *file=pax_c6::open("wb");if(!file)return false;
+  bool ok=fwrite(&request,1,sizeof(request),file)==sizeof(request);
+  return fclose(file)==0 && ok;
+}
+
 bool PaxLoader::request_firmware_update(uint32_t command, uint64_t expected_build) {
   if (pax_c6::busy() || this->install_task_handle_ || this->web_storage_busy_) return false;
   (void)restore_active_dns_if_missing_();
@@ -11470,7 +11483,7 @@ bool PaxLoader::request_firmware_update(uint32_t command, uint64_t expected_buil
 }
 
 bool PaxLoader::begin_web_transfer() {
-  if (pax_firmware::busy() || this->web_storage_busy_ || this->launched_ || this->pax_loading_ || this->launch_pending_ ||
+  if (pax_firmware::busy() || pax_c6::busy() || this->web_storage_busy_ || this->launched_ || this->pax_loading_ || this->launch_pending_ ||
       this->install_task_handle_ != nullptr || this->archive_loading_)
     return false;
   this->global_close_requested_ = false;

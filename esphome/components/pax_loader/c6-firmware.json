@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "images": {
+    "c6-sdio": {
+      "chip": "ESP32C6",
+      "transport": "sdio",
+      "version": "2.12.12",
+      "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+      "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+      "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+      "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific."
+    },
+    "c6-spi-aio": {
+      "chip": "ESP32C6",
+      "transport": "spi-full-duplex",
+      "version": "2.12.12",
+      "url": "https://nonasuomy.github.io/esphomebrew/install/c6/2.12.12/aio-spi/network_adapter.bin",
+      "sha256": "9340d16d580d739f819b3d4ad49de618f367fe50b01d47d878c8fcda50cc8f6e",
+      "source": "https://components.espressif.com/components/espressif/esp_hosted/versions/2.12.12",
+      "slave_pins": {
+        "mosi": 20,
+        "miso": 21,
+        "clk": 18,
+        "cs": 19,
+        "handshake": 23,
+        "data_ready": 22
+      },
+      "spi_mode": 3,
+      "idf_version": "5.5.2",
+      "note": "Stock ESP-Hosted Wi-Fi/Bluetooth HCI coprocessor, full duplex; never use the SDIO image on this wiring."
+    }
+  }
+}

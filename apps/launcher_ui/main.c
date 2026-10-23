@@ -185,7 +185,7 @@ static char g_wifi_ssid[33], g_wifi_password[65];
 static lv_obj_t *g_network_extra_labels[4];
 static char g_search_before_settings_edit[sizeof(g_search_text)];
 static char g_settings_message[128];
-static char g_c6_source[512] = "/sd/firmware/network_adapter.bin";
+static char g_c6_source[512] = "board-recommended";
 static char g_c6_checked_source[512];
 static pax_c6_status_t g_c6_status;
 static bool g_c6_available;
@@ -193,6 +193,7 @@ static lv_obj_t *g_c6_labels[4];
 static pax_firmware_status_t g_firmware_status;
 static bool g_firmware_available, g_firmware_confirm;
 static uint64_t g_firmware_confirm_build;
+static uint32_t g_firmware_last_state = UINT32_MAX;
 static lv_obj_t *g_firmware_labels[3];
 static lv_obj_t *g_c6_progress;
 static uint32_t g_c6_last_state;
@@ -5147,16 +5148,31 @@ static int update_firmware_on_host(void *unused)
   }
   if(g_firmware_labels[0])lv_label_set_text(g_firmware_labels[0],g_firmware_status.state==PAX_FIRMWARE_CHECKING ? "CHECKING..." : "CHECK FOR UPDATES");
   if(g_firmware_labels[1])lv_label_set_text(g_firmware_labels[1],g_firmware_confirm ? "CONFIRM & RESTART" : "INSTALL UPDATE");
-  char text[320];
+  char text[512];
   if(g_firmware_available){
-    copy_text(text,sizeof(text),g_firmware_status.profile);append_text(text,sizeof(text)," | installed build ");
-    char digits[21];size_t count=0;uint64_t build=g_firmware_status.installed_build;
-    do{digits[count++]=(char)('0'+build%10);build/=10;}while(build && count<20);
-    while(count){char digit[2]={digits[--count],0};append_text(text,sizeof(text),digit);}
-    append_text(text,sizeof(text),"\n");append_text(text,sizeof(text),g_firmware_confirm ?
+    copy_text(text,sizeof(text),g_firmware_status.profile);append_text(text,sizeof(text)," | Installed version: ");
+    for(int i=0;i<2;i++){
+      uint64_t build=i ? g_firmware_status.latest_build : g_firmware_status.installed_build;
+      if(i){if(!build)break;append_text(text,sizeof(text),"\nLatest published version: ");}
+      if(!build)append_text(text,sizeof(text),"local build (unversioned)");
+      else {
+        append_text(text,sizeof(text),"build ");
+        char digits[21];size_t count=0;
+        do{digits[count++]=(char)('0'+build%10);build/=10;}while(build && count<20);
+        while(count){char digit[2]={digits[--count],0};append_text(text,sizeof(text),digit);}
+      }
+    }
+    append_text(text,sizeof(text),"\n");
+    if(g_firmware_status.state==PAX_FIRMWARE_CURRENT)append_text(text,sizeof(text),
+      g_firmware_status.installed_build==g_firmware_status.latest_build ? "You are on the latest version. " : "No newer version available. ");
+    append_text(text,sizeof(text),g_firmware_confirm ?
       "Tap CONFIRM & RESTART to install. Settings and SD files are kept. Keep power connected." : g_firmware_status.message);
   }else copy_text(text,sizeof(text),"Requires a one-time P4 firmware upgrade to enable GitHub updates");
   lv_label_set_text(g_firmware_labels[2],text);
+  if(g_firmware_status.state!=g_firmware_last_state &&
+     (g_firmware_status.state==PAX_FIRMWARE_CHECKING || g_firmware_last_state==PAX_FIRMWARE_CHECKING))
+    lv_obj_scroll_to_view(g_firmware_labels[2],LV_ANIM_OFF);
+  g_firmware_last_state=g_firmware_status.state;
   return 0;
 }
 
@@ -5505,7 +5521,7 @@ static bool commit_network_edit(void)
   bool valid=false;
   if(field==4){char normalized[PATH_BYTES];valid=normalize_network_url(g_search_text,normalized,sizeof(normalized)) && save_network_url(normalized);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Development server URL saved on SD" : "Use an HTTP(S) IPv4 address or hostname; SD is required to save");}
   else if(field==5){valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_wifi_ssid);if(valid)copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Wi-Fi name staged; choose APPLY WI-FI" : "Wi-Fi name must be 1-32 bytes");}
-  else if(field==7){valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_c6_source);if(valid)copy_text(g_c6_source,sizeof(g_c6_source),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "C6 source staged; choose CHECK FIRMWARE" : "Firmware path or URL required");}
+  else if(field==7){valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_c6_source);if(valid)copy_text(g_c6_source,sizeof(g_c6_source),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "C6 source staged; only the board-approved image hash is accepted" : "Firmware path or URL required");}
   else if(field==6){valid=strlen(g_search_text)<sizeof(g_wifi_password);if(valid){copy_text(g_wifi_password,sizeof(g_wifi_password),g_search_text);g_wifi_password_changed=true;}copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Password staged; choose APPLY WI-FI (blank means open network)" : "Password is too long");}
   else valid=ipv4_from_text(g_search_text,&address);
   if (field<4 && valid) {
@@ -6579,6 +6595,7 @@ static int build_ui_on_host(void *arg)
   for(int i=0;i<4;i++){g_network_extra_labels[i]=NULL;g_c6_labels[i]=NULL;}
   for(int i=0;i<3;i++)g_firmware_labels[i]=NULL;
   g_firmware_confirm=false;
+  g_firmware_last_state=UINT32_MAX;
   g_c6_progress=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;
@@ -7011,7 +7028,7 @@ static int build_ui_on_host(void *arg)
       else if(row==34)visual_row=33;
       else if(row==28 || row==29)visual_row+=2;
       if(row>=36)visual_row=row;
-      if(row==29)visual_row=50;
+      if(row==29)visual_row=52;
       row_y[row] = first_row_y + step_y * visual_row;
       /* Keep the extra breathing room after the Archive S3 status even
        * though the five Storage rows now precede the network settings. */
@@ -7343,7 +7360,7 @@ static int build_ui_on_host(void *arg)
     g_theme_value_label=lv_label_create(theme_button);lv_label_set_text(g_theme_value_label,g_theme.name);
     lv_obj_set_style_text_color(g_theme_value_label,lv_color_hex(COL_TEXT),LV_PART_MAIN);
     lv_obj_set_style_text_font(g_theme_value_label,font,LV_PART_MAIN);lv_obj_center(g_theme_value_label);
-    const char *c6_names[3]={"C6 FIRMWARE PATH / URL","VERIFY C6 FIRMWARE","INSTALL VERIFIED C6"};
+    const char *c6_names[3]={"C6 APPROVED SOURCE","VERIFY C6 FIRMWARE","INSTALL VERIFIED C6"};
     for(int i=0;i<3;i++){
       settings_text(panel,c6_names[i],label_x,row_y[36+i],control_x-label_x-ui_px(6),font,false);
       lv_obj_t *button=settings_button(panel,31+i,control_x,row_y[36+i],control_w,ui_px(18),-70-i);
@@ -7358,7 +7375,7 @@ static int build_ui_on_host(void *arg)
     lv_bar_set_range(g_c6_progress,0,100);
     lv_obj_set_style_bg_color(g_c6_progress,lv_color_hex(COL_PANEL),LV_PART_MAIN);
     lv_obj_set_style_bg_color(g_c6_progress,lv_color_hex(COL_ACCENT),LV_PART_INDICATOR);
-    g_c6_labels[3]=settings_text(panel,"C6 firmware: use an image matching this board's SPI/SDIO wiring",label_x,row_y[39]+step_y,content_w-label_x-ui_px(8),&lv_font_montserrat_14,true);
+    g_c6_labels[3]=settings_text(panel,"C6 firmware: board-recommended image is selected automatically",label_x,row_y[39]+step_y,content_w-label_x-ui_px(8),&lv_font_montserrat_14,true);
     lv_obj_set_height(g_c6_labels[3],ui_px(48));
     lv_label_set_long_mode(g_c6_labels[3],LV_LABEL_LONG_WRAP);
     settings_text(panel,"P4 FIRMWARE (GITHUB)",label_x,row_y[43],content_w-label_x-ui_px(8),font,false);
@@ -7370,7 +7387,7 @@ static int build_ui_on_host(void *arg)
       lv_obj_set_style_text_font(g_firmware_labels[i],&lv_font_montserrat_14,LV_PART_MAIN);lv_obj_center(g_firmware_labels[i]);
     }
     g_firmware_labels[2]=settings_text(panel,"",label_x,row_y[46],content_w-label_x-ui_px(8),&lv_font_montserrat_14,true);
-    lv_obj_set_height(g_firmware_labels[2],ui_px(76));lv_label_set_long_mode(g_firmware_labels[2],LV_LABEL_LONG_WRAP);
+    lv_obj_set_height(g_firmware_labels[2],ui_px(112));lv_label_set_long_mode(g_firmware_labels[2],LV_LABEL_LONG_WRAP);
     g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[29],
                                               content_w-ui_px(12),&lv_font_montserrat_14,true);
 
@@ -7972,6 +7989,7 @@ static int teardown_ui_on_host(void *arg)
   for(int i=0;i<4;i++){g_network_extra_labels[i]=NULL;g_c6_labels[i]=NULL;}
   for(int i=0;i<3;i++)g_firmware_labels[i]=NULL;
   g_firmware_confirm=false;
+  g_firmware_last_state=UINT32_MAX;
   g_c6_progress=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;

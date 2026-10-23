@@ -11,3 +11,49 @@ Each CI build publishes `install/updates/PROFILE.json` alongside its OTA image. 
 Existing devices need one initial OTA upgrade to firmware containing this updater. They also need the current SD starter/Launcher to expose the Settings buttons; firmware OTA deliberately leaves an existing SD launcher unchanged. The device setup web page can update firmware independently of the SD launcher. Updates do not migrate applications, replace SD files, or silently install at startup.
 
 Public updates use the configuration for that installer profile. Custom compile-time integrations belong in a custom build; runtime settings remain on the device. Physical tests and compilation coverage are reported separately.
+
+## Installed and latest versions
+
+Settings and the device setup web page show the installed GitHub build ID and,
+after a successful check, the latest published build ID. “You are on the latest
+version” means the check succeeded and no newer build is available. Local builds
+are labelled unversioned. A failed check reports an error and cannot establish
+whether the device is current. Network/DNS failures are reported separately from
+HTTP and manifest/board/partition failures. The updater restores DNS from the
+active network interface when its resolver slots are empty after boot.
+
+## C6 coprocessor firmware
+
+C6 checking and installation are separate from P4 firmware updates. The resolved
+`esp32_hosted` configuration selects an approved profile; a display's size does
+not select the radio firmware. Current approved images use ESP-Hosted 2.12.12,
+matching the host library, rather than the newest incompatible upstream major.
+
+* `c6-spi-aio`: Elecrow AIO full-duplex SPI, mode 3. P4 MOSI7/MISO9/CLK15/CS14,
+  handshake11/data-ready10/reset2 connect to C6 MOSI20/MISO21/CLK18/CS19,
+  handshake23/data-ready22. Other SPI wiring is not automatically approved.
+* `c6-sdio`: ESP32-C6 four-bit SDIO, including configured NANO, M3, Guition,
+  Waveshare and Tab5 profiles. C6 SDIO slave pins are fixed by the peripheral;
+  P4 host routing comes from each board YAML. One-bit/custom/other-chip
+  configurations have no approved target.
+
+The registry `components/pax_loader/c6-firmware.json` pins version, URL and full
+image SHA-256. The AIO binary is built separately; ESPHome's published C6 images
+are SDIO-only and are never selected for SPI. The build pipeline records the
+compiled C6 target in each board's build record and update manifest. The web
+page queries the installed C6 version when checking and displays it alongside
+the board-recommended version and transport. The launcher defaults to
+`board-recommended`; an offline path or alternate URL is accepted only if its
+bytes match the same approved digest. Both prepare and install verify the full
+file hash, ESP image integrity and host-library version before remote flashing.
+An equal/newer installed C6 version is not offered for downgrade or reinstallation.
+Checking stages a temporary file on SD; it does not flash either processor.
+
+To rebuild the AIO candidate, activate ESP-IDF 5.5.2 and run the public
+`tools/build-c6-firmware.py --component ESP_HOSTED_2_12_12_DIR --work NEW_DIR
+--defaults web-installer/c6/2.12.12/aio-spi/sdkconfig.defaults`. The script verifies
+the source component and effective slave pins. Review and approve the resulting
+hash in the registry; build timestamps can change the binary digest. The checked
+binary's build record and upstream Apache licence accompany the download.
+Initial/recovery C6 flashing still requires its USB/UART connection and suitable
+OTA partitions; an unresponsive coprocessor cannot be repaired over its failed link.

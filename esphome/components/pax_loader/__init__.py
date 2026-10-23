@@ -328,6 +328,13 @@ async def to_code(config):
     build_id = os.environ.get("PAX_FIRMWARE_BUILD_ID", os.environ.get("GITHUB_RUN_ID", "0"))
     if not build_id.isdecimal() or int(build_id) >= 2**64:
         raise ValueError("Firmware build ID must be an unsigned 64-bit integer")
+    from .c6_profiles import select_profile
+    c6_registry = json.loads((Path(__file__).parent / "c6-firmware.json").read_text())
+    c6_profile = select_profile(CORE.config.get("esp32_hosted"))
+    image = c6_registry["images"].get(c6_profile, {})
+    cg.add_define("PAX_C6_PROFILE", c6_profile)
+    for key in ("version", "url", "sha256"):
+        cg.add_define("PAX_C6_" + key.upper(), image.get(key, ""))
     cg.add_define("PAX_FIRMWARE_PROFILE", profile)
     cg.add_define("PAX_FIRMWARE_BUILD_ID", cg.RawExpression(build_id + "ULL"))
     # CMake can refresh ESP-Hosted after pre scripts run. Apply the DMA

@@ -42,6 +42,7 @@ struct Candidate {
   char url[192], hash[65];
 };
 static Candidate candidate{};
+static char check_error[192] = "Could not check: invalid update manifest or incompatible board/partitions";
 static int64_t reboot_at;
 static void report(uint32_t state, const char *message, uint32_t done = 0,
                    uint32_t total = 0) {
@@ -81,11 +82,13 @@ struct Connection {
       esp_http_client_set_header(handle, "Cache-Control", "no-cache");
     if (!handle) { ESP_LOGW(TAG,"HTTP client allocation failed"); return false; }
     esp_err_t opened=esp_http_client_open(handle,0);
-    if (opened!=ESP_OK) { ESP_LOGW(TAG,"HTTP connection failed: %s",esp_err_to_name(opened)); return false; }
+    if (opened!=ESP_OK) { ESP_LOGW(TAG,"HTTP connection failed: %s",esp_err_to_name(opened));
+      snprintf(check_error,sizeof(check_error),"Could not reach GitHub (%s). Check DNS, network and device clock, then retry.",esp_err_to_name(opened));return false; }
     length = esp_http_client_fetch_headers(handle);
     ESP_LOGI(TAG,"HTTP response %d, length %lld",esp_http_client_get_status_code(handle),static_cast<long long>(length));
-    return esp_http_client_get_status_code(handle) == 200 && length > 0 &&
-           length <= limit;
+    bool ok=esp_http_client_get_status_code(handle)==200 && length>0 && length<=limit;
+    if(!ok)snprintf(check_error,sizeof(check_error),"GitHub HTTP %d or invalid response length; retry after publication completes",esp_http_client_get_status_code(handle));
+    return ok;
   }
 };
 // Match every partition before writing: OTA must never require moving NVS.
@@ -119,6 +122,7 @@ static bool partitions_match(JsonArray array) {
   return true;
 }
 static bool check(Candidate &out) {
+  snprintf(check_error,sizeof(check_error),"Could not check: invalid update manifest or incompatible board/partitions");
   char url[192];
   snprintf(url, sizeof(url), "%supdates/%s.json?check=%lld", BASE,
            PAX_FIRMWARE_PROFILE, static_cast<long long>(esp_timer_get_time()));
@@ -243,8 +247,7 @@ static bool install(const Candidate &image) {
 static void check_worker(void *) {
   Candidate next{};
   if (!check(next))
-    report(PAX_FIRMWARE_ERROR, "Update unavailable: check network, clock, "
-                               "profile and partition compatibility");
+    report(PAX_FIRMWARE_ERROR, check_error);
   else {
     portENTER_CRITICAL(&lock);
     candidate = next;
@@ -254,7 +257,7 @@ static void check_worker(void *) {
     bool newer = next.build > PAX_FIRMWARE_BUILD_ID;
     snprintf(message, sizeof(message),
              newer ? "Build %llu available. Settings and SD files will be kept."
-                   : "Already up to date (build %llu)",
+                   : "No newer update available (published build %llu)",
              (unsigned long long)next.build);
     report(newer ? PAX_FIRMWARE_AVAILABLE : PAX_FIRMWARE_CURRENT, message);
   }
@@ -316,9 +319,11 @@ static int close(void *cookie) {
                    (r.command != PAX_FIRMWARE_INSTALL ||
                     (status.state == PAX_FIRMWARE_AVAILABLE &&
                      r.expected_build == candidate.build));
-    if (allowed)
+    if (allowed) {
+      if(r.command==PAX_FIRMWARE_CHECK){status.latest_build=0;candidate={};}
       status.state = r.command == PAX_FIRMWARE_CHECK ? PAX_FIRMWARE_CHECKING
                                                      : PAX_FIRMWARE_WAITING;
+    }
     portEXIT_CRITICAL(&lock);
     if (!allowed)
       result = -1;

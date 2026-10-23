@@ -35,5 +35,5 @@
   },
   "install_recipe_source": "pax-modules/apps/recipe/install-recipe.json",
   "requires": [],
-  "install_recipe_ref": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
+  "install_recipe_ref": "74b4da407f5284cdd6bb0f4691c23c6971da621b"
 }

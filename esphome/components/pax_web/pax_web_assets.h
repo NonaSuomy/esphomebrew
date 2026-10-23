@@ -6,6 +6,7 @@ inline constexpr char WEB_HTML[] = R"PAXWEB(<!doctype html>
 :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#061425;color:#dcecf4}*{box-sizing:border-box}body{max-width:880px;margin:auto;padding:24px}header{color:#60d9f8;font-weight:750;letter-spacing:.08em}h1{font-size:clamp(32px,6vw,48px);margin-bottom:12px}h2{font-size:22px}p{line-height:1.6;color:#adc3cf}section{background:#0b2031;border:1px solid #254557;border-radius:14px;padding:24px;margin:24px 0}button,a.button{background:#59d9fa;color:#062033;border:0;border-radius:7px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}button:disabled{opacity:.5;cursor:wait}input{font:inherit;background:#102c40;color:#dcecf4;padding:12px;border:1px solid #466174;border-radius:7px;width:100%;margin:8px 0 16px}label{display:block;margin-top:16px}a{color:#60d9f8}code{color:#b7eaf6;overflow-wrap:anywhere}#status{white-space:pre-wrap;overflow-wrap:anywhere;min-height:1.6em}progress{width:100%;height:16px}ul{padding-left:22px;line-height:1.7}.row{display:flex;flex-wrap:wrap;gap:12px}.muted{background:#173349;color:#dcecf4}.ack{display:flex;align-items:center;gap:10px}.ack input{width:auto;margin:0}.note{font-size:14px}</style><script defer src="/pax-store.js"></script><script defer src="/pax.js"></script></head>
 <body><header>PAX / DEVICE SETUP</header><h1>Your SD card, over Wi-Fi.</h1><p>Install the starter apps or send files directly from this computer. Keep the SD card inserted and return the device to its three-button screen before transferring.</p><div class="row"><button id="close" class="muted">Close running app</button><a href="https://nonasuomy.github.io/esphomebrew/install/">Firmware installer</a></div>
 <section><h2>Device firmware</h2><p>Check GitHub for a build matching this board and display. Updating keeps saved settings and SD-card files.</p><p id="firmware-status" aria-live="polite">Loading firmware information...</p><div class="row"><button id="firmware-check">Check for updates</button><button id="firmware-install" disabled>Install update</button></div></section>
+<section><h2>C6 Wi-Fi / Bluetooth firmware</h2><p>The approved image must match this board's transport and wiring. Checking never installs it.</p><p id="c6-status" aria-live="polite">Loading C6 information...</p><div class="row"><button id="c6-check">Check C6 firmware</button><button id="c6-install" disabled>Install matching C6</button></div></section>
 <section><h2>Install the SD starter</h2><p>The device downloads Launcher and Recipe, including their app details, directly from GitHub. Each file is checked before it replaces the installed copy.</p><button id="starter">Install SD starter</button></section>
 <section id="store-app" hidden><h2 id="store-title">Install selected app</h2><p id="store-description"></p><ul id="store-files"></ul><p id="store-requires" class="note"></p><label class="ack"><input id="store-replace" type="checkbox">Replace matching files on the SD card</label><button id="store-install">Install selected app</button><p><a href="https://nonasuomy.github.io/esphomebrew/">Choose another app in the PAX Store</a></p></section>
 <section><h2>Send your files</h2><p>Choose apps, ROMs, artwork or a folder. Folder uploads keep their directory structure under the destination you choose.</p><label for="destination">Destination on the SD card</label><input id="destination" value="/roms/pax" autocomplete="off" spellcheck="false"><p class="note">Examples: <code>/roms/pax</code> for apps, <code>/roms/nes</code> for NES games, or <code>/backgrounds</code> for artwork.</p><label for="files">Files</label><input id="files" type="file" multiple><label for="folder">Or choose a folder</label><input id="folder" type="file" webkitdirectory multiple><p class="note">Paths use letters, numbers, dots, underscores and hyphens. Each file can be up to 1 GiB. Rename files with spaces or other characters before sending them.</p><ul id="preview"></ul><label class="ack"><input id="replace" type="checkbox">Replace existing files with the same path</label><button id="upload">Upload to SD card</button></section>
@@ -35,7 +36,9 @@ let firmware=null,firmwareTimer=null;
 async function firmwareStatus(){
   const response=await fetch('/pax/firmware');if(!response.ok)throw Error('Device unavailable; refresh after it restarts.');
   firmware=await response.json();
-  $('firmware-status').textContent=firmware.profile+' | installed build '+firmware.installed_build+'\n'+firmware.message+
+  $('firmware-status').textContent=firmware.profile+'\nInstalled version: '+(firmware.installed_build==='0'?'local build (unversioned)':'build '+firmware.installed_build)+'\n'+
+    (firmware.latest_build!=='0'?'Latest published version: build '+firmware.latest_build+'\n':'')+
+    (firmware.state===2?(firmware.installed_build===firmware.latest_build?'You are on the latest version.\n':'No newer version available.\n'):firmware.state===7?'Update error.\n':'')+firmware.message+
     (firmware.total?' ('+Math.floor(firmware.done*100/firmware.total)+'%)':'');
   const active=[1,4,5,6].includes(firmware.state);
   $('firmware-check').disabled=busy||active||!firmware.profile;
@@ -95,6 +98,31 @@ $('store-install').addEventListener('click',async()=>{
 });
 selectStoreApp();
 $("upload").addEventListener("click",async()=>{preview();if(queue.length===0){message("Choose valid files or a folder first.");return;}if(!$("replace").checked){message("Confirm replacement of existing paths before uploading.");return;}lock(true);try{for(let i=0;i<queue.length;i++){const sha=await digest(queue[i].file,i);message(await send(queue[i],sha,i));await new Promise(resolve=>setTimeout(resolve,100));}message(`Saved and verified ${queue.length} file(s). Choose STORAGE on the device.`);$("progress").value=100;}catch(error){message(error.message);}finally{lock(false);}});
+
+let c6=null,c6Timer=null;
+async function c6Status(){
+  const response=await fetch('/pax/c6');if(!response.ok)throw Error('C6 status unavailable; refresh device page.');
+  c6=await response.json();
+  $('c6-status').textContent=(c6.profile||'Unsupported C6 configuration')+'\nInstalled version: '+(c6.installed_version||'check to query')+
+    '\nBoard-recommended version: '+(c6.recommended_version||'none')+'\n'+c6.message+
+    (c6.total?' ('+Math.floor(c6.done*100/c6.total)+'%)':'');
+  $('c6-check').disabled=busy||[1,3].includes(c6.state)||!c6.profile;
+  $('c6-install').disabled=busy||c6.state!==2;
+  clearTimeout(c6Timer);
+  if([1,3].includes(c6.state))c6Timer=setTimeout(()=>c6Status().catch(error=>{$('c6-status').textContent=error.message;}),1000);
+}
+$('c6-check').addEventListener('click',async()=>{
+  $('c6-check').disabled=true;
+  try{await command('/pax/c6/check');await c6Status();}catch(error){$('c6-status').textContent=error.message;$('c6-check').disabled=false;}
+});
+$('c6-install').addEventListener('click',async()=>{
+  if(!c6||c6.state!==2||!confirm('Install C6 '+c6.recommended_version+' for '+c6.profile+' and restart? Keep power connected.'))return;
+  $('c6-install').disabled=true;
+  try{const response=await fetch('/pax/c6/install',{method:'POST',headers:{'X-PAX-Token':token,'X-PAX-C6':c6.profile}});
+    if(!response.ok)throw Error(await response.text());await c6Status();
+  }catch(error){$('c6-status').textContent=error.message;}
+});
+c6Status().catch(error=>{$('c6-status').textContent=error.message;});
 }
 )PAXWEB";
 inline constexpr char STORE_JS[] = R"PAXWEB("use strict";
