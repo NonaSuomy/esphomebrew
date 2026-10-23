@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40003346781,
-  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
+  "build_id": 40010350971,
+  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,7 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-olimex.ota.bin",
-  "bytes": 1697536,
-  "sha256": "9a4ed82731eea8127d08caea2ad6b555351ac3fdeda41e66b80762071761bf06"
+  "bytes": 1701232,
+  "sha256": "35f5d3167cf36ec97bdb7ad27839d678dc5e98e39700a60a2383ea22c3aca321",
+  "c6": null
 }

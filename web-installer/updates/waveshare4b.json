@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40003346781,
-  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
+  "build_id": 40010350971,
+  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,16 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-waveshare4b.ota.bin",
-  "bytes": 2040752,
-  "sha256": "8db2a6a119b2349af2e1314c3fd9fc0881482996b56376d962e9d34ac85ce738"
+  "bytes": 2045440,
+  "sha256": "fdb707dfec3ac5d4493c702cc9f37781a5c7fd71df90cb53544e2c04d691cfe8",
+  "c6": {
+    "chip": "ESP32C6",
+    "transport": "sdio",
+    "version": "2.12.12",
+    "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+    "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+    "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+    "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+    "profile": "c6-sdio"
+  }
 }
