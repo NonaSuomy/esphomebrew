@@ -12,7 +12,7 @@ from esphome.components.mipi_dsi.display import MIPI_DSI
 from esphome.const import CONF_AUTOMATION_ID, CONF_ID, CONF_NAME, CONF_PATH, CONF_THEN, CONF_TRIGGER_ID, CONF_URL
 
 DEPENDENCIES = ["network"]
-AUTO_LOAD = ["binary_sensor", "json", "number", "sensor", "speaker", "touchscreen"]
+AUTO_LOAD = ["binary_sensor", "json", "number", "sensor", "speaker", "touchscreen", "watchdog"]
 
 
 CONF_AUTOSTART = "autostart"

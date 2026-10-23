@@ -1978,7 +1978,8 @@ void PaxLoader::loop() {
   if(esphome::global_preferences && memcmp(&current,&saved_runtime_settings,sizeof(current))){
     if(runtime_settings_preference.save(&current))saved_runtime_settings=current;
   }
-  pax_wifi::loop();
+  // Avoid unrelated Wi-Fi status RPCs while the coprocessor is being updated.
+  if (!pax_c6::busy()) pax_wifi::loop();
   pax_c6::loop();
   if (pax_firmware::pending() && this->app_handle_ != nullptr && !this->global_close_requested_)
     this->request_close();
@@ -11463,7 +11464,7 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
 
 
 bool PaxLoader::request_c6_update(uint32_t command) {
-  if(command!=PAX_C6_PREPARE && command!=PAX_C6_INSTALL)return false;
+  if(command!=PAX_C6_PREPARE && command!=PAX_C6_INSTALL && command!=PAX_C6_PREPARE_UNKNOWN)return false;
   if(pax_firmware::busy() || install_task_handle_ || web_storage_busy_)return false;
   (void)restore_active_dns_if_missing_();
   pax_c6_request_t request{};request.magic=PAX_C6_UPDATE_MAGIC;request.command=command;

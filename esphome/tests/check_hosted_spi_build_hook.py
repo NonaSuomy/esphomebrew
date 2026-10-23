@@ -55,16 +55,16 @@ with tempfile.TemporaryDirectory() as folder:
     env = BuildEnvironment(project)
     runpy.run_path(str(SCRIPT), init_globals={"env": env, "Import": lambda name: None})
     assert "t.flags |= SPI_TRANS_DMA_USE_PSRAM;" in source.read_text()
-    assert len(env.actions) == 1
+    assert len(env.actions) == 2
     target, callback = env.actions[0]
     assert target == str(project/".pioenvs/test"/RELATIVE_SOURCE)+".o"
-    assert env.dependencies == [(target, str(SCRIPT.resolve()))]
+    assert (target, str(SCRIPT.resolve())) in env.dependencies
     # CMake refreshes the component after the pre-script has already run.
     source.write_text(ORIGINAL)
     callback([target], [SourceNode(source)], env)
     assert "t.flags |= SPI_TRANS_DMA_USE_PSRAM;" in source.read_text()
     assert "t.flags &= ~SPI_TRANS_DMA_BUFFER_ALIGN_MANUAL;" in source.read_text()
-    assert len(env.middleware)==1
+    assert len(env.middleware)==2
     middleware,pattern=env.middleware[0]
     assert pattern=="*port_esp_hosted_host_spi.c"
     source.write_text(ORIGINAL)
@@ -81,4 +81,21 @@ with tempfile.TemporaryDirectory() as folder:
     unchanged = source.stat().st_mtime_ns
     callback([target], [SourceNode(source)], env)
     assert source.stat().st_mtime_ns == unchanged
-print("PASS hosted SPI build hook: refreshed source repaired before compile; idempotent and script-dependent")
+    rpc_source=project/"managed_components/espressif__esp_hosted/host/drivers/rpc/wrap/rpc_wrap.c"
+    rpc_source.parent.mkdir(parents=True,exist_ok=True)
+    original_rpc="int rpc_wifi_sta_get_ap_info(void *ap_info) {\n if (resp && resp->resp_event_status == SUCCESS) { copy(); }\n}\nint next() {}\n"
+    rpc_target,rpc_callback=env.actions[1]
+    assert rpc_target==str(project/".pioenvs/test/managed_components/espressif__esp_hosted/host/drivers/rpc/wrap/rpc_wrap.c.o")
+    assert (rpc_target,str(SCRIPT.with_name("hosted_rpc_compat.py"))) in env.dependencies
+    rpc_source.write_text(original_rpc)
+    rpc_callback([rpc_target],[SourceNode(rpc_source)],env)
+    assert "!resp->u.wifi_scan_ap_list.out_list" in rpc_source.read_text()
+    rpc_source.write_text(original_rpc)
+    rpc_middleware,pattern=env.middleware[1]
+    assert pattern=="*rpc_wrap.c"
+    rpc_middleware(env,SourceNode(rpc_source))
+    assert "!resp->u.wifi_scan_ap_list.out_list" in rpc_source.read_text()
+    rpc_source.write_text(original_rpc)
+    runpy.run_path(str(SCRIPT.with_name("hosted_spi_post.py")),init_globals={"env":env,"Import":lambda name:None})
+    assert "!resp->u.wifi_scan_ap_list.out_list" in rpc_source.read_text()
+print("PASS hosted SPI/RPC build hooks: refreshed source repaired before compile; idempotent and script-dependent")

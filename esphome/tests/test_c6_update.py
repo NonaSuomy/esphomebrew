@@ -64,6 +64,107 @@ int main(){
             subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(path/'test.cpp'),'-o',str(path/'test')],check=True)
             subprocess.run([str(path/'test')],check=True)
 
+    def test_hosted_ap_info_missing_payload_is_rejected(self):
+        import runpy
+        patch=runpy.run_path(str(ROOT/'tools/hosted_rpc_compat.py'))['patch_hosted_rpc_source']
+        code=r"""#include <cassert>
+#include <cstring>
+#include <type_traits>
+constexpr int ESP_OK=0, ESP_FAIL=-1, ESP_ERR_INVALID_ARG=-2, SUCCESS=0;
+constexpr int RPC_ID__Resp_WifiStaGetApInfo=42;
+struct wifi_ap_record_t { int channel; };
+struct ctrl_cmd_t { int resp_event_status, msg_id; struct {struct {wifi_ap_record_t *out_list;} wifi_scan_ap_list;} u; };
+ctrl_cmd_t response{},request{};ctrl_cmd_t *reply;int releases;
+ctrl_cmd_t *RPC_DEFAULT_REQ(){return &request;}
+ctrl_cmd_t *rpc_slaveif_wifi_sta_get_ap_info(ctrl_cmd_t*){return reply;}
+int rpc_rsp_callback(ctrl_cmd_t *p){if(p)releases++;return p && p->resp_event_status==SUCCESS ? ESP_OK : ESP_FAIL;}
+struct {struct {void *(*_h_memcpy)(void*,const void*,unsigned long);} *funcs;} g_h;
+int rpc_wifi_sta_get_ap_info(wifi_ap_record_t *ap_info)
+{
+ if (!ap_info) return ESP_ERR_INVALID_ARG;
+ ctrl_cmd_t *req = RPC_DEFAULT_REQ();
+ ctrl_cmd_t *resp = rpc_slaveif_wifi_sta_get_ap_info(req);
+ if (resp && resp->resp_event_status == SUCCESS) {
+   g_h.funcs->_h_memcpy(ap_info, resp->u.wifi_scan_ap_list.out_list, sizeof(wifi_ap_record_t));
+ }
+ return rpc_rsp_callback(resp);
+}
+int sentinel(){return 0;}
+int main(){
+ wifi_ap_record_t out{},record{11};
+ assert(rpc_wifi_sta_get_ap_info(nullptr)==ESP_ERR_INVALID_ARG);
+ reply=nullptr;assert(rpc_wifi_sta_get_ap_info(&out)==ESP_FAIL && releases==0);
+ reply=&response;response.msg_id=RPC_ID__Resp_WifiStaGetApInfo;
+ assert(rpc_wifi_sta_get_ap_info(&out)==ESP_FAIL && releases==1);
+ response.msg_id=0;response.u.wifi_scan_ap_list.out_list=&record;
+ assert(rpc_wifi_sta_get_ap_info(&out)==ESP_FAIL && releases==2);
+ response.msg_id=RPC_ID__Resp_WifiStaGetApInfo;
+ decltype(g_h.funcs) funcs=new std::remove_pointer_t<decltype(g_h.funcs)>{std::memcpy};g_h.funcs=funcs;
+ assert(rpc_wifi_sta_get_ap_info(&out)==ESP_OK && out.channel==11 && releases==3);
+ delete funcs;
+}
+"""
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder);source=path/'rpc_wrap.cpp';source.write_text(code)
+            patch(source);once=source.read_text();patch(source);self.assertEqual(source.read_text(),once)
+            subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(source),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True)
+
+    def test_control_rpc_runs_on_main_loop(self):
+        source=(ROOT/'components/pax_loader/pax_c6_update.cpp').read_text()
+        dispatcher=source[source.index('struct MainCall {'):source.index('static esp_err_t query_version(')]
+        pump=source[source.index('void loop() {'):source.index('  portENTER_CRITICAL(&lock); int64_t deadline')]+"}\n"
+        code=r"""#include <cassert>
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+using TaskHandle_t=int;
+constexpr int ESP_FAIL=-1,pdTRUE=1,portMAX_DELAY=-1;
+std::mutex lock,notify_lock;std::condition_variable notification;bool notified=false;
+#define portENTER_CRITICAL(p) (p)->lock()
+#define portEXIT_CRITICAL(p) (p)->unlock()
+int xTaskGetCurrentTaskHandle(){return 1;}
+void ulTaskNotifyTake(int,int){std::unique_lock<std::mutex> g(notify_lock);notification.wait(g,[]{return notified;});notified=false;}
+void xTaskNotifyGive(int){std::lock_guard<std::mutex> g(notify_lock);notified=true;notification.notify_one();}
+namespace esphome::watchdog {struct WatchdogManager {explicit WatchdogManager(int){}};}
+"""+dispatcher+pump+r"""
+int main(){
+ auto main_thread=std::this_thread::get_id();std::atomic<bool> done=false;int calls=0;
+ std::thread worker([&]{
+   for(int i=0;i<2000;i++) assert(main_call([&]{assert(std::this_thread::get_id()==main_thread);calls++;return i;})==i);
+   done=true;
+ });
+ while(!done){loop();std::this_thread::yield();}
+ worker.join();assert(calls==2000 && pending_call==nullptr);
+}
+"""
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder);(path/'test.cpp').write_text(code)
+            subprocess.run(['c++','-std=c++17','-pthread','-Wall','-Wextra','-Werror',str(path/'test.cpp'),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True,timeout=20)
+
+    def test_unknown_version_requires_explicit_recovery(self):
+        code=r"""#include "pax_c6_update.h"
+#include <cassert>
+int main(){
+ static_assert(sizeof(pax_c6_request_t)==520);
+ static_assert(sizeof(pax_c6_status_t)==176);
+ using pax_c6::prepare_state;
+ assert(prepare_state(PAX_C6_PREPARE,false,false)==PAX_C6_ERROR);
+ assert(prepare_state(PAX_C6_PREPARE_UNKNOWN,false,false)==PAX_C6_READY);
+ for(auto command : {PAX_C6_PREPARE,PAX_C6_PREPARE_UNKNOWN}) {
+   assert(prepare_state(command,true,true)==PAX_C6_READY);
+   assert(prepare_state(command,true,false)==PAX_C6_CURRENT);
+ }
+}
+"""
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder);(path/'test.cpp').write_text('#include <initializer_list>\n'+code)
+            subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',
+                '-I'+str(ROOT/'components/pax_loader'),str(path/'test.cpp'),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True)
+
     def test_image_and_transfer_failures(self):
         with tempfile.TemporaryDirectory() as folder:
             executable = Path(folder) / "c6-update-test"

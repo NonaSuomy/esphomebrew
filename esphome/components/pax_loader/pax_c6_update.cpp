@@ -3,6 +3,7 @@
 #if defined(USE_ESP32_HOSTED) && defined(USE_ESP32_VARIANT_ESP32P4)
 #include "pax_c6_image.h"
 #include "esphome/core/application.h"
+#include "esphome/components/watchdog/watchdog.h"
 #include "esp_hosted.h"
 #include "esp_hosted_ota.h"
 #include "esp_hosted_host_fw_ver.h"
@@ -41,6 +42,18 @@ static void report(uint32_t state, const char *message, uint32_t done = 0, uint3
   status.state = state; status.done = done; status.total = total;
   snprintf(status.message, sizeof(status.message), "%s", message);
   portEXIT_CRITICAL(&lock);
+}
+// ESP-Hosted 2.x has a shared synchronous response queue. Run its RPCs on
+// ESPHome's main loop, alongside Wi-Fi's RPCs, so replies cannot be exchanged
+// between a worker and Wi-Fi status polling. File I/O stays on the worker.
+struct MainCall { int (*function)(void *); void *argument; TaskHandle_t waiter; int result; };
+static MainCall *pending_call;
+template<class Function> static int main_call(Function function) {
+  MainCall call{[](void *argument) { return (*static_cast<Function *>(argument))(); },
+                &function, xTaskGetCurrentTaskHandle(), ESP_FAIL};
+  portENTER_CRITICAL(&lock);pending_call=&call;portEXIT_CRITICAL(&lock);
+  ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
+  return call.result;
 }
 static esp_err_t query_version(esp_hosted_coprocessor_fwver_t &current) {
   esp_err_t result=esp_hosted_get_coprocessor_fwversion(&current);
@@ -113,7 +126,8 @@ static bool copy_source(const char *source) {
 }
 static void worker(void *arg) {
   auto *request = static_cast<pax_c6_request_t *>(arg);
-  const bool prepare = request->command == PAX_C6_PREPARE;
+  const uint32_t command = request->command;
+  const bool prepare = command == PAX_C6_PREPARE || command == PAX_C6_PREPARE_UNKNOWN;
   ESP_LOGI("pax_c6","%s requested",prepare ? "Verification" : "Installation");
   const char *download = !strcmp(request->source,PAX_C6_RECOMMENDED) ? PAX_C6_URL : request->source;
   bool ok = PAX_C6_PROFILE[0] && (!prepare || copy_source(download));
@@ -156,32 +170,39 @@ static void worker(void *arg) {
     } else {
       report(PAX_C6_BUSY,"Image verified; checking C6 connection",size,size);
       ESP_LOGI("pax_c6","Image verified (%lu bytes); querying C6",static_cast<unsigned long>(size));
-      esp_err_t result = query_version(current);
+      esp_err_t result = main_call([&current] { return query_version(current); });
       ESP_LOGI("pax_c6","C6 version query: %s",esp_err_to_name(result));
-      if (result != ESP_OK) {
-        remove(STAGE);
-        snprintf(message,sizeof(message),"Could not read C6 version (%s). Check radio link/firmware; USB/UART may be needed for initial setup.",esp_err_to_name(result));
-        report(PAX_C6_ERROR,message);
-      }
-      else {
+      bool known = result == ESP_OK;
+      bool newer = known && (major>current.major1 || (major==current.major1 &&
+          (minor>current.minor1 || (minor==current.minor1 && patch>current.patch1))));
+      uint32_t next = prepare_state(command, known, newer);
+      if (!known) {
+        portENTER_CRITICAL(&lock);installed_version[0]=0;portEXIT_CRITICAL(&lock);
+        if (next == PAX_C6_READY)
+          snprintf(message,sizeof(message),"%s: approved %s image verified. Installed version unknown (%s); recovery install explicitly enabled.",PAX_C6_PROFILE,version,esp_err_to_name(result));
+        else
+          snprintf(message,sizeof(message),"Could not read C6 version (%s). Check radio link/firmware; USB/UART may be needed for initial setup.",esp_err_to_name(result));
+      } else {
         char installed[32];snprintf(installed,sizeof(installed),"%lu.%lu.%lu",(unsigned long)current.major1,(unsigned long)current.minor1,(unsigned long)current.patch1);
         portENTER_CRITICAL(&lock);snprintf(installed_version,sizeof(installed_version),"%s",installed);portEXIT_CRITICAL(&lock);
-        bool newer=major>current.major1 || (major==current.major1 && (minor>current.minor1 || (minor==current.minor1 && patch>current.patch1)));
         snprintf(message,sizeof(message),"%s | Installed %s; recommended %s. %s",PAX_C6_PROFILE,installed,version,
           newer ? "Matching image verified. Install to update and restart." : "No newer approved version. Version matches or is newer.");
-        memcpy(prepared_source, source, sizeof(prepared_source));
-        if(!newer)remove(STAGE);
-        report(newer ? PAX_C6_READY : PAX_C6_CURRENT,message,size,size);
       }
+      if (next == PAX_C6_READY) memcpy(prepared_source, source, sizeof(prepared_source));
+      else remove(STAGE);
+      report(next,message,size,size);
     }
     vTaskDelete(nullptr); return;
   }
   // Revalidate the staged file immediately before beginning remote flash.
   struct HostedTransport {
-    int begin() { return esp_hosted_slave_ota_begin(); }
-    int write(uint8_t *data, size_t size) { return esp_hosted_slave_ota_write(data, size); }
-    int end() { return esp_hosted_slave_ota_end(); }
-    int activate() { return esp_hosted_slave_ota_activate(); }
+    int begin() {
+      report(PAX_C6_BUSY,"Starting C6 OTA; waiting for coprocessor",0,0);
+      return main_call([] { return esp_hosted_slave_ota_begin(); });
+    }
+    int write(uint8_t *data, size_t size) { return main_call([=] { return esp_hosted_slave_ota_write(data, size); }); }
+    int end() { return main_call([] { return esp_hosted_slave_ota_end(); }); }
+    int activate() { return main_call([] { return esp_hosted_slave_ota_activate(); }); }
     void progress(uint32_t sent, uint32_t size) {
       report(PAX_C6_BUSY, "Writing C6 firmware; keep power connected", sent, size);
       vTaskDelay(1);
@@ -219,8 +240,8 @@ static int close(void *cookie) {
   if (s->writing) {
     auto &r = s->request;
     bool valid = s->offset == sizeof(r) && r.magic == PAX_C6_UPDATE_MAGIC &&
-      (r.command == PAX_C6_PREPARE || r.command == PAX_C6_INSTALL) && memchr(r.source, 0, sizeof(r.source)) &&
-      (r.command != PAX_C6_PREPARE || r.source[0]);
+      (r.command == PAX_C6_PREPARE || r.command == PAX_C6_INSTALL || r.command == PAX_C6_PREPARE_UNKNOWN) && memchr(r.source, 0, sizeof(r.source)) &&
+      (r.command == PAX_C6_INSTALL || r.source[0]);
     auto *job = valid ? static_cast<pax_c6_request_t *>(malloc(sizeof(r))) : nullptr;
     if (!job) result = -1;
     else {
@@ -252,6 +273,12 @@ bool busy() {
   return active;
 }
 void loop() {
+  portENTER_CRITICAL(&lock);MainCall *call=pending_call;pending_call=nullptr;portEXIT_CRITICAL(&lock);
+  if (call) {
+    esphome::watchdog::WatchdogManager watchdog(60000);
+    call->result=call->function(call->argument);
+    xTaskNotifyGive(call->waiter);
+  }
   portENTER_CRITICAL(&lock); int64_t deadline = reboot_at; portEXIT_CRITICAL(&lock);
   if (deadline && esp_timer_get_time() >= deadline) esphome::App.safe_reboot();
 }
