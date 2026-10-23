@@ -1676,27 +1676,56 @@ void PaxLoader::free_frame_buffers_() {
 
 // The three canvas buffers, each big enough for a width x height canvas and
 // whole cache lines (PPA output and cache syncs work in those).
-bool PaxLoader::allocate_frame_buffers_(int width, int height) {
-  this->free_frame_buffers_();
+bool PaxLoader::resize_frame_buffers_(int width, int height) {
   const size_t bytes = canvas::align_bytes(canvas::frame_bytes(width, height));
+  if (this->framebuffer_ != nullptr && bytes == this->frame_alloc_bytes_)
+    return true;
   auto allocate = [bytes]() {
     return static_cast<uint16_t *>(
         heap_caps_aligned_calloc(canvas::CACHE_LINE, 1, bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA));
   };
-  this->framebuffer_ = allocate();
-  this->rotated_framebuffer_ = allocate();
-  this->ppa_framebuffer_ = allocate();
-  if (this->framebuffer_ == nullptr || this->rotated_framebuffer_ == nullptr || this->ppa_framebuffer_ == nullptr) {
-    this->free_frame_buffers_();
+  // Allocate the complete replacement before retiring any current buffer.
+  // A failed resize must leave the app's canvas and framebuffer valid.
+  uint16_t *next_frame = allocate();
+  uint16_t *next_rotated = allocate();
+  uint16_t *next_ppa = allocate();
+  if (next_frame == nullptr || next_rotated == nullptr || next_ppa == nullptr) {
+    heap_caps_free(next_frame);
+    heap_caps_free(next_rotated);
+    heap_caps_free(next_ppa);
     return false;
   }
+  const size_t previous_bytes = this->frame_alloc_bytes_;
+  this->free_frame_buffers_();
+  this->framebuffer_ = next_frame;
+  this->rotated_framebuffer_ = next_rotated;
+  this->ppa_framebuffer_ = next_ppa;
   this->frame_alloc_bytes_ = bytes;
+  this->last_frame_direct_ = false;
+  this->native_rgb888_frame_ = nullptr;
+  ESP_LOGI(TAG, "PAX canvas buffer resize: %u -> %u bytes each (%u total)",
+           static_cast<unsigned>(previous_bytes), static_cast<unsigned>(bytes), static_cast<unsigned>(3 * bytes));
+  return true;
+}
+
+bool PaxLoader::allocate_frame_buffers_(int width, int height) {
+  if (!this->resize_frame_buffers_(width, height))
+    return false;
+  // These limits describe supported canvases, not the current allocation.
   this->max_canvas_w_ = width;
   this->max_canvas_h_ = height;
   return true;
 }
 
-void PaxLoader::apply_canvas_(int width, int height, bool blank_panel) {
+bool PaxLoader::apply_canvas_(int width, int height, bool blank_panel) {
+  const size_t required = canvas::align_bytes(canvas::frame_bytes(width, height));
+  if (required != this->frame_alloc_bytes_ && !this->resize_frame_buffers_(width, height)) {
+    ESP_LOGW(TAG, "PAX canvas buffer resize to %dx%d failed", width, height);
+    if (required > this->frame_alloc_bytes_)
+      return false;
+    // Shrinking is optional when allocation is fragmented. The old larger
+    // buffers can still represent the requested canvas safely.
+  }
   ESP_LOGI(TAG, "PAX canvas apply begin: %dx%d blank=%d buffers=%u", width, height,
            blank_panel ? 1 : 0, static_cast<unsigned>(this->frame_alloc_bytes_));
   this->geometry_.canvas_w = width;
@@ -1732,6 +1761,7 @@ void PaxLoader::apply_canvas_(int width, int height, bool blank_panel) {
     ESP_LOGI(TAG, "PAX canvas panel clear complete");
   }
   ESP_LOGI(TAG, "PAX canvas apply complete: %dx%d", width, height);
+  return true;
 }
 
 // Called by the app (display_set_canvas), normally from its drawing task.
@@ -1757,7 +1787,11 @@ int PaxLoader::set_canvas_(int width, int height) {
   const bool change = width != this->geometry_.canvas_w || height != this->geometry_.canvas_h;
   if (change) {
     ESP_LOGI(TAG, "PAX canvas changing from %dx%d", this->geometry_.canvas_w, this->geometry_.canvas_h);
-    this->apply_canvas_(width, height, true);
+    if (!this->apply_canvas_(width, height, true)) {
+      if (this->display_mutex_ != nullptr)
+        xSemaphoreGiveRecursive(this->display_mutex_);
+      return -1;
+    }
   }
   this->canvas_chosen_ = true;
   if (this->display_mutex_ != nullptr)
@@ -1773,16 +1807,22 @@ int PaxLoader::set_canvas_(int width, int height) {
 // Before an app starts (and after one ends): the 800x480 canvas again, with
 // no app loop running. Waits only briefly for the display lock: an app task
 // that is gone may have died holding it.
-void PaxLoader::restore_legacy_canvas_() {
+bool PaxLoader::restore_legacy_canvas_() {
   this->canvas_chosen_ = false;
-  if (this->framebuffer_ == nullptr ||
-      (this->geometry_.canvas_w == canvas::LEGACY_WIDTH && this->geometry_.canvas_h == canvas::LEGACY_HEIGHT))
-    return;
+  if (this->framebuffer_ == nullptr)
+    return false;
+  if (this->geometry_.canvas_w == canvas::LEGACY_WIDTH && this->geometry_.canvas_h == canvas::LEGACY_HEIGHT)
+    return true;
   const bool locked = this->display_mutex_ != nullptr &&
                       xSemaphoreTakeRecursive(this->display_mutex_, pdMS_TO_TICKS(200)) == pdTRUE;
-  this->apply_canvas_(canvas::LEGACY_WIDTH, canvas::LEGACY_HEIGHT, true);
+  if (this->display_mutex_ != nullptr && !locked) {
+    ESP_LOGW(TAG, "Cannot restore legacy canvas while display lock is busy");
+    return false;
+  }
+  const bool restored = this->apply_canvas_(canvas::LEGACY_WIDTH, canvas::LEGACY_HEIGHT, true);
   if (locked)
     xSemaphoreGiveRecursive(this->display_mutex_);
+  return restored;
 }
 
 // Clear all panel pixels even when the outgoing and next apps both use the
@@ -1803,8 +1843,9 @@ void PaxLoader::blank_panel_() {
     xSemaphoreGiveRecursive(this->display_mutex_);
 }
 
-void PaxLoader::prepare_canvas_for_app_(const std::string &source) {
-  this->restore_legacy_canvas_();
+bool PaxLoader::prepare_canvas_for_app_(const std::string &source) {
+  if (!this->restore_legacy_canvas_())
+    return false;
   const std::string app = canvas::app_key(source);
   const std::string setting = this->get_app_canvas(app);
   int w = 0, h = 0;
@@ -1819,6 +1860,7 @@ void PaxLoader::prepare_canvas_for_app_(const std::string &source) {
   ESP_LOGI(TAG, "PAX canvas for %s: %dx%d until the app picks one; it is offered %dx%d (%s)", app.c_str(),
            canvas::LEGACY_WIDTH, canvas::LEGACY_HEIGHT, this->offered_canvas_w_, this->offered_canvas_h_,
            from_setting ? "its Screen setting" : from_listing ? "recommended by its listing" : "device default");
+  return true;
 }
 
 // Runs on the LVGL thread (the main loop). Copies the snapshot into a plain
@@ -2782,7 +2824,14 @@ bool PaxLoader::start_loaded_app_(psram_app_handle_t app, const std::string &sou
   this->running_app_source_ = source;
   ESP_LOGI(TAG, "Starting PAX in worker task: %s", source.c_str());
   this->begin_report_(source);
-  this->prepare_canvas_for_app_(source);
+  if (!this->prepare_canvas_for_app_(source)) {
+    ESP_LOGE(TAG, "App start refused: cannot allocate legacy canvas");
+    this->running_app_source_.clear();
+    this->set_progress_(false, 0, 0, "%s", "App start failed: canvas memory unavailable");
+    this->send_report_("start_failed", -1, source);
+    psram_app_unload(app);
+    return false;
+  }
 #ifdef PAX_LOADER_USE_USB_MIDI
   // The app gets the notes played from now on, not what piled up before.
   if (this->usb_midi_ != nullptr) {

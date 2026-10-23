@@ -664,8 +664,8 @@ class PaxLoader : public Component {
                             int width = -1, int height = -1, int source_stride = -1, bool panel_frame_buffer = false);
   // Canvas size. geometry_ is the panel and the running app's canvas; it only
   // changes under display_mutex_ (tasks that just hit-test touches read it
-  // without the lock). The frame buffers hold max_canvas_w_ x max_canvas_h_
-  // (the panel, unless that much PSRAM was not available).
+  // without the lock). Working buffers follow the selected canvas; maximum
+  // dimensions remain the board limits across shrinking and growing.
   canvas::Geometry geometry_{};
   int max_canvas_w_{canvas::LEGACY_WIDTH};
   int max_canvas_h_{canvas::LEGACY_HEIGHT};
@@ -680,14 +680,15 @@ class PaxLoader : public Component {
   int offered_canvas_h_{canvas::LEGACY_HEIGHT};
   volatile bool canvas_chosen_{false};
   bool allocate_frame_buffers_(int width, int height);
+  bool resize_frame_buffers_(int width, int height);
   void free_frame_buffers_();
   int set_canvas_(int width, int height);
   // Switches the canvas to width x height and blanks the frame buffers (and,
   // with blank_panel, the whole panel). The caller holds display_mutex_.
-  void apply_canvas_(int width, int height, bool blank_panel);
+  bool apply_canvas_(int width, int height, bool blank_panel);
   // Back to 800x480 for the next app, and what display_get_size offers it.
-  void prepare_canvas_for_app_(const std::string &source);
-  void restore_legacy_canvas_();
+  bool prepare_canvas_for_app_(const std::string &source);
+  bool restore_legacy_canvas_();
   void blank_panel_();
   // The canvas size the app's listing recommends ("" for none): from the
   // store's listings, else the .json next to a .pax on the card.

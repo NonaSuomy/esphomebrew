@@ -22,3 +22,14 @@ stable scanout. The profile remains configured for the established DSI timings.
 The Red Alert recovery build uses the current port and a 640x400 canvas.
 Commercial game archives remain external to source control. Archive damage
 must be corrected separately from firmware scheduling or memory problems.
+
+Working canvas buffers resize when an app selects its canvas. The three
+buffers use the selected canvas dimensions; the panel scanout buffers keep
+their native dimensions. Supported maximum canvas dimensions stay unchanged.
+Replacement allocation is transactional: failed growth leaves the old canvas
+and buffers valid, and a failed optional shrink retains the larger buffers.
+Legacy 800x480 buffers are restored before the next app starts. If restoration
+fails, the next app is refused rather than being given undersized memory.
+The caller must reacquire its framebuffer after a canvas change, as specified
+by the existing SDK contract. tests/test_canvas_resize.py exercises the actual
+production methods under AddressSanitizer and UndefinedBehaviorSanitizer.
