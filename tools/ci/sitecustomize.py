@@ -1,5 +1,6 @@
 """Keep esptool importable while pioarduino relocates its package directory."""
 import os
+import importlib
 from pathlib import Path
 import sys
 
@@ -9,3 +10,6 @@ if core:
     if (source / 'esptool/__init__.py').is_file():
         # penv/bin/esptool.py can otherwise shadow the real esptool package.
         sys.path.insert(0, str(source))
+        # Python adds the script directory after site initialization. Preload
+        # the package so a later bin/esptool.py cannot replace this resolution.
+        importlib.import_module("esptool")
