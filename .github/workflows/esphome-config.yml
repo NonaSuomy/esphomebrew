@@ -3,9 +3,9 @@ name: ESPHome config
 on:
   push:
     branches: [main]
-    paths: ["esphome/**", "tools/firmware_ci.py", "tools/firmware-config.py", "web-installer/boards.json", ".github/workflows/esphome-config.yml"]
+    paths: ["esphome/**", "tools/firmware_ci.py", "tools/firmware-config.py", "web-installer/boards.json", "tests/test_firmware_web_progress.py", "tests/test_firmware_web_progress.cjs", ".github/workflows/esphome-config.yml"]
   pull_request:
-    paths: ["esphome/**", "tools/firmware_ci.py", "tools/firmware-config.py", "web-installer/boards.json", ".github/workflows/esphome-config.yml"]
+    paths: ["esphome/**", "tools/firmware_ci.py", "tools/firmware-config.py", "web-installer/boards.json", "tests/test_firmware_web_progress.py", "tests/test_firmware_web_progress.cjs", ".github/workflows/esphome-config.yml"]
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - run: python -m pip install PyYAML==6.0.3
+      - name: Retain SD setup progress completion regressions
+        run: |
+          python tests/test_firmware_web_progress.py
+          node tests/test_firmware_web_progress.cjs
       - name: Validate every public profile and credential-free include closure
         run: python tools/firmware_ci.py matrix
       - name: Validate publication guards
