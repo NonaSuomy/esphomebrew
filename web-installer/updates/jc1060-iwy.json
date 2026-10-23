@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "profile": "jc1060-iwy",
+  "chip": "ESP32-P4",
+  "min_revision": 0,
+  "max_revision": 65535,
+  "build_id": 39981751824,
+  "source_commit": "ac5590b3969302362834254678dd24076366275e",
+  "partitions": [
+    {
+      "label": "otadata",
+      "type": 1,
+      "subtype": 0,
+      "address": 36864,
+      "size": 8192
+    },
+    {
+      "label": "phy_init",
+      "type": 1,
+      "subtype": 1,
+      "address": 45056,
+      "size": 4096
+    },
+    {
+      "label": "app0",
+      "type": 0,
+      "subtype": 16,
+      "address": 65536,
+      "size": 8126464
+    },
+    {
+      "label": "app1",
+      "type": 0,
+      "subtype": 17,
+      "address": 8192000,
+      "size": 8126464
+    },
+    {
+      "label": "nvs",
+      "type": 1,
+      "subtype": 2,
+      "address": 16318464,
+      "size": 458752
+    }
+  ],
+  "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-jc1060-iwy.ota.bin",
+  "bytes": 2081776,
+  "sha256": "b0b8ec9eb994b9e1423fc2c29426b5b03764926820c9f3ab1f4bcbd2828abcfe"
+}
