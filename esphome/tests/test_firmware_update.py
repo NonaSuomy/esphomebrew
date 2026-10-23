@@ -59,4 +59,29 @@ int main(){
             path=Path(folder);(path/'test.cpp').write_text(test)
             subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(path/'test.cpp'),'-o',str(path/'test')],check=True)
             subprocess.run([str(path/'test')],check=True)
+    def test_brightness_reads_the_restored_backlight(self):
+        source=(ROOT/'components/pax_loader/pax_loader.cpp').read_text()
+        start=source.index('int32_t PaxLoader::svc_settings_brightness_get()')
+        method=source[start:source.index('\n}',start)+2]
+        code=r'''#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#define PAX_LOADER_USE_LVGL 1
+static int32_t s_brightness=100;
+struct Number {float state=85;};
+struct PaxLoader {static PaxLoader *active_;Number *catalog_brightness_number_;static int32_t svc_settings_brightness_get();};
+PaxLoader *PaxLoader::active_=nullptr;
+'''+method+r'''
+int main(){
+ Number number;PaxLoader loader{&number};PaxLoader::active_=&loader;
+ assert(PaxLoader::svc_settings_brightness_get()==85);
+ number.state=5;assert(PaxLoader::svc_settings_brightness_get()==5);
+ number.state=NAN;assert(PaxLoader::svc_settings_brightness_get()==5);
+}
+'''
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder);(path/'test.cpp').write_text(code)
+            subprocess.run(['c++','-std=c++17','-Wall','-Wextra','-Werror',str(path/'test.cpp'),'-o',str(path/'test')],check=True)
+            subprocess.run([str(path/'test')],check=True)
 if __name__=='__main__': unittest.main()

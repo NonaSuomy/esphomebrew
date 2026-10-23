@@ -9985,7 +9985,16 @@ void PaxLoader::svc_settings_volume_set(int32_t level) {
   if (PaxLoader::active_ != nullptr)
     PaxLoader::active_->set_master_volume(level);
 }
-int32_t PaxLoader::svc_settings_brightness_get() { return s_brightness; }
+int32_t PaxLoader::svc_settings_brightness_get() {
+#ifdef PAX_LOADER_USE_LVGL
+  // Template Number restores the backlight before the loader starts. Read
+  // that value rather than returning the overlay's power-on default.
+  if (active_ != nullptr && active_->catalog_brightness_number_ != nullptr &&
+      std::isfinite(active_->catalog_brightness_number_->state))
+    s_brightness = std::clamp(static_cast<int32_t>(active_->catalog_brightness_number_->state), 5, 100);
+#endif
+  return s_brightness;
+}
 void PaxLoader::svc_settings_brightness_set(int32_t level) {
   if (PaxLoader::active_ != nullptr)
     PaxLoader::active_->set_brightness_level(level);
