@@ -1,0 +1,20 @@
+{
+  "format": 1,
+  "version": "2.12.12",
+  "chip": "ESP32C6",
+  "transport": "spi-full-duplex",
+  "bytes": 1210064,
+  "sha256": "9340d16d580d739f819b3d4ad49de618f367fe50b01d47d878c8fcda50cc8f6e",
+  "idf_version": "5.5.2",
+  "component_checksums_sha256": "b86d6f7152c0a3417bbc7295d5038db2e61b75cc4db3203dff06d869fcca7e79",
+  "effective_config": {
+    "CONFIG_ESP_SPI_HOST_INTERFACE": "y",
+    "CONFIG_ESP_SPI_MODE": "3",
+    "CONFIG_ESP_SPI_GPIO_MOSI": "20",
+    "CONFIG_ESP_SPI_GPIO_MISO": "21",
+    "CONFIG_ESP_SPI_GPIO_CLK": "18",
+    "CONFIG_ESP_SPI_GPIO_CS": "19",
+    "CONFIG_ESP_SPI_GPIO_HANDSHAKE": "23",
+    "CONFIG_ESP_SPI_GPIO_DATA_READY": "22"
+  }
+}

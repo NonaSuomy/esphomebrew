@@ -52,6 +52,19 @@ template<class Progress> bool validate_image(FILE *file, uint32_t &size, char *v
 inline bool validate_image(FILE *file, uint32_t &size, char *version, size_t capacity) {
   return validate_image(file,size,version,capacity,[](uint32_t,uint32_t){});
 }
+// A valid ESP image does not identify its transport. Only an approved full-file
+// digest binds the contents to the selected C6 transport and pin configuration.
+template<class Progress> bool matches_approved_image(FILE *file, const char *expected, Progress progress) {
+  if(!file || !expected || strlen(expected)!=64 || fseek(file,0,SEEK_SET))return false;
+  esphome::pax_loader::data::Sha256 hash;
+  uint8_t buffer[1500];size_t count;uint32_t done=0;
+  while((count=fread(buffer,1,sizeof(buffer),file))){hash.update(buffer,count);done+=count;progress(done);}
+  bool ok=!ferror(file) && hash.hex()==expected;
+  return fseek(file,0,SEEK_SET)==0 && ok;
+}
+inline bool matches_approved_image(FILE *file,const char *expected){
+  return matches_approved_image(file,expected,[](uint32_t){});
+}
 // Transport returns 0 on success. Finalize an opened handle on failure, but
 // never activate an incomplete transfer. Kept portable for fault-injection tests.
 template<class Transport> int transfer_image(FILE *file, uint32_t size, Transport &transport, uint32_t &sent) {

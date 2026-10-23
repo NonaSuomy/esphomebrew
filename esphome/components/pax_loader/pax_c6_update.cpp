@@ -24,11 +24,18 @@
 namespace pax_c6 {
 static portMUX_TYPE lock = portMUX_INITIALIZER_UNLOCKED;
 static pax_c6_status_t status{PAX_C6_UPDATE_MAGIC, PAX_C6_IDLE, 0, 0,
-  "Choose a C6 network_adapter.bin for this board's SPI/SDIO wiring"};
+  "C6 " PAX_C6_PROFILE ": check installed version and board-recommended " PAX_C6_VERSION};
 static constexpr char STAGE[] = "/sdcard/roms/pax/.c6-update.bin";
 static constexpr uint32_t MAX_SIZE = 4 * 1024 * 1024;
 static int64_t reboot_at;
-static char prepared_source[512];
+static char prepared_source[512], installed_version[32];
+Info snapshot() {
+  Info info{};
+  portENTER_CRITICAL(&lock);info.status=status;memcpy(info.installed_version,installed_version,sizeof(installed_version));portEXIT_CRITICAL(&lock);
+  snprintf(info.profile,sizeof(info.profile),"%s",PAX_C6_PROFILE);
+  snprintf(info.recommended_version,sizeof(info.recommended_version),"%s",PAX_C6_VERSION);
+  return info;
+}
 static void report(uint32_t state, const char *message, uint32_t done = 0, uint32_t total = 0) {
   portENTER_CRITICAL(&lock);
   status.state = state; status.done = done; status.total = total;
@@ -97,7 +104,8 @@ static void worker(void *arg) {
   auto *request = static_cast<pax_c6_request_t *>(arg);
   const bool prepare = request->command == PAX_C6_PREPARE;
   ESP_LOGI("pax_c6","%s requested",prepare ? "Verification" : "Installation");
-  bool ok = !prepare || copy_source(request->source);
+  const char *download = !strcmp(request->source,PAX_C6_RECOMMENDED) ? PAX_C6_URL : request->source;
+  bool ok = PAX_C6_PROFILE[0] && (!prepare || copy_source(download));
   char source[512]; memcpy(source, request->source, sizeof(source));
   free(request);
   FILE *file = ok ? fopen(STAGE, "rb") : nullptr;
@@ -115,6 +123,13 @@ static void worker(void *arg) {
     remove(STAGE);
     report(PAX_C6_ERROR, "Invalid/incomplete C6 network_adapter image, source unavailable, or SD full");
     vTaskDelete(nullptr); return;
+  }
+  if(!matches_approved_image(file,PAX_C6_SHA256,[&](uint32_t done){
+      verification_progress(done,size);
+    })){
+    fclose(file);remove(STAGE);
+    report(PAX_C6_ERROR,"Rejected: C6 image does not match this board's approved transport/wiring hash");
+    vTaskDelete(nullptr);return;
   }
   if (prepare) {
     fclose(file);
@@ -137,11 +152,14 @@ static void worker(void *arg) {
         report(PAX_C6_ERROR, "C6 not responding; initial/recovery flashing requires USB/UART");
       }
       else {
-        snprintf(message, sizeof(message), "C6 %lu.%lu.%lu -> %s, %lu KB verified. Confirm matching board wiring, then install.",
-          (unsigned long)current.major1, (unsigned long)current.minor1, (unsigned long)current.patch1,
-          version, (unsigned long)(size / 1024));
+        char installed[32];snprintf(installed,sizeof(installed),"%lu.%lu.%lu",(unsigned long)current.major1,(unsigned long)current.minor1,(unsigned long)current.patch1);
+        portENTER_CRITICAL(&lock);snprintf(installed_version,sizeof(installed_version),"%s",installed);portEXIT_CRITICAL(&lock);
+        bool newer=major>current.major1 || (major==current.major1 && (minor>current.minor1 || (minor==current.minor1 && patch>current.patch1)));
+        snprintf(message,sizeof(message),"%s | Installed %s; recommended %s. %s",PAX_C6_PROFILE,installed,version,
+          newer ? "Matching image verified. Install to update and restart." : "No newer approved version. Version matches or is newer.");
         memcpy(prepared_source, source, sizeof(prepared_source));
-        report(PAX_C6_READY, message, size, size);
+        if(!newer)remove(STAGE);
+        report(newer ? PAX_C6_READY : PAX_C6_CURRENT,message,size,size);
       }
     }
     vTaskDelete(nullptr); return;
@@ -196,7 +214,7 @@ static int close(void *cookie) {
     else {
       *job = r;
       portENTER_CRITICAL(&lock);
-      bool allowed = status.state != PAX_C6_BUSY && status.state != PAX_C6_REBOOTING &&
+      bool allowed = PAX_C6_PROFILE[0] && status.state != PAX_C6_BUSY && status.state != PAX_C6_REBOOTING &&
         (r.command != PAX_C6_INSTALL || (status.state == PAX_C6_READY && !strcmp(r.source, prepared_source)));
       if (allowed) { status.state = PAX_C6_BUSY; status.done = status.total = 0; snprintf(status.message, sizeof(status.message), "Preparing C6 update"); }
       portEXIT_CRITICAL(&lock);
@@ -227,5 +245,7 @@ void loop() {
 }
 }
 #else
-namespace pax_c6 { FILE *open(const char *) { return nullptr; } void loop() {} bool busy() { return false; } }
+namespace pax_c6 { FILE *open(const char *) { return nullptr; } void loop() {} bool busy() { return false; }
+Info snapshot(){Info info{};info.status.magic=PAX_C6_UPDATE_MAGIC;info.status.state=PAX_C6_ERROR;snprintf(info.status.message,sizeof(info.status.message),"No supported C6 transport in this firmware");return info;}
+}
 #endif

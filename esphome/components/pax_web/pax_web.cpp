@@ -1,5 +1,6 @@
 #include "pax_web.h"
 #include "esphome/components/pax_loader/pax_firmware_update.h"
+#include "esphome/components/pax_loader/pax_c6_update.h"
 #include "esphome/components/json/json_util.h"
 #include "esp_random.h"
 #include "esp_heap_caps.h"
@@ -50,7 +51,7 @@ void PaxWeb::setup() {
   config.server_port = port_;
   config.ctrl_port = 32769;
   config.stack_size = 12288;
-  config.max_uri_handlers = 11;
+  config.max_uri_handlers = 14;
   config.max_open_sockets = 3;
   config.lru_purge_enable = true;
   config.recv_wait_timeout = 20;
@@ -69,6 +70,9 @@ void PaxWeb::setup() {
                           {"/pax-store.js", HTTP_GET},
                           {"/pax/status", HTTP_GET},
                           {"/pax/firmware", HTTP_GET},
+                          {"/pax/c6", HTTP_GET},
+                          {"/pax/c6/check", HTTP_POST},
+                          {"/pax/c6/install", HTTP_POST},
                           {"/pax/firmware/check", HTTP_POST},
                           {"/pax/firmware/install", HTTP_POST},
                           {"/pax/starter", HTTP_POST},
@@ -254,6 +258,14 @@ esp_err_t PaxWeb::serve_(httpd_req_t *req) {
       }
       return reply_(req, "200 OK", message.c_str());
     }
+    if(!std::strcmp(req->uri,"/pax/c6")){
+      auto info=pax_c6::snapshot();JsonDocument document;
+      document["state"]=info.status.state;document["done"]=info.status.done;document["total"]=info.status.total;
+      document["message"]=info.status.message;document["profile"]=info.profile;
+      document["installed_version"]=info.installed_version;document["recommended_version"]=info.recommended_version;
+      std::string body;serializeJson(document,body);httpd_resp_set_type(req,"application/json");
+      return httpd_resp_send(req,body.data(),body.size());
+    }
     if (std::strcmp(req->uri,"/pax/firmware")==0) {
       auto status=pax_firmware::snapshot();
       JsonDocument document;document["state"]=status.state;document["done"]=status.done;document["total"]=status.total;
@@ -274,6 +286,15 @@ esp_err_t PaxWeb::serve_(httpd_req_t *req) {
   if (!authorized_(req))
     return reply_(req, "403 Forbidden",
                   "Reload the device page before transferring files");
+  if(!std::strcmp(req->uri,"/pax/c6/check") || !std::strcmp(req->uri,"/pax/c6/install")){
+    if(req->content_len)return reply_(req,"400 Bad Request","C6 request must have no body");
+    bool install=!std::strcmp(req->uri,"/pax/c6/install");auto info=pax_c6::snapshot();
+    if(install && (info.status.state!=PAX_C6_READY || header(req,"X-PAX-C6",48)!=info.profile))
+      return reply_(req,"409 Conflict","Check matching C6 firmware and confirm its profile first");
+    if(transfer_.load() || !loader_->request_c6_update(install ? PAX_C6_INSTALL : PAX_C6_PREPARE))
+      return reply_(req,"409 Conflict","C6 update unavailable or device busy");
+    return reply_(req,"202 Accepted",install ? "Installing matching C6 firmware" : "Checking matching C6 firmware");
+  }
   if (!std::strcmp(req->uri,"/pax/firmware/check") || !std::strcmp(req->uri,"/pax/firmware/install")) {
     if(req->content_len!=0)return reply_(req,"400 Bad Request","Firmware request must have no body");
     bool install=!std::strcmp(req->uri,"/pax/firmware/install");

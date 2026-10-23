@@ -32,6 +32,13 @@ static void rehash(std::vector<uint8_t> &b) {
 int main(){
  static_assert(sizeof(pax_c6_request_t)==520);static_assert(sizeof(pax_c6_status_t)==176);
  auto b=image();assert(valid(b));
+ Sha256 full_hash;full_hash.update(b.data(),b.size());std::string approved=full_hash.hex();
+ FILE *approved_file=file(b);assert(pax_c6::matches_approved_image(approved_file,approved.c_str()));
+ assert(ftell(approved_file)==0);assert(!pax_c6::matches_approved_image(approved_file,""));fclose(approved_file);
+ // A different, internally valid ESP image still must not match this board.
+ auto other_transport=b;other_transport[84]='z';other_transport[303]^=b[84]^other_transport[84];rehash(other_transport);
+ FILE *wrong_transport=file(other_transport);assert(!pax_c6::matches_approved_image(wrong_transport,approved.c_str()));fclose(wrong_transport);
+
  FILE *progress_file=file(b);uint32_t image_size=0,last_done=0,calls=0;char version[32];
  assert(pax_c6::validate_image(progress_file,image_size,version,sizeof(version),[&](uint32_t done,uint32_t total){assert(total==b.size() && done>=last_done && done<=total);last_done=done;calls++;}));
  assert(calls>=2 && last_done>0);fclose(progress_file);

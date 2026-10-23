@@ -22,7 +22,9 @@ let firmware=null,firmwareTimer=null;
 async function firmwareStatus(){
   const response=await fetch('/pax/firmware');if(!response.ok)throw Error('Device unavailable; refresh after it restarts.');
   firmware=await response.json();
-  $('firmware-status').textContent=firmware.profile+' | installed build '+firmware.installed_build+'\n'+firmware.message+
+  $('firmware-status').textContent=firmware.profile+'\nInstalled version: '+(firmware.installed_build==='0'?'local build (unversioned)':'build '+firmware.installed_build)+'\n'+
+    (firmware.latest_build!=='0'?'Latest published version: build '+firmware.latest_build+'\n':'')+
+    (firmware.state===2?(firmware.installed_build===firmware.latest_build?'You are on the latest version.\n':'No newer version available.\n'):firmware.state===7?'Update error.\n':'')+firmware.message+
     (firmware.total?' ('+Math.floor(firmware.done*100/firmware.total)+'%)':'');
   const active=[1,4,5,6].includes(firmware.state);
   $('firmware-check').disabled=busy||active||!firmware.profile;
@@ -82,4 +84,29 @@ $('store-install').addEventListener('click',async()=>{
 });
 selectStoreApp();
 $("upload").addEventListener("click",async()=>{preview();if(queue.length===0){message("Choose valid files or a folder first.");return;}if(!$("replace").checked){message("Confirm replacement of existing paths before uploading.");return;}lock(true);try{for(let i=0;i<queue.length;i++){const sha=await digest(queue[i].file,i);message(await send(queue[i],sha,i));await new Promise(resolve=>setTimeout(resolve,100));}message(`Saved and verified ${queue.length} file(s). Choose STORAGE on the device.`);$("progress").value=100;}catch(error){message(error.message);}finally{lock(false);}});
+
+let c6=null,c6Timer=null;
+async function c6Status(){
+  const response=await fetch('/pax/c6');if(!response.ok)throw Error('C6 status unavailable; refresh device page.');
+  c6=await response.json();
+  $('c6-status').textContent=(c6.profile||'Unsupported C6 configuration')+'\nInstalled version: '+(c6.installed_version||'check to query')+
+    '\nBoard-recommended version: '+(c6.recommended_version||'none')+'\n'+c6.message+
+    (c6.total?' ('+Math.floor(c6.done*100/c6.total)+'%)':'');
+  $('c6-check').disabled=busy||[1,3].includes(c6.state)||!c6.profile;
+  $('c6-install').disabled=busy||c6.state!==2;
+  clearTimeout(c6Timer);
+  if([1,3].includes(c6.state))c6Timer=setTimeout(()=>c6Status().catch(error=>{$('c6-status').textContent=error.message;}),1000);
+}
+$('c6-check').addEventListener('click',async()=>{
+  $('c6-check').disabled=true;
+  try{await command('/pax/c6/check');await c6Status();}catch(error){$('c6-status').textContent=error.message;$('c6-check').disabled=false;}
+});
+$('c6-install').addEventListener('click',async()=>{
+  if(!c6||c6.state!==2||!confirm('Install C6 '+c6.recommended_version+' for '+c6.profile+' and restart? Keep power connected.'))return;
+  $('c6-install').disabled=true;
+  try{const response=await fetch('/pax/c6/install',{method:'POST',headers:{'X-PAX-Token':token,'X-PAX-C6':c6.profile}});
+    if(!response.ok)throw Error(await response.text());await c6Status();
+  }catch(error){$('c6-status').textContent=error.message;}
+});
+c6Status().catch(error=>{$('c6-status').textContent=error.message;});
 }

@@ -188,7 +188,20 @@ def package(profile):
     ota_name = 'pax-' + profile + '.ota.bin'
     (out / 'firmware' / factory_name).write_bytes(factory)
     (out / 'ota' / ota_name).write_bytes(ota)
-    write(out / 'updates' / (profile + '.json'), update_manifest(profile, ota, (binary_dir / 'partitions.bin').read_bytes()))
+    defines = (build_dir / 'src/esphome/core/defines.h').read_text()
+    c6_match = re.search(r'^#define PAX_C6_PROFILE "([^"]*)"$', defines, re.M)
+    if c6_match is None:
+        raise ValueError('Missing compiled C6 compatibility profile')
+    c6_key = c6_match.group(1)
+    c6 = None
+    if c6_key:
+        c6 = dict(load(FW / 'components/pax_loader/c6-firmware.json')['images'][c6_key], profile=c6_key)
+        for field in ['version', 'url', 'sha256']:
+            if '#define PAX_C6_' + field.upper() + ' "' + c6[field] + '"' not in defines:
+                raise ValueError('C6 metadata differs from compiled image')
+    update = update_manifest(profile, ota, (binary_dir / 'partitions.bin').read_bytes())
+    update['c6'] = c6
+    write(out / 'updates' / (profile + '.json'), update)
     now = datetime.now(timezone.utc).isoformat()
     manifest = {'name': 'PAX ' + profile, 'version': now[:10].replace('-', '.'),
         'new_install_prompt_erase': True, 'new_install_improv_wait_time': 60,
@@ -213,7 +226,7 @@ def package(profile):
             z.write(file, 'source-reference/' + file.relative_to(FW).as_posix())
         for folder in ['components', 'patches', 'tools']:
             for file in (FW / folder).rglob('*'):
-                if file.is_file() and file.suffix in {'.py', '.h', '.cpp', '.c', '.patch'}:
+                if file.is_file() and file.suffix in {'.py', '.h', '.cpp', '.c', '.patch', '.json'}:
                     z.write(file, 'source-reference/' + file.relative_to(FW).as_posix())
         for file in FW.glob('*.h'):
             z.write(file, 'source-reference/' + file.name)
@@ -237,6 +250,7 @@ def package(profile):
     if mhz == 400 and not re.search(r'^CONFIG_ESP32P4_REV_MIN_300=y$', sdkconfig, re.M):
         raise ValueError('400 MHz requires revision 3')
     record['cpu_frequency_mhz'] = mhz
+    record['c6'] = c6
     write(out / 'records' / (profile + '.json'), record)
     print('Packaged', profile, sha(factory))
 
