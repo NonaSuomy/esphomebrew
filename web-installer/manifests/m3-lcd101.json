@@ -1,6 +1,6 @@
 {
   "name": "PAX m3-lcd101",
-  "version": "2026.10.17",
+  "version": "2026.10.23",
   "new_install_prompt_erase": true,
   "new_install_improv_wait_time": 60,
   "builds": [
