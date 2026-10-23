@@ -1,0 +1,49 @@
+{
+  "format": 1,
+  "profile": "nano-wifi",
+  "chip": "ESP32-P4",
+  "min_revision": 0,
+  "max_revision": 65535,
+  "build_id": 40003346781,
+  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
+  "partitions": [
+    {
+      "label": "otadata",
+      "type": 1,
+      "subtype": 0,
+      "address": 36864,
+      "size": 8192
+    },
+    {
+      "label": "phy_init",
+      "type": 1,
+      "subtype": 1,
+      "address": 45056,
+      "size": 4096
+    },
+    {
+      "label": "app0",
+      "type": 0,
+      "subtype": 16,
+      "address": 65536,
+      "size": 8126464
+    },
+    {
+      "label": "app1",
+      "type": 0,
+      "subtype": 17,
+      "address": 8192000,
+      "size": 8126464
+    },
+    {
+      "label": "nvs",
+      "type": 1,
+      "subtype": 2,
+      "address": 16318464,
+      "size": 458752
+    }
+  ],
+  "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-nano-wifi.ota.bin",
+  "bytes": 2062304,
+  "sha256": "ad970d18b1f8476f2f5d1e8128f0813437a910e47a95ca63758bcadb3feb75df"
+}
