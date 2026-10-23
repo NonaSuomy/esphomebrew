@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "input_repeat.h"
 #include "list_presentation.h"
 #include "network_file_info.h"
 #include "list_sort.h"
@@ -305,6 +306,7 @@ static char g_install_status[96];
 static volatile int g_open_index;
 static volatile int g_source;
 static bool g_pad_last[PAX_INPUT_MAX];
+static PaxInputRepeat g_nav_repeat[6];
 static bool g_keyboard_nav_down[4];
 static bool g_keyboard_nav_pending[4];
 static bool g_keyboard_enter_down;
@@ -7944,16 +7946,23 @@ static bool poll_controller(void)
   const bool l = pad.values[PAX_INPUT_L] != 0;
   const bool r = pad.values[PAX_INPUT_R] != 0;
   const bool l3 = g_svc->input_l3_read != NULL && g_svc->input_l3_read() != 0;
+  const uint32_t now_ms = (uint32_t)(g_svc->get_time_us() / 1000U);
+  const bool up_pressed = pax_input_repeat_step(&g_nav_repeat[0], up, now_ms);
+  const bool right_pressed = pax_input_repeat_step(&g_nav_repeat[1], right, now_ms);
+  const bool down_pressed = pax_input_repeat_step(&g_nav_repeat[2], down, now_ms);
+  const bool left_pressed = pax_input_repeat_step(&g_nav_repeat[3], left, now_ms);
+  const bool page_up_pressed = pax_input_repeat_step(&g_nav_repeat[4], l, now_ms);
+  const bool page_down_pressed = pax_input_repeat_step(&g_nav_repeat[5], r, now_ms);
   for (int i = 0; i < 4; i++) g_keyboard_nav_pending[i] = false;
   g_keyboard_enter_pending = false;
   bool changed = false;
   const int previous_action=g_open_index;
   const bool toolbar_was_active = g_toolbar_focus >= 0;
   if (g_rom_picker_active) {
-    if (!g_rom_prepare_busy && up && !g_pad_last[PAX_INPUT_UP] && g_rom_picker_count > 0) {
+    if (!g_rom_prepare_busy && up_pressed && g_rom_picker_count > 0) {
       g_rom_picker_selected = (g_rom_picker_selected + g_rom_picker_count - 1) % g_rom_picker_count;
       changed = true;
-    } else if (!g_rom_prepare_busy && down && !g_pad_last[PAX_INPUT_DOWN] && g_rom_picker_count > 0) {
+    } else if (!g_rom_prepare_busy && down_pressed && g_rom_picker_count > 0) {
       g_rom_picker_selected = (g_rom_picker_selected + 1) % g_rom_picker_count;
       changed = true;
     }
@@ -7969,25 +7978,25 @@ static bool poll_controller(void)
       g_open_index = -61;
   } else if (g_detail_index >= 0) {
     if (g_toolbar_focus >= 0 && g_toolbar_focus < SOURCE_COUNT) {
-      if (left && !g_pad_last[PAX_INPUT_LEFT]) {
+      if (left_pressed) {
         g_toolbar_focus = (g_toolbar_focus + SOURCE_COUNT - 1) % SOURCE_COUNT;
         changed = true;
-      } else if (right && !g_pad_last[PAX_INPUT_RIGHT]) {
+      } else if (right_pressed) {
         g_toolbar_focus = (g_toolbar_focus + 1) % SOURCE_COUNT;
         changed = true;
       }
-      if ((down && !g_pad_last[PAX_INPUT_DOWN]) || (b && !g_pad_last[PAX_INPUT_B])) {
+      if ((down_pressed) || (b && !g_pad_last[PAX_INPUT_B])) {
         g_toolbar_focus = -1;
         changed = true;
       }
       if (a && !g_pad_last[PAX_INPUT_A]) select_source(g_toolbar_focus);
     } else {
       const char *detail_direction = NULL;
-      if (up && !g_pad_last[PAX_INPUT_UP]) detail_direction = "up";
-      else if (down && !g_pad_last[PAX_INPUT_DOWN]) detail_direction = "down";
-      else if (left && !g_pad_last[PAX_INPUT_LEFT]) detail_direction = "left";
-      else if (right && !g_pad_last[PAX_INPUT_RIGHT]) detail_direction = "right";
-      if (up && !g_pad_last[PAX_INPUT_UP]) {
+      if (up_pressed) detail_direction = "up";
+      else if (down_pressed) detail_direction = "down";
+      else if (left_pressed) detail_direction = "left";
+      else if (right_pressed) detail_direction = "right";
+      if (up_pressed) {
         if (g_detail_focus > 0) {
           g_detail_focus--;
           changed = true;
@@ -7995,7 +8004,7 @@ static bool poll_controller(void)
           g_toolbar_focus = g_source;
           changed = true;
         }
-      } else if (down && !g_pad_last[PAX_INPUT_DOWN]) {
+      } else if (down_pressed) {
         if (g_detail_focus + 1 < g_detail_action_count) {
           g_detail_focus++;
           changed = true;
@@ -8006,16 +8015,16 @@ static bool poll_controller(void)
                           detail_direction, g_detail_focus + 1, g_detail_action_count,
                           (strcmp(detail_direction, "left") == 0 ||
                            strcmp(detail_direction, "right") == 0) ? " (horizontal ignored)" : "");
-      if (l && !g_pad_last[PAX_INPUT_L])
+      if (page_up_pressed)
         (void)g_svc->ui_call_sync(detail_scroll_on_host, (void *)(intptr_t)-4, 1000);
-      else if (r && !g_pad_last[PAX_INPUT_R])
+      else if (page_down_pressed)
         (void)g_svc->ui_call_sync(detail_scroll_on_host, (void *)(intptr_t)4, 1000);
       if (a && !g_pad_last[PAX_INPUT_A] && (!mutations_busy() || g_detail_focus==g_detail_action_count-1)) g_open_index = g_detail_focus;
       if (b && !g_pad_last[PAX_INPUT_B]) g_open_index = g_detail_action_count - 1;
     }
     if ((x && !g_pad_last[PAX_INPUT_X]) || l3) g_open_index = -2;
   } else if (g_settings_mode && !g_keyboard_open) {
-    if (l && !g_pad_last[PAX_INPUT_L]) {
+    if (page_up_pressed) {
       if (g_settings_focus == 3 && g_background_dropdown_open) {
         const int option_count = g_background_count + 1;
         const int jump = VISIBLE_ROWS % option_count;
@@ -8026,7 +8035,7 @@ static bool poll_controller(void)
         g_settings_focus = settings_focus_step(g_settings_focus, -VISIBLE_ROWS);
       }
       changed = true;
-    } else if (r && !g_pad_last[PAX_INPUT_R]) {
+    } else if (page_down_pressed) {
       if (g_settings_focus == 3 && g_background_dropdown_open) {
         const int option_count = g_background_count + 1;
         g_background_choice = (g_background_choice + 5) % option_count;
@@ -8037,7 +8046,7 @@ static bool poll_controller(void)
       }
       changed = true;
     }
-    if (up && !g_pad_last[PAX_INPUT_UP]) {
+    if (up_pressed) {
       if (g_settings_focus == 3 && g_background_dropdown_open) {
         const int option_count = g_background_count + 1;
         g_background_choice = (g_background_choice + option_count - 1) % option_count;
@@ -8048,7 +8057,7 @@ static bool poll_controller(void)
         g_settings_focus = settings_focus_step(g_settings_focus, -1);
         changed = true;
       }
-    } else if (down && !g_pad_last[PAX_INPUT_DOWN]) {
+    } else if (down_pressed) {
       if (g_settings_focus == 3 && g_background_dropdown_open) {
         const int option_count = g_background_count + 1;
         g_background_choice = (g_background_choice + 1) % option_count;
@@ -8060,8 +8069,8 @@ static bool poll_controller(void)
         changed = true;
       }
     }
-    const int direction = (right && !g_pad_last[PAX_INPUT_RIGHT]) ? 1 :
-                          ((left && !g_pad_last[PAX_INPUT_LEFT]) ? -1 : 0);
+    const int direction = (right_pressed) ? 1 :
+                          ((left_pressed) ? -1 : 0);
     if (direction != 0 && g_settings_focus == 0) {
       g_volume_level += direction * 5;
       if (g_volume_level < 0) g_volume_level = 0;
@@ -8145,10 +8154,10 @@ static bool poll_controller(void)
       }
     }
   } else if (g_keyboard_open) {
-    if (left && !g_pad_last[PAX_INPUT_LEFT]) { move_keyboard_focus(-1, 0); changed = true; }
-    else if (right && !g_pad_last[PAX_INPUT_RIGHT]) { move_keyboard_focus(1, 0); changed = true; }
-    else if (up && !g_pad_last[PAX_INPUT_UP]) { move_keyboard_focus(0, -1); changed = true; }
-    else if (down && !g_pad_last[PAX_INPUT_DOWN]) { move_keyboard_focus(0, 1); changed = true; }
+    if (left_pressed) { move_keyboard_focus(-1, 0); changed = true; }
+    else if (right_pressed) { move_keyboard_focus(1, 0); changed = true; }
+    else if (up_pressed) { move_keyboard_focus(0, -1); changed = true; }
+    else if (down_pressed) { move_keyboard_focus(0, 1); changed = true; }
     if (a && !g_pad_last[PAX_INPUT_A])
       (void)g_svc->ui_call_sync(keyboard_activate_on_host, NULL, 1000);
     if ((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3) {
@@ -8157,18 +8166,18 @@ static bool poll_controller(void)
     }
     if (changed) (void)g_svc->ui_call_sync(keyboard_focus_on_host, NULL, 1000);
   } else if (g_toolbar_focus >= 0) {
-    if (left && !g_pad_last[PAX_INPUT_LEFT]) {
+    if (left_pressed) {
       g_toolbar_focus = toolbar_focus_step(g_toolbar_focus, -1);
       changed = true;
-    } else if (right && !g_pad_last[PAX_INPUT_RIGHT]) {
+    } else if (right_pressed) {
       g_toolbar_focus = toolbar_focus_step(g_toolbar_focus, 1);
       changed = true;
     }
-    if (down && !g_pad_last[PAX_INPUT_DOWN]) {
+    if (down_pressed) {
       g_toolbar_focus = g_toolbar_focus < 6 ? 7 : -1;
       changed = true;
     }
-    if (up && !g_pad_last[PAX_INPUT_UP] && g_toolbar_focus >= 6) {
+    if (up_pressed && g_toolbar_focus >= 6) {
       g_toolbar_focus = g_toolbar_focus == 6 ? (g_favorites_mode ? 4 : g_source) :
                         (g_toolbar_focus == 11 ? SOURCE_ARCHIVE : 5);
       changed = true;
@@ -8197,22 +8206,22 @@ static bool poll_controller(void)
                g_archive_level != ARCHIVE_LEVEL_SEARCH) g_open_index = -15;
     }
   } else if (g_view_count > 0) {
-    if (l && !g_pad_last[PAX_INPUT_L]) {
+    if (page_up_pressed) {
       g_selected -= VISIBLE_ROWS;
       if (g_selected < 0) g_selected = 0;
       changed = true;
-    } else if (r && !g_pad_last[PAX_INPUT_R]) {
+    } else if (page_down_pressed) {
       g_selected += VISIBLE_ROWS;
       if (g_selected >= g_view_count) g_selected = g_view_count - 1;
       changed = true;
     }
-    if (up && !g_pad_last[PAX_INPUT_UP] && g_selected == 0) {
+    if (up_pressed && g_selected == 0) {
       g_toolbar_focus = g_favorites_mode ? 4 : g_source;
       changed = true;
-    } else if (up && !g_pad_last[PAX_INPUT_UP]) { g_selected--; changed = true; }
-    if (left && !g_pad_last[PAX_INPUT_LEFT]) { g_selected--; changed = true; }
-    if (down && !g_pad_last[PAX_INPUT_DOWN]) { g_selected++; changed = true; }
-    if (right && !g_pad_last[PAX_INPUT_RIGHT]) { g_selected++; changed = true; }
+    } else if (up_pressed) { g_selected--; changed = true; }
+    if (left_pressed) { g_selected--; changed = true; }
+    if (down_pressed) { g_selected++; changed = true; }
+    if (right_pressed) { g_selected++; changed = true; }
     if (g_selected < 0) g_selected = g_view_count - 1;
     if (g_selected >= g_view_count) g_selected = 0;
     if (g_selected < g_first_visible)
@@ -8221,13 +8230,13 @@ static bool poll_controller(void)
       g_first_visible = g_selected - VISIBLE_ROWS + 1;
     const int max_first = g_view_count > VISIBLE_ROWS ? g_view_count - VISIBLE_ROWS : 0;
     if (g_first_visible > max_first) g_first_visible = max_first;
-  } else if (up && !g_pad_last[PAX_INPUT_UP]) {
+  } else if (up_pressed) {
     /* Empty lists still need a route to sources, settings and search. */
     g_toolbar_focus = g_favorites_mode ? 4 : g_source;
     changed = true;
-  } else if (l && !g_pad_last[PAX_INPUT_L]) {
+  } else if (page_up_pressed) {
     select_source((g_source + SOURCE_COUNT - 1) % SOURCE_COUNT);
-  } else if (r && !g_pad_last[PAX_INPUT_R]) {
+  } else if (page_down_pressed) {
     select_source((g_source + 1) % SOURCE_COUNT);
   }
   if (g_detail_index < 0 && !g_rom_picker_active) {
@@ -8256,7 +8265,7 @@ static bool poll_controller(void)
   const bool back_pressed = b && !g_pad_last[PAX_INPUT_B];
   if (changed) {
     if (g_settings_mode && g_settings_focus == 0 &&
-        ((right && !g_pad_last[PAX_INPUT_RIGHT]) || (left && !g_pad_last[PAX_INPUT_LEFT])))
+        ((right_pressed) || (left_pressed)))
       play_ui_sound(PAX_UI_SOUND_VOLUME, (uint8_t)g_volume_level);
     else
       play_ui_sound(PAX_UI_SOUND_CLICK, 0);
@@ -8341,6 +8350,7 @@ static void wait_for_input_release(void)
     g_keyboard_nav_down[i] = false;
     g_keyboard_nav_pending[i] = false;
   }
+  memset(g_nav_repeat, 0, sizeof(g_nav_repeat));
   g_keyboard_enter_down = false;
   g_keyboard_enter_pending = false;
 }

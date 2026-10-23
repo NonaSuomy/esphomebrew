@@ -50,6 +50,9 @@ static void play_ui_sound(int sound,int level){(void)sound;(void)level;}
 static void press(int key){
  bool up=key==PAX_INPUT_UP,down=key==PAX_INPUT_DOWN,left=key==PAX_INPUT_LEFT,right=key==PAX_INPUT_RIGHT;
  bool a=key==PAX_INPUT_A,b=key==PAX_INPUT_B,l=key==PAX_INPUT_L,r=key==PAX_INPUT_R,changed=false;
+ bool up_pressed=up&&!g_pad_last[PAX_INPUT_UP],down_pressed=down&&!g_pad_last[PAX_INPUT_DOWN];
+ bool left_pressed=left&&!g_pad_last[PAX_INPUT_LEFT],right_pressed=right&&!g_pad_last[PAX_INPUT_RIGHT];
+ bool page_up_pressed=l&&!g_pad_last[PAX_INPUT_L],page_down_pressed=r&&!g_pad_last[PAX_INPUT_R];
 '''+routing+r'''
  (void)changed;
 }
