@@ -1,10 +1,10 @@
 {
-  "built_at": "2026-10-21",
+  "built_at": "2026-10-23",
   "repositories": {
-    "pax-esphome": "d1932e4a8996b32e51223de1a93f86508abdd62f",
-    "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
-    "pax-tools": "048b65875f383153eeac4f3898f716a632fcecc7",
-    "pax-modules": "220e0b17ccd041429e07fe857f65937e53df9128"
+    "pax-esphome": "7b20c8bfc00e9becd4f9d5fa2bf11e3afdb94dad",
+    "pax-esphome/dependencies/esphome": "254de5658fe0c19d02d475b6bfe79a77009fd831",
+    "pax-tools": "a00d1b3cd64f64ebdc89ea36f9435803d7f92d6c",
+    "pax-modules": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
   },
   "firmware": [
     {
@@ -30,7 +30,7 @@
       }
     },
     {
-      "built_at": "2026-10-17",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "elecrow",
       "network_priority": [
@@ -38,8 +38,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-elecrow-pax-web.yaml",
-      "bytes": 2164912,
-      "sha256": "28d9bf76e7407fc9153131a784449be9f3b68f61a0dfecfc4175f89ca681677b",
+      "bytes": 2214400,
+      "sha256": "070224e52d85f48258bade9f51a7fa86a80869b9d6a933579b81edd409b75744",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -48,10 +48,15 @@
       "serial_sd_transfer_tested": true,
       "browser_store_install": true,
       "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
+        "pax-esphome": "7b20c8bfc00e9becd4f9d5fa2bf11e3afdb94dad",
+        "pax-esphome/dependencies/esphome": "254de5658fe0c19d02d475b6bfe79a77009fd831",
+        "pax-tools": "a00d1b3cd64f64ebdc89ea36f9435803d7f92d6c",
+        "pax-modules": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
+      },
+      "runtime_validation": {
+        "date": "2026-10-23",
+        "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
+        "public_image_flashed": false
       }
     },
     {
@@ -478,7 +483,7 @@
       }
     },
     {
-      "built_at": "2026-10-21",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "nano-lcd43",
       "network_priority": [
@@ -486,8 +491,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-lcd43-pax-web.yaml",
-      "bytes": 2104400,
-      "sha256": "bc76f4431d5a6ffadd178b492d3380bee81fd21f0d385dfe09b6ed32002a2dff",
+      "bytes": 2132288,
+      "sha256": "612280f3c599d590a978d156751f61cf5bd88cbd716563058d9083174fb2a53e",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -496,7 +501,7 @@
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
       "hardware_validation": {
-        "date": "2026-10-21",
+        "date": "2026-10-23",
         "chip_revision": "1.0",
         "display": true,
         "touch_polling": true,
@@ -512,10 +517,15 @@
         "app_launch": true
       },
       "repositories": {
-        "pax-esphome": "d1932e4a8996b32e51223de1a93f86508abdd62f",
-        "pax-esphome/dependencies/esphome": "32d06e3a5cbe79edc3809547932ccf92d1101d2e",
-        "pax-tools": "048b65875f383153eeac4f3898f716a632fcecc7",
-        "pax-modules": "220e0b17ccd041429e07fe857f65937e53df9128"
+        "pax-esphome": "7b20c8bfc00e9becd4f9d5fa2bf11e3afdb94dad",
+        "pax-esphome/dependencies/esphome": "254de5658fe0c19d02d475b6bfe79a77009fd831",
+        "pax-tools": "a00d1b3cd64f64ebdc89ea36f9435803d7f92d6c",
+        "pax-modules": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
+      },
+      "runtime_validation": {
+        "date": "2026-10-23",
+        "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
+        "public_image_flashed": false
       }
     }
   ]

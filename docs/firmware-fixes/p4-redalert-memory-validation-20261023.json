@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-23",
+  "device": "Elecrow ESP32-P4 AIO, 1024x600",
+  "connection": "Existing Wi-Fi retained",
+  "firmware_config_hash": "0x02c8c84b",
+  "game": "Unchanged Red Alert 0.2.4",
+  "working_buffers": {
+    "before_each_bytes": 1228800,
+    "after_each_bytes": 512000,
+    "count": 3,
+    "recovered_bytes": 2150400,
+    "canvas": [
+      640,
+      400
+    ]
+  },
+  "observed_menu_psram_free_bytes": 4042580,
+  "menu_presented_fps": "about 25",
+  "allocation_failures_during_startup": 0,
+  "tests": [
+    "Production resize methods tested with ASAN/UBSAN",
+    "Transactional allocation failures, failed growth, rollback, limits, locking and panel clearing",
+    "AIO build and OTA successful",
+    "NANO compatibility build successful; physical NANO not flashed",
+    "24 board profiles and one desktop profile resolve"
+  ],
+  "multiplayer_lobby": "User confirmed network lobby opens successfully without out-of-memory error",
+  "limits": "One full networked game confirmed by user; repeated sessions and other game scenarios not exhaustively tested",
+  "network_game": {
+    "result": "passed",
+    "devices": [
+      "Elecrow ESP32-P4 AIO",
+      "ESP32-P4-NANO"
+    ],
+    "evidence": "User reported: Played a full networked game without issue between the two devices",
+    "date": "2026-10-23"
+  },
+  "followup_log_capture": "AIO API connection unavailable during follow-up capture; full-game result is user-observed, without additional allocation telemetry",
+  "publication_scope": "Public credential-free installer builds; runtime validation was performed on the installed device configurations"
+}
