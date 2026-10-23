@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40003346781,
-  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
+  "build_id": 40010350971,
+  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,26 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-elecrow.ota.bin",
-  "bytes": 2163072,
-  "sha256": "29993f746931bf23d43ad276b89c206d2419fb0930ebf9cc45e45eb8c2817335"
+  "bytes": 2167648,
+  "sha256": "088b150a2b9cec825b87f6ac6095b64a668ee95599895c20b061ec0989a4408c",
+  "c6": {
+    "chip": "ESP32C6",
+    "transport": "spi-full-duplex",
+    "version": "2.12.12",
+    "url": "https://nonasuomy.github.io/esphomebrew/install/c6/2.12.12/aio-spi/network_adapter.bin",
+    "sha256": "9340d16d580d739f819b3d4ad49de618f367fe50b01d47d878c8fcda50cc8f6e",
+    "source": "https://components.espressif.com/components/espressif/esp_hosted/versions/2.12.12",
+    "slave_pins": {
+      "mosi": 20,
+      "miso": 21,
+      "clk": 18,
+      "cs": 19,
+      "handshake": 23,
+      "data_ready": 22
+    },
+    "spi_mode": 3,
+    "idf_version": "5.5.2",
+    "note": "Stock ESP-Hosted Wi-Fi/Bluetooth HCI coprocessor, full duplex; never use the SDIO image on this wiring.",
+    "profile": "c6-spi-aio"
+  }
 }

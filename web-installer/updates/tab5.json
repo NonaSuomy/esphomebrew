@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40003346781,
-  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
+  "build_id": 40010350971,
+  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,16 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-tab5.ota.bin",
-  "bytes": 2038960,
-  "sha256": "e3ec3bbcbeaa39ce59f070d9eac7e8d950803a91e8f22732632686b9a0e391e8"
+  "bytes": 2043536,
+  "sha256": "e328e88140ce2b5aaf662637c181b67d912a3404cb58db9ea2fafdd365fdda5e",
+  "c6": {
+    "chip": "ESP32C6",
+    "transport": "sdio",
+    "version": "2.12.12",
+    "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+    "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+    "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+    "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+    "profile": "c6-sdio"
+  }
 }

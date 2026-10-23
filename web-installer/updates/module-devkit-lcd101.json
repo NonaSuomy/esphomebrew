@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40003346781,
-  "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
+  "build_id": 40010350971,
+  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
   "partitions": [
     {
       "label": "otadata",
@@ -44,6 +44,16 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-module-devkit-lcd101.ota.bin",
-  "bytes": 2082496,
-  "sha256": "ad0ad5b95ff2931454e1b1bb6823d2596adbe1ad0e0572e77c77daa049842378"
+  "bytes": 2087072,
+  "sha256": "5e6e4dad685aff257e07d3c657dd1db5e8928432328a5adbabff9285270d54ce",
+  "c6": {
+    "chip": "ESP32C6",
+    "transport": "sdio",
+    "version": "2.12.12",
+    "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+    "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+    "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+    "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+    "profile": "c6-sdio"
+  }
 }

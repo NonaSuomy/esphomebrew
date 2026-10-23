@@ -13,8 +13,8 @@
       "board": "waveshare7b",
       "network_priority": [],
       "yaml": "esp32-p4-waveshare-7b-pax-web.yaml",
-      "bytes": 2094752,
-      "sha256": "67265c3ea88e1c756c3c9fab4a2ac4f6e1958d16dd659bc13f1eaf2e6ab1d618",
+      "bytes": 2099312,
+      "sha256": "40f3d2dc5894d2441617596025177ee40c14c9465892b3b98a0fed311b6583fb",
       "hardware_tested": false,
       "chip_revision": "rev3",
       "sd_setup_port": 8080,
@@ -22,16 +22,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:34:36.058769+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:26:47.702892+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-waveshare7b.ota.bin",
-        "bytes": 2029216,
-        "sha256": "f831887adf91bb85a6e1f8fb61954e55a93ea28e809cddc7c9f65eb3475b86b5"
+        "bytes": 2033776,
+        "sha256": "9e4104998ef1ce585eb1f2a76946a188acc0fa3b94b62ce1be31df4c367b886f"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -42,8 +52,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-elecrow-pax-web.yaml",
-      "bytes": 2228608,
-      "sha256": "f4bbcf198c350edc109d8be3578caa680c96a4e6beee92f2a575b7e6241e71f3",
+      "bytes": 2233184,
+      "sha256": "8479419ef30df73cdf957b97f50974033d5240a6036971126c6d740eb73efe18",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -51,14 +61,14 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:34:47.339634+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:28:48.810264+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-elecrow.ota.bin",
-        "bytes": 2163072,
-        "sha256": "29993f746931bf23d43ad276b89c206d2419fb0930ebf9cc45e45eb8c2817335"
+        "bytes": 2167648,
+        "sha256": "088b150a2b9cec825b87f6ac6095b64a668ee95599895c20b061ec0989a4408c"
       },
       "historical_hardware_validation": {
         "runtime_validation": {
@@ -66,6 +76,26 @@
           "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
           "public_image_flashed": false
         }
+      },
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "spi-full-duplex",
+        "version": "2.12.12",
+        "url": "https://nonasuomy.github.io/esphomebrew/install/c6/2.12.12/aio-spi/network_adapter.bin",
+        "sha256": "9340d16d580d739f819b3d4ad49de618f367fe50b01d47d878c8fcda50cc8f6e",
+        "source": "https://components.espressif.com/components/espressif/esp_hosted/versions/2.12.12",
+        "slave_pins": {
+          "mosi": 20,
+          "miso": 21,
+          "clk": 18,
+          "cs": 19,
+          "handshake": 23,
+          "data_ready": 22
+        },
+        "spi_mode": 3,
+        "idf_version": "5.5.2",
+        "note": "Stock ESP-Hosted Wi-Fi/Bluetooth HCI coprocessor, full duplex; never use the SDIO image on this wiring.",
+        "profile": "c6-spi-aio"
       }
     },
     {
@@ -74,8 +104,8 @@
       "board": "waveshare",
       "network_priority": [],
       "yaml": "esp32-p4-waveshare-pax-web.yaml",
-      "bytes": 2106016,
-      "sha256": "7102142bd12b4a9567c2269123d599ab679541f6ac99dbad53724c0f70e85099",
+      "bytes": 2110576,
+      "sha256": "8a8b45b7cb14a1b955ea7f617da8623ee54db1e60a8d3a0e1c52274adb06d395",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -83,16 +113,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:36:21.767332+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:26:02.325526+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-waveshare.ota.bin",
-        "bytes": 2040480,
-        "sha256": "171676cb8061a57720400ffa6ec7d4d2593f6f9a7840095e26b99d9a8f4d709d"
+        "bytes": 2045040,
+        "sha256": "239b864b23d6a1d9e9eb2c5eacd8698456bb5d14ec0fc210582d19422b131296"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -103,8 +143,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-pax-3button.yaml",
-      "bytes": 2128288,
-      "sha256": "0f2387ab3940acc20cef2452d2bd194dcefb62f14c5f7752a653f9732464747f",
+      "bytes": 2132864,
+      "sha256": "42d7f09c68dcf8aec9dfa9aaac2f53bd553af471959513eb6f3d71ca15f4a8e0",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -112,16 +152,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:33:14.424975+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:28:19.715558+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-nano720.ota.bin",
-        "bytes": 2062752,
-        "sha256": "a4be3652da81465f935800d10ded967010243148ad81b1ebe5ad11266c74bc27"
+        "bytes": 2067328,
+        "sha256": "91c32012a550a31a6716a2e25e8ceba6f9e62b2f22fe84aacf91360a28475a8b"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -132,8 +182,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-pax-hdmi1080.yaml",
-      "bytes": 2128400,
-      "sha256": "406fe17020aa8504c85d6f58ba819add8889773e177697a9ae6096af2a956afd",
+      "bytes": 2132976,
+      "sha256": "9a7687daf54895583280482e613be659b3d45eb368a033858cfda7000a6f1b7d",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -141,16 +191,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:33:04.069511+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:27:15.513583+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-nano1080.ota.bin",
-        "bytes": 2062864,
-        "sha256": "b5faa08cf9845197bd1c0bcce3c8b66aea6533e58af4a6d2b68ab36d5cb52181"
+        "bytes": 2067440,
+        "sha256": "cb9d422bf3d9b6cf753d411350889bba611cc2708a021566392089501937a223"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -161,8 +221,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-wifi-pax-web.yaml",
-      "bytes": 2127840,
-      "sha256": "0dbe869d81c94a3dc9b0442d003f85a28f80294a00409f6c45b283c560f5f74d",
+      "bytes": 2132512,
+      "sha256": "434f4d88223cdfba5202209facc04f9dd683152fb7d65e9ceb2ce464ed571914",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -170,16 +230,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:33:45.378184+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:25:48.948511+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-nano-wifi.ota.bin",
-        "bytes": 2062304,
-        "sha256": "ad970d18b1f8476f2f5d1e8128f0813437a910e47a95ca63758bcadb3feb75df"
+        "bytes": 2066976,
+        "sha256": "e081e9c3ec91ee0297f00dd695f3ce7c99cae7aeabf246f6e25431da3b34f3d7"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -187,8 +257,8 @@
       "board": "eth-hdmi720",
       "network_priority": [],
       "yaml": "esp32-p4-eth-hdmi720-pax-web.yaml",
-      "bytes": 1866224,
-      "sha256": "06df1a0c7867d421341476c82ec9cad4350d5b3691ae3dce46beaca15f0ba094",
+      "bytes": 1870016,
+      "sha256": "afd75c21c2c318f8c06593d1985fff26c5fabd416f201da93c9008fd8d8217ff",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -196,16 +266,17 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:33:32.164879+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:26:53.708483+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-eth-hdmi720.ota.bin",
-        "bytes": 1800688,
-        "sha256": "58996c88943b9b90fa7cb7bc63a4ce3c1571ef97f4127f9e2b7a11ef32d1f707"
+        "bytes": 1804480,
+        "sha256": "b6ba950996b663605c3fd5e9c720218c6289a1e8d888b44c50c7e6ce5a7a69f6"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": null
     },
     {
       "built_at": "2026-10-23",
@@ -213,8 +284,8 @@
       "board": "waveshare4b",
       "network_priority": [],
       "yaml": "esp32-p4-waveshare4b-pax-web.yaml",
-      "bytes": 2106288,
-      "sha256": "142d8f2c3b5a14ca15ad131949e03c51b5b9e7256ff905b93f6406fe1ea58819",
+      "bytes": 2110976,
+      "sha256": "f9bb7d96163efe4a57a3382758a01e9462d594799e1ea54918b140a27e91646e",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -222,16 +293,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:35:04.741043+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:27:10.423393+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-waveshare4b.ota.bin",
-        "bytes": 2040752,
-        "sha256": "8db2a6a119b2349af2e1314c3fd9fc0881482996b56376d962e9d34ac85ce738"
+        "bytes": 2045440,
+        "sha256": "fdb707dfec3ac5d4493c702cc9f37781a5c7fd71df90cb53544e2c04d691cfe8"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -239,8 +320,8 @@
       "board": "tab5",
       "network_priority": [],
       "yaml": "esp32-p4-tab5-pax-web.yaml",
-      "bytes": 2104496,
-      "sha256": "915bf20339ce1830f5e9b78eed85f98cb2cbaa8a8e6c28c38cd7244d3b337128",
+      "bytes": 2109072,
+      "sha256": "a088870f0ea2f5aa4d258de3fe507d1be9af7d3dad763e9fd0912f905a5ea171",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -248,16 +329,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:39:18.189174+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:31:22.129965+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-tab5.ota.bin",
-        "bytes": 2038960,
-        "sha256": "e3ec3bbcbeaa39ce59f070d9eac7e8d950803a91e8f22732632686b9a0e391e8"
+        "bytes": 2043536,
+        "sha256": "e328e88140ce2b5aaf662637c181b67d912a3404cb58db9ea2fafdd365fdda5e"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -265,8 +356,8 @@
       "board": "jc1060",
       "network_priority": [],
       "yaml": "esp32-p4-jc1060-pax-web.yaml",
-      "bytes": 2105632,
-      "sha256": "027c878bddc9f2aa22121c86b4c9a869cd24424a15a092f9269e44d6ec4c4053",
+      "bytes": 2110192,
+      "sha256": "046af446234a53cf4f87c44593f122db274d0a88efe4336e250d71f0791cca71",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -274,16 +365,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:40:30.193246+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:31:43.969243+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-jc1060.ota.bin",
-        "bytes": 2040096,
-        "sha256": "a12a9330d3005d9417d7c2d56ec8ba38fa945120e5f272e2320e927228405bb3"
+        "bytes": 2044656,
+        "sha256": "c6abaf8c6bd971254c6080519ace32dd3515b068214eb806220c23ce98e23854"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -291,8 +392,8 @@
       "board": "jc4880",
       "network_priority": [],
       "yaml": "esp32-p4-jc4880-pax-web.yaml",
-      "bytes": 2105760,
-      "sha256": "97c1059539b4573e81385a1c53ab878290ea81b4b1dd5a70b1fef1c8c90799b7",
+      "bytes": 2110432,
+      "sha256": "8ee9d8f26c8c5e6d3a326455635c3e20a48c309cc3fad6eec08349f3345eee7b",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -300,16 +401,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:39:24.628927+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:33:49.037100+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-jc4880.ota.bin",
-        "bytes": 2040224,
-        "sha256": "d3283114ceb929e2de5e6a5e02ff61ec2bf2d5a65a9dec47426ecc38a1d79b6d"
+        "bytes": 2044896,
+        "sha256": "0cea2e9db94212e465271c443cfbb8dd5061a7357dd4202eee4532e7fbbe864d"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -317,8 +428,8 @@
       "board": "jc8012",
       "network_priority": [],
       "yaml": "esp32-p4-jc8012-pax-web.yaml",
-      "bytes": 2162464,
-      "sha256": "a7fcaf9d2226115598ebf815a9de4cd154aeb6ebda3ad6b5e232f48cf2dbae9e",
+      "bytes": 2167008,
+      "sha256": "b687df8731c11437976f28595de240bd58ba43ea93122fa5145c7c46a11dabcc",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -326,16 +437,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:41:05.583845+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:35:30.601030+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-jc8012.ota.bin",
-        "bytes": 2096928,
-        "sha256": "4fd2f47eddc2373963fe5e296d554b6eb887002b1116be86ba931cce18218e00"
+        "bytes": 2101472,
+        "sha256": "d5d9732f7c65b4b0e814c5e51ab7ff922491d94b230ff38abf7c0016455a91ff"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -346,8 +467,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-m3-hdmi720-pax-web.yaml",
-      "bytes": 2121680,
-      "sha256": "6cd5794d30f2bcb373366f194ef26fdc3f17a697aca9b249bb81c29bfa9f7d0c",
+      "bytes": 2126224,
+      "sha256": "00ab4d07e590175429f3395f9cb0ed6735516c44625e55550f7e2c18c81b060b",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -355,16 +476,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:41:54.919971+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:34:17.103777+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-m3-hdmi720.ota.bin",
-        "bytes": 2056144,
-        "sha256": "cb21557fb9d1ee3d2fe89e4c16c7a7839aff8556cd5250b7d54265ffe31a93a5"
+        "bytes": 2060688,
+        "sha256": "86f15d9253c7a135b886975790025d2fd993d3ac254d7a6bd77f111c5952c66f"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -375,8 +506,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-espressif-ev-pax-web.yaml",
-      "bytes": 2148176,
-      "sha256": "26f46de2f95bae1d5bcc726b0283cf820a6944d05cb6c859edc23f4d3cd0d45e",
+      "bytes": 2152864,
+      "sha256": "13fcaaaee67917d84c011fc8b6a89e6e740409a943285c446ae187f919572840",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -384,16 +515,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:41:33.709134+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:35:33.662005+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-espressif-ev.ota.bin",
-        "bytes": 2082640,
-        "sha256": "78c81630c0e3f08722f782b99d8181f8ebe1b7dea75caa965a793a4a2342b98e"
+        "bytes": 2087328,
+        "sha256": "2c0f4b5debf1f4e69dbf5e5a80aa6214e6b719e66ab2963d8651ad131d3f5e67"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -401,8 +542,8 @@
       "board": "olimex",
       "network_priority": [],
       "yaml": "esp32-p4-olimex-pax-web.yaml",
-      "bytes": 1763072,
-      "sha256": "b93d3da5f6d0d4cfb7a2f9d0896a98638d63755a163d0bdc7030c5f7fb5faf58",
+      "bytes": 1766768,
+      "sha256": "773ebf619e05921f6903ffabdb60f00f0694f3118a36ded6a30d9e871dc72b0f",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -410,16 +551,17 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:41:01.813723+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:33:51.075063+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-olimex.ota.bin",
-        "bytes": 1697536,
-        "sha256": "9a4ed82731eea8127d08caea2ad6b555351ac3fdeda41e66b80762071761bf06"
+        "bytes": 1701232,
+        "sha256": "35f5d3167cf36ec97bdb7ad27839d678dc5e98e39700a60a2383ea22c3aca321"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": null
     },
     {
       "built_at": "2026-10-23",
@@ -427,8 +569,8 @@
       "board": "firebeetle2",
       "network_priority": [],
       "yaml": "esp32-p4-firebeetle2-pax-web.yaml",
-      "bytes": 1974240,
-      "sha256": "b4e08c56249cd986458defb231a3ddab0eea19e5a873393ff83ae0552f26be6e",
+      "bytes": 1978816,
+      "sha256": "ff88fa4f0bb4d594bf9002829464a424b8b2e4f3a65092a3ac90eb9c8f64377f",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -436,16 +578,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:42:53.271227+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:35:40.163497+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-firebeetle2.ota.bin",
-        "bytes": 1908704,
-        "sha256": "739bde2fcb3176b4ad54f6e1567ddd8af736645ef6a7314c70994f5f379214bb"
+        "bytes": 1913280,
+        "sha256": "01aced0312cb8476bba4009b28ed90b8fc4658082ec41acd8369241bc6a3d52e"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -456,8 +608,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-lcd101-pax-web.yaml",
-      "bytes": 2147168,
-      "sha256": "227cf47664f31b61bbead0dd63f91d2adad25d8578a9dff0068d16475fb47be6",
+      "bytes": 2151872,
+      "sha256": "80b470f20afa208119f4fdc87c75675afa7b1766124520b46d7e452d661c0c39",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -465,16 +617,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:46:07.860340+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:37:16.413073+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-nano-lcd101.ota.bin",
-        "bytes": 2081632,
-        "sha256": "e9fbb719b8d1e4013fffd16d509f5a205368fd99301a86ea01444d419b15325b"
+        "bytes": 2086336,
+        "sha256": "8d42af6561c96861022e408babf4709a086ad376960647cbe9ce119b82d54ad2"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -485,8 +647,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-m3-lcd101-pax-web.yaml",
-      "bytes": 2140832,
-      "sha256": "afda8a45e93c2b9ee0624e47f7c56834b5b5851f48c5e8648c87fa575c8155c9",
+      "bytes": 2145392,
+      "sha256": "287efe40f8658f167990e72cd37f35a519969acb400f648af5599defe5823639",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -494,16 +656,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:47:23.435375+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:38:45.892477+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-m3-lcd101.ota.bin",
-        "bytes": 2075296,
-        "sha256": "8cd836bb363953ab601fac0a774fbd8c0dae695926a4d4ab34e9184136ec7dfb"
+        "bytes": 2079856,
+        "sha256": "2e197d983ca3f85faddfdf4f6f32ba7794c37f85dcae5feb7982440aee506b8c"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -514,8 +686,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-jc1060-iwy-pax-web.yaml",
-      "bytes": 2147968,
-      "sha256": "832339fbc88adebcbd8381d415437205ae8fa70afc4a1bbb3d81574b77c4d3a9",
+      "bytes": 2152528,
+      "sha256": "39279341c5576bfed51cd00308958e2ed1889350d476e35ed06da7b44897d4e9",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -523,16 +695,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:48:45.448057+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:41:02.776426+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-jc1060-iwy.ota.bin",
-        "bytes": 2082432,
-        "sha256": "5118d77ea76b8a6b76d3493224f7a0c3650e85e50af5ea26f5a5b23993f4575b"
+        "bytes": 2086992,
+        "sha256": "fa91819d66bdebc0d1872c4cd30da8f4dd5ab92284015f5fec0942e3df983c08"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -543,8 +725,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-module-devkit-lcd101-pax-web.yaml",
-      "bytes": 2148032,
-      "sha256": "79747b3a33d0d9df06b25d2bdc02395f2680bcc52452e63855e6c9e8ec7869b8",
+      "bytes": 2152608,
+      "sha256": "fc492973cea4bfee8966c41516ac783ad711fdcc57069d6a60ed33de47dc3edb",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -552,16 +734,26 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:47:42.364042+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:41:08.472249+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-module-devkit-lcd101.ota.bin",
-        "bytes": 2082496,
-        "sha256": "ad0ad5b95ff2931454e1b1bb6823d2596adbe1ad0e0572e77c77daa049842378"
+        "bytes": 2087072,
+        "sha256": "5e6e4dad685aff257e07d3c657dd1db5e8928432328a5adbabff9285270d54ce"
       },
-      "historical_hardware_validation": {}
+      "historical_hardware_validation": {},
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
+      }
     },
     {
       "built_at": "2026-10-23",
@@ -572,8 +764,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-lcd43-pax-web.yaml",
-      "bytes": 2146368,
-      "sha256": "c44c4e95b006573e4ff1c4cdd4b95bebb2a0aac51c2e0451a401668c6833040a",
+      "bytes": 2151056,
+      "sha256": "67ac376220f7ec7f6504802af058eab7a36bbe6e306847328b996f4b643785d5",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -581,14 +773,14 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "build_timestamp": "2026-10-23T18:48:25.388095+00:00",
-      "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-      "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-      "ci_run_id": "40003346781",
+      "build_timestamp": "2026-10-23T19:44:54.392721+00:00",
+      "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+      "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+      "ci_run_id": "40010350971",
       "ota": {
         "path": "ota/pax-nano-lcd43.ota.bin",
-        "bytes": 2080832,
-        "sha256": "571e61493dc09a6484979660b2a1f5826bff6ced6345a3e0b1c99e6fb5124590"
+        "bytes": 2085520,
+        "sha256": "f13754a0637cf3bb193bba6313513ae12a1dfba2f0e7108604365a6de6afb018"
       },
       "historical_hardware_validation": {
         "hardware_validation": {
@@ -612,13 +804,23 @@
           "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
           "public_image_flashed": false
         }
+      },
+      "c6": {
+        "chip": "ESP32C6",
+        "transport": "sdio",
+        "version": "2.12.12",
+        "url": "https://esphome.github.io/esp-hosted-firmware/v2.12.12/network_adapter_esp32c6.bin",
+        "sha256": "bad97ce81e7fcf5f3365898f633b80941ae863db9c754d87a78f89c8f61f2e94",
+        "source": "https://github.com/esphome/esp-hosted-firmware/tree/v2.12.12",
+        "note": "C6 SDIO peripheral has fixed slave pins; host GPIO routing is board-specific.",
+        "profile": "c6-sdio"
       }
     }
   ],
   "ci": {
-    "input_digest": "2fd562ffe12a3b94016c56b7e7a7632120d054140ea256029774f579b0463dc3",
-    "source_commit": "093f60ed220c9c936d428ae8314049e977ed057b",
-    "run_id": "40003346781",
+    "input_digest": "1a7ef15fbff08a3479b4635dd1a27cfd1469a0cf580116ad4aea92d2871b126a",
+    "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+    "run_id": "40010350971",
     "profiles": 21
   }
 }
