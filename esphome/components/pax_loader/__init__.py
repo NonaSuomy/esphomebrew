@@ -322,10 +322,9 @@ async def to_code(config):
     registry_path = Path(__file__).resolve().parents[2] / "installer-profiles.json"
     registry = json.loads(registry_path.read_text()) if registry_path.is_file() else {}
     filename = Path(CORE.config_path).name
-    aliases = {"esp32-p4-elecrow-pax-3button.yaml": "elecrow",
-               "esp32-p4-waveshare-pax-3button.yaml": "waveshare",
-               "esp32-p4-waveshare-7b-pax-3button.yaml": "waveshare7b"}
-    profile = next((key for key, value in registry.items() if value == filename), aliases.get(filename, ""))
+    # Only exact public entry points opt in. A private/custom configuration
+    # must not silently replace its compiled integrations or Wi-Fi setup.
+    profile = next((key for key, value in registry.items() if value == filename), "")
     build_id = os.environ.get("PAX_FIRMWARE_BUILD_ID", os.environ.get("GITHUB_RUN_ID", "0"))
     if not build_id.isdecimal() or int(build_id) >= 2**64:
         raise ValueError("Firmware build ID must be an unsigned 64-bit integer")

@@ -77,6 +77,8 @@ struct Connection {
     cfg.buffer_size = 4096;
     cfg.user_agent = "PAX-Firmware-Update/1";
     handle = esp_http_client_init(&cfg);
+    if (handle)
+      esp_http_client_set_header(handle, "Cache-Control", "no-cache");
     if (!handle || esp_http_client_open(handle, 0) != ESP_OK)
       return false;
     length = esp_http_client_fetch_headers(handle);
@@ -117,7 +119,8 @@ static bool partitions_match(JsonArray array) {
 }
 static bool check(Candidate &out) {
   char url[192];
-  snprintf(url, sizeof(url), "%supdates/%s.json", BASE, PAX_FIRMWARE_PROFILE);
+  snprintf(url, sizeof(url), "%supdates/%s.json?check=%lld", BASE,
+           PAX_FIRMWARE_PROFILE, static_cast<long long>(esp_timer_get_time()));
   Connection connection;
   int64_t length;
   if (!connection.open(url, 8192, length))
@@ -170,7 +173,10 @@ static bool check(Candidate &out) {
 static bool install(const Candidate &image) {
   Connection connection;
   int64_t length;
-  if (!connection.open(image.url, image.bytes, length) || length != image.bytes)
+  char download[224];
+  snprintf(download, sizeof(download), "%s?build=%llu", image.url,
+           static_cast<unsigned long long>(image.build));
+  if (!connection.open(download, image.bytes, length) || length != image.bytes)
     return false;
   auto partition = esp_ota_get_next_update_partition(nullptr);
   if (!partition || image.bytes > partition->size)
