@@ -1,4 +1,7 @@
 from pathlib import Path
+import json
+import os
+from esphome.core import CORE
 from esphome import automation
 import esphome.codegen as cg
 import esphome.config_validation as cv
@@ -316,6 +319,18 @@ if hasattr(socket, "consume_sockets"):
 
 
 async def to_code(config):
+    registry_path = Path(__file__).resolve().parents[2] / "installer-profiles.json"
+    registry = json.loads(registry_path.read_text()) if registry_path.is_file() else {}
+    filename = Path(CORE.config_path).name
+    aliases = {"esp32-p4-elecrow-pax-3button.yaml": "elecrow",
+               "esp32-p4-waveshare-pax-3button.yaml": "waveshare",
+               "esp32-p4-waveshare-7b-pax-3button.yaml": "waveshare7b"}
+    profile = next((key for key, value in registry.items() if value == filename), aliases.get(filename, ""))
+    build_id = os.environ.get("PAX_FIRMWARE_BUILD_ID", os.environ.get("GITHUB_RUN_ID", "0"))
+    if not build_id.isdecimal() or int(build_id) >= 2**64:
+        raise ValueError("Firmware build ID must be an unsigned 64-bit integer")
+    cg.add_define("PAX_FIRMWARE_PROFILE", profile)
+    cg.add_define("PAX_FIRMWARE_BUILD_ID", cg.RawExpression(build_id + "ULL"))
     # CMake can refresh ESP-Hosted after pre scripts run. Apply the DMA
     # adaptation after framework configuration, before object signatures.
     hosted_post = Path(__file__).resolve().parents[2] / "tools" / "hosted_spi_post.py"

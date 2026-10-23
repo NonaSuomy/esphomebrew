@@ -1,0 +1,39 @@
+{
+  "name": "recipe",
+  "file": "recipe.pax",
+  "abi": 1,
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "c07301866e1ebc72dc656c51b94349f2193d28228d8dd6ce3b9239f812602823",
+    "path": "pax-esphome/components/pax_loader/psram_app.h",
+    "ref": "ae8c013f42368bf62e20c8b8208764fe79fdb8ff"
+  },
+  "source": {
+    "path": "pax-modules/apps/recipe",
+    "ref": "39bb8dfdf0e95bba63035dde6cd5809a34d51234",
+    "repository": "pax-modules"
+  },
+  "size": 323436,
+  "sha256": "07a21c56a265164b40941d8181aa977d3b91210c97fa791515363341d8f7d530",
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "title": "Recipe",
+  "active_source": {
+    "path": "pax-modules/apps/recipe",
+    "repository": "pax-modules",
+    "ref": "bc57a4aaf520a281e612b6283adb7921ceb39fc1"
+  },
+  "extract": {
+    "version": 2,
+    "app": "recipe",
+    "mode": "self-contained",
+    "archive_dir": "/sd/roms/recipe/incoming",
+    "folders": [],
+    "requires": [],
+    "instructions": "No mandatory external game data is needed by this current build.\n\nFILES / FOLDERS",
+    "media": [],
+    "sources": []
+  },
+  "install_recipe_source": "pax-modules/apps/recipe/install-recipe.json",
+  "requires": [],
+  "install_recipe_ref": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
+}

@@ -1,5 +1,6 @@
 #include "pax_wifi_settings.h"
 #include "pax_c6_update.h"
+#include "pax_firmware_update.h"
 #include "rom_profiles.h"
 /*
  * launcher_ui — phase 2 LVGL PAX.
@@ -57,7 +58,7 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 34
+#define SETTINGS_FOCUS_COUNT 36
 #define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
 #define LIST_LABEL_BYTES (NAME_BYTES + 120)
 #define DETAIL_ACTION_COUNT 5
@@ -189,6 +190,10 @@ static char g_c6_checked_source[512];
 static pax_c6_status_t g_c6_status;
 static bool g_c6_available;
 static lv_obj_t *g_c6_labels[4];
+static pax_firmware_status_t g_firmware_status;
+static bool g_firmware_available, g_firmware_confirm;
+static uint64_t g_firmware_confirm_build;
+static lv_obj_t *g_firmware_labels[3];
 static lv_obj_t *g_c6_progress;
 static uint32_t g_c6_last_state;
 static int g_keyboard_focus;
@@ -4030,6 +4035,44 @@ static bool consume_c6_action(void)
   return true;
 }
 
+static void refresh_firmware_status(void)
+{
+  g_firmware_available=false;
+  void *f=g_svc->file_open ? g_svc->file_open(PAX_FIRMWARE_FILE,"rb") : NULL;
+  if(f){pax_firmware_status_t state={0};size_t n=g_svc->file_read(&state,1,sizeof(state),f);g_svc->file_close(f);
+    if(n==sizeof(state) && state.magic==PAX_FIRMWARE_MAGIC){
+      state.message[sizeof(state.message)-1]=0;state.profile[sizeof(state.profile)-1]=0;
+      g_firmware_status=state;g_firmware_available=true;
+    }
+  }
+  if(!g_firmware_available || g_firmware_status.state!=PAX_FIRMWARE_AVAILABLE ||
+     g_firmware_confirm_build!=g_firmware_status.latest_build)g_firmware_confirm=false;
+}
+static bool consume_firmware_action(void)
+{
+  if(g_open_index!=-73 && g_open_index!=-74)return false;
+  uint32_t command=g_open_index==-73 ? PAX_FIRMWARE_CHECK : PAX_FIRMWARE_INSTALL;
+  g_open_index=-1;
+  refresh_firmware_status();
+  if(mutations_busy() || (g_c6_available && (g_c6_status.state==PAX_C6_BUSY || g_c6_status.state==PAX_C6_REBOOTING))){
+    copy_text(g_settings_message,sizeof(g_settings_message),"Wait for the active transfer before updating firmware");return true;
+  }
+  if(command==PAX_FIRMWARE_INSTALL && !g_firmware_confirm){
+    g_firmware_confirm=g_firmware_available && g_firmware_status.state==PAX_FIRMWARE_AVAILABLE;
+    g_firmware_confirm_build=g_firmware_status.latest_build;
+    copy_text(g_settings_message,sizeof(g_settings_message),"Tap CONFIRM & RESTART to install. Settings and SD files are kept. Keep power connected.");
+    return true;
+  }
+  pax_firmware_request_t request={0};request.magic=PAX_FIRMWARE_MAGIC;request.command=command;
+  request.expected_build=g_firmware_confirm_build;
+  void *f=g_svc->file_open ? g_svc->file_open(PAX_FIRMWARE_FILE,"wb") : NULL;
+  bool ok=false;
+  if(f){ok=g_svc->file_write(&request,1,sizeof(request),f)==sizeof(request);ok=g_svc->file_close(f)==0 && ok;}
+  g_firmware_confirm=false;
+  if(!ok)copy_text(g_settings_message,sizeof(g_settings_message),"Firmware request rejected. Check for updates first; older firmware needs a one-time upgrade.");
+  refresh_firmware_status();return true;
+}
+
 static void refresh_wifi_settings(bool load)
 {
   g_wifi_available=false;
@@ -5089,6 +5132,34 @@ static int update_c6_progress_on_host(void *unused)
   return 0;
 }
 
+static int update_firmware_on_host(void *unused)
+{
+  (void)unused;
+  if(!g_settings_mode || !g_firmware_labels[2])return 0;
+  refresh_firmware_status();
+  bool idle=g_firmware_available && g_firmware_status.profile[0] &&
+    g_firmware_status.state!=PAX_FIRMWARE_CHECKING &&
+    !(g_firmware_status.state>=PAX_FIRMWARE_WAITING && g_firmware_status.state<=PAX_FIRMWARE_REBOOTING);
+  for(int i=0;i<2;i++)if(g_settings_focus_widgets[34+i]){
+    bool enabled=idle && !mutations_busy() && (i==0 || g_firmware_status.state==PAX_FIRMWARE_AVAILABLE);
+    if(enabled)lv_obj_clear_state(g_settings_focus_widgets[34+i],LV_STATE_DISABLED);
+    else lv_obj_add_state(g_settings_focus_widgets[34+i],LV_STATE_DISABLED);
+  }
+  if(g_firmware_labels[0])lv_label_set_text(g_firmware_labels[0],g_firmware_status.state==PAX_FIRMWARE_CHECKING ? "CHECKING..." : "CHECK FOR UPDATES");
+  if(g_firmware_labels[1])lv_label_set_text(g_firmware_labels[1],g_firmware_confirm ? "CONFIRM & RESTART" : "INSTALL UPDATE");
+  char text[320];
+  if(g_firmware_available){
+    copy_text(text,sizeof(text),g_firmware_status.profile);append_text(text,sizeof(text)," | installed build ");
+    char digits[21];size_t count=0;uint64_t build=g_firmware_status.installed_build;
+    do{digits[count++]=(char)('0'+build%10);build/=10;}while(build && count<20);
+    while(count){char digit[2]={digits[--count],0};append_text(text,sizeof(text),digit);}
+    append_text(text,sizeof(text),"\n");append_text(text,sizeof(text),g_firmware_confirm ?
+      "Tap CONFIRM & RESTART to install. Settings and SD files are kept. Keep power connected." : g_firmware_status.message);
+  }else copy_text(text,sizeof(text),"Requires a one-time P4 firmware upgrade to enable GitHub updates");
+  lv_label_set_text(g_firmware_labels[2],text);
+  return 0;
+}
+
 static void update_clock_label(void)
 {
   if (g_status_clock == NULL) return;
@@ -5584,7 +5655,7 @@ static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
     18, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 25, 26, 27, 28, 17, 20, 22, 23, 30, 29, 24, 31, 32, 33, 21
+    13, 14, 15, 16, 25, 26, 27, 28, 17, 20, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -6055,6 +6126,7 @@ static int update_selection_on_host(void *arg)
     label_text_changed(g_network_extra_labels[i],value);
   }
   (void)update_c6_progress_on_host(NULL);
+  (void)update_firmware_on_host(NULL);
   if (g_network_dhcp_label != NULL)
     label_text_changed(g_network_dhcp_label, g_network_config.dhcp_enabled ? "ON" : "OFF");
   if (g_network_status_label != NULL) {
@@ -6505,6 +6577,8 @@ static int build_ui_on_host(void *arg)
   g_network_dhcp_label = NULL;
   g_network_apply_button = NULL;
   for(int i=0;i<4;i++){g_network_extra_labels[i]=NULL;g_c6_labels[i]=NULL;}
+  for(int i=0;i<3;i++)g_firmware_labels[i]=NULL;
+  g_firmware_confirm=false;
   g_c6_progress=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;
@@ -6926,8 +7000,8 @@ static int build_ui_on_host(void *arg)
     const int row_gap = ui_px(4);
     const int first_row_y = ui_px(24);
     const int step_y = row_h + row_gap;
-    int row_y[40];
-    for (int row = 0; row < 40; row++) {
+    int row_y[48];
+    for (int row = 0; row < 48; row++) {
       int visual_row = row;
       if (row < 20) visual_row += 5;
       else if (row < 25) visual_row -= 20;
@@ -6937,7 +7011,7 @@ static int build_ui_on_host(void *arg)
       else if(row==34)visual_row=33;
       else if(row==28 || row==29)visual_row+=2;
       if(row>=36)visual_row=row;
-      if(row==29)visual_row=43;
+      if(row==29)visual_row=50;
       row_y[row] = first_row_y + step_y * visual_row;
       /* Keep the extra breathing room after the Archive S3 status even
        * though the five Storage rows now precede the network settings. */
@@ -7287,6 +7361,16 @@ static int build_ui_on_host(void *arg)
     g_c6_labels[3]=settings_text(panel,"C6 firmware: use an image matching this board's SPI/SDIO wiring",label_x,row_y[39]+step_y,content_w-label_x-ui_px(8),&lv_font_montserrat_14,true);
     lv_obj_set_height(g_c6_labels[3],ui_px(48));
     lv_label_set_long_mode(g_c6_labels[3],LV_LABEL_LONG_WRAP);
+    settings_text(panel,"P4 FIRMWARE (GITHUB)",label_x,row_y[43],content_w-label_x-ui_px(8),font,false);
+    for(int i=0;i<2;i++){
+      settings_text(panel,i==0 ? "CHECK THIS DEVICE" : "UPDATE & RESTART",label_x,row_y[44+i],control_x-label_x-ui_px(6),font,false);
+      lv_obj_t *button=settings_button(panel,34+i,control_x,row_y[44+i],control_w,ui_px(18),-73-i);
+      g_firmware_labels[i]=lv_label_create(button);
+      lv_obj_set_width(g_firmware_labels[i],control_w-ui_px(12));lv_label_set_long_mode(g_firmware_labels[i],LV_LABEL_LONG_DOT);
+      lv_obj_set_style_text_font(g_firmware_labels[i],&lv_font_montserrat_14,LV_PART_MAIN);lv_obj_center(g_firmware_labels[i]);
+    }
+    g_firmware_labels[2]=settings_text(panel,"",label_x,row_y[46],content_w-label_x-ui_px(8),&lv_font_montserrat_14,true);
+    lv_obj_set_height(g_firmware_labels[2],ui_px(76));lv_label_set_long_mode(g_firmware_labels[2],LV_LABEL_LONG_WRAP);
     g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[29],
                                               content_w-ui_px(12),&lv_font_montserrat_14,true);
 
@@ -7886,6 +7970,8 @@ static int teardown_ui_on_host(void *arg)
   g_network_dhcp_label = NULL;
   g_network_apply_button = NULL;
   for(int i=0;i<4;i++){g_network_extra_labels[i]=NULL;g_c6_labels[i]=NULL;}
+  for(int i=0;i<3;i++)g_firmware_labels[i]=NULL;
+  g_firmware_confirm=false;
   g_c6_progress=NULL;
   g_settings_message_label = NULL;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) g_settings_focus_widgets[i] = NULL;
@@ -8143,6 +8229,7 @@ static bool poll_controller(void)
       else g_list_file_details=!g_list_file_details;
       g_open_index=-48;
     }
+    if(a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=34 && g_settings_focus<=35)g_open_index=-73-(g_settings_focus-34);
     if(a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=31 && g_settings_focus<=33)g_open_index=-70-(g_settings_focus-31);
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 21) g_open_index = -9;
     if ((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3) {
@@ -8592,6 +8679,7 @@ int app_entry(const app_services_t *svc)
       const bool keyboard_changed = poll_usb_keyboard();
       const bool selection_changed = poll_controller();
       if(consume_c6_action())(void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
+      if(consume_firmware_action())(void)svc->ui_call_sync(update_firmware_on_host,NULL,1000);
       const int wheel = __atomic_exchange_n(&g_mouse_wheel_pending, 0, __ATOMIC_ACQ_REL);
       if (wheel != 0)
         (void)svc->ui_call_sync(mouse_scroll_on_host, (void *)(intptr_t)wheel, 1000);
@@ -8619,6 +8707,7 @@ int app_entry(const app_services_t *svc)
       if ((uint32_t)(now_ms - last_status_update_ms) >= 1000) {
         (void)svc->ui_call_sync(update_device_status_on_host, NULL, 1000);
         (void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
+        (void)svc->ui_call_sync(update_firmware_on_host,NULL,1000);
         last_status_update_ms = now_ms;
       }
       refresh_pending_settings_scan();
@@ -8658,6 +8747,7 @@ int app_entry(const app_services_t *svc)
       /* C6 jobs are asynchronous. Consume their actions here rather than
        * tearing down and recreating every LVGL object during verification. */
       if(consume_c6_action())(void)svc->ui_call_sync(update_c6_progress_on_host,NULL,1000);
+      if(consume_firmware_action())(void)svc->ui_call_sync(update_firmware_on_host,NULL,1000);
       svc->delay_ms((int)g_next_handler_ms);
     }
 

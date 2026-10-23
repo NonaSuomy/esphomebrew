@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import struct
 import sys
 import zipfile
 from datetime import datetime, timezone
@@ -136,6 +137,30 @@ def starter_root():
             raise ValueError('Starter hash mismatch: ' + filename)
     return folder
 
+def update_manifest(profile, ota, partition_table):
+    """Bind the update to the actual app header and complete flash layout."""
+    if len(ota) < 24 or ota[0] != 0xe9 or struct.unpack_from('<H', ota, 12)[0] != 18:
+        raise ValueError('OTA image is not an ESP32-P4 app')
+    minimum, maximum = struct.unpack_from('<HH', ota, 15)
+    partitions = []
+    for offset in range(0, len(partition_table) - 31, 32):
+        magic, kind, subtype, address, size, label, flags = struct.unpack_from('<HBBII16sI', partition_table, offset)
+        if magic != 0x50aa:
+            break
+        partitions.append(dict(label=label.split(b'\0')[0].decode('ascii'), type=kind,
+                               subtype=subtype, address=address, size=size))
+    if not partitions or len({p['label'] for p in partitions}) != len(partitions):
+        raise ValueError('Invalid OTA partition table')
+    slots = [p for p in partitions if p['type'] == 0 and p['subtype'] in (16, 17)]
+    if len(slots) != 2 or any(len(ota) > p['size'] for p in slots):
+        raise ValueError('OTA image needs two sufficiently large app slots')
+    build_id = int(os.environ.get('PAX_FIRMWARE_BUILD_ID', os.environ.get('GITHUB_RUN_ID', '0')))
+    return dict(format=1, profile=profile, chip='ESP32-P4', min_revision=minimum,
+                max_revision=maximum or 65535, build_id=build_id,
+                source_commit=os.environ.get('GITHUB_SHA', ''), partitions=partitions,
+                url='https://nonasuomy.github.io/esphomebrew/install/ota/pax-' + profile + '.ota.bin',
+                bytes=len(ota), sha256=sha(ota))
+
 def package(profile):
     registry = profiles()
     yaml = registry[profile]
@@ -157,12 +182,13 @@ def package(profile):
     out = ROOT / 'firmware-dist' / profile
     if out.exists():
         shutil.rmtree(out)
-    for name in ['firmware', 'ota', 'kits', 'manifests', 'records']:
+    for name in ['firmware', 'ota', 'kits', 'manifests', 'records', 'updates']:
         (out / name).mkdir(parents=True)
     factory_name = 'pax-' + profile + '.factory.bin'
     ota_name = 'pax-' + profile + '.ota.bin'
     (out / 'firmware' / factory_name).write_bytes(factory)
     (out / 'ota' / ota_name).write_bytes(ota)
+    write(out / 'updates' / (profile + '.json'), update_manifest(profile, ota, (binary_dir / 'partitions.bin').read_bytes()))
     now = datetime.now(timezone.utc).isoformat()
     manifest = {'name': 'PAX ' + profile, 'version': now[:10].replace('-', '.'),
         'new_install_prompt_erase': True, 'new_install_improv_wait_time': 60,
@@ -230,6 +256,11 @@ def collect(artifacts, output):
                                    (record['ota']['path'], record['ota']['sha256'])]:
             if sha((base / relative).read_bytes()) != expected:
                 raise ValueError('Firmware hash mismatch: ' + key)
+        update = load(base / 'updates' / (key + '.json'))
+        if (update['profile'] != key or update['sha256'] != record['ota']['sha256'] or
+            update['bytes'] != (base / record['ota']['path']).stat().st_size or
+            update['url'] != 'https://nonasuomy.github.io/esphomebrew/install/ota/pax-' + key + '.ota.bin'):
+            raise ValueError('Update manifest mismatch: ' + key)
         with zipfile.ZipFile(base / 'kits' / ('pax-' + key + '-flash-kit.zip')) as z:
             if z.testzip() is not None or z.read('pax-' + key + '.factory.bin') != (base / 'firmware' / ('pax-' + key + '.factory.bin')).read_bytes():
                 raise ValueError('Invalid flash kit: ' + key)
@@ -245,7 +276,7 @@ def collect(artifacts, output):
     info['ci'] = {'input_digest': digest, 'source_commit': os.environ.get('GITHUB_SHA', ''),
                   'run_id': os.environ.get('GITHUB_RUN_ID', ''), 'profiles': len(registry)}
     for record, base in found.values():
-        for folder in ['firmware', 'ota', 'kits', 'manifests']:
+        for folder in ['firmware', 'ota', 'kits', 'manifests', 'updates']:
             shutil.copytree(base / folder, output / folder, dirs_exist_ok=True)
     write(output / 'build-info.json', info)
     print('Collected complete matrix:', len(found), 'profiles')
@@ -263,7 +294,12 @@ def promote(overlay):
                                (record['ota']['path'], record['ota']['sha256'])]:
             if sha((overlay / path).read_bytes()) != expected:
                 raise ValueError('Promotion hash mismatch')
-    for folder in ['firmware', 'ota', 'kits', 'manifests']:
+        update = load(overlay / 'updates' / (record['board'] + '.json'))
+        if (update['profile'] != record['board'] or update['sha256'] != record['ota']['sha256'] or
+            update['bytes'] != (overlay / record['ota']['path']).stat().st_size or
+            update['url'] != 'https://nonasuomy.github.io/esphomebrew/install/ota/pax-' + record['board'] + '.ota.bin'):
+            raise ValueError('Promotion update manifest mismatch')
+    for folder in ['firmware', 'ota', 'kits', 'manifests', 'updates']:
         shutil.copytree(overlay / folder, ROOT / 'web-installer' / folder, dirs_exist_ok=True)
     shutil.copy2(overlay / 'build-info.json', ROOT / 'web-installer/build-info.json')
     run(sys.executable, ROOT / 'tools/check_web_installer.py', ROOT / 'web-installer')

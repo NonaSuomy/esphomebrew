@@ -18,6 +18,31 @@ $("files").addEventListener("change",()=>{chosen=Array.from($("files").files);$(
 async function command(path){const response=await fetch(path,{method:"POST",headers:{"X-PAX-Token":token}});const text=await response.text();if(!response.ok)throw Error(text);return text;}
 $("close").addEventListener("click",async()=>{try{message(await command("/pax/close"));}catch(error){message(error.message);}});
 $("starter").addEventListener("click",async()=>{lock(true);$("progress").removeAttribute("value");try{message(await command("/pax/starter"));for(;;){await new Promise(resolve=>setTimeout(resolve,1000));const response=await fetch("/pax/status");if(!response.ok)throw Error("Device disconnected. Reopen its setup page.");const text=await response.text();message(text);const progress=response.headers.get("X-PAX-Progress");if(progress!==null)$("progress").value=Number(progress);if(!text.startsWith("Downloading"))break;}}catch(error){message(error.message);}finally{lock(false);$("progress").value=100;}});
+let firmware=null,firmwareTimer=null;
+async function firmwareStatus(){
+  const response=await fetch('/pax/firmware');if(!response.ok)throw Error('Device unavailable; refresh after it restarts.');
+  firmware=await response.json();
+  $('firmware-status').textContent=firmware.profile+' | installed build '+firmware.installed_build+'\n'+firmware.message+
+    (firmware.total?' ('+Math.floor(firmware.done*100/firmware.total)+'%)':'');
+  const active=[1,4,5,6].includes(firmware.state);
+  $('firmware-check').disabled=busy||active||!firmware.profile;
+  $('firmware-install').disabled=busy||firmware.state!==3;
+  clearTimeout(firmwareTimer);
+  if(active)firmwareTimer=setTimeout(()=>firmwareStatus().catch(error=>{$('firmware-status').textContent=error.message;}),1000);
+}
+$('firmware-check').addEventListener('click',async()=>{
+  $('firmware-check').disabled=true;
+  try{await command('/pax/firmware/check');await firmwareStatus();}catch(error){$('firmware-status').textContent=error.message;$('firmware-check').disabled=false;}
+});
+$('firmware-install').addEventListener('click',async()=>{
+  if(!firmware||firmware.state!==3||!confirm('Install build '+firmware.latest_build+' for '+firmware.profile+' and restart? Saved settings and SD files will be kept. Keep power connected.'))return;
+  $('firmware-install').disabled=true;
+  try{
+    const response=await fetch('/pax/firmware/install',{method:'POST',headers:{'X-PAX-Token':token,'X-PAX-Build':firmware.latest_build}});
+    if(!response.ok)throw Error(await response.text());await firmwareStatus();
+  }catch(error){$('firmware-status').textContent=error.message;}
+});
+firmwareStatus().catch(error=>{$('firmware-status').textContent=error.message;});
 async function digest(file,index){const hash=new PaxSha256();for(let offset=0;offset<file.size;offset+=262144){hash.update(new Uint8Array(await file.slice(offset,offset+262144).arrayBuffer()));message(`Checking ${index+1}/${queue.length}: ${file.name}`);await new Promise(resolve=>setTimeout(resolve,0));}return hash.hex();}
 function send(item,sha,index){return new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open("POST","/pax/upload");xhr.timeout=1800000;xhr.setRequestHeader("Content-Type","application/octet-stream");xhr.setRequestHeader("X-PAX-Token",token);xhr.setRequestHeader("X-PAX-Path",item.path);xhr.setRequestHeader("X-PAX-SHA256",sha);xhr.upload.onprogress=event=>{if(event.lengthComputable)$("progress").value=event.loaded/event.total*100;message(`Uploading ${index+1}/${queue.length}: ${item.path.slice(3)} (${event.loaded.toLocaleString()} bytes)`);};xhr.onload=()=>xhr.status===200?resolve(xhr.responseText):reject(Error(xhr.responseText||"Upload failed"));xhr.onerror=()=>reject(Error("Connection lost. The previous file is kept; retry the upload."));xhr.ontimeout=()=>reject(Error("Upload timed out. Retry when the device is available."));xhr.send(item.file);});}
 let selectedApp=null,selectedFiles=[];
