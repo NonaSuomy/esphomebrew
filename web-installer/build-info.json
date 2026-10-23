@@ -8,13 +8,13 @@
   },
   "firmware": [
     {
-      "built_at": "2026-10-17",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 400,
       "board": "waveshare7b",
       "network_priority": [],
       "yaml": "esp32-p4-waveshare-7b-pax-web.yaml",
-      "bytes": 2032080,
-      "sha256": "3840c24d43073e37d25327bb275184ef92f1f83d75dd36919721b15031a0dc42",
+      "bytes": 2080688,
+      "sha256": "334bcc5ba25252a211fc1dfb7bd44923ac1b6dbb2cead6c541d821055b728597",
       "hardware_tested": false,
       "chip_revision": "rev3",
       "sd_setup_port": 8080,
@@ -22,12 +22,16 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:33:59.662843+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-waveshare7b.ota.bin",
+        "bytes": 2015152,
+        "sha256": "4e57580982ce7a3b17f52961bebf2105adb576ac1cbfee1a093bfc6716c7750b"
+      },
+      "historical_hardware_validation": {}
     },
     {
       "built_at": "2026-10-23",
@@ -38,35 +42,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-elecrow-pax-web.yaml",
-      "bytes": 2214400,
-      "sha256": "070224e52d85f48258bade9f51a7fa86a80869b9d6a933579b81edd409b75744",
-      "hardware_tested": false,
-      "chip_revision": "rev0/1",
-      "sd_setup_port": 8080,
-      "sd_transfer_tested": true,
-      "serial_sd_upload": true,
-      "serial_sd_transfer_tested": true,
-      "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "7b20c8bfc00e9becd4f9d5fa2bf11e3afdb94dad",
-        "pax-esphome/dependencies/esphome": "254de5658fe0c19d02d475b6bfe79a77009fd831",
-        "pax-tools": "a00d1b3cd64f64ebdc89ea36f9435803d7f92d6c",
-        "pax-modules": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
-      },
-      "runtime_validation": {
-        "date": "2026-10-23",
-        "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
-        "public_image_flashed": false
-      }
-    },
-    {
-      "built_at": "2026-10-17",
-      "cpu_frequency_mhz": 360,
-      "board": "waveshare",
-      "network_priority": [],
-      "yaml": "esp32-p4-waveshare-pax-web.yaml",
-      "bytes": 2042800,
-      "sha256": "87ed0a9ca725085ac2631265a6a47dc997d8e4c99a707ef8a520c8dbce14a26b",
+      "bytes": 2214560,
+      "sha256": "b634e56cc6bfc770a6d1c5a633648a089787aa95d84276ba66dc999012cf84b0",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -74,15 +51,51 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
+      "build_timestamp": "2026-10-23T14:33:18.731914+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-elecrow.ota.bin",
+        "bytes": 2149024,
+        "sha256": "577549adc7d3f9e342658db98cf2b7f17460aa7823fac0f8d1a2505dacaf001c"
+      },
+      "historical_hardware_validation": {
+        "runtime_validation": {
+          "date": "2026-10-23",
+          "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
+          "public_image_flashed": false
+        }
       }
     },
     {
-      "built_at": "2026-10-17",
+      "built_at": "2026-10-23",
+      "cpu_frequency_mhz": 360,
+      "board": "waveshare",
+      "network_priority": [],
+      "yaml": "esp32-p4-waveshare-pax-web.yaml",
+      "bytes": 2092096,
+      "sha256": "59997d2e2c8cf306fd67063fb12401df8db8ac6b5548e6795757f8cbe8a61b0e",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false,
+      "serial_sd_upload": true,
+      "serial_sd_transfer_tested": false,
+      "browser_store_install": true,
+      "build_timestamp": "2026-10-23T14:32:21.333920+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-waveshare.ota.bin",
+        "bytes": 2026560,
+        "sha256": "3bbf09532c01c03c414c4a0c78a5612aab90cfba6bf68ce9ce23cb3d4e49239b"
+      },
+      "historical_hardware_validation": {}
+    },
+    {
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "nano720",
       "network_priority": [
@@ -90,8 +103,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-pax-3button.yaml",
-      "bytes": 2064864,
-      "sha256": "bf1349c9750eed86d4778076b7b017e978de5bc808ee892ca9f0a620267a440c",
+      "bytes": 2114256,
+      "sha256": "c43840f1f4ea8d3a9251fd501e156bdd32cc2078f38f9af8005e471c9476f89b",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -99,15 +112,19 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:34:08.325966+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-nano720.ota.bin",
+        "bytes": 2048720,
+        "sha256": "d876735e90f45601bfeaa1ff9295b92dcda651e39ee0ff00701992a631809d8b"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "nano1080",
       "network_priority": [
@@ -115,8 +132,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-pax-hdmi1080.yaml",
-      "bytes": 2064976,
-      "sha256": "69e058d31135668cb3381d520b41e1388bb0ab22e9b1162b0b881340839df814",
+      "bytes": 2114352,
+      "sha256": "ae2b39e63fde03346572f795430f70a01df058e356940a98dbfd280514182016",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -124,15 +141,19 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:33:25.872993+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-nano1080.ota.bin",
+        "bytes": 2048816,
+        "sha256": "510a762693153e2dfbdc514098d1c8446259c73926db2e309162a86c7adfdb66"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "nano-wifi",
       "network_priority": [
@@ -140,8 +161,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-wifi-pax-web.yaml",
-      "bytes": 2064384,
-      "sha256": "c7ad53f05465833833e3f44ffb9fc0559c6fefd21517548efc22b89e7c027d93",
+      "bytes": 2113904,
+      "sha256": "d3a73822c4f642be504f79da2427f79143dceefa47d90d86517d7921f75b87e6",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -149,21 +170,25 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:33:42.269819+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-nano-wifi.ota.bin",
+        "bytes": 2048368,
+        "sha256": "f473ce139765652e13d13f2457b8440b39dc5d3183050b4ed7a8ecc301d6f2ef"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "eth-hdmi720",
       "network_priority": [],
       "yaml": "esp32-p4-eth-hdmi720-pax-web.yaml",
-      "bytes": 1811856,
-      "sha256": "90d4ade7a00e8eb750d44034056385bb6339964ecf2c4a2b3d41c64e19390f1d",
+      "bytes": 1852144,
+      "sha256": "f3ec6b1475d8e28e29b82714583e0af28354a8dfaf902c7438469306f8d47b3e",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -171,21 +196,25 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:32:38.954468+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-eth-hdmi720.ota.bin",
+        "bytes": 1786608,
+        "sha256": "6957a11e0d4218b9c710162335385d10b21c47a5a9a8a566272fa73515e60ae6"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "waveshare4b",
       "network_priority": [],
       "yaml": "esp32-p4-waveshare4b-pax-web.yaml",
-      "bytes": 2043184,
-      "sha256": "c5aa42c02ec44425afb892b94815b82e3ee83c7e4fc0d555d0ee5197ea04f393",
+      "bytes": 2092352,
+      "sha256": "621c9eaece5cbf4ba359c7c52665c8d0b65d782dd925ae3d6202f38cca0337ef",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -193,21 +222,25 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:33:46.289956+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-waveshare4b.ota.bin",
+        "bytes": 2026816,
+        "sha256": "cd20146027e10134065e1f171970f9ea980b58a4b54e4b5d1e428d1675aff0bb"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "tab5",
       "network_priority": [],
       "yaml": "esp32-p4-tab5-pax-web.yaml",
-      "bytes": 2040016,
-      "sha256": "5f268164d67ceb410d1afc3ec26bbce5c2949eecd4cc1af49157ebb344c8f408",
+      "bytes": 2090576,
+      "sha256": "94be5a53c9629ebd4cdb5b4ceeb45b491232fec153cc908011816f075807ee7d",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -215,21 +248,51 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:40:42.647251+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-tab5.ota.bin",
+        "bytes": 2025040,
+        "sha256": "f032b2a3a84083698e4e94fa9f015296b1c279e549b89f49bad2925cc0e0e9d7"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
+      "cpu_frequency_mhz": 360,
+      "board": "jc1060",
+      "network_priority": [],
+      "yaml": "esp32-p4-jc1060-pax-web.yaml",
+      "bytes": 2091712,
+      "sha256": "cfd52b363f092273a07d4b95fd8eb2eb4cec263c45fe0ed8ce9d8c314841edc9",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false,
+      "serial_sd_upload": true,
+      "serial_sd_transfer_tested": false,
+      "browser_store_install": true,
+      "build_timestamp": "2026-10-23T14:38:50.526666+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-jc1060.ota.bin",
+        "bytes": 2026176,
+        "sha256": "bcca1fdbdca5db8c91c7635878bedbf31e1509e859ec260b66d6a468a1834c81"
+      },
+      "historical_hardware_validation": {}
+    },
+    {
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "jc4880",
       "network_priority": [],
       "yaml": "esp32-p4-jc4880-pax-web.yaml",
-      "bytes": 2042656,
-      "sha256": "097225835a8fec8b5d9216db7fa3892c424518d30d391ad00feba0b6a6f0f396",
+      "bytes": 2091824,
+      "sha256": "270a27006fa522d49b81e5ea5045836d96e0802127060d60f58b5cbc7f953a78",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -237,15 +300,45 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:39:09.498293+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-jc4880.ota.bin",
+        "bytes": 2026288,
+        "sha256": "48166f6ebe3ffd07f1aa5057c72d0f8ad8add2d6f2e07d5311fde90f5bf61576"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
+      "cpu_frequency_mhz": 360,
+      "board": "jc8012",
+      "network_priority": [],
+      "yaml": "esp32-p4-jc8012-pax-web.yaml",
+      "bytes": 2148528,
+      "sha256": "2ff31257d6f67d1e1e74584ad289da1ef61ded63b32d1dc912400b4294b9b58c",
+      "hardware_tested": false,
+      "chip_revision": "rev0/1",
+      "sd_setup_port": 8080,
+      "sd_transfer_tested": false,
+      "serial_sd_upload": true,
+      "serial_sd_transfer_tested": false,
+      "browser_store_install": true,
+      "build_timestamp": "2026-10-23T14:40:56.922771+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-jc8012.ota.bin",
+        "bytes": 2082992,
+        "sha256": "54fe037b044a77de52c9ab0af85c290f9bdce5d62fd8464967708f2bc426466e"
+      },
+      "historical_hardware_validation": {}
+    },
+    {
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "m3-hdmi720",
       "network_priority": [
@@ -253,8 +346,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-m3-hdmi720-pax-web.yaml",
-      "bytes": 2058224,
-      "sha256": "28738922193513786f4d6473fc03f9b12eb79658394621b0205f739f9d133bf4",
+      "bytes": 2107744,
+      "sha256": "750bd0644e7930787cd9dc323d59c31c6cda37928412d8600ad871de0039bb7b",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -262,15 +355,19 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:39:13.881731+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-m3-hdmi720.ota.bin",
+        "bytes": 2042208,
+        "sha256": "5bbc8fc91a9f30fd2315a3dabd2684a4242fc28a4485ae7db83f2e86aef22a0b"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "espressif-ev",
       "network_priority": [
@@ -278,8 +375,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-espressif-ev-pax-web.yaml",
-      "bytes": 2084720,
-      "sha256": "b2be98f1729c9da819ee86624ef8278043e50504c6946645428f46fc3276d4dd",
+      "bytes": 2134240,
+      "sha256": "8d523c264537aff45c42e83a8104da84b8d16c1ff9d1a6c729f9252501dde528",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -287,21 +384,25 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:39:18.340668+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-espressif-ev.ota.bin",
+        "bytes": 2068704,
+        "sha256": "4df312eb0afc797b8e7407a96127c0efa01c796bbe21fecdac6e6414040961cc"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "olimex",
       "network_priority": [],
       "yaml": "esp32-p4-olimex-pax-web.yaml",
-      "bytes": 1708608,
-      "sha256": "c0b3dbb463cdb829386d90830b58e9969958d74f187779e8f4cbc4c97612c384",
+      "bytes": 1748896,
+      "sha256": "10e0e2e42232de0701f6b38e49682bd390aa29bfb24bbdc3567d27abda6218bb",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -309,21 +410,25 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:42:06.119349+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-olimex.ota.bin",
+        "bytes": 1683360,
+        "sha256": "92d7ca7ebc09a03299b6532919198ecb8ad86f90572ddec082c690e2600608fc"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "firebeetle2",
       "network_priority": [],
       "yaml": "esp32-p4-firebeetle2-pax-web.yaml",
-      "bytes": 1911424,
-      "sha256": "30c34f0b00364e61dec82e667496947818ac5a849bd3b6c6528064ad042ae43b",
+      "bytes": 1960320,
+      "sha256": "945e90872c01aaf3f439e1a5394c321ee302997ec995988280ad35a620795dab",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -331,15 +436,19 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:42:37.936865+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-firebeetle2.ota.bin",
+        "bytes": 1894784,
+        "sha256": "e5e37f60fe2b9e5ef349a4cb7c6f48108351dbb67fc355a2b6459dfc9a53bac3"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "nano-lcd101",
       "network_priority": [
@@ -347,8 +456,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-lcd101-pax-web.yaml",
-      "bytes": 2084992,
-      "sha256": "1a77a19522ac647a9501a895e44865898161c668e9bdff70ba327f6dafdb9a75",
+      "bytes": 2133248,
+      "sha256": "c896e45c0926bc4f06749a254e92a6e11b7ca3bf7bf4f917b9a13d5bfd74465c",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -356,15 +465,19 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:47:22.710587+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-nano-lcd101.ota.bin",
+        "bytes": 2067712,
+        "sha256": "62f36097583e447549da856b74a5ef39094044e0968820b6348f81ab6025b2a3"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-17",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "m3-lcd101",
       "network_priority": [
@@ -372,8 +485,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-m3-lcd101-pax-web.yaml",
-      "bytes": 2078528,
-      "sha256": "306743cbe843694e5d2d581cd12f275183534805e8f4a5d423df8a2f2a7d50c1",
+      "bytes": 2126896,
+      "sha256": "b68e9bbfefffc255e0462a8950c4b2252352a524d943f2115c50aa4e3a4daf83",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -381,59 +494,19 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:45:06.213551+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-m3-lcd101.ota.bin",
+        "bytes": 2061360,
+        "sha256": "66e7660ecc9f166074f09824093103561fddec97669023420eef374f0249d0c7"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
-      "cpu_frequency_mhz": 360,
-      "board": "jc8012",
-      "network_priority": [],
-      "yaml": "esp32-p4-jc8012-pax-web.yaml",
-      "bytes": 2099232,
-      "sha256": "48cb02a6dcdcdf0c5f0a331d47b6fc79dceb243f26ed1f30941f97d51194691b",
-      "hardware_tested": false,
-      "chip_revision": "rev0/1",
-      "sd_setup_port": 8080,
-      "sd_transfer_tested": false,
-      "serial_sd_upload": true,
-      "serial_sd_transfer_tested": false,
-      "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
-    },
-    {
-      "built_at": "2026-10-18",
-      "cpu_frequency_mhz": 360,
-      "board": "jc1060",
-      "network_priority": [],
-      "yaml": "esp32-p4-jc1060-pax-web.yaml",
-      "bytes": 2043696,
-      "sha256": "9fc09b32d3bab2545614486277262c7f2e943556342b2c3108fdfd31db8f6337",
-      "hardware_tested": false,
-      "chip_revision": "rev0/1",
-      "sd_setup_port": 8080,
-      "sd_transfer_tested": false,
-      "serial_sd_upload": true,
-      "serial_sd_transfer_tested": false,
-      "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
-    },
-    {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "jc1060-iwy",
       "network_priority": [
@@ -441,8 +514,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-jc1060-iwy-pax-web.yaml",
-      "bytes": 2085792,
-      "sha256": "91966c57b748494575cd366a27d728e5fe131bf4dd01db3b339826a6726087a1",
+      "bytes": 2133888,
+      "sha256": "11ecc8d69250438b670b077dd540f1a95e63e5b863b9eefae3302c034bba8430",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -450,15 +523,19 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "4449b708d9613435f85e4a9ae27a4221d646c8e6",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "1274668cbd05852a46ab72c425d26095229164ae",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:46:54.124860+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-jc1060-iwy.ota.bin",
+        "bytes": 2068352,
+        "sha256": "b4d2f38350ef7fceb51026b0f8950c51050d181849ab8974033837f59e288ea8"
+      },
+      "historical_hardware_validation": {}
     },
     {
-      "built_at": "2026-10-18",
+      "built_at": "2026-10-23",
       "cpu_frequency_mhz": 360,
       "board": "module-devkit-lcd101",
       "network_priority": [
@@ -466,8 +543,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-module-devkit-lcd101-pax-web.yaml",
-      "bytes": 2085712,
-      "sha256": "230e6db3bb6730217e77d2062f1682ca0b4495b720ae71e620a92ad5f56f993c",
+      "bytes": 2133968,
+      "sha256": "c70f52597ae543d1744a5fda0909fca4ec6847470aecdc8099e20ba7527f0bec",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -475,12 +552,16 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "repositories": {
-        "pax-esphome": "e73abaada0118d5ca1faacf62672b0c7c8e6d2f3",
-        "pax-esphome/dependencies/esphome": "4a83d698533a2a1e3d15b942fc02ffafc1eebf37",
-        "pax-tools": "f07cd5a84154c27822d667029f17470142d52ffd",
-        "pax-modules": "5f9a4fb81e2f9478d2773bccc333a9df72c8a9c2"
-      }
+      "build_timestamp": "2026-10-23T14:47:30.969810+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-module-devkit-lcd101.ota.bin",
+        "bytes": 2068432,
+        "sha256": "8b1d3f7831e3eabef19613680a86e60e399ca93703eb18e12f440ac6918876d4"
+      },
+      "historical_hardware_validation": {}
     },
     {
       "built_at": "2026-10-23",
@@ -491,8 +572,8 @@
         "wifi"
       ],
       "yaml": "esp32-p4-nano-lcd43-pax-web.yaml",
-      "bytes": 2132288,
-      "sha256": "612280f3c599d590a978d156751f61cf5bd88cbd716563058d9083174fb2a53e",
+      "bytes": 2132448,
+      "sha256": "e1f2185cc5528a30b7ba20d9d38b3a00c8fb48f16da6a18e5d3a520086c902e2",
       "hardware_tested": false,
       "chip_revision": "rev0/1",
       "sd_setup_port": 8080,
@@ -500,33 +581,44 @@
       "serial_sd_upload": true,
       "serial_sd_transfer_tested": false,
       "browser_store_install": true,
-      "hardware_validation": {
-        "date": "2026-10-23",
-        "chip_revision": "1.0",
-        "display": true,
-        "touch_polling": true,
-        "touch_interaction": true,
-        "sd_mount": true,
-        "sd": true,
-        "sd_write": true,
-        "network": true,
-        "ethernet": true,
-        "wifi": false,
-        "usb_input": false,
-        "audio": false,
-        "app_launch": true
+      "build_timestamp": "2026-10-23T14:46:18.449433+00:00",
+      "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+      "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+      "ci_run_id": "39969382944",
+      "ota": {
+        "path": "ota/pax-nano-lcd43.ota.bin",
+        "bytes": 2066912,
+        "sha256": "29145f4a94646e81060722ab9e8523a429002f559cdcd74903380d5e715111e8"
       },
-      "repositories": {
-        "pax-esphome": "7b20c8bfc00e9becd4f9d5fa2bf11e3afdb94dad",
-        "pax-esphome/dependencies/esphome": "254de5658fe0c19d02d475b6bfe79a77009fd831",
-        "pax-tools": "a00d1b3cd64f64ebdc89ea36f9435803d7f92d6c",
-        "pax-modules": "e0a4e5064d49d4d7b5fa8093caccac87de56e839"
-      },
-      "runtime_validation": {
-        "date": "2026-10-23",
-        "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
-        "public_image_flashed": false
+      "historical_hardware_validation": {
+        "hardware_validation": {
+          "date": "2026-10-23",
+          "chip_revision": "1.0",
+          "display": true,
+          "touch_polling": true,
+          "touch_interaction": true,
+          "sd_mount": true,
+          "sd": true,
+          "sd_write": true,
+          "network": true,
+          "ethernet": true,
+          "wifi": false,
+          "usb_input": false,
+          "audio": false,
+          "app_launch": true
+        },
+        "runtime_validation": {
+          "date": "2026-10-23",
+          "redalert_network_game": "Full game completed between AIO and NANO; user confirmed",
+          "public_image_flashed": false
+        }
       }
     }
-  ]
+  ],
+  "ci": {
+    "input_digest": "bea307f4d401ce755122dc5c911e3d414f62ecdce27a529e14c1d929d4480c0f",
+    "source_commit": "2fb351ba66c6ac7b15a4f4cf6bdcfa85129cace6",
+    "run_id": "39969382944",
+    "profiles": 21
+  }
 }
