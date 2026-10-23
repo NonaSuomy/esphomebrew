@@ -1,6 +1,7 @@
 """Publication requires a complete, matching and intact firmware matrix."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -48,6 +49,23 @@ class FirmwareCI(unittest.TestCase):
             (base / 'kits').mkdir()
             with zipfile.ZipFile(base / 'kits' / ('pax-' + key + '-flash-kit.zip'), 'w') as z:
                 z.writestr('pax-' + key + '.factory.bin', factory)
+
+    def test_esptool_wrapper_cannot_shadow_stable_package(self):
+        core = self.root / 'platformio'
+        stable = core / 'tools/tool-esptoolpy'
+        (stable / 'esptool').mkdir(parents=True)
+        (stable / 'esptool/__init__.py').write_text('FROM_STABLE_SOURCE = True\n')
+        scripts = self.root / 'bin'; scripts.mkdir()
+        (scripts / 'esptool.py').write_text('raise RuntimeError("shadow wrapper imported")\n')
+        entry = scripts / 'esptool'
+        entry.write_text('from esptool import FROM_STABLE_SOURCE\nassert FROM_STABLE_SOURCE\n')
+        env = os.environ.copy(); env['PLATFORMIO_CORE_DIR'] = str(core)
+        env['PYTHONPATH'] = str(self.saved[2])
+        subprocess.run([sys.executable, str(entry)], env=env, check=True)
+        env['PYTHONPATH'] = str(stable)
+        bad = subprocess.run([sys.executable, str(entry)], env=env, capture_output=True)
+        self.assertNotEqual(bad.returncode, 0)
+        self.assertIn(b'shadow wrapper', bad.stderr)
 
     def test_complete_matrix(self):
         out = self.root / 'overlay'
