@@ -9991,7 +9991,7 @@ int32_t PaxLoader::svc_settings_brightness_get() {
   // that value rather than returning the overlay's power-on default.
   if (active_ != nullptr && active_->catalog_brightness_number_ != nullptr &&
       std::isfinite(active_->catalog_brightness_number_->state))
-    s_brightness = std::clamp(static_cast<int32_t>(active_->catalog_brightness_number_->state), 5, 100);
+    s_brightness = std::clamp<int32_t>(static_cast<int32_t>(active_->catalog_brightness_number_->state), 5, 100);
 #endif
   return s_brightness;
 }
