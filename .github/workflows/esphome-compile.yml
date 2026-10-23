@@ -52,7 +52,8 @@ jobs:
         run: |
           python - <<'PYTHON'
           from pathlib import Path
-          text = '\n'.join(p.read_text(errors='replace')[-14000:] for p in map(Path, ['firmware-setup.log', 'firmware-bootstrap.log']) if p.exists())
+          paths = [p for p in map(Path, ['firmware-bootstrap.log', 'firmware-setup.log']) if p.exists()]
+          text = paths[0].read_text(errors='replace')[-3000:] if paths else 'Setup failed before writing a log'
           print('::error title=Firmware setup failed::' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
           PYTHON
 
@@ -98,7 +99,8 @@ jobs:
           python - <<'PYTHON'
           from pathlib import Path
           import os
-          text = '\n'.join(p.read_text(errors='replace')[-18000:] for p in map(Path, ['firmware-setup.log', 'firmware-build.log']) if p.exists())
+          paths = [p for p in map(Path, ['firmware-build.log', 'firmware-setup.log']) if p.exists()]
+          text = paths[0].read_text(errors='replace')[-3000:] if paths else 'Build failed before writing a log'
           print('::error title=Firmware ' + os.environ['PROFILE'] + ' failed::' + text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A'))
           PYTHON
       - uses: actions/upload-artifact@v4
