@@ -304,6 +304,7 @@ alignas(64) static uint16_t brightness_slider_overlay_buffer[BRIGHTNESS_SLIDER_W
 struct SavedRuntimeSettings { uint32_t magic; uint8_t volume, automatic, reserved[2]; };
 static constexpr uint32_t RUNTIME_SETTINGS_KEY=0x50415853U, RUNTIME_SETTINGS_MAGIC=0x50524631U;
 static SavedRuntimeSettings saved_runtime_settings{};
+static esphome::ESPPreferenceObject runtime_settings_preference;
 static int32_t s_brightness = 100;
 static constexpr int GAME_MENU_FRAME_WIDTH = 400;
 static constexpr int GAME_MENU_FRAME_HEIGHT = 280;
@@ -1522,9 +1523,9 @@ void PaxLoader::setup() {
 
   PaxLoader::active_ = this;
   if(esphome::global_preferences){
-    auto preference=esphome::global_preferences->make_preference<SavedRuntimeSettings>(RUNTIME_SETTINGS_KEY,true);
+    runtime_settings_preference=esphome::global_preferences->make_preference<SavedRuntimeSettings>(RUNTIME_SETTINGS_KEY,true);
     SavedRuntimeSettings restored{};
-    if(preference.load(&restored) && restored.magic==RUNTIME_SETTINGS_MAGIC && restored.volume<=100 && restored.automatic<=1){
+    if(runtime_settings_preference.load(&restored) && restored.magic==RUNTIME_SETTINGS_MAGIC && restored.volume<=100 && restored.automatic<=1){
       this->master_volume_=restored.volume;
       this->set_auto_brightness_enabled(restored.automatic!=0);
       saved_runtime_settings=restored;
@@ -1975,8 +1976,7 @@ void PaxLoader::loop() {
   SavedRuntimeSettings current{RUNTIME_SETTINGS_MAGIC,static_cast<uint8_t>(this->master_volume_),
                                static_cast<uint8_t>(this->auto_brightness_enabled_),{0,0}};
   if(esphome::global_preferences && memcmp(&current,&saved_runtime_settings,sizeof(current))){
-    auto preference=esphome::global_preferences->make_preference<SavedRuntimeSettings>(RUNTIME_SETTINGS_KEY,true);
-    if(preference.save(&current))saved_runtime_settings=current;
+    if(runtime_settings_preference.save(&current))saved_runtime_settings=current;
   }
   pax_wifi::loop();
   pax_c6::loop();
