@@ -149,16 +149,16 @@
   {
     "id": "jc1060",
     "manufacturer": "Guition",
-    "title": "JC1060P470",
-    "subtitle": "7-inch touchscreen, Ethernet or Wi-Fi by wiring variant",
-    "photo": "images/jc1060.jpg",
+    "title": "JC1060P470C_I_W_Y",
+    "subtitle": "7-inch black-PCB touchscreen, Ethernet and Wi-Fi",
+    "photo": "images/jc1060-c-i-w-y.jpg",
     "status": "Untested",
     "experimental": true,
-    "note": "Select the exact wiring. JC1060P470_I_W_Y uses LCD reset GPIO0, amplifier GPIO11, 2.7 V SD LDO4 and IP101 Ethernet DHCP. GT911 is polled; no unconfirmed touch reset/interrupt pins are driven. The earlier Wi-Fi reference retains LCD reset5, amplifier20, touch reset22/IRQ21 and SD passthrough. Both use native 1024x600 UI/app orientation and linear immediate backlight GPIO23. All variants are untested. Early revision 0/1 runs at 360 MHz; revision 3.0/X needs a separate firmware target.",
+    "note": "Black-PCB JC1060P470C_I_W_Y, original panel (not the V2 display revision). Select the exact wiring. The C_I_W_Y profile uses LCD reset GPIO0, amplifier GPIO11, 2.7 V SD LDO4 and IP101 Ethernet DHCP. GT911 is polled; no unconfirmed touch reset/interrupt pins are driven. The earlier Wi-Fi reference retains LCD reset5, amplifier20, touch reset22/IRQ21 and SD passthrough. Both use native 1024x600 UI/app orientation and linear immediate backlight GPIO23. All variants are untested. Early revision 0/1 runs at 360 MHz; revision 3.0/X needs a separate firmware target.",
     "profiles": [
       [
         "jc1060-iwy",
-        "I_W_Y, Ethernet, LCD reset0 / PA11"
+        "C_I_W_Y (black PCB), Ethernet + Wi-Fi, LCD reset0 / PA11"
       ],
       [
         "jc1060",
