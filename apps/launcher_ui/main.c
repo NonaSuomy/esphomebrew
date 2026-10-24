@@ -4433,10 +4433,15 @@ static void poll_settings_connection(void)
   uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
   if((uint32_t)(now-g_connection_poll_ms)<1000U)return;
   g_connection_poll_ms=now;
+  pax_network_config_t previous_live=g_network_live,previous_config=g_network_config;
+  pax_wifi_status_t previous_wifi=g_wifi_status;bool previous_available=g_wifi_available;
   refresh_network_live(false);
   refresh_wifi_settings(false);
   refresh_c6_status();
-  if(!g_discard_io)(void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+  bool changed=memcmp(&previous_live,&g_network_live,sizeof(g_network_live)) ||
+    memcmp(&previous_config,&g_network_config,sizeof(g_network_config)) ||
+    memcmp(&previous_wifi,&g_wifi_status,sizeof(g_wifi_status)) || previous_available!=g_wifi_available;
+  if(changed && !g_discard_io)(void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
 }
 
 static void refresh_settings_snapshot(bool load_network_config)

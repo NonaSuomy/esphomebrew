@@ -25,10 +25,13 @@ int main(void){
 ''')
  def test_idle_settings_polls_once_per_second_without_storage_scan(self):
   run(PREFIX+r'''
+#include "pax_wifi_settings.h"
+static pax_network_config_t g_network_live,g_network_config;
+static pax_wifi_status_t g_wifi_status;static bool g_wifi_available;
 static bool g_settings_mode;static uint32_t g_connection_poll_ms;
 static uint64_t now;static int network_reads,wifi_reads,c6_reads,redraws;
 static int64_t clock_us(void){return now*1000;}
-static void refresh_network_live(bool load){assert(!load);network_reads++;}
+static void refresh_network_live(bool load){assert(!load);network_reads++;g_network_live.ipv4=network_reads==3 ? 2 : 1;}
 static void refresh_wifi_settings(bool load){assert(!load);wifi_reads++;}
 static void refresh_c6_status(void){c6_reads++;}
 static int update_selection_on_host(void *p){(void)p;redraws++;return 0;}
@@ -39,8 +42,8 @@ int main(void){
  now=1000;poll_settings_connection();assert(!network_reads);
  g_settings_mode=true;poll_settings_connection();assert(network_reads==1 && wifi_reads==1 && c6_reads==1 && redraws==1);
  now=1999;poll_settings_connection();assert(network_reads==1);
- now=2000;poll_settings_connection();assert(network_reads==2 && redraws==2);
- g_discard_io=true;now=3000;poll_settings_connection();assert(network_reads==3 && redraws==2);
+ now=2000;poll_settings_connection();assert(network_reads==2 && redraws==1);
+ g_discard_io=true;now=3000;poll_settings_connection();assert(network_reads==3 && redraws==1);
 }
 ''')
 if __name__=='__main__':unittest.main()
