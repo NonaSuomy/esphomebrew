@@ -5850,8 +5850,8 @@ static void detail_button_event(lv_event_t *event)
 static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
-    18, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 25, 26, 36, 27, 28, 17, 20, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
+    18, 19, 0, 1, 2, 3, 12, 13, 14, 15, 16, 25, 26, 36, 27, 28, 17,
+    4, 5, 6, 7, 8, 9, 10, 11, 20, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -7210,11 +7210,12 @@ static int build_ui_on_host(void *arg)
       else if(row==28 || row==29)visual_row+=2;
       if(row>=36)visual_row=row;
       if(row==29)visual_row=52;
+      /* Network precedes Archive; callback IDs and the later rows stay stable. */
+      if(visual_row>=17 && visual_row<=28)visual_row-=8;
+      else if(visual_row>=9 && visual_row<=16)visual_row+=12;
       row_y[row] = first_row_y + step_y * visual_row;
-      if(visual_row>=26)row_y[row]+=ui_px(18);
-      /* Keep the extra breathing room after the Archive S3 status even
-       * though the five Storage rows now precede the network settings. */
-      if (visual_row >= 17) row_y[row] += ui_px(12);
+      if(visual_row>=18)row_y[row]+=ui_px(18); /* Wi-Fi scan status. */
+      if(visual_row>=29)row_y[row]+=ui_px(12); /* Archive S3 status height. */
     }
 
     settings_text(panel, "MASTER VOLUME", label_x, row_y[0],

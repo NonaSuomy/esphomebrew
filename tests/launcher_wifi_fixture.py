@@ -1,6 +1,7 @@
 """Bounded scan endpoint for real RV32 picker tests; no radio or credentials."""
 from pathlib import Path
 import io
+import re
 import struct
 import sys
 import time
@@ -12,7 +13,10 @@ started=None
 navigate='--fixture-navigation' in sys.argv
 if navigate:sys.argv.remove('--fixture-navigation')
 nav_ready=None
-nav_events=[(key,down) for key in [155]*21+[13] for down in (1,0)]+[None]+[(key,down) for key in (155,13) for down in (1,0)]
+source=(Path(__file__).resolve().parents[1]/'apps/launcher_ui/main.c').read_text()
+order=[int(value) for value in re.search(r'static const uint8_t order\[SETTINGS_FOCUS_COUNT\] = \{([^}]+)\}',source).group(1).replace('\n','').split(',') if value.strip()]
+scan_steps=(order.index(36)-order.index(18))%len(order)
+nav_events=[(key,down) for key in [155]*scan_steps+[13] for down in (1,0)]+[None]+[(key,down) for key in (155,13) for down in (1,0)]
 nav_next=0.0
 nav_stop=False
 class Request(io.BytesIO):
