@@ -72,6 +72,7 @@ struct psram_app {
 };
 
 #include "pax_wifi_stream.h"
+#include "pax_supply_bootstrap.h"
 #include "pax_c6_update.h"
 #include "pax_firmware_update.h"
 
@@ -2799,7 +2800,7 @@ bool PaxLoader::launch_() {
   // not only after the executable has already consumed that memory.
   this->release_launcher_runtime_();
 #endif
-  if (is_network_url(source.c_str())) {
+  if (is_network_url(source.c_str()) || source.rfind("pax-supply:",0)==0) {
     if (!network::is_connected()) {
       ESP_LOGE(TAG, "Cannot load network PAX while the device is offline: %s", source.c_str());
       this->launched_ = false;
@@ -3246,7 +3247,13 @@ void PaxLoader::pax_task_entry_(void *arg) {
 
 void PaxLoader::pax_load_task_entry_(void *arg) {
   auto *self = static_cast<PaxLoader *>(arg);
-  const std::string url = self->pax_load_source_;
+  std::string url = self->pax_load_source_;
+  if(url.rfind("pax-supply:",0)==0){
+    url=pax_supply::resolve(url.substr(11),
+      pax_supply::read_setting(runtime_path("/sd/roms/pax/.launcher_ui_network_mode.txt")),
+      pax_supply::read_setting(runtime_path("/sd/roms/pax/.launcher_ui_network_url.txt")));
+    self->pax_load_source_=url;
+  }
   // Fetch the app's data files first, so it never starts without them.
   const esp_err_t data_result = self->sync_app_data_(url);
   self->pax_load_data_failed_ = data_result != ESP_OK;

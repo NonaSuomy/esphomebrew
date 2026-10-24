@@ -7,7 +7,6 @@ substitutions:
   pax_media_relay_entity: media_player.esp32_p4_pax_quick_launcher_player
   pax_media_ha_address: "10.42.42.52"
   launcher_network_url: "http://10.20.30.158:8000/launcher_ui.pax"
-  launcher_github_url: "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/launcher_ui.pax"
 
 # Retain the ESPHome API actions for saving PAXs and arbitrary files to /sd.
 

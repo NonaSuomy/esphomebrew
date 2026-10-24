@@ -5,7 +5,6 @@ substitutions:
   device_name: esp32-p4-waveshare-pax-quick
   friendly_name: "ESP32-P4 Waveshare 7-inch PAX Quick Launcher"
   launcher_network_url: "http://10.20.30.158:8000/launcher_ui.pax"
-  launcher_github_url: "https://github.com/NonaSuomy/esphomebrew/releases/download/dev-builds/launcher_ui.pax"
 
 # Retain the ESPHome API actions for saving PAXs and arbitrary files to /sd.
 

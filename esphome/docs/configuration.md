@@ -108,3 +108,15 @@ package provides one. See `apps/desktop/README.md` for browser controls.
 ### Choose a nearby Wi-Fi network
 
 In Launcher Settings, the WI-FI NAME row has a manual name field and a SCAN NEARBY picker. Open the picker to scan, then choose a network from the strongest-first list (signal in dBm, Open or Secured). Repeated radios with the same name/security are combined. Scan again refreshes the list. Enter manually is always available, including for hidden networks. Selecting a different secured network opens password entry; open networks clear any staged password. Nothing connects until APPLY WI-FI is selected. The scan runs in the background and does not change the current credentials or disconnect Wi-Fi. It requires firmware with the `/dev/pax-wifi-scan` endpoint; older firmware retains manual entry.
+
+### Three-button network bootstrap
+
+The three-button **NETWORK** action discovers PAX Supply before downloading
+`launcher_ui.pax`. Discovery runs in the background download task, so it works
+before Launcher UI itself is available. It respects the SD settings for automatic
+versus manual Supply URLs and falls back to the cached/configured URL if no
+server responds. Start the computer server with `./pax-tools/serve-dev.sh 8000`.
+
+The **GITHUB** action uses the shared `launcher_github_url` from `pax-base.yaml`.
+The old Elecrow/Waveshare override pointed at a missing `dev-builds` release
+asset; these profiles now inherit the published GitHub Pages launcher URL.

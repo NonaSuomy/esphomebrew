@@ -126,7 +126,7 @@ lvgl:
             x: ${network_x}
             y: ${network_y}
             on_click:
-              - lambda: id(pax_runtime)->request_launch("${launcher_network_url}");
+              - lambda: id(pax_runtime)->request_launch("pax-supply:${launcher_network_url}");
             widgets:
               - label:
                   text: "NETWORK"
