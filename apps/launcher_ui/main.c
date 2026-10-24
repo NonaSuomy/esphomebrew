@@ -1,4 +1,5 @@
 #include "pax_wifi_settings.h"
+#include "pax_wifi_scan.h"
 #include "pax_c6_update.h"
 #include "pax_firmware_update.h"
 #include "rom_profiles.h"
@@ -58,7 +59,7 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 36
+#define SETTINGS_FOCUS_COUNT 37
 #define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
 #define LIST_LABEL_BYTES (NAME_BYTES + 120)
 #define DETAIL_ACTION_COUNT 5
@@ -182,6 +183,13 @@ static int g_network_edit_field = -1;
 static pax_wifi_status_t g_wifi_status;
 static bool g_wifi_available, g_wifi_password_changed;
 static char g_wifi_ssid[33], g_wifi_password[65];
+static pax_wifi_scan_status_t g_wifi_scan;
+static bool g_wifi_scan_available,g_wifi_dropdown_open,g_wifi_needs_password;
+static uint32_t g_wifi_scan_poll_ms,g_wifi_scan_started_ms;
+static int g_wifi_choice;
+static lv_obj_t *g_wifi_dropdown;
+static char g_wifi_options[2300];
+static int update_wifi_picker_on_host(void *unused);
 static lv_obj_t *g_network_extra_labels[4];
 static char g_search_before_settings_edit[sizeof(g_search_text)];
 static char g_settings_message[128];
@@ -4087,13 +4095,75 @@ static void refresh_wifi_settings(bool load)
 }
 static void apply_wifi_settings(void)
 {
+  if(g_wifi_scan.state==1){copy_text(g_settings_message,sizeof(g_settings_message),"Wait for the Wi-Fi scan to finish");return;}
+  if(g_wifi_needs_password && !g_wifi_password[0]){copy_text(g_settings_message,sizeof(g_settings_message),"Enter the selected network's Wi-Fi password first");return;}
   pax_wifi_request_t request={0};request.magic=PAX_WIFI_SETTINGS_MAGIC;request.replace_password=g_wifi_password_changed;
   copy_text(request.ssid,sizeof(request.ssid),g_wifi_ssid);copy_text(request.password,sizeof(request.password),g_wifi_password);
   if(!pax_wifi_request_valid(&request)){copy_text(g_settings_message,sizeof(g_settings_message),"SSID required; password must be 8-63 characters, 64 hex digits, or blank for open Wi-Fi");secure_clear(&request,sizeof(request));return;}
   int result=run_action(wifi_apply_job,&request,"Applying Wi-Fi... Please wait");
   bool accepted=result==0;secure_clear(&request,sizeof(request));
-  if(accepted){secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=false;}
+  if(accepted){secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=false;g_wifi_needs_password=false;}
   copy_text(g_settings_message,sizeof(g_settings_message),accepted ? "Connecting; failed Wi-Fi changes revert after 45 seconds" : "Wi-Fi request rejected; another connection may be in progress");
+}
+
+/* The scan endpoint is a bounded memory snapshot, never an SD read. Poll on
+ * the entry task so Wi-Fi discovery cannot block or rebuild Settings widgets. */
+static bool read_wifi_scan(void)
+{
+  if(!g_svc->file_open || !g_svc->file_read || !g_svc->file_close)return false;
+  void *file=g_svc->file_open(PAX_WIFI_SCAN_FILE,"rb");if(!file)return false;
+  pax_wifi_scan_status_t result={0};size_t n=g_svc->file_read(&result,1,sizeof(result),file);
+  g_svc->file_close(file);
+  if(n!=sizeof(result) || !pax_wifi_scan_valid(&result))return false;
+  bool changed=!g_wifi_scan_available || result.generation!=g_wifi_scan.generation || result.state!=g_wifi_scan.state;
+  g_wifi_scan=result;g_wifi_scan_available=true;return changed;
+}
+static int wifi_scan_start_job(void *unused)
+{
+  (void)unused;pax_wifi_scan_request_t request={PAX_WIFI_SCAN_MAGIC};
+  void *file=g_svc->file_open(PAX_WIFI_SCAN_FILE,"wb");if(!file)return -1;
+  bool ok=g_svc->file_write(&request,1,sizeof(request),file)==sizeof(request);
+  return g_svc->file_close(file)==0 && ok ? 0 : -1;
+}
+static void request_wifi_scan(void)
+{
+  if(mutations_busy() || g_wifi_scan.state==1)return;
+  if(!g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return;
+  g_wifi_scan_started_ms=(uint32_t)(g_svc->get_time_us()/1000U);
+  if(run_action(wifi_scan_start_job,NULL,"Starting Wi-Fi scan...")==0){
+    g_wifi_scan.state=1;g_wifi_scan.count=0;g_wifi_choice=0;
+    g_wifi_scan_started_ms=(uint32_t)(g_svc->get_time_us()/1000U);
+    copy_text(g_wifi_scan.message,sizeof(g_wifi_scan.message),"Scanning nearby networks...");
+  }else {
+    g_wifi_scan.state=-1;g_wifi_scan.count=0;
+    copy_text(g_wifi_scan.message,sizeof(g_wifi_scan.message),"Scan unavailable; enter manually or update firmware");
+  }
+  copy_text(g_settings_message,sizeof(g_settings_message),g_wifi_scan.message);
+  if(!g_discard_io)(void)g_svc->ui_call_sync(update_wifi_picker_on_host,NULL,1000);
+}
+static void poll_wifi_scan(void)
+{
+  if(!g_settings_mode)return;
+  uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
+  if((uint32_t)(now-g_wifi_scan_poll_ms)<500U)return;
+  g_wifi_scan_poll_ms=now;
+  bool changed=read_wifi_scan();
+  if(g_wifi_scan.state==1 && (uint32_t)(now-g_wifi_scan_started_ms)>25000U){
+    g_wifi_scan.state=-1;copy_text(g_wifi_scan.message,sizeof(g_wifi_scan.message),"Scan timed out; retry or enter manually");changed=true;
+  }
+  if(changed && g_display){copy_text(g_settings_message,sizeof(g_settings_message),g_wifi_scan.message);(void)g_svc->ui_call_sync(update_wifi_picker_on_host,NULL,1000);}
+}
+static bool select_wifi_network(int index)
+{
+  if(g_wifi_scan.state!=2 || index<0 || (uint32_t)index>=g_wifi_scan.count)return false;
+  const pax_wifi_scan_ap_t *ap=&g_wifi_scan.aps[index];
+  bool current=g_wifi_available && !strcmp(ap->ssid,g_wifi_status.ssid);
+  copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),ap->ssid);
+  g_wifi_needs_password=ap->secured && !current;
+  if(!current || !ap->secured){secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=true;}
+  copy_text(g_settings_message,sizeof(g_settings_message),g_wifi_needs_password ?
+    "Network selected; enter its password, then APPLY WI-FI" : "Network selected; choose APPLY WI-FI when ready");
+  return true;
 }
 
 static void load_themes(void)
@@ -5381,6 +5451,49 @@ static int background_dropdown_choice_on_host(void *arg)
   return 0;
 }
 
+static int wifi_choice_action(void)
+{
+  return g_wifi_choice==0 ? -80 : g_wifi_choice==1 ? -81 : -1000-(g_wifi_choice-2);
+}
+static void wifi_dropdown_event(lv_event_t *event)
+{
+  if(!g_wifi_dropdown)return;
+  if(lv_event_get_code(event)==LV_EVENT_CANCEL){g_wifi_dropdown_open=false;return;}
+  if(lv_event_get_code(event)==LV_EVENT_CLICKED || lv_event_get_code(event)==LV_EVENT_READY){
+    g_settings_focus=36;g_wifi_dropdown_open=lv_dropdown_is_open(g_wifi_dropdown);
+    g_wifi_choice=(int)lv_dropdown_get_selected(g_wifi_dropdown);
+    if(g_wifi_dropdown_open && g_wifi_scan.state==0)g_open_index=-80;
+  }else if(lv_event_get_code(event)==LV_EVENT_VALUE_CHANGED){
+    g_wifi_choice=(int)lv_dropdown_get_selected(g_wifi_dropdown);g_wifi_dropdown_open=false;
+    g_open_index=wifi_choice_action();
+  }
+}
+static int wifi_dropdown_state_on_host(void *unused)
+{
+  (void)unused;if(!g_wifi_dropdown)return 0;
+  lv_dropdown_set_selected(g_wifi_dropdown,(uint32_t)g_wifi_choice);
+  if(g_wifi_dropdown_open)lv_dropdown_open(g_wifi_dropdown);else lv_dropdown_close(g_wifi_dropdown);
+  return 0;
+}
+static int update_wifi_picker_on_host(void *unused)
+{
+  (void)unused;if(!g_wifi_dropdown)return 0;
+  copy_text(g_wifi_options,sizeof(g_wifi_options),g_wifi_scan.state==1 ? "Scanning...\nEnter manually" : "Scan again\nEnter manually");
+  if(g_wifi_scan.state==2)for(uint32_t i=0;i<g_wifi_scan.count;i++){
+    char name[33],line[96];copy_text(name,sizeof(name),g_wifi_scan.aps[i].ssid);
+    for(char *p=name;*p;p++)if((unsigned char)*p<32 || *p==127)*p='?';
+    lv_snprintf(line,sizeof(line),"\n%s  %ld dBm  %s",name,(long)g_wifi_scan.aps[i].rssi,g_wifi_scan.aps[i].secured ? "Secured" : "Open");
+    append_text(g_wifi_options,sizeof(g_wifi_options),line);
+  }
+  lv_dropdown_set_options(g_wifi_dropdown,g_wifi_options);
+  if(g_wifi_choice<0 || (uint32_t)g_wifi_choice>=g_wifi_scan.count+2)g_wifi_choice=0;
+  lv_dropdown_set_selected(g_wifi_dropdown,(uint32_t)g_wifi_choice);
+  lv_dropdown_set_text(g_wifi_dropdown,g_wifi_scan.state==1 ? "SCANNING..." : g_wifi_scan.state==2 ? "CHOOSE NETWORK" : "SCAN NEARBY");
+  if(g_settings_message_label)lv_label_set_text(g_settings_message_label,g_settings_message);
+  if(g_wifi_dropdown_open && !g_keyboard_open)lv_dropdown_open(g_wifi_dropdown);
+  return 0;
+}
+
 static void settings_focus_event(lv_event_t *event)
 {
   const lv_event_code_t code = lv_event_get_code(event);
@@ -5520,7 +5633,7 @@ static bool commit_network_edit(void)
   const int field = g_network_edit_field;
   bool valid=false;
   if(field==4){char normalized[PATH_BYTES];valid=normalize_network_url(g_search_text,normalized,sizeof(normalized)) && save_network_url(normalized);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Development server URL saved on SD" : "Use an HTTP(S) IPv4 address or hostname; SD is required to save");}
-  else if(field==5){valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_wifi_ssid);if(valid)copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Wi-Fi name staged; choose APPLY WI-FI" : "Wi-Fi name must be 1-32 bytes");}
+  else if(field==5){g_wifi_needs_password=false;valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_wifi_ssid);if(valid)copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Wi-Fi name staged; choose APPLY WI-FI" : "Wi-Fi name must be 1-32 bytes");}
   else if(field==7){valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_c6_source);if(valid)copy_text(g_c6_source,sizeof(g_c6_source),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "C6 source staged; only the board-approved image hash is accepted" : "Firmware path or URL required");}
   else if(field==6){valid=strlen(g_search_text)<sizeof(g_wifi_password);if(valid){copy_text(g_wifi_password,sizeof(g_wifi_password),g_search_text);g_wifi_password_changed=true;}copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Password staged; choose APPLY WI-FI (blank means open network)" : "Password is too long");}
   else valid=ipv4_from_text(g_search_text,&address);
@@ -5671,7 +5784,7 @@ static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
     18, 19, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    13, 14, 15, 16, 25, 26, 27, 28, 17, 20, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
+    13, 14, 15, 16, 25, 26, 36, 27, 28, 17, 20, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -6588,6 +6701,7 @@ static int build_ui_on_host(void *arg)
   g_status_battery_level = NULL;
   g_background_button = NULL;
   g_background_dropdown = NULL;
+  g_wifi_dropdown = NULL;
   g_network_status_label = NULL;
   g_network_dhcp_button = NULL;
   g_network_dhcp_label = NULL;
@@ -7267,14 +7381,32 @@ static int build_ui_on_host(void *arg)
     const char *extra_names[4]={"DEV SERVER URL","WI-FI NAME","WI-FI PASSWORD","CHANGE WI-FI"};
     for(int item=0;item<4;item++){
       settings_text(panel,extra_names[item],label_x,row_y[30+item],control_x-label_x-ui_px(6),font,false);
-      lv_obj_t *button=settings_button(panel,25+item,control_x,row_y[30+item],control_w,ui_px(18),-62-item);
+      lv_obj_t *button=settings_button(panel,25+item,control_x,row_y[30+item],item==1 ? control_w/2-ui_px(2) : control_w,ui_px(18),-62-item);
       g_network_extra_labels[item]=lv_label_create(button);
-      lv_obj_set_width(g_network_extra_labels[item],control_w-ui_px(12));
+      lv_obj_set_width(g_network_extra_labels[item],(item==1 ? control_w/2 : control_w)-ui_px(12));
       lv_label_set_long_mode(g_network_extra_labels[item],LV_LABEL_LONG_DOT);
       lv_obj_set_style_text_font(g_network_extra_labels[item],&lv_font_montserrat_14,LV_PART_MAIN);
       lv_obj_set_style_text_color(g_network_extra_labels[item],lv_color_hex(COL_TEXT),LV_PART_MAIN);
       lv_obj_center(g_network_extra_labels[item]);
     }
+    g_wifi_dropdown=lv_dropdown_create(panel);
+    lv_obj_set_pos(g_wifi_dropdown,control_x+control_w/2+ui_px(2),row_y[31]);
+    lv_obj_set_size(g_wifi_dropdown,control_w/2-ui_px(2),ui_px(18));
+    lv_obj_set_style_pad_all(g_wifi_dropdown,ui_px(2),LV_PART_MAIN);
+    lv_obj_set_style_text_font(g_wifi_dropdown,&lv_font_montserrat_14,LV_PART_MAIN);
+    lv_obj_set_style_bg_color(g_wifi_dropdown,lv_color_hex(COL_PANEL),LV_PART_MAIN);
+    lv_obj_set_style_text_color(g_wifi_dropdown,lv_color_hex(COL_TEXT),LV_PART_MAIN);
+    lv_obj_set_style_bg_color(g_wifi_dropdown,lv_color_hex(COL_PANEL),LV_PART_ITEMS);
+    lv_obj_set_style_text_color(g_wifi_dropdown,lv_color_hex(COL_TEXT),LV_PART_ITEMS);
+    lv_obj_set_style_text_font(g_wifi_dropdown,&lv_font_montserrat_14,LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(g_wifi_dropdown,lv_color_hex(COL_SELECTED),LV_PART_SELECTED);
+    lv_dropdown_set_dir(g_wifi_dropdown,LV_DIR_TOP);
+    g_settings_focus_widgets[36]=g_wifi_dropdown;
+    lv_obj_add_event_cb(g_wifi_dropdown,wifi_dropdown_event,LV_EVENT_CLICKED,NULL);
+    lv_obj_add_event_cb(g_wifi_dropdown,wifi_dropdown_event,LV_EVENT_READY,NULL);
+    lv_obj_add_event_cb(g_wifi_dropdown,wifi_dropdown_event,LV_EVENT_CANCEL,NULL);
+    lv_obj_add_event_cb(g_wifi_dropdown,wifi_dropdown_event,LV_EVENT_VALUE_CHANGED,NULL);
+    (void)update_wifi_picker_on_host(NULL);
     settings_text(panel, "SAVE NETWORK SETTINGS", label_x, row_y[19],
                   control_x - label_x - ui_px(6), font, false);
     g_network_apply_button = settings_button(panel, 17, control_x, row_y[19],
@@ -7982,6 +8114,7 @@ static int teardown_ui_on_host(void *arg)
   g_archive_collection_button = NULL;
   g_background_button = NULL;
   g_background_dropdown = NULL;
+  g_wifi_dropdown = NULL;
   g_network_status_label = NULL;
   g_network_dhcp_button = NULL;
   g_network_dhcp_label = NULL;
@@ -8062,7 +8195,13 @@ static bool poll_controller(void)
   bool changed = false;
   const int previous_action=g_open_index;
   const bool toolbar_was_active = g_toolbar_focus >= 0;
-  if (g_rom_picker_active) {
+  if(g_settings_mode && g_wifi_dropdown_open && !g_keyboard_open){
+    int count=(g_wifi_scan.state==2 ? (int)g_wifi_scan.count : 0)+2;
+    if(up_pressed || down_pressed){g_wifi_choice=(g_wifi_choice+count+(up_pressed ? -1 : 1))%count;changed=true;}
+    if(a && !g_pad_last[PAX_INPUT_A]){g_wifi_dropdown_open=false;g_open_index=wifi_choice_action();}
+    if((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3){g_wifi_dropdown_open=false;changed=true;}
+    if(changed || !g_wifi_dropdown_open)(void)g_svc->ui_call_sync(wifi_dropdown_state_on_host,NULL,1000);
+  }else if (g_rom_picker_active) {
     if (!g_rom_prepare_busy && up_pressed && g_rom_picker_count > 0) {
       g_rom_picker_selected = (g_rom_picker_selected + g_rom_picker_count - 1) % g_rom_picker_count;
       changed = true;
@@ -8194,6 +8333,11 @@ static bool poll_controller(void)
       g_network_config.dhcp_enabled = direction > 0;
       copy_text(g_settings_message, sizeof(g_settings_message), "DHCP mode staged; select APPLY NETWORK");
       changed = true;
+    }
+    if(a && !g_pad_last[PAX_INPUT_A] && g_settings_focus==36){
+      g_wifi_dropdown_open=true;g_wifi_choice=0;
+      (void)g_svc->ui_call_sync(wifi_dropdown_state_on_host,NULL,1000);
+      if(g_wifi_scan.state==0)g_open_index=-80;
     }
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 2) {
       toggle_auto_brightness();
@@ -8484,6 +8628,7 @@ static void io_ui_pulse(void)
   uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
   if((uint32_t)(now-last_ui)<16)return;
   last_ui=now;
+  poll_wifi_scan();
   if(g_rom_prepare_busy && (uint32_t)(now-last_rom)>=250){
     (void)g_svc->ui_call_sync(update_rom_picker_on_host,NULL,1000);last_rom=now;
   }
@@ -8701,6 +8846,7 @@ int app_entry(const app_services_t *svc)
       const int wheel = __atomic_exchange_n(&g_mouse_wheel_pending, 0, __ATOMIC_ACQ_REL);
       if (wheel != 0)
         (void)svc->ui_call_sync(mouse_scroll_on_host, (void *)(intptr_t)wheel, 1000);
+      poll_wifi_scan();
       const uint32_t now_ms = (uint32_t)(svc->get_time_us() / 1000U);
       if (g_filter_dirty) {
         g_filter_dirty = false;
@@ -8993,6 +9139,20 @@ int app_entry(const app_services_t *svc)
       begin_network_edit(-30 - chosen);
       wait_for_input_release();
       continue;
+    }
+    if(!detail_mode && chosen==-80){
+      request_wifi_scan();
+      if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}
+      wait_for_input_release();continue;
+    }
+    if(!detail_mode && (chosen==-81 || (chosen<=-1000 && chosen>-1000-(int)PAX_WIFI_SCAN_MAX))){
+      g_wifi_dropdown_open=false;(void)svc->ui_call_sync(wifi_dropdown_state_on_host,NULL,1000);
+      if(chosen==-81){g_wifi_needs_password=false;begin_network_edit(5);}
+      else if(select_wifi_network(-1000-chosen)){
+        if(g_wifi_needs_password)begin_network_edit(6);
+        else (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
+      }
+      wait_for_input_release();continue;
     }
     if(!detail_mode && chosen<=-62 && chosen>=-64){begin_network_edit(4+(-62-chosen));wait_for_input_release();continue;}
     if(!detail_mode && chosen==-70){begin_network_edit(7);wait_for_input_release();continue;}

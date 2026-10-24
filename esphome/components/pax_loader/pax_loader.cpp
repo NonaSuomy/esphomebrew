@@ -9650,6 +9650,8 @@ void *PaxLoader::svc_file_open(const char *path, const char *mode) {
     if(mode && mode[0]=='w')(void)restore_active_dns_if_missing_();
     return own_pax_file(pax_c6::open(mode));
   }
+  if(path && std::strcmp(path,PAX_WIFI_SCAN_FILE)==0)
+    return own_pax_file(pax_wifi_scan::open(mode));
   if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
     return own_pax_file(pax_wifi::open(mode));
   const std::string mapped = runtime_path(path);

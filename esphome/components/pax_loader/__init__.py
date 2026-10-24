@@ -319,6 +319,9 @@ if hasattr(socket, "consume_sockets"):
 
 
 async def to_code(config):
+    if "wifi" in CORE.config:
+        from esphome.components import wifi
+        wifi.request_wifi_scan_results()
     registry_path = Path(__file__).resolve().parents[2] / "installer-profiles.json"
     registry = json.loads(registry_path.read_text()) if registry_path.is_file() else {}
     filename = Path(CORE.config_path).name

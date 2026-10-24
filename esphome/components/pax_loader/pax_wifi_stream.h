@@ -1,5 +1,6 @@
 #pragma once
 #include "pax_wifi_settings.h"
+#include "pax_wifi_scan_stream.h"
 #include "pax_wifi_backup.h"
 #include "esphome/core/log.h"
 #include <cstdio>
@@ -75,7 +76,7 @@ static ssize_t write(void *cookie,const char *in,size_t count){auto *s=static_ca
 static int close(void *cookie){auto *s=static_cast<Stream *>(cookie);int result=0;
  if(s->writing){
   if(s->offset!=sizeof(s->request)||!pax_wifi_request_valid(&s->request))result=-1;
-  else {portENTER_CRITICAL(&lock);if(queued || snapshot.status==1)result=-1;else{pending=s->request;queued=true;snapshot.status=1;}portEXIT_CRITICAL(&lock);}
+  else {portENTER_CRITICAL(&lock);if(queued || snapshot.status==1 || pax_wifi_scan::busy())result=-1;else{pending=s->request;queued=true;snapshot.status=1;}portEXIT_CRITICAL(&lock);}
  }
  pax_wifi_wipe(s,sizeof(*s));std::free(s);return result;
 }
@@ -97,6 +98,7 @@ static void loop(){
  static bool changing=false;static int64_t deadline=0;static esphome::wifi::WiFiAP previous,target;
  pax_wifi_request_t request{};bool apply=false;
  portENTER_CRITICAL(&lock);if(queued){request=pending;pax_wifi_wipe(&pending,sizeof(pending));queued=false;apply=true;}portEXIT_CRITICAL(&lock);
+ pax_wifi_scan::loop(wifi,changing || apply);
  maintain_backup(wifi,changing,apply);
  if(apply){previous=wifi->get_sta();target=esphome::wifi::WiFiAP{};target.set_ssid(request.ssid);target.set_password(request.replace_password ? esphome::StringRef(request.password) : previous.get_password());
   wifi->disable();wifi->set_sta(target);wifi->enable();deadline=esp_timer_get_time()+45000000;changing=true;

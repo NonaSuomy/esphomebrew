@@ -25,7 +25,7 @@ class ListPresentationTests(unittest.TestCase):
 #include "psram_app.h"
 #include "list_presentation.h"
 #include "list_sort.h"
-#define SETTINGS_FOCUS_COUNT 34
+#define SETTINGS_FOCUS_COUNT SETTINGS_COUNT_PLACEHOLDER
 #define LIST_PREF_FILE "view-preference"
 static bool g_hide_pax_extension,g_list_file_details;
 static int g_sort_mode,g_size_unit;
@@ -65,10 +65,12 @@ int main(void){
  text[0]=0;pax_info_size(text,sizeof(text),999,PAX_SIZE_AUTO);assert(strcmp(text,"999 bytes")==0);
  text[0]=0;pax_info_size(text,sizeof(text),1000,PAX_SIZE_AUTO);assert(strcmp(text,"1.00 KB")==0);
  text[0]=0;pax_info_size(text,sizeof(text),0,PAX_SIZE_MB);assert(strcmp(text,"0.00 MB")==0);
- bool seen[34]={0};int focus=18;for(int i=0;i<34;i++){assert(focus>=0 && focus<34 && !seen[focus]);seen[focus]=true;int next=settings_focus_step(focus,1);assert(settings_focus_step(next,-1)==focus);focus=next;}assert(focus==18 && seen[22] && seen[23] && seen[24] && seen[25] && seen[26] && seen[27] && seen[28] && seen[29]);
+ bool seen[SETTINGS_FOCUS_COUNT]={0};int focus=18;for(int i=0;i<SETTINGS_FOCUS_COUNT;i++){assert(focus>=0 && focus<SETTINGS_FOCUS_COUNT && !seen[focus]);seen[focus]=true;int next=settings_focus_step(focus,1);assert(settings_focus_step(next,-1)==focus);focus=next;}assert(focus==18 && seen[22] && seen[23] && seen[24] && seen[25] && seen[26] && seen[27] && seen[28] && seen[29]);
  return 0;
 }
 '''
+        count=re.search(r'#define SETTINGS_FOCUS_COUNT (\d+)',source).group(1)
+        program=program.replace('SETTINGS_COUNT_PLACEHOLDER',count)
         sdk=ROOT.parent/'pax-esphome/components/pax_loader'
         if not sdk.exists():sdk=ROOT/'esphome/components/pax_loader'
         with tempfile.TemporaryDirectory() as td:

@@ -104,3 +104,7 @@ other remote addresses and remote commands are rejected. Keep media beneath
 `/sd/media`; use subfolders with at most 256 entries and files no larger than
 2 GiB. Music playback needs an Audio player in SVP Relay; the optional PAX Audio
 package provides one. See `apps/desktop/README.md` for browser controls.
+
+### Choose a nearby Wi-Fi network
+
+In Launcher Settings, the WI-FI NAME row has a manual name field and a SCAN NEARBY picker. Open the picker to scan, then choose a network from the strongest-first list (signal in dBm, Open or Secured). Repeated radios with the same name/security are combined. Scan again refreshes the list. Enter manually is always available, including for hidden networks. Selecting a different secured network opens password entry; open networks clear any staged password. Nothing connects until APPLY WI-FI is selected. The scan runs in the background and does not change the current credentials or disconnect Wi-Fi. It requires firmware with the `/dev/pax-wifi-scan` endpoint; older firmware retains manual entry.
