@@ -5473,7 +5473,10 @@ static int wifi_dropdown_state_on_host(void *unused)
 {
   (void)unused;if(!g_wifi_dropdown)return 0;
   lv_dropdown_set_selected(g_wifi_dropdown,(uint32_t)g_wifi_choice);
-  if(g_wifi_dropdown_open)lv_dropdown_open(g_wifi_dropdown);else lv_dropdown_close(g_wifi_dropdown);
+  if(g_wifi_dropdown_open){
+    if(g_wifi_scan_message_label)lv_obj_scroll_to_view(g_wifi_scan_message_label,LV_ANIM_OFF);
+    lv_dropdown_open(g_wifi_dropdown);
+  }else lv_dropdown_close(g_wifi_dropdown);
   return 0;
 }
 static int update_wifi_picker_on_host(void *unused)
@@ -5492,7 +5495,10 @@ static int update_wifi_picker_on_host(void *unused)
   lv_dropdown_set_text(g_wifi_dropdown,g_wifi_scan.state==1 ? "SCANNING..." : g_wifi_scan.state==2 ? "CHOOSE NETWORK" : "SCAN NEARBY");
   if(g_wifi_scan_message_label)lv_label_set_text(g_wifi_scan_message_label,g_wifi_scan.message[0] ? g_wifi_scan.message : "Scan nearby, or enter a network name manually");
   if(g_settings_message_label)lv_label_set_text(g_settings_message_label,g_settings_message);
-  if(g_wifi_dropdown_open && !g_keyboard_open)lv_dropdown_open(g_wifi_dropdown);
+  if(g_wifi_dropdown_open && !g_keyboard_open){
+    if(g_wifi_scan_message_label)lv_obj_scroll_to_view(g_wifi_scan_message_label,LV_ANIM_OFF);
+    lv_dropdown_open(g_wifi_dropdown);
+  }
   return 0;
 }
 
