@@ -8,6 +8,7 @@
 #include "esphome/components/wifi/wifi_component.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
+#include "esphome/core/log.h"
 namespace pax_wifi_scan {
 static portMUX_TYPE lock=portMUX_INITIALIZER_UNLOCKED;
 static pax_wifi_scan_status_t snapshot{PAX_WIFI_SCAN_MAGIC,0,0,0,{0},{}};
@@ -23,6 +24,7 @@ static void finished_event(void *,esp_event_base_t,int32_t,void *data){
  portEXIT_CRITICAL(&lock);
 }
 static void fail(const char *message){
+ ESP_LOGW("pax_wifi_scan","%s",message);
  portENTER_CRITICAL(&lock);snapshot.state=-1;snapshot.count=0;
  std::snprintf(snapshot.message,sizeof(snapshot.message),"%s",message);snapshot.generation++;
  event_done=false;portEXIT_CRITICAL(&lock);drain_loops=0;
@@ -46,17 +48,21 @@ static void loop(esphome::wifi::WiFiComponent *wifi,bool connecting){
   config.scan_type=WIFI_SCAN_TYPE_ACTIVE;config.scan_time.active.min=80;config.scan_time.active.max=160;
   portENTER_CRITICAL(&lock);event_done=false;portEXIT_CRITICAL(&lock);drain_loops=0;
   deadline=esp_timer_get_time()+20000000;
-  if(esp_wifi_scan_start(&config,false)!=ESP_OK)fail("Wi-Fi is busy; try again or enter the name manually");
+  auto error=esp_wifi_scan_start(&config,false);
+  ESP_LOGD("pax_wifi_scan","Scan start: error=%d",static_cast<int>(error));
+  if(error!=ESP_OK)fail("Wi-Fi is busy; try again or enter the name manually");
   return;
  }
  if(!busy())return;
  if(esp_timer_get_time()>=deadline){fail("Scan timed out; try again or enter the name manually");return;}
  if(!done)return;
+ ESP_LOGD("pax_wifi_scan","Scan event: status=%u",static_cast<unsigned>(status));
  if(status){fail("Scan failed; try again or enter the name manually");return;}
  if(++drain_loops<2)return;
  pax_wifi_scan_status_t result{};result.magic=PAX_WIFI_SCAN_MAGIC;result.state=2;
  for(const auto &ap:wifi->get_scan_result())
   pax_wifi_scan_add(&result,ap.get_ssid().c_str(),ap.get_rssi(),ap.get_channel(),ap.get_with_auth());
+ ESP_LOGD("pax_wifi_scan","Scan complete: retained=%u displayed=%u",static_cast<unsigned>(wifi->get_scan_result().size()),static_cast<unsigned>(result.count));
  std::snprintf(result.message,sizeof(result.message),result.count ? "Choose a network, or enter its name manually" : "No named networks found; rescan or enter manually");
  portENTER_CRITICAL(&lock);result.generation=snapshot.generation+1;snapshot=result;event_done=false;portEXIT_CRITICAL(&lock);drain_loops=0;
 }

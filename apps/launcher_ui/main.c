@@ -188,6 +188,7 @@ static bool g_wifi_scan_available,g_wifi_dropdown_open,g_wifi_needs_password;
 static uint32_t g_wifi_scan_poll_ms,g_wifi_scan_started_ms;
 static int g_wifi_choice;
 static lv_obj_t *g_wifi_dropdown;
+static lv_obj_t *g_wifi_scan_message_label;
 static char g_wifi_options[2300];
 static int update_wifi_picker_on_host(void *unused);
 static lv_obj_t *g_network_extra_labels[4];
@@ -5489,6 +5490,7 @@ static int update_wifi_picker_on_host(void *unused)
   if(g_wifi_choice<0 || (uint32_t)g_wifi_choice>=g_wifi_scan.count+2)g_wifi_choice=0;
   lv_dropdown_set_selected(g_wifi_dropdown,(uint32_t)g_wifi_choice);
   lv_dropdown_set_text(g_wifi_dropdown,g_wifi_scan.state==1 ? "SCANNING..." : g_wifi_scan.state==2 ? "CHOOSE NETWORK" : "SCAN NEARBY");
+  if(g_wifi_scan_message_label)lv_label_set_text(g_wifi_scan_message_label,g_wifi_scan.message[0] ? g_wifi_scan.message : "Scan nearby, or enter a network name manually");
   if(g_settings_message_label)lv_label_set_text(g_settings_message_label,g_settings_message);
   if(g_wifi_dropdown_open && !g_keyboard_open)lv_dropdown_open(g_wifi_dropdown);
   return 0;
@@ -6701,7 +6703,7 @@ static int build_ui_on_host(void *arg)
   g_status_battery_level = NULL;
   g_background_button = NULL;
   g_background_dropdown = NULL;
-  g_wifi_dropdown = NULL;
+  g_wifi_dropdown = NULL;g_wifi_scan_message_label=NULL;
   g_network_status_label = NULL;
   g_network_dhcp_button = NULL;
   g_network_dhcp_label = NULL;
@@ -7144,6 +7146,7 @@ static int build_ui_on_host(void *arg)
       if(row>=36)visual_row=row;
       if(row==29)visual_row=52;
       row_y[row] = first_row_y + step_y * visual_row;
+      if(visual_row>=26)row_y[row]+=ui_px(18);
       /* Keep the extra breathing room after the Archive S3 status even
        * though the five Storage rows now precede the network settings. */
       if (visual_row >= 17) row_y[row] += ui_px(12);
@@ -7390,7 +7393,7 @@ static int build_ui_on_host(void *arg)
       lv_obj_center(g_network_extra_labels[item]);
     }
     g_wifi_dropdown=lv_dropdown_create(panel);
-    lv_obj_set_pos(g_wifi_dropdown,control_x+control_w/2+ui_px(2),row_y[31]);
+    lv_obj_set_pos(g_wifi_dropdown,control_x+control_w/2+ui_px(2),row_y[31]+(ui_px(22)-ui_px(18))/2);
     lv_obj_set_size(g_wifi_dropdown,control_w/2-ui_px(2),ui_px(18));
     lv_obj_set_style_pad_all(g_wifi_dropdown,ui_px(2),LV_PART_MAIN);
     lv_obj_set_style_text_font(g_wifi_dropdown,&lv_font_montserrat_14,LV_PART_MAIN);
@@ -7406,6 +7409,12 @@ static int build_ui_on_host(void *arg)
     lv_obj_add_event_cb(g_wifi_dropdown,wifi_dropdown_event,LV_EVENT_READY,NULL);
     lv_obj_add_event_cb(g_wifi_dropdown,wifi_dropdown_event,LV_EVENT_CANCEL,NULL);
     lv_obj_add_event_cb(g_wifi_dropdown,wifi_dropdown_event,LV_EVENT_VALUE_CHANGED,NULL);
+    g_wifi_scan_message_label=lv_label_create(panel);
+    lv_obj_set_pos(g_wifi_scan_message_label,control_x,row_y[31]+ui_px(22));
+    lv_obj_set_width(g_wifi_scan_message_label,control_w);
+    lv_label_set_long_mode(g_wifi_scan_message_label,LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_font(g_wifi_scan_message_label,&lv_font_montserrat_14,LV_PART_MAIN);
+    lv_obj_set_style_text_color(g_wifi_scan_message_label,lv_color_hex(COL_MUTED),LV_PART_MAIN);
     (void)update_wifi_picker_on_host(NULL);
     settings_text(panel, "SAVE NETWORK SETTINGS", label_x, row_y[19],
                   control_x - label_x - ui_px(6), font, false);
@@ -8114,7 +8123,7 @@ static int teardown_ui_on_host(void *arg)
   g_archive_collection_button = NULL;
   g_background_button = NULL;
   g_background_dropdown = NULL;
-  g_wifi_dropdown = NULL;
+  g_wifi_dropdown = NULL;g_wifi_scan_message_label=NULL;
   g_network_status_label = NULL;
   g_network_dhcp_button = NULL;
   g_network_dhcp_label = NULL;

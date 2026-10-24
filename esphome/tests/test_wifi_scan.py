@@ -8,6 +8,8 @@ class WifiScan(unittest.TestCase):
  def test_async_scan_deduplication_empty_error_and_timeout(self):
   with tempfile.TemporaryDirectory() as td:
    p=Path(td);(p/'esphome/components/wifi').mkdir(parents=True)
+   (p/'esphome/core').mkdir()
+   (p/'esphome/core/log.h').write_text('#pragma once\n#define ESP_LOGD(...) ((void)0)\n#define ESP_LOGW(...) ((void)0)\n')
    (p/'esphome/components/wifi/wifi_component.h').write_text(r'''
 #pragma once
 #include <vector>
