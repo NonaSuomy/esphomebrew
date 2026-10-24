@@ -130,6 +130,7 @@ class PaxLoader : public Component {
   // Launch progress for a UI: true while a network app (and its data) loads,
   // a fraction 0..1 (-1 when unknown or idle), and a one-line status that
   // stays after a failure until the next launch ("" when there is nothing to say).
+  void show_network_setup();
   bool is_loading() const { return this->pax_loading_; }
   float get_load_progress();
   std::string get_load_status();

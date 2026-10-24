@@ -36,7 +36,8 @@ static void maintain_backup(esphome::wifi::WiFiComponent *wifi, bool changing, b
   if(present && !user_apply){
    auto current=wifi->get_sta();
    if(current.get_ssid()!=saved.ssid || current.get_password()!=saved.password){
-    wifi->disable();wifi->save_wifi_sta(saved.ssid,saved.password);wifi->enable();
+    bool was_disabled=wifi->is_disabled();
+    wifi->disable();wifi->save_wifi_sta(saved.ssid,saved.password);if(!was_disabled)wifi->enable();
     ESP_LOGI("pax_wifi","Restored Wi-Fi settings from SD");
    }
   }

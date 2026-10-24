@@ -45,10 +45,11 @@ struct WiFiAP {
  const std::string &get_password()const{return password;}
 };
 struct WiFiComponent {
- WiFiAP current{"flash-network","flash-password"};bool connected=false;int saved=0;
+ WiFiAP current{"flash-network","flash-password"};bool connected=false,disabled=false;int saved=0;
  WiFiAP get_sta(){return current;}
- void disable(){connected=false;}
- void enable(){}
+ void disable(){connected=false;disabled=true;}
+ void enable(){disabled=false;}
+ bool is_disabled(){return disabled;}
  void save_wifi_sta(const char *ssid,const char *password){current={ssid,password};saved++;}
  void wifi_ssid_to(char *out){strcpy(out,connected?current.ssid.c_str():"");}
  bool is_connected(){return connected;}
@@ -63,8 +64,10 @@ int main(int argc,char **argv){
  if(mode!="new")assert(pax_wifi_backup::save(BACKUP,request));
  if(mode=="previous")assert(rename(BACKUP,(std::string(BACKUP)+".prev").c_str())==0);
  if(mode=="temporary")assert(rename(BACKUP,(std::string(BACKUP)+".tmp").c_str())==0);
+ if(mode=="disabled")wifi.disabled=true;
  maintain_backup(&wifi,false,mode=="user");
- if(mode=="restore" || mode=="previous" || mode=="temporary"){
+ assert(wifi.disabled==(mode=="disabled"));
+ if(mode=="restore" || mode=="previous" || mode=="temporary" || mode=="disabled"){
   assert(wifi.saved==1 && wifi.current.ssid=="sd-network" && wifi.current.password=="sd-password");
   // A failed candidate must not replace the last working backup.
   wifi.current={"bad-network","bad-password"};clock_us+=6000000;maintain_backup(&wifi,true,false);
@@ -79,7 +82,7 @@ int main(int argc,char **argv){
             executable = Path(folder) / "runtime"
             subprocess.run(["c++", "-std=c++17", "-Wall", "-Wextra", "-Werror",
                             "-I" + str(ROOT / "components/pax_loader"), str(source), "-o", str(executable)], check=True)
-            for mode in ("restore", "previous", "temporary", "user", "new"):
+            for mode in ("restore", "previous", "temporary", "user", "new", "disabled"):
                 import shutil
                 shutil.rmtree(card, ignore_errors=True)
                 subprocess.run([str(executable), mode, str(card)], check=True)
