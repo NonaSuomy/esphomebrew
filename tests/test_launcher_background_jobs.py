@@ -92,6 +92,7 @@ static pax_network_config_t g_network_live,g_network_config;
 static PaxTiming g_scan_time;
 static bool ends_with(const char *s,const char *suffix){size_t n=strlen(s),m=strlen(suffix);return n>=m && !strcmp(s+n-m,suffix);}
 static void refresh_wifi_settings(bool load){(void)load;}
+static void refresh_network_live(bool load){(void)load;}
 static int update_selection_on_host(void *arg){(void)arg;return 0;}
 static int call_ui(int (*fn)(void *),void *arg,uint32_t timeout){(void)timeout;return fn(arg);}
 static int status(int which,pax_storage_status_t *out){out->available=out->mounted=which==0;return 0;}

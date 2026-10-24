@@ -175,6 +175,8 @@ static int g_settings_focus;
 static pax_device_status_t g_device_status;
 static pax_network_config_t g_network_config;
 static pax_network_config_t g_network_live;
+static bool g_network_config_dirty;
+static uint32_t g_connection_poll_ms;
 static pax_storage_status_t g_storage_status[PAX_STORAGE_COUNT];
 static int g_storage_app_count[PAX_STORAGE_COUNT];
 static bool g_storage_status_inferred[PAX_STORAGE_COUNT];
@@ -4413,13 +4415,34 @@ static int storage_scan_job(void *argument)
   return 0;
 }
 
+/* Keep the live lease separate from editable network values. A DHCP renewal
+ * may update the page, but must never replace an address being typed/staged. */
+static void refresh_network_live(bool load)
+{
+  if(!g_svc->network_config_get)return;
+  pax_network_config_t current={0};
+  if(g_svc->network_config_get(&current)!=0)return;
+  g_network_live=current;
+  bool editing_address=g_network_edit_field>=0 && g_network_edit_field<4;
+  if(load || (!g_network_config_dirty && !editing_address))g_network_config=current;
+  if(load)g_network_config_dirty=false;
+}
+static void poll_settings_connection(void)
+{
+  if(!g_settings_mode)return;
+  uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
+  if((uint32_t)(now-g_connection_poll_ms)<1000U)return;
+  g_connection_poll_ms=now;
+  refresh_network_live(false);
+  refresh_wifi_settings(false);
+  refresh_c6_status();
+  if(!g_discard_io)(void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
+}
+
 static void refresh_settings_snapshot(bool load_network_config)
 {
   refresh_wifi_settings(load_network_config);
-  if(g_svc->network_config_get){
-    pax_network_config_t current={0};
-    if(g_svc->network_config_get(&current)==0){g_network_live=current;if(load_network_config)g_network_config=current;}
-  }
+  refresh_network_live(load_network_config);
   StorageSnapshot snapshot={0};g_settings_scan_busy=true;
   (void)g_svc->ui_call_sync(update_selection_on_host,NULL,1000);
   work_status("Checking storage...");uint64_t start=timing_now();
@@ -5646,6 +5669,7 @@ static bool commit_network_edit(void)
   else if(field==6){valid=strlen(g_search_text)<sizeof(g_wifi_password);if(valid){copy_text(g_wifi_password,sizeof(g_wifi_password),g_search_text);g_wifi_password_changed=true;}copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Password staged; choose APPLY WI-FI (blank means open network)" : "Password is too long");}
   else valid=ipv4_from_text(g_search_text,&address);
   if (field<4 && valid) {
+    g_network_config_dirty=true;
     if (field == 0) g_network_config.ipv4 = address;
     else if (field == 1) g_network_config.netmask = address;
     else if (field == 2) g_network_config.gateway = address;
@@ -6255,9 +6279,6 @@ static int update_selection_on_host(void *arg)
     if (g_archive_login_button_label != NULL)
       label_text_changed(g_archive_login_button_label, g_archive_authenticated ? "SIGN OUT" : "SIGN IN");
   }
-  static uint32_t last_wifi_refresh=0;
-  uint32_t wifi_now=tick_cb();
-  if(wifi_now-last_wifi_refresh>=1000){refresh_wifi_settings(false);refresh_c6_status();last_wifi_refresh=wifi_now;}
   for(int i=0;i<4;i++)if(g_network_extra_labels[i]){
     const char *value=i==0 ? g_network_url : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RETRYING PREVIOUS WI-FI" : "APPLY WI-FI");
     label_text_changed(g_network_extra_labels[i],value);
@@ -6272,6 +6293,7 @@ static int update_selection_on_host(void *arg)
     ipv4_to_text(g_network_live.ipv4, address, sizeof(address));
     copy_text(network_summary, sizeof(network_summary), network_type_name(g_network_live.network_type));
     append_text(network_summary, sizeof(network_summary), g_network_live.connected ? " | Connected | " : " | No link | ");
+    if(g_network_live.connected)append_text(network_summary,sizeof(network_summary),g_network_live.dhcp_enabled ? "DHCP | " : "Static IPv4 | ");
     append_text(network_summary, sizeof(network_summary), g_network_live.ipv4 != 0 ? address : "No IPv4 address");
     if(g_network_live.network_type==PAX_NETWORK_WIFI && g_network_live.connected && g_wifi_available){
       append_wifi_summary(network_summary,sizeof(network_summary),&g_wifi_status);
@@ -8345,7 +8367,7 @@ static bool poll_controller(void)
       set_auto_brightness(direction > 0);
       changed = true;
     } else if (direction != 0 && g_settings_focus == 12) {
-      g_network_config.dhcp_enabled = direction > 0;
+      g_network_config.dhcp_enabled = direction > 0;g_network_config_dirty=true;
       copy_text(g_settings_message, sizeof(g_settings_message), "DHCP mode staged; select APPLY NETWORK");
       changed = true;
     }
@@ -8378,7 +8400,7 @@ static bool poll_controller(void)
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 10) g_open_index = -46;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 11) g_open_index = -47;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 12) {
-      g_network_config.dhcp_enabled = !g_network_config.dhcp_enabled;
+      g_network_config.dhcp_enabled = !g_network_config.dhcp_enabled;g_network_config_dirty=true;
       copy_text(g_settings_message, sizeof(g_settings_message), "DHCP mode staged; select APPLY NETWORK");
       changed = true;
     }
@@ -8644,6 +8666,7 @@ static void io_ui_pulse(void)
   if((uint32_t)(now-last_ui)<16)return;
   last_ui=now;
   poll_wifi_scan();
+  poll_settings_connection();
   if(g_rom_prepare_busy && (uint32_t)(now-last_rom)>=250){
     (void)g_svc->ui_call_sync(update_rom_picker_on_host,NULL,1000);last_rom=now;
   }
@@ -8862,6 +8885,7 @@ int app_entry(const app_services_t *svc)
       if (wheel != 0)
         (void)svc->ui_call_sync(mouse_scroll_on_host, (void *)(intptr_t)wheel, 1000);
       poll_wifi_scan();
+      poll_settings_connection();
       const uint32_t now_ms = (uint32_t)(svc->get_time_us() / 1000U);
       if (g_filter_dirty) {
         g_filter_dirty = false;
@@ -9175,7 +9199,7 @@ int app_entry(const app_services_t *svc)
     if(!detail_mode && chosen==-72){request_c6_update(PAX_C6_INSTALL);wait_for_input_release();continue;}
     if(!detail_mode && chosen==-65){apply_wifi_settings();if(g_discard_io){chosen=g_open_index;g_open_index=-1;g_discard_io=false;goto dispatch_action;}wait_for_input_release();continue;}
     if (!detail_mode && chosen == -34) {
-      g_network_config.dhcp_enabled = !g_network_config.dhcp_enabled;
+      g_network_config.dhcp_enabled = !g_network_config.dhcp_enabled;g_network_config_dirty=true;
       copy_text(g_settings_message, sizeof(g_settings_message), "DHCP mode staged; select APPLY NETWORK");
       wait_for_input_release();
       continue;
@@ -9189,6 +9213,7 @@ int app_entry(const app_services_t *svc)
         if (result == 0) {
           copy_text(g_settings_message, sizeof(g_settings_message),
                     "Network config saved; the connection may briefly restart");
+          g_network_config_dirty=false;
           if(!g_discard_io)refresh_settings_snapshot(false);
         } else {
           copy_text(g_settings_message, sizeof(g_settings_message),
