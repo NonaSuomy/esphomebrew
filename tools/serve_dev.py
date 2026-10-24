@@ -7,8 +7,47 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
 import os
+import socket
+import struct
+import threading
 from pathlib import Path
 import urllib.parse
+
+DISCOVERY_PORT = 18732
+DISCOVERY_QUERY = b'PAXFIND1'
+DISCOVERY_REPLY = b'PAXHERE1'
+
+class SupplyDiscovery:
+    """Reply on the request's interface/address; never guess the host's LAN IP."""
+    def __init__(self, http_port, bind='0.0.0.0', port=DISCOVERY_PORT):
+        self.http_port = http_port
+        self.stop = threading.Event()
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            self.socket.bind((bind, port))
+            self.socket.settimeout(0.2)
+        except BaseException:
+            self.socket.close()
+            raise
+        self.thread = threading.Thread(target=self.run, name='pax-supply-discovery', daemon=True)
+        self.thread.start()
+
+    def run(self):
+        while not self.stop.is_set():
+            try:
+                data, peer = self.socket.recvfrom(256)
+                if len(data) == 12 and data[:8] == DISCOVERY_QUERY:
+                    self.socket.sendto(DISCOVERY_REPLY + data[8:12] + struct.pack('<H', self.http_port), peer)
+            except socket.timeout:
+                continue
+            except OSError:
+                if not self.stop.is_set():
+                    self.stop.wait(0.2)
+
+    def close(self):
+        self.stop.set()
+        self.thread.join(timeout=1)
+        self.socket.close()
 
 class PaxRequestHandler(SimpleHTTPRequestHandler):
     def handle(self):
@@ -69,13 +108,23 @@ def main():
     parser.add_argument('port',type=int,nargs='?',default=8000)
     parser.add_argument('--directory',type=Path,required=True)
     parser.add_argument('--bind',default='0.0.0.0')
+    parser.add_argument('--no-discovery', action='store_true', help='Disable local PAX Supply discovery')
     args=parser.parse_args()
     if not args.directory.is_dir():parser.error('Directory does not exist')
     from functools import partial
     server=ThreadingHTTPServer((args.bind,args.port),partial(PaxRequestHandler,directory=str(args.directory.resolve())))
+    discovery = None
+    if not args.no_discovery:
+        try:
+            discovery = SupplyDiscovery(server.server_port, args.bind)
+            print(f'PAX Supply discovery enabled on UDP {DISCOVERY_PORT}', flush=True)
+        except OSError as error:
+            print(f'PAX Supply discovery unavailable: {error}; manual URL still works', flush=True)
     print(f'Serving PAX file details on {args.bind}:{server.server_port}',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
-    finally:server.server_close()
+    finally:
+        if discovery:discovery.close()
+        server.server_close()
 
 if __name__=='__main__':main()

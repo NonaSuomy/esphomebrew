@@ -39,6 +39,7 @@ class EmulatedIOTests(unittest.TestCase):
                 for i in range(30):
                     (apps/f'app{i:02d}.pax').write_bytes(b'PAX')
                     (apps/f'app{i:02d}.json').write_text(json.dumps({'title':f'App {i:02d}'}))
+                (apps/'.launcher_ui_network_mode.txt').write_text('manual')
                 (apps/'.launcher_ui_network_url.txt').write_text(f'http://127.0.0.1:{server.server_port}/')
                 events=[]
                 for t,x in [(1,680),(2,90),(3,40),(4,290)]:
@@ -52,6 +53,7 @@ class EmulatedIOTests(unittest.TestCase):
                 data=json.loads(report.read_text())
                 self.assertTrue(requested.is_set(),result.stderr)
                 self.assertIsNone(data['error'])
+                self.assertEqual(data['services'].get('net_udp_open',0),0)  # Explicit manual URL skips discovery.
                 self.assertEqual(data['services'].get('task_create'),1)
                 self.assertEqual(data['services'].get('task_delete'),1)
                 self.assertGreater(data['services'].get('input_mouse_read',0),20)

@@ -118,7 +118,8 @@ static bool g_favorites_mode;
 static bool g_settings_mode;
 static bool g_keyboard_open;
 static pax_theme_profile_t g_theme;
-static char g_network_url[PATH_BYTES]="http://10.20.30.158:8000/";
+static char g_network_url[PATH_BYTES];
+static bool g_network_auto=true;
 #define MAX_THEMES 20
 static pax_theme_profile_t g_themes[MAX_THEMES];
 static int g_theme_count, g_theme_index, g_theme_direction=1;
@@ -429,6 +430,7 @@ static void play_ui_sound(uint8_t sound, uint8_t param)
 }
 
 #include "async_io.h"
+#include "supply_discovery.h"
 static bool mutations_busy(void){return g_action_busy || g_transfer_busy || g_archive_download_active;}
 #include "timing.h"
 static PaxTiming g_pump_time,g_flush_time,g_action_time,g_image_time,g_scan_time;
@@ -4004,7 +4006,8 @@ static bool normalize_network_url(const char *input, char *out, size_t capacity)
 }
 static void load_network_url(void)
 {
-  char value[PATH_BYTES];
+  char value[PATH_BYTES],mode[16];
+  if(read_small_file(PAX_SUPPLY_AUTO_FILE,mode,sizeof(mode)))g_network_auto=strncmp(mode,"manual",6)!=0;
   if(read_small_file("/sd/roms/pax/.launcher_ui_network_url.txt",value,sizeof(value)))
     (void)normalize_network_url(value,g_network_url,sizeof(g_network_url));
 }
@@ -4018,6 +4021,27 @@ static bool save_network_url(const char *value)
   saved=g_svc->file_close(f)==0 && saved;
   if(saved)copy_text(g_network_url,sizeof(g_network_url),normalized);
   return saved;
+}
+static bool save_network_mode(bool automatic)
+{
+  if(!g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return false;
+  void *file=g_svc->file_open(PAX_SUPPLY_AUTO_FILE,"wb");if(!file)return false;
+  const char *mode=automatic ? "auto" : "manual";size_t length=strlen(mode);
+  bool ok=g_svc->file_write(mode,1,length,file)==length;
+  ok=g_svc->file_close(file)==0 && ok;
+  if(ok)g_network_auto=automatic;return ok;
+}
+static void discover_supply_server(void)
+{
+  if(!g_network_auto)return;
+  PaxSupplyResult result={0};work_status("Finding PAX Supply on this network...");
+  int status=io_run(pax_supply_discovery_job,&result);work_status(NULL);
+  if(status==0 && !g_discard_io){
+    // Cache the address for older/non-advertising servers and temporary packet loss.
+    if(strcmp(g_network_url,result.url)!=0){
+      (void)save_network_url(result.url);copy_text(g_network_url,sizeof(g_network_url),result.url);
+    }
+  }
 }
 static void refresh_c6_status(void) {
   g_c6_available=false;
@@ -4670,8 +4694,10 @@ static void load_apps(void)
   } else if (g_source == SOURCE_ARCHIVE) {
     archive_load_current();
   } else {
+    if(g_source==SOURCE_NETWORK)discover_supply_server();
+    if(g_discard_io)return;
     const char *url = source_url(g_source);
-    int length = http_fetch(url, g_remote, REMOTE_BYTES);
+    int length = url[0] ? http_fetch(url, g_remote, REMOTE_BYTES) : -1;
     if (length >= 0)
       g_app_count = parse_pax_links(g_remote, length, g_names, g_paths, url);
     else
@@ -5655,7 +5681,7 @@ static void begin_network_edit(int field)
                    field == 1 ? g_network_config.netmask :
                    field == 2 ? g_network_config.gateway : g_network_config.dns;
   if(field<4)ipv4_to_text(value,g_search_text,sizeof(g_search_text));
-  else copy_text(g_search_text,sizeof(g_search_text),field==4 ? g_network_url : field==5 ? g_wifi_ssid : field==6 ? g_wifi_password : g_c6_source);
+  else copy_text(g_search_text,sizeof(g_search_text),field==4 ? (g_network_auto ? "auto" : g_network_url) : field==5 ? g_wifi_ssid : field==6 ? g_wifi_password : g_c6_source);
   g_network_edit_field = field;
   g_keyboard_focus = 0;
   g_keyboard_open = true;
@@ -5668,7 +5694,11 @@ static bool commit_network_edit(void)
   uint32_t address = 0;
   const int field = g_network_edit_field;
   bool valid=false;
-  if(field==4){char normalized[PATH_BYTES];valid=normalize_network_url(g_search_text,normalized,sizeof(normalized)) && save_network_url(normalized);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Development server URL saved on SD" : "Use an HTTP(S) IPv4 address or hostname; SD is required to save");}
+  if(field==4){
+    if(strlen(g_search_text)==4 && has_prefix_ascii_case_insensitive(g_search_text,"auto")){valid=save_network_mode(true);if(valid)g_catalog_stale=true;}
+    else {char normalized[PATH_BYTES];valid=normalize_network_url(g_search_text,normalized,sizeof(normalized)) && save_network_url(normalized) && save_network_mode(false);if(valid)g_catalog_stale=true;}
+    copy_text(g_settings_message,sizeof(g_settings_message),valid ? (g_network_auto ? "Automatic PAX Supply discovery enabled; open LAN" : "Manual PAX Supply URL saved on SD") : "Enter auto for discovery or an HTTP(S) URL; SD is required to save");
+  }
   else if(field==5){g_wifi_needs_password=false;valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_wifi_ssid);if(valid)copy_text(g_wifi_ssid,sizeof(g_wifi_ssid),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Wi-Fi name staged; choose APPLY WI-FI" : "Wi-Fi name must be 1-32 bytes");}
   else if(field==7){valid=strlen(g_search_text)>0 && strlen(g_search_text)<sizeof(g_c6_source);if(valid)copy_text(g_c6_source,sizeof(g_c6_source),g_search_text);copy_text(g_settings_message,sizeof(g_settings_message),valid ? "C6 source staged; only the board-approved image hash is accepted" : "Firmware path or URL required");}
   else if(field==6){valid=strlen(g_search_text)<sizeof(g_wifi_password);if(valid){copy_text(g_wifi_password,sizeof(g_wifi_password),g_search_text);g_wifi_password_changed=true;}copy_text(g_settings_message,sizeof(g_settings_message),valid ? "Password staged; choose APPLY WI-FI (blank means open network)" : "Password is too long");}
@@ -6082,7 +6112,7 @@ static void sync_search_context(void)
     copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 access key");
   else if (g_settings_mode && g_archive_auth_edit_field == 3)
     copy_text(search_placeholder, sizeof(search_placeholder), "Archive S3 secret key");
-  if(g_settings_mode && g_network_edit_field>=4)copy_text(search_placeholder,sizeof(search_placeholder),g_network_edit_field==4 ? "http://computer-ip:8000/" : g_network_edit_field==5 ? "Wi-Fi network name" : g_network_edit_field==6 ? "New Wi-Fi password; blank for open" : "C6 .bin: /sd/firmware/... or https://...");
+  if(g_settings_mode && g_network_edit_field>=4)copy_text(search_placeholder,sizeof(search_placeholder),g_network_edit_field==4 ? "auto or http://computer-ip:8000/" : g_network_edit_field==5 ? "Wi-Fi network name" : g_network_edit_field==6 ? "New Wi-Fi password; blank for open" : "C6 .bin: /sd/firmware/... or https://...");
   lv_textarea_set_max_length(g_search_area,g_network_edit_field==5 ? 32 : g_network_edit_field==6 ? 64 : sizeof(g_search_text)-1);
   if(!lv_textarea_get_placeholder_text(g_search_area) || strcmp(lv_textarea_get_placeholder_text(g_search_area),search_placeholder))lv_textarea_set_placeholder_text(g_search_area, search_placeholder);
   if(strcmp(lv_textarea_get_text(g_search_area),g_search_text))lv_textarea_set_text(g_search_area, g_search_text);
@@ -6186,7 +6216,7 @@ static int update_selection_on_host(void *arg)
   if (g_empty_label != NULL) {
     if (g_view_count > 0) lv_obj_add_flag(g_empty_label, LV_OBJ_FLAG_HIDDEN);
     else {
-      const char *message = g_catalog_loading ? "LOADING APPS... YOU CAN SWITCH SOURCES" : g_catalog_failed ? "SEARCH FAILED - CHECK STATUS OR REFRESH" :
+      const char *message = g_catalog_loading ? "LOADING APPS... YOU CAN SWITCH SOURCES" : g_catalog_failed ? (g_source==SOURCE_NETWORK ? "PAX SUPPLY UNAVAILABLE - START SERVER OR CHECK URL" : "SEARCH FAILED - CHECK STATUS OR REFRESH") :
           (g_favorites_mode ? "NO FAVORITES YET - PRESS Y ON AN APP" :
            (g_search_text[0] != '\0' ? "NO SEARCH MATCHES" : "NO APPS FOUND"));
       label_text_changed(g_empty_label, message);
@@ -6285,7 +6315,9 @@ static int update_selection_on_host(void *arg)
       label_text_changed(g_archive_login_button_label, g_archive_authenticated ? "SIGN OUT" : "SIGN IN");
   }
   for(int i=0;i<4;i++)if(g_network_extra_labels[i]){
-    const char *value=i==0 ? g_network_url : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RESTORING WORKING WI-FI" : g_wifi_status.status==-2 ? "NOT CONNECTED; CHECK NAME/PASSWORD, THEN RETRY" : "APPLY WI-FI");
+    char supply_value[PATH_BYTES+16];
+    lv_snprintf(supply_value,sizeof(supply_value),g_network_auto ? "AUTO: %s" : "%s",g_network_url[0] ? g_network_url : "Open LAN to find server");
+    const char *value=i==0 ? supply_value : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RESTORING WORKING WI-FI" : g_wifi_status.status==-2 ? "NOT CONNECTED; CHECK NAME/PASSWORD, THEN RETRY" : "APPLY WI-FI");
     label_text_changed(g_network_extra_labels[i],value);
   }
   (void)update_c6_progress_on_host(NULL);
@@ -7414,7 +7446,7 @@ static int build_ui_on_host(void *arg)
       lv_obj_set_style_text_font(g_network_value_labels[field], &lv_font_montserrat_14, LV_PART_MAIN);
       lv_obj_align(g_network_value_labels[field], LV_ALIGN_LEFT_MID, 0, 0);
     }
-    const char *extra_names[4]={"DEV SERVER URL","WI-FI NAME","WI-FI PASSWORD","CHANGE WI-FI"};
+    const char *extra_names[4]={"PAX SUPPLY SERVER","WI-FI NAME","WI-FI PASSWORD","CHANGE WI-FI"};
     for(int item=0;item<4;item++){
       settings_text(panel,extra_names[item],label_x,row_y[30+item],control_x-label_x-ui_px(6),font,false);
       lv_obj_t *button=settings_button(panel,25+item,control_x,row_y[30+item],item==1 ? control_w/2-ui_px(2) : control_w,ui_px(18),-62-item);
@@ -8031,7 +8063,7 @@ static int build_ui_on_host(void *arg)
   ensure_keyboard(screen);
   {
     g_empty_label = lv_label_create(g_list);
-    const char *message = g_catalog_failed ? "SEARCH FAILED - CHECK STATUS OR REFRESH" :
+    const char *message = g_catalog_failed ? (g_source==SOURCE_NETWORK ? "PAX SUPPLY UNAVAILABLE - START SERVER OR CHECK URL" : "SEARCH FAILED - CHECK STATUS OR REFRESH") :
                           (g_favorites_mode ? "NO FAVORITES YET - PRESS Y ON AN APP" :
                           (g_search_text[0] != '\0' ? "NO SEARCH MATCHES" :
                           (g_source == SOURCE_STORAGE ? "NO INSTALLED APPS FOUND" : "CATALOG EMPTY")));
