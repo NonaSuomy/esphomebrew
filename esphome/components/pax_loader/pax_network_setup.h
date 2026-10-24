@@ -75,7 +75,8 @@ class Panel {
     lv_obj_t* dhcp_row = row(body_);
     lv_obj_t* dhcp_caption = label(dhcp_row, "DHCP (automatic IP)");
     lv_obj_set_width(dhcp_caption, lv_pct(75));
-    dhcp_ = lv_switch_create(dhcp_row);
+    dhcp_ = lv_checkbox_create(dhcp_row);
+    lv_checkbox_set_text(dhcp_, "");
     lv_obj_set_user_data(dhcp_, reinterpret_cast<void*>(7));
     wire(dhcp_, LV_EVENT_VALUE_CHANGED);
     wire(dhcp_, LV_EVENT_KEY);
@@ -383,6 +384,7 @@ class Panel {
     if (code == LV_EVENT_VALUE_CHANGED) {
       if (syncing_) return;
       if (object == dhcp_ || action >= 10) {
+        if (object == dhcp_ && editing_) hide_keyboard();
         dirty_ = true;
         refresh(false);
       } else if (object == password_)

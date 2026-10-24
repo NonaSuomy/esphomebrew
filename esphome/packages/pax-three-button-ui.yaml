@@ -101,7 +101,8 @@ lvgl:
             width: 1
             height: 1
             hidden: true
-        - switch:
+        - checkbox:
+            text: ""
             id: hidden_network_dhcp_stub
             width: 1
             height: 1
