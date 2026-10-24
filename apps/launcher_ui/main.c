@@ -4106,7 +4106,7 @@ static void apply_wifi_settings(void)
   int result=run_action(wifi_apply_job,&request,"Applying Wi-Fi... Please wait");
   bool accepted=result==0;secure_clear(&request,sizeof(request));
   if(accepted){secure_clear(g_wifi_password,sizeof(g_wifi_password));g_wifi_password_changed=false;g_wifi_needs_password=false;}
-  copy_text(g_settings_message,sizeof(g_settings_message),accepted ? "Connecting; failed Wi-Fi changes revert after 45 seconds" : "Wi-Fi request rejected; another connection may be in progress");
+  copy_text(g_settings_message,sizeof(g_settings_message),accepted ? "Connecting; the previous Wi-Fi is restored only if it was connected" : "Wi-Fi request rejected; another connection may be in progress");
 }
 
 /* The scan endpoint is a bounded memory snapshot, never an SD read. Poll on
@@ -6285,7 +6285,7 @@ static int update_selection_on_host(void *arg)
       label_text_changed(g_archive_login_button_label, g_archive_authenticated ? "SIGN OUT" : "SIGN IN");
   }
   for(int i=0;i<4;i++)if(g_network_extra_labels[i]){
-    const char *value=i==0 ? g_network_url : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RETRYING PREVIOUS WI-FI" : "APPLY WI-FI");
+    const char *value=i==0 ? g_network_url : i==1 ? g_wifi_ssid : i==2 ? (g_wifi_password_changed ? (g_wifi_password[0] ? "******** (staged)" : "Open network (staged)") : (g_wifi_available ? (g_wifi_status.password_set ? "******** (unchanged)" : "Open network") : "Firmware update needed")) : (!g_wifi_available ? "FIRMWARE UPDATE NEEDED" : g_wifi_status.status==1 ? "CONNECTING..." : g_wifi_status.status==-1 ? "FAILED; RESTORING WORKING WI-FI" : g_wifi_status.status==-2 ? "NOT CONNECTED; CHECK NAME/PASSWORD, THEN RETRY" : "APPLY WI-FI");
     label_text_changed(g_network_extra_labels[i],value);
   }
   (void)update_c6_progress_on_host(NULL);
