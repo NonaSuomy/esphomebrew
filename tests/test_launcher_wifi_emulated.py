@@ -15,15 +15,15 @@ class WifiPickerEmulated(unittest.TestCase):
    folder=Path(td);sd=folder/'sd';(sd/'roms/pax').mkdir(parents=True)
    events=[dict(at=1,type='touch',x=290,y=30,down=True),dict(at=1.15,type='touch',x=290,y=30,down=False)]
    def key(at,value):
-    events.extend([dict(at=at,type='key',key=value,down=True),dict(at=at+.10,type='key',key=value,down=False)])
-   for i in range(21):key(2+i*.6,155)
-   key(16,13);key(19,155);key(20,13)
+    events.extend([dict(at=at,type='key',key=value,down=True),dict(at=at+.25,type='key',key=value,down=False)])
+   for i in range(21):key(3+i*.8,155)
+   key(21,13);key(24,155);key(25,13)
    script=folder/'input.json';script.write_text(json.dumps(sorted(events,key=lambda e:e['at'])))
    report=folder/'report.json'
-   result=subprocess.run([str(ROOT.parent/'pax-tools/python-desktop/bin/python'),str(ROOT/'tests/launcher_wifi_fixture.py'),'emulated','--pax',str(Path(BINARY).resolve()),'--headless','--seconds','23','--sd-root',str(sd),'--input-script',str(script),'--report',str(report),'--screenshot','/tmp/pax-wifi-picker-emulated.ppm'],env={**os.environ,'SDL_AUDIODRIVER':'dummy'},capture_output=True,text=True,timeout=45)
+   result=subprocess.run([str(ROOT.parent/'pax-tools/python-desktop/bin/python'),str(ROOT/'tests/launcher_wifi_fixture.py'),'emulated','--pax',str(Path(BINARY).resolve()),'--headless','--seconds','28','--sd-root',str(sd),'--input-script',str(script),'--report',str(report),'--screenshot','/tmp/pax-wifi-picker-emulated.ppm'],env={**os.environ,'SDL_AUDIODRIVER':'dummy'},capture_output=True,text=True,timeout=60)
    self.assertEqual(result.returncode,0,result.stderr[-3000:]);data=json.loads(report.read_text());self.assertIsNone(data['error'])
    self.assertIn('Wi-Fi fixture: scan accepted',result.stderr)
-   stats=re.search(r'launcher_ui render:.*keyboard=(\d+)',result.stderr);self.assertIsNotNone(stats,result.stderr[-3000:]);self.assertGreaterEqual(int(stats[1]),1)
+   stats=re.search(r'launcher_ui render:.*keyboard=(\d+)',result.stderr);self.assertIsNotNone(stats,result.stderr[-3000:]);self.assertGreaterEqual(int(stats[1]),2)
    self.assertEqual(data['services'].get('task_delete'),1)
    self.assertGreater(data['frames'],10)
 if __name__=='__main__':unittest.main()
