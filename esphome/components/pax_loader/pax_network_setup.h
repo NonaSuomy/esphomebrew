@@ -19,6 +19,7 @@ struct Backend {
   int (*wifi_apply)(const pax_wifi_request_t*);
   bool (*scan_get)(pax_wifi_scan_status_t*);
   int (*scan_start)();
+  void (*bluetooth_open)();
 };
 class Panel {
  public:
@@ -104,6 +105,7 @@ class Panel {
       for (auto* object : {scan_, ssid_, password_, show_, apply_}) lv_obj_add_state(object, LV_STATE_DISABLED);
       lv_label_set_text(scan_status_, "Wi-Fi is not configured in this firmware.");
     }
+    if(backend_.bluetooth_open)button(body_, "BLUETOOTH DEVICES", 40);
     message_ = label(body_, "Changes apply only when you choose an interface or press APPLY.");
     keyboard_ = lv_keyboard_create(panel_);
     surface(keyboard_);
@@ -425,6 +427,7 @@ class Panel {
       return;
     }
     if (code != LV_EVENT_CLICKED) return;
+    if (action == 40 && backend_.bluetooth_open) { backend_.bluetooth_open(); return; }
     if (action == 1) {
       close();
       return;

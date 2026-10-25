@@ -63,14 +63,14 @@ struct esp_netif_t{};static esp_netif_t device;
 struct IP {uint32_t addr;};struct esp_netif_ip_info_t {IP ip,netmask,gw;};
 struct esp_netif_dns_info_t {struct {int type;union {IP ip4;} u_addr;} ip;};
 constexpr int ESP_NETIF_DNS_MAIN=0;
-enum esp_netif_dhcp_status_t {ESP_NETIF_DHCP_INIT,ESP_NETIF_DHCP_STARTED};
+enum esp_netif_dhcp_status_t {ESP_NETIF_DHCP_INIT,ESP_NETIF_DHCP_STARTED,ESP_NETIF_DHCP_STOPPED};
 static esp_netif_dhcp_status_t status=ESP_NETIF_DHCP_STARTED;
 static int stops,starts,ip_writes,dns_writes,saves,syncs;static bool save_ok=true;
 static esp_netif_t *esp_netif_get_default_netif(){return &device;}
 static int esp_netif_dhcpc_get_status(esp_netif_t *,esp_netif_dhcp_status_t *out){*out=status;return 0;}
-static int esp_netif_dhcpc_stop(esp_netif_t *){stops++;status=ESP_NETIF_DHCP_INIT;return 0;}
+static int esp_netif_dhcpc_stop(esp_netif_t *){stops++;status=ESP_NETIF_DHCP_STOPPED;return 0;}
 static int esp_netif_dhcpc_start(esp_netif_t *){starts++;status=ESP_NETIF_DHCP_STARTED;return 0;}
-static int esp_netif_set_ip_info(esp_netif_t *,const esp_netif_ip_info_t *){ip_writes++;return 0;}
+static int esp_netif_set_ip_info(esp_netif_t *,const esp_netif_ip_info_t *){assert(status==ESP_NETIF_DHCP_STOPPED);ip_writes++;return 0;}
 static int esp_netif_set_dns_info(esp_netif_t *,int,const esp_netif_dns_info_t *){dns_writes++;return 0;}
 static const char *esp_err_to_name(int){return "error";}
 static bool restore_active_dns_if_missing_(){return false;}
@@ -91,8 +91,12 @@ int main(){
  save_ok=false;assert(PaxLoader::svc_network_config_set(&config)==-3 && stops==0 && starts==0);save_ok=true;
  config.dhcp_enabled=0;config.ipv4=0x0a000002;config.netmask=0xffffff00;config.dns=0x0a000001;
  assert(PaxLoader::svc_network_config_set(&config)==0 && stops==1 && starts==0 && ip_writes==1 && dns_writes==1);
- config.dhcp_enabled=1;assert(PaxLoader::svc_network_config_set(&config)==0 && stops==1 && starts==1 && ip_writes==2);
- config.dhcp_enabled=0;config.netmask=0xff00ff00;assert(PaxLoader::svc_network_config_set(&config)==-1 && stops==1 && ip_writes==2);
+ config.dhcp_enabled=1;assert(PaxLoader::svc_network_config_set(&config)==0 && stops==2 && starts==1 && ip_writes==2);
+ config.dhcp_enabled=0;config.netmask=0xff00ff00;assert(PaxLoader::svc_network_config_set(&config)==-1 && stops==2 && ip_writes==2);
+ config.dhcp_enabled=1;status=ESP_NETIF_DHCP_INIT; /* cold-boot restore before DHCP starts */
+ assert(PaxLoader::svc_network_config_set(&config)==0 && stops==3 && starts==2 && ip_writes==3);
+ assert(PaxLoader::svc_network_config_set(&config)==0 && stops==3 && starts==2 && ip_writes==3);
+
 }
 '''
   run(code)

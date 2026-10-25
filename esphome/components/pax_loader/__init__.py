@@ -290,7 +290,7 @@ def _require_runtime_lvgl_widgets(config):
     # C++; they are not represented by YAML widget declarations, so LVGL's
     # normal usage scan would otherwise compile their APIs out.
     if config.get(CONF_LVGL_ID):
-        lvgl_helpers.add_lv_use("keyboard", "textarea")
+        lvgl_helpers.add_lv_use("keyboard", "textarea", "dropdown")
     return config
 
 
@@ -336,7 +336,7 @@ async def to_code(config):
     c6_profile = select_profile(CORE.config.get("esp32_hosted"))
     image = c6_registry["images"].get(c6_profile, {})
     cg.add_define("PAX_C6_PROFILE", c6_profile)
-    for key in ("version", "url", "sha256"):
+    for key in ("version", "url", "sha256", "bluetooth_sha256"):
         cg.add_define("PAX_C6_" + key.upper(), image.get(key, ""))
     cg.add_define("PAX_FIRMWARE_PROFILE", profile)
     cg.add_define("PAX_FIRMWARE_BUILD_ID", cg.RawExpression(build_id + "ULL"))
@@ -358,6 +358,7 @@ async def to_code(config):
     elif hasattr(esp32, "require_full_certificate_bundle"):
         esp32.require_full_certificate_bundle()
     # Apps' TLS connections (net_tls_*) verify servers against the same bundle.
+    esp32.add_idf_sdkconfig_option("CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS", 8)
     esp32.add_idf_sdkconfig_option("CONFIG_MBEDTLS_CERTIFICATE_BUNDLE", True)
     # And set them here as well: this runs after the esp32 component's to_code,
     # so it wins over its "off" even on ESPHome versions whose require helper

@@ -1,5 +1,6 @@
 #include "pax_wifi_settings.h"
 #include "pax_wifi_scan.h"
+#include "pax_bluetooth_panel.h"
 #include "pax_c6_update.h"
 #include "pax_firmware_update.h"
 #include "rom_profiles.h"
@@ -59,7 +60,7 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 38
+#define SETTINGS_FOCUS_COUNT 39
 #define TOOLTIPS_PREF_FILE "/sd/roms/pax/.launcher_ui_tooltips"
 #define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
 #define LIST_LABEL_BYTES (NAME_BYTES + 120)
@@ -4170,6 +4171,19 @@ static int wifi_scan_start_job(void *unused)
   bool ok=g_svc->file_write(&request,1,sizeof(request),file)==sizeof(request);
   return g_svc->file_close(file)==0 && ok ? 0 : -1;
 }
+static int bluetooth_read(pax_bluetooth_status_t *out) {
+ void *file=g_svc->file_open(PAX_BLUETOOTH_FILE,"rb");if(!file)return -1;
+ size_t n=g_svc->file_read(out,1,sizeof(*out),file);g_svc->file_close(file);return n==sizeof(*out)?0:-1;
+}
+static int bluetooth_write(const pax_bluetooth_request_t *request) {
+ void *file=g_svc->file_open(PAX_BLUETOOTH_FILE,"wb");if(!file)return -1;
+ size_t n=g_svc->file_write(request,1,sizeof(*request),file);int result=g_svc->file_close(file);return n==sizeof(*request) && result==0 ? 0:-1;
+}
+static int bluetooth_key_on_host(void *key){pax_bt_panel_key((int)(intptr_t)key);return 0;}
+static int bluetooth_open_on_host(void *unused) {
+ (void)unused;lv_display_t *saved=lv_display_get_default();lv_display_set_default(g_display);
+ pax_bluetooth_panel_backend_t backend={bluetooth_read,bluetooth_write};pax_bt_panel_open(backend);lv_display_set_default(saved);return 0;
+}
 static void request_wifi_scan(void)
 {
   if(mutations_busy() || g_wifi_scan.state==1)return;
@@ -5870,7 +5884,7 @@ static void detail_button_event(lv_event_t *event)
 static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
-    18, 19, 0, 1, 2, 3, 12, 13, 14, 15, 16, 25, 26, 36, 27, 28, 17,
+    18, 19, 0, 1, 2, 3, 38, 12, 13, 14, 15, 16, 25, 26, 36, 27, 28, 17,
     4, 5, 6, 7, 8, 9, 10, 11, 20, 37, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
   };
   int position = 0;
@@ -7448,6 +7462,9 @@ static int build_ui_on_host(void *arg)
 
     lv_obj_t *network_heading = lv_label_create(panel);
     lv_label_set_text(network_heading, "NETWORK");
+    lv_obj_t *bluetooth_button=settings_button(panel,38,control_x,row_y[12],control_w,ui_px(18),-82);
+    lv_obj_t *bluetooth_label=lv_label_create(bluetooth_button);lv_label_set_text(bluetooth_label,"BLUETOOTH DEVICES");lv_obj_center(bluetooth_label);
+
     lv_obj_set_style_text_color(network_heading, lv_color_hex(COL_ACCENT), LV_PART_MAIN);
     lv_obj_set_style_text_font(network_heading, font, LV_PART_MAIN);
     lv_obj_set_pos(network_heading, label_x, row_y[12]);
@@ -8189,6 +8206,7 @@ static lv_obj_t *settings_button(lv_obj_t *parent, int focus, int x, int y,
 static int teardown_ui_on_host(void *arg)
 {
   (void)arg;
+  pax_bt_panel_close();
   tooltip_reset();g_tooltips_value=NULL;
   if (g_indev != NULL) {
     lv_indev_delete(g_indev);
@@ -8309,6 +8327,13 @@ static bool poll_controller(void)
   bool changed = false;
   const int previous_action=g_open_index;
   const bool toolbar_was_active = g_toolbar_focus >= 0;
+  if(pax_bt_panel_root){
+    int key=up_pressed ? 153 : down_pressed ? 155 : left_pressed ? 156 : right_pressed ? 154 : (a && !g_pad_last[PAX_INPUT_A]) ? 13 : (b && !g_pad_last[PAX_INPUT_B]) ? 27 : 0;
+    if(key)(void)g_svc->ui_call_sync(bluetooth_key_on_host,(void *)(intptr_t)key,1000);
+    for(int i=0;i<PAX_INPUT_MAX;i++)g_pad_last[i]=pad.values[i]!=0;
+    g_pad_last[PAX_INPUT_A]=a;g_pad_last[PAX_INPUT_B]=b;
+    return false;
+  }
   if(g_settings_mode && g_wifi_dropdown_open && !g_keyboard_open){
     int count=(g_wifi_scan.state==2 ? (int)g_wifi_scan.count : 0)+2;
     if(up_pressed || down_pressed){g_wifi_choice=(g_wifi_choice+count+(up_pressed ? -1 : 1))%count;changed=true;}
@@ -8507,6 +8532,7 @@ static bool poll_controller(void)
     }
     if(a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=34 && g_settings_focus<=35)g_open_index=-73-(g_settings_focus-34);
     if(a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=31 && g_settings_focus<=33)g_open_index=-70-(g_settings_focus-31);
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 38) g_open_index=-82;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 37) g_open_index=-75;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 21) g_open_index = -9;
     if ((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3) {
@@ -9262,6 +9288,9 @@ int app_entry(const app_services_t *svc)
       begin_network_edit(-30 - chosen);
       wait_for_input_release();
       continue;
+    }
+    if(!detail_mode && chosen==-82){
+      (void)svc->ui_call_sync(bluetooth_open_on_host,NULL,1000);wait_for_input_release();continue;
     }
     if(!detail_mode && chosen==-80){
       request_wifi_scan();

@@ -72,7 +72,7 @@ int main(){
 #include <cstring>
 namespace esphome { using StringRef=std::string; namespace wifi {
 class WiFiAP {std::string ssid,pwd;public:void set_ssid(const std::string &s){ssid=s;}void set_password(const std::string &p){pwd=p;}const std::string &get_ssid()const{return ssid;}const std::string &get_password()const{return pwd;}};
-class WiFiComponent {public:WiFiAP sta;bool connected=true;int saves=0;WiFiAP get_sta(){return sta;}void disable(){connected=false;}void enable(){}void set_sta(const WiFiAP &a){sta=a;}bool is_connected(){return connected;}void wifi_ssid_to(char *out){std::strcpy(out,sta.get_ssid().c_str());}void save_wifi_sta(const std::string &s,const std::string &p){saves++;sta.set_ssid(s);sta.set_password(p);}};
+class WiFiComponent {public:WiFiAP sta;bool connected=true,disabled=false;int saves=0;WiFiAP get_sta(){return sta;}void disable(){connected=false;disabled=true;}void enable(){disabled=false;}bool is_disabled(){return disabled;}void start_connecting(const WiFiAP &a){sta=a;connected=false;}void set_sta(const WiFiAP &a){sta=a;}bool is_connected(){return connected;}void wifi_ssid_to(char *out){std::strcpy(out,sta.get_ssid().c_str());}void save_wifi_sta(const std::string &s,const std::string &p){saves++;sta.set_ssid(s);sta.set_password(p);}};
 inline WiFiComponent device;inline WiFiComponent *global_wifi_component=&device;
 }}
 """
@@ -88,6 +88,10 @@ inline WiFiComponent device;inline WiFiComponent *global_wifi_component=&device;
 #define portENTER_CRITICAL(p) ((void)(p))
 #define portEXIT_CRITICAL(p) ((void)(p))
 static int64_t now=0;static int64_t esp_timer_get_time(){return now;}
+#include "esphome/components/wifi/wifi_component.h"
+// This fixture isolates credential transactions; radio scan behavior has its
+// own driver-handoff replay in test_wifi_scan.py.
+namespace pax_wifi_scan {static void loop(esphome::wifi::WiFiComponent *,bool){}}
 #include "pax_wifi_stream.h"
 static pax_wifi_status_t status(){pax_wifi_status_t s{};FILE *f=pax_wifi::open("rb");assert(f);assert(fread(&s,1,sizeof(s),f)==sizeof(s));assert(fgetc(f)==EOF);assert(!fclose(f));return s;}
 static int send(pax_wifi_request_t &r){FILE *f=pax_wifi::open("wb");assert(f);assert(fwrite(&r,1,sizeof(r),f)==sizeof(r));return fclose(f);}

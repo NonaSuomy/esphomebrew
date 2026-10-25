@@ -131,6 +131,8 @@ class PaxLoader : public Component {
   // a fraction 0..1 (-1 when unknown or idle), and a one-line status that
   // stays after a failure until the next launch ("" when there is nothing to say).
   void show_network_setup();
+  void show_bluetooth_setup();
+  bool scan_bluetooth();
   bool is_loading() const { return this->pax_loading_; }
   float get_load_progress();
   std::string get_load_status();
@@ -140,7 +142,7 @@ class PaxLoader : public Component {
   // The web component reserves storage on the main loop before doing I/O on its worker.
   bool begin_web_transfer();
   bool request_firmware_update(uint32_t command, uint64_t expected_build);
-  bool request_c6_update(uint32_t command);
+  bool request_c6_update(uint32_t command, const std::string &source = "board-recommended");
   void end_web_transfer();
   // Worker-only snapshot; caller owns the returned heap_caps allocation.
   bool capture_screenshot(uint16_t *&copy, uint16_t &width, uint16_t &height);
@@ -437,6 +439,7 @@ class PaxLoader : public Component {
   // because the PAX worker and USB host run concurrently.
   void enqueue_mouse_delta(float dx, float dy);
   void enqueue_mouse_wheel(float wheel);
+  void read_bluetooth_pointer(int *dx, int *dy, bool *down);
 #ifdef PAX_LOADER_USE_USB_HIDX
   void set_usb_hidx(usb_hidx::USBHIDXComponent *usb_hidx) { this->usb_hidx_ = usb_hidx; }
 #endif

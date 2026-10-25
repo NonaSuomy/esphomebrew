@@ -54,12 +54,15 @@ inline bool validate_image(FILE *file, uint32_t &size, char *version, size_t cap
 }
 // A valid ESP image does not identify its transport. Only an approved full-file
 // digest binds the contents to the selected C6 transport and pin configuration.
-template<class Progress> bool matches_approved_image(FILE *file, const char *expected, Progress progress) {
+template<class Progress> bool matches_approved_image(FILE *file, const char *expected, Progress progress, const char *alternate=nullptr, bool *matched_alternate=nullptr) {
   if(!file || !expected || strlen(expected)!=64 || fseek(file,0,SEEK_SET))return false;
   esphome::pax_loader::data::Sha256 hash;
   uint8_t buffer[1500];size_t count;uint32_t done=0;
   while((count=fread(buffer,1,sizeof(buffer),file))){hash.update(buffer,count);done+=count;progress(done);}
-  bool ok=!ferror(file) && hash.hex()==expected;
+  const auto digest=hash.hex();
+  const bool variant=alternate && strlen(alternate)==64 && digest==alternate;
+  bool ok=!ferror(file) && (digest==expected || variant);
+  if(matched_alternate)*matched_alternate=ok && variant;
   return fseek(file,0,SEEK_SET)==0 && ok;
 }
 inline bool matches_approved_image(FILE *file,const char *expected){

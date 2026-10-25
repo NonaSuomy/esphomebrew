@@ -72,10 +72,13 @@ struct psram_app {
 };
 
 #include "pax_wifi_stream.h"
+#include "pax_bluetooth_stream.h"
+#include "pax_bluetooth_keys.h"
 #include "pax_supply_bootstrap.h"
 #include "pax_c6_update.h"
 #include "pax_firmware_update.h"
 #include "pax_network_setup.h"
+#include "pax_bluetooth_panel.h"
 #ifdef USE_ETHERNET
 #include "esphome/components/ethernet/ethernet_component.h"
 #endif
@@ -2066,6 +2069,20 @@ void PaxLoader::process_ui_call_() {
   xSemaphoreGive(this->ui_call_done_);
 }
 
+bool PaxLoader::scan_bluetooth(){
+ if(pax_c6::busy() || pax_firmware::busy())return false;
+ pax_bluetooth_request_t request{};request.magic=PAX_BLUETOOTH_MAGIC;request.command.version=PAX_BT_DISCOVERY_VERSION;request.command.operation=PAX_BT_SCAN;
+ return pax_bluetooth::submit(&request)==0;
+}
+void PaxLoader::show_bluetooth_setup(){
+#ifdef PAX_LOADER_USE_LVGL
+ if(this->launched_ || this->pax_loading_ || this->launch_pending_ || pax_c6::busy() || pax_firmware::busy())return;
+ pax_bluetooth_panel_backend_t backend{};
+ backend.read=[](pax_bluetooth_status_t *out)->int{return pax_bluetooth::get(out)?0:-1;};
+ backend.write=[](const pax_bluetooth_request_t *request)->int{return pax_bluetooth::submit(request);};
+ pax_bt_panel_open(backend);
+#endif
+}
 void PaxLoader::show_network_setup() {
 #ifdef PAX_LOADER_USE_LVGL
   if (this->launched_ || this->launch_pending_ || this->pax_loading_ || pax_c6::busy() || pax_firmware::busy()) return;
@@ -2109,6 +2126,7 @@ void PaxLoader::show_network_setup() {
     int result = fclose(file);
     return ok && result == 0 ? 0 : -1;
   };
+  backend.bluetooth_open=[](){if(PaxLoader::active_)PaxLoader::active_->show_bluetooth_setup();};
   native_network_panel.open(backend);
 #endif
 }
@@ -2120,7 +2138,7 @@ void PaxLoader::loop() {
     if(runtime_settings_preference.save(&current))saved_runtime_settings=current;
   }
   // Avoid unrelated Wi-Fi status RPCs while the coprocessor is being updated.
-  if (!pax_c6::busy()) pax_wifi::loop();
+  if (!pax_c6::busy()) {pax_wifi::loop();pax_bluetooth::loop();}
   pax_c6::loop();
   if (pax_firmware::pending() && this->app_handle_ != nullptr && !this->global_close_requested_)
     this->request_close();
@@ -2167,13 +2185,59 @@ void PaxLoader::loop() {
       // SDMMC driver and avoids a retry loop before any sound is requested.
     }
   }
+  // Radio callbacks only copy bounded reports; feed app input from the owner loop.
+  static int bluetooth_keys[256]={};
+  for(unsigned i=0;i<64;i++){
+    pax_bluetooth::KeyEvent event{};bool reset=false;bool present=pax_bluetooth::pop_key(&event,&reset);
+    if(reset)for(int &key:bluetooth_keys)if(key){this->enqueue_keyboard_event_(key,false);key=0;}
+    if(!present)break;
+    if(event.down){int key=pax_bluetooth_key(event.usage,event.modifiers);bluetooth_keys[event.usage]=key;if(key){
+#ifdef PAX_LOADER_USE_LVGL
+      if(!this->launched_){
+        if(pax_bt_panel_root)pax_bt_panel_key(key);
+        else if(native_network_panel.active())native_network_panel.key(key);
+        else if(lv_group_t *group=lv_group_get_default()){
+          if(key==PAX_KEY_UP || key==PAX_KEY_LEFT)lv_group_focus_prev(group);
+          else if(key==PAX_KEY_DOWN || key==PAX_KEY_RIGHT || key==9)lv_group_focus_next(group);
+          else if(key==13 || key==32)lv_group_send_data(group,LV_KEY_ENTER);
+        }
+      }else
+#endif
+        this->enqueue_keyboard_event_(key,true);
+    }}
+    else {int key=bluetooth_keys[event.usage];bluetooth_keys[event.usage]=0;if(key)this->enqueue_keyboard_event_(key,false);}
+  }
+#ifdef PAX_LOADER_USE_LVGL
+  if(!this->launched_){
+    bluepad32_hosted_state_t pad{};bool live=pax_bluetooth::pad(&pad);
+    const bool buttons[]={live&&((pad.dpad&1)||pad.axis_ly < -100),live&&((pad.dpad&2)||pad.axis_ly > 100),live&&((pad.dpad&4)||pad.axis_lx < -100),live&&((pad.dpad&8)||pad.axis_lx > 100),live&&(pad.buttons&1),live&&(pad.buttons&2)};
+    const int keycodes[]={PAX_KEY_UP,PAX_KEY_DOWN,PAX_KEY_LEFT,PAX_KEY_RIGHT,13,27};
+    static bool previous[6]={};static int64_t next[6]={};const int64_t now=esp_timer_get_time();
+    for(unsigned i=0;i<6;i++){
+      if(buttons[i] && (!previous[i] || (i<4 && now>=next[i]))){
+        int key=keycodes[i];next[i]=now+(previous[i]?110000:400000);
+        if(pax_bt_panel_root)pax_bt_panel_key(key);
+        else if(native_network_panel.active())native_network_panel.key(key);
+        else if(lv_group_t *group=lv_group_get_default()){
+          if(i==0 || i==2)lv_group_focus_prev(group);
+          else if(i==1 || i==3)lv_group_focus_next(group);
+          else lv_group_send_data(group,i==4?LV_KEY_ENTER:LV_KEY_ESC);
+        }
+      }
+      previous[i]=buttons[i];
+    }
+  }
+#endif
+  int32_t bluetooth_x,bluetooth_y,bluetooth_wheel;pax_bluetooth::take_mouse(&bluetooth_x,&bluetooth_y,&bluetooth_wheel);
+  if(bluetooth_x || bluetooth_y)this->enqueue_mouse_delta(bluetooth_x,bluetooth_y);
+  if(bluetooth_wheel)this->enqueue_mouse_wheel(bluetooth_wheel);
   this->update_auto_brightness_();
 #ifdef PAX_LOADER_USE_LVGL
   this->ensure_background_();
   this->update_catalog_status_();
   if(native_network_panel.active()){
     pax_keyboard_event_t event{};
-    while(this->read_keyboard_(&event))if(event.down)native_network_panel.key(event.key);
+    while(this->read_keyboard_(&event))if(event.down){if(pax_bt_panel_root)pax_bt_panel_key(event.key);else native_network_panel.key(event.key);}
     native_network_panel.tick(millis());
   }
 #endif
@@ -2940,6 +3004,7 @@ bool PaxLoader::launch_() {
   if (pax_firmware::busy()) { this->launched_ = false; return false; }
   const std::string source = this->path_;
 #ifdef PAX_LOADER_USE_LVGL
+  pax_bt_panel_close();
   native_network_panel.close();
   // Evict the launcher before reading/mapping the next PAX. This gives the
   // loader and its bootstrap task the reclaimed heap during file/URL loading,
@@ -3226,6 +3291,8 @@ void PaxLoader::enqueue_keyboard_text(const std::string &text) {
     this->enqueue_keyboard_tap_(key);
 }
 
+void PaxLoader::read_bluetooth_pointer(int *dx,int *dy,bool *down){pax_bluetooth::take_pointer(dx,dy,down);}
+
 void PaxLoader::enqueue_mouse_delta(float dx, float dy) {
   if (!std::isfinite(dx) || !std::isfinite(dy))
     return;
@@ -3323,7 +3390,7 @@ int PaxLoader::read_mouse_(int *dx, int *dy, int *buttons) {
   if (dy != nullptr)
     *dy = canvas_y;
 
-  int state = 0;
+  int state = pax_bluetooth::buttons();
 #ifdef PAX_LOADER_USE_USB_HIDX
   if (this->usb_hidx_ != nullptr) {
     if (this->usb_hidx_->get_mouse_left_sensor() != nullptr &&
@@ -7241,6 +7308,17 @@ void PaxLoader::read_input_(pax_gamepad_state_t *state, bool include_hid) {
     }
   }
   this->read_remote_ui_input_(state);
+  bluepad32_hosted_state_t bluetooth_pad{};
+  if(include_hid && pax_bluetooth::pad(&bluetooth_pad)){
+    const int mapping[]={PAX_INPUT_A,PAX_INPUT_B,PAX_INPUT_X,PAX_INPUT_Y,PAX_INPUT_L,PAX_INPUT_R,PAX_INPUT_L,PAX_INPUT_R,PAX_INPUT_SELECT,PAX_INPUT_START};
+    for(unsigned i=0;i<sizeof(mapping)/sizeof(mapping[0]);i++)if(bluetooth_pad.buttons&(1U<<i))state->values[mapping[i]]=1;
+    if((bluetooth_pad.dpad&1) || bluetooth_pad.axis_ly < -100)state->values[PAX_INPUT_UP]=1;
+    if((bluetooth_pad.dpad&2) || bluetooth_pad.axis_ly > 100)state->values[PAX_INPUT_DOWN]=1;
+    if((bluetooth_pad.dpad&4) || bluetooth_pad.axis_lx < -100)state->values[PAX_INPUT_LEFT]=1;
+    if((bluetooth_pad.dpad&8) || bluetooth_pad.axis_lx > 100)state->values[PAX_INPUT_RIGHT]=1;
+    if(bluetooth_pad.buttons&(1U<<12))state->values[PAX_INPUT_MENU]=1;
+  }
+
 
   // GPIO2 is the board's TTP223 touch button. The right trigger remains a
   // normal A/fire input, and the touch button is an additional A/fire input.
@@ -8648,11 +8726,13 @@ int PaxLoader::svc_network_config_set(const pax_network_config_t *config) {
   // Reapplying/restoring DHCP must not clear the lease and DNS servers on
   // an interface whose DHCP client is already running.
   if (!(config->dhcp_enabled && dhcp_status == ESP_NETIF_DHCP_STARTED)) {
-    if (dhcp_status == ESP_NETIF_DHCP_STARTED) {
-      err = esp_netif_dhcpc_stop(netif);
-      if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
-        return -1;
-    }
+    // INIT is not STOPPED in ESP-IDF: at boot the interface can have an
+    // initialized DHCP client that has not started yet. Explicitly stop it
+    // before setting IP information, or IDF rejects the write with
+    // ESP_ERR_ESP_NETIF_DHCP_NOT_STOPPED.
+    err = esp_netif_dhcpc_stop(netif);
+    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
+      return -1;
 
     esp_netif_ip_info_t ip{};
     if (!config->dhcp_enabled) {
@@ -9804,6 +9884,8 @@ void *PaxLoader::svc_file_open(const char *path, const char *mode) {
     if(mode && mode[0]=='w')(void)restore_active_dns_if_missing_();
     return own_pax_file(pax_c6::open(mode));
   }
+  if(path && std::strcmp(path,PAX_BLUETOOTH_FILE)==0)
+    return own_pax_file(pax_bluetooth::open(mode));
   if(path && std::strcmp(path,PAX_WIFI_SCAN_FILE)==0)
     return own_pax_file(pax_wifi_scan::open(mode));
   if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
@@ -11619,12 +11701,13 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
 }
 
 
-bool PaxLoader::request_c6_update(uint32_t command) {
+bool PaxLoader::request_c6_update(uint32_t command, const std::string &source) {
+  if(source.empty() || source.size()>=sizeof(pax_c6_request_t::source) || source.find('\0')!=std::string::npos)return false;
   if(command!=PAX_C6_PREPARE && command!=PAX_C6_INSTALL && command!=PAX_C6_PREPARE_UNKNOWN)return false;
   if(pax_firmware::busy() || install_task_handle_ || web_storage_busy_)return false;
   (void)restore_active_dns_if_missing_();
   pax_c6_request_t request{};request.magic=PAX_C6_UPDATE_MAGIC;request.command=command;
-  snprintf(request.source,sizeof(request.source),"%s",PAX_C6_RECOMMENDED);
+  snprintf(request.source,sizeof(request.source),"%s",source.c_str());
   FILE *file=pax_c6::open("wb");if(!file)return false;
   bool ok=fwrite(&request,1,sizeof(request),file)==sizeof(request);
   return fclose(file)==0 && ok;

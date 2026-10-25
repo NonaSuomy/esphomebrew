@@ -270,6 +270,13 @@ esphome:
             lv_indev_set_group(mouse, lv_group_get_default());
             lv_indev_set_read_cb(mouse, [](lv_indev_t *, lv_indev_data_t *data) {
               const bool enabled = !id(lvgl_component)->is_paused() && !id(pax_runtime)->is_loading();
+              #ifdef USE_ESP32
+              int bt_dx=0,bt_dy=0;bool bt_down=false;
+              id(pax_runtime)->read_bluetooth_pointer(&bt_dx,&bt_dy,&bt_down);
+              pointer.move(bt_dx,bt_dy,enabled);
+              // USB and Bluetooth mouse buttons share the native pointer.
+              pointer.button(bt_down || id(pax_mouse_left)->get_state_default(false),enabled);
+              #endif
               data->point.x = pointer.x;
               data->point.y = pointer.y;
               data->state = pointer.pressed(enabled) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
