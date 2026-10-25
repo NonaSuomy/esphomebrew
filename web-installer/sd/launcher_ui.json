@@ -4,23 +4,23 @@
   "abi": 1,
   "sdk": {
     "abi": 1,
-    "header_sha256": "595f35a9aa4205444b50242126424ce192fa6479b82a15944a127a4d1a9b67b6",
+    "header_sha256": "fb99637e04c7b5d4cc530812f032ab5d3761cac378157f82a2914a1e0c3e1b29",
     "path": "pax-esphome/components/pax_loader/psram_app.h",
-    "ref": "a8d8dfc931e1d163ad414ecb41d11f2b33abfb78"
+    "ref": "ec3d5898bc189b85edf09f7c1b5c3e0edc2bf0f4"
   },
   "source": {
     "path": "pax-modules/apps/launcher_ui",
     "repository": "pax-modules",
-    "ref": "5c42296023f20e113ab8d77185ea31b9818396fc"
+    "ref": "e9fa5a491b54e1bfbb2f1b70b8baaa23b29f26c3"
   },
-  "size": 496412,
-  "sha256": "8e979b506b0d08909d08c3973736094c53df325d5b484c85a39b01c4992d9d31",
+  "size": 502621,
+  "sha256": "901878a42a9ae0323ccfcaa8866a91f29db6bd4ff4263c7153ab5f35e7a8c817",
   "compatibility_report": "validation/module-compatibility.md (workspace root)",
   "title": "Launcher UI",
   "active_source": {
     "path": "pax-modules/apps/launcher_ui",
     "repository": "pax-modules",
-    "ref": "5c42296023f20e113ab8d77185ea31b9818396fc"
+    "ref": "e9fa5a491b54e1bfbb2f1b70b8baaa23b29f26c3"
   },
   "extract": {
     "version": 2,
@@ -35,5 +35,5 @@
   },
   "install_recipe_source": "pax-modules/apps/launcher_ui/install-recipe.json",
   "requires": [],
-  "install_recipe_ref": "5c42296023f20e113ab8d77185ea31b9818396fc"
+  "install_recipe_ref": "e9fa5a491b54e1bfbb2f1b70b8baaa23b29f26c3"
 }

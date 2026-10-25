@@ -1,5 +1,6 @@
 #pragma once
 #include "pax_wifi_settings.h"
+#include "pax_wifi_scan_stream.h"
 #include "pax_wifi_backup.h"
 #include "esphome/core/log.h"
 #include <cstdio>
@@ -35,7 +36,8 @@ static void maintain_backup(esphome::wifi::WiFiComponent *wifi, bool changing, b
   if(present && !user_apply){
    auto current=wifi->get_sta();
    if(current.get_ssid()!=saved.ssid || current.get_password()!=saved.password){
-    wifi->disable();wifi->save_wifi_sta(saved.ssid,saved.password);wifi->enable();
+    bool was_disabled=wifi->is_disabled();
+    wifi->disable();wifi->save_wifi_sta(saved.ssid,saved.password);if(!was_disabled)wifi->enable();
     ESP_LOGI("pax_wifi","Restored Wi-Fi settings from SD");
    }
   }
@@ -75,7 +77,7 @@ static ssize_t write(void *cookie,const char *in,size_t count){auto *s=static_ca
 static int close(void *cookie){auto *s=static_cast<Stream *>(cookie);int result=0;
  if(s->writing){
   if(s->offset!=sizeof(s->request)||!pax_wifi_request_valid(&s->request))result=-1;
-  else {portENTER_CRITICAL(&lock);if(queued || snapshot.status==1)result=-1;else{pending=s->request;queued=true;snapshot.status=1;}portEXIT_CRITICAL(&lock);}
+  else {portENTER_CRITICAL(&lock);if(queued || snapshot.status==1 || pax_wifi_scan::busy())result=-1;else{pending=s->request;queued=true;snapshot.status=1;}portEXIT_CRITICAL(&lock);}
  }
  pax_wifi_wipe(s,sizeof(*s));std::free(s);return result;
 }
@@ -94,18 +96,27 @@ static FILE *open(const char *mode){
 /* Run all Wi-Fi transitions in ESPHome's loop, never on the PAX worker. */
 static void loop(){
  auto *wifi=esphome::wifi::global_wifi_component;if(!wifi)return;
- static bool changing=false;static int64_t deadline=0;static esphome::wifi::WiFiAP previous,target;
+ static bool changing=false,previous_connected=false,waiting_target=false;static int64_t deadline=0;static esphome::wifi::WiFiAP previous,target;
  pax_wifi_request_t request{};bool apply=false;
  portENTER_CRITICAL(&lock);if(queued){request=pending;pax_wifi_wipe(&pending,sizeof(pending));queued=false;apply=true;}portEXIT_CRITICAL(&lock);
+ pax_wifi_scan::loop(wifi,changing || apply);
  maintain_backup(wifi,changing,apply);
- if(apply){previous=wifi->get_sta();target=esphome::wifi::WiFiAP{};target.set_ssid(request.ssid);target.set_password(request.replace_password ? esphome::StringRef(request.password) : previous.get_password());
-  wifi->disable();wifi->set_sta(target);wifi->enable();deadline=esp_timer_get_time()+45000000;changing=true;
+ if(apply){previous_connected=wifi->is_connected();previous=wifi->get_sta();target=esphome::wifi::WiFiAP{};target.set_ssid(request.ssid);target.set_password(request.replace_password ? esphome::StringRef(request.password) : previous.get_password());
+  // enable() reloads saved credentials. If initialization is needed, do it
+  // before installing the unsaved target; never reload preferences after it.
+  if(wifi->is_disabled())wifi->enable();
+  wifi->set_sta(target);wifi->start_connecting(target);
+  deadline=esp_timer_get_time()+45000000;changing=true;waiting_target=true;
   pax_wifi_wipe(&request,sizeof(request));
  }
  int status=0;
- if(changing){char ssid[33]={0};wifi->wifi_ssid_to(ssid);
-  if(wifi->is_connected() && target.get_ssid()==ssid){wifi->save_wifi_sta(target.get_ssid(),target.get_password());changing=false;status=2;}
-  else if(esp_timer_get_time()>=deadline){wifi->disable();wifi->set_sta(previous);wifi->enable();changing=false;status=-1;}
+ if(waiting_target){char ssid[33]={0};wifi->wifi_ssid_to(ssid);
+  if(wifi->is_connected() && target.get_ssid()==ssid){wifi->save_wifi_sta(target.get_ssid(),target.get_password());changing=false;waiting_target=false;status=2;}
+  else if(changing && esp_timer_get_time()>=deadline){
+   changing=false;
+   if(previous_connected){wifi->set_sta(previous);wifi->start_connecting(previous);waiting_target=false;status=-1;}
+   else status=-2; // Keep retrying the selected network; no working link to restore.
+  }
  }
  refresh_time_after_reconnect(wifi->is_connected());
  static int64_t last_refresh=-1000000;
@@ -124,7 +135,7 @@ static void loop(){
  }
 #endif
  portENTER_CRITICAL(&lock);snapshot.magic=PAX_WIFI_SETTINGS_MAGIC;std::strncpy(snapshot.ssid,connected_ssid[0] ? connected_ssid : current.get_ssid().c_str(),32);snapshot.ssid[32]=0;snapshot.password_set=!current.get_password().empty();snapshot.channel=channel;snapshot.frequency_mhz=frequency;std::memcpy(snapshot.security,security,sizeof(security));if(status)snapshot.status=status;portEXIT_CRITICAL(&lock);
- if(!changing){previous.set_password("");target.set_password("");}
+ if(!waiting_target){previous.set_password("");target.set_password("");}
 }
 }
 #else

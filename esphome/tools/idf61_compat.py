@@ -157,3 +157,21 @@ if i2c_source.exists():
         text = text.replace(f"{field}.pull_up_en = GPIO_PULLUP_ENABLE;",
                             f"{field}.pull_up_en = {setting} ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE;")
     i2c_source.write_text(text)
+
+# A missing AP-info payload must return an error instead of asserting in memcpy.
+patch_hosted_rpc_source = run_path(str(compat_directory / "hosted_rpc_compat.py"))["patch_hosted_rpc_source"]
+for managed_root in managed_roots:
+    patch_hosted_rpc_source(managed_root / "espressif__esp_hosted/host/drivers/rpc/wrap/rpc_wrap.c")
+
+def patch_hosted_rpc_middleware(env, node):
+    patch_hosted_rpc_source(Path(node.srcnode().get_abspath()))
+    return node
+
+env.AddBuildMiddleware(patch_hosted_rpc_middleware, "*rpc_wrap.c")
+
+def patch_hosted_rpc_before_compile(target, source, env):
+    patch_hosted_rpc_source(Path(source[0].srcnode().get_abspath()))
+
+hosted_rpc_object = env.File(env.subst("$BUILD_DIR/managed_components/espressif__esp_hosted/host/drivers/rpc/wrap/rpc_wrap.c.o"))
+env.AddPreAction(hosted_rpc_object, patch_hosted_rpc_before_compile)
+env.Depends(hosted_rpc_object, str(compat_directory / "hosted_rpc_compat.py"))

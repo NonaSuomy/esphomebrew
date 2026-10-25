@@ -7,3 +7,7 @@ patch = run_path(str(compat_directory / "hosted_spi_dma.py"))["patch_hosted_spi_
 project = Path(env.subst("$PROJECT_DIR"))
 for root in (project / "managed_components", project / ".esphome/pio_components/idf"):
     patch(root / "espressif__esp_hosted/host/port/esp/freertos/src/port_esp_hosted_host_spi.c")
+
+patch_rpc = run_path(str(compat_directory / "hosted_rpc_compat.py"))["patch_hosted_rpc_source"]
+for root in (project / "managed_components", project / ".esphome/pio_components/idf"):
+    patch_rpc(root / "espressif__esp_hosted/host/drivers/rpc/wrap/rpc_wrap.c")

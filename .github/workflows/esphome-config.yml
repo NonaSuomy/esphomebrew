@@ -28,6 +28,12 @@ jobs:
           python tests/test_firmware_web_progress.py
           node tests/test_firmware_web_progress.cjs
           python esphome/tests/test_firmware_update.py
+      - name: Check Wi-Fi transitions, backup, scanning and DHCP
+        run: |
+          python -m unittest discover -s esphome/tests -p 'test_wifi*.py'
+          python -m unittest discover -s esphome/tests -p test_network_dns.py
+          python -m unittest discover -s esphome/tests -p test_network_interface.py
+          python -m unittest discover -s esphome/tests -p test_supply_bootstrap.py
       - name: Validate every public profile and credential-free include closure
         run: python tools/firmware_ci.py matrix
       - name: Validate publication guards

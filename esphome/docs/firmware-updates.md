@@ -55,5 +55,22 @@ To rebuild the AIO candidate, activate ESP-IDF 5.5.2 and run the public
 the source component and effective slave pins. Review and approve the resulting
 hash in the registry; build timestamps can change the binary digest. The checked
 binary's build record and upstream Apache licence accompany the download.
-Initial/recovery C6 flashing still requires its USB/UART connection and suitable
-OTA partitions; an unresponsive coprocessor cannot be repaired over its failed link.
+If an older C6 does not implement the version query, an explicit recovery check
+can be requested with `POST /pax/c6/check` and header
+`X-PAX-C6-Allow-Unknown: yes` (plus the normal device session token). This permits
+staging the approved image despite an unknown installed version. It does not
+install automatically: the separate install request still confirms the checked
+profile, revalidates the image, and requires a working hosted OTA transport.
+A successful version query still prevents equal-version installs or downgrades.
+C6 control RPCs run on the ESPHome main loop alongside Wi-Fi control RPCs.
+This avoids concurrent consumers of ESP-Hosted 2.x's shared response queue;
+image downloading and validation remain on the worker. Wi-Fi status polling
+is deferred while an update is busy. Malformed AP-info responses return an
+error instead of reaching the hosted library's null-pointer assertion.
+
+The virtual-file equivalent is command `PAX_C6_PREPARE_UNKNOWN` (3); existing
+ABI-1 request and status sizes are unchanged.
+
+If the hosted transport or the C6's OTA partitions are unavailable, recovery
+requires the board's C6 USB/UART download connection. A failed version query
+alone does not establish that this recovery connection is needed.

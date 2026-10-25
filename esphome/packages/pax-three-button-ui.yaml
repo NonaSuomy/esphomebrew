@@ -63,10 +63,15 @@ lvgl:
               lv_obj_set_size(buttons[i], layout.width, layout.height);
               lv_obj_set_pos(buttons[i], layout.x[i], layout.y[i]);
             }
+            #ifdef USE_HOST
+            // Desktop networking is configured by the host operating system.
+            lv_obj_add_flag(id(network_setup_button), LV_OBJ_FLAG_HIDDEN);
+            #endif
             if (auto *group = lv_group_get_default()) {
               lv_group_add_obj(group, id(storage_button));
               lv_group_add_obj(group, id(network_button));
               lv_group_add_obj(group, id(github_button));
+              lv_group_add_obj(group, id(network_setup_button));
               lv_group_focus_obj(id(storage_button));
             }
       widgets:
@@ -93,6 +98,12 @@ lvgl:
             id: hidden_list_stub
             x: 0
             y: 0
+            width: 1
+            height: 1
+            hidden: true
+        - checkbox:
+            text: ""
+            id: hidden_network_dhcp_stub
             width: 1
             height: 1
             hidden: true
@@ -126,7 +137,7 @@ lvgl:
             x: ${network_x}
             y: ${network_y}
             on_click:
-              - lambda: id(pax_runtime)->request_launch("${launcher_network_url}");
+              - lambda: id(pax_runtime)->request_launch("pax-supply:${launcher_network_url}");
             widgets:
               - label:
                   text: "NETWORK"
@@ -148,3 +159,19 @@ lvgl:
                   text_font: montserrat_20
                   text_color: 0xD7F3FF
 
+        - button:
+            id: network_setup_button
+            width: 220
+            height: 44
+            align: BOTTOM_MID
+            y: -16
+            on_click:
+              - lambda: |-
+                  #ifdef USE_ESP32
+                  id(pax_runtime)->show_network_setup();
+                  #endif
+            widgets:
+              - label:
+                  text: "NETWORK SETUP"
+                  align: CENTER
+                  text_font: montserrat_20

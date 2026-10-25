@@ -72,8 +72,13 @@ struct psram_app {
 };
 
 #include "pax_wifi_stream.h"
+#include "pax_supply_bootstrap.h"
 #include "pax_c6_update.h"
 #include "pax_firmware_update.h"
+#include "pax_network_setup.h"
+#ifdef USE_ETHERNET
+#include "esphome/components/ethernet/ethernet_component.h"
+#endif
 
 namespace esphome {
 namespace pax_loader {
@@ -168,6 +173,92 @@ struct SavedNetworkConfig {
   uint32_t dns;
 };
 
+// Native setup uses the same drivers and credential streams as Launcher UI.
+// Auto retains the YAML priority (Ethernet first, with Wi-Fi as fallback).
+static int native_network_mode = 0;
+struct SavedNetworkInterface {
+  uint32_t magic;
+  int32_t mode;
+};
+static constexpr uint32_t INTERFACE_KEY = 0x504E4946;    // PNIF
+static constexpr uint32_t INTERFACE_MAGIC = 0x4E494631;  // NIF1
+static uint32_t native_network_capabilities() {
+  uint32_t result = 0;
+#ifdef USE_WIFI
+  if (wifi::global_wifi_component && !wifi::global_wifi_component->is_failed()) result |= 1;
+#endif
+#ifdef USE_ETHERNET
+  if (ethernet::global_eth_component && !ethernet::global_eth_component->is_failed()) result |= 2;
+#endif
+  return result;
+}
+[[maybe_unused]] static bool native_network_busy() {
+  if (pax_c6::busy() || pax_firmware::busy() || pax_wifi_scan::busy()) return true;
+#ifdef USE_WIFI
+  portENTER_CRITICAL(&pax_wifi::lock);
+  bool changing = pax_wifi::queued || pax_wifi::snapshot.status == 1;
+  portEXIT_CRITICAL(&pax_wifi::lock);
+  return changing;
+#else
+  return false;
+#endif
+}
+static bool native_network_activate(int mode) {
+  if (mode < 0 || mode > 2 || (mode && !(native_network_capabilities() & (mode == 1 ? 1 : 2)))) return false;
+#ifdef USE_WIFI
+  auto* wifi = wifi::global_wifi_component;
+  if (wifi && mode != 2) {
+    wifi->enable();
+    if (wifi->is_disabled()) return false;
+  }
+#endif
+#ifdef USE_ETHERNET
+  auto* eth = ethernet::global_eth_component;
+  if (eth && mode != 1) {
+    eth->enable();
+    if (eth->is_disabled()) return false;
+  }
+#endif
+#ifdef USE_WIFI
+  if (wifi && mode == 2) wifi->disable();
+#endif
+#ifdef USE_ETHERNET
+  if (eth && mode == 1) eth->disable();
+#endif
+  native_network_mode = mode;
+  // Select the intended interface even before it has a lease. This lets the
+  // user configure a static address without requiring a working DHCP server.
+  esp_netif_t* target = nullptr;
+#ifdef USE_WIFI
+  if (mode == 1 && wifi) target = wifi->get_esp_netif_sta();
+#endif
+#ifdef USE_ETHERNET
+  if (mode == 2 && eth) target = eth->get_esp_netif();
+#endif
+  if (target) esp_netif_set_default_netif(target);
+  return true;
+}
+[[maybe_unused]] static int native_network_select(int mode) {
+  if (native_network_busy()) return -2;
+  int previous = native_network_mode;
+  if (!native_network_activate(mode)) {
+    (void)native_network_activate(previous);
+    return -1;
+  }
+  SavedNetworkInterface saved{INTERFACE_MAGIC, mode};
+  if (esphome::global_preferences) {
+    auto preference = esphome::global_preferences->make_preference<SavedNetworkInterface>(INTERFACE_KEY, true);
+    if (preference.save(&saved) && esphome::global_preferences->sync()) return 0;
+    saved.mode = previous;
+    (void)preference.save(&saved);
+    (void)esphome::global_preferences->sync();
+  }
+  (void)native_network_activate(previous);
+  return -1;
+}
+#ifdef PAX_LOADER_USE_LVGL
+static pax_native_network::Panel native_network_panel;
+#endif
 static void recover_staged_file_(const std::string &path, const char *backup_suffix) {
   const std::string backup = path + backup_suffix;
   const std::string part = path + ".part";
@@ -1555,6 +1646,10 @@ void PaxLoader::setup() {
   }
 #endif
   if (esphome::global_preferences != nullptr) {
+    auto interface_preference=esphome::global_preferences->make_preference<SavedNetworkInterface>(INTERFACE_KEY,true);
+    SavedNetworkInterface saved_interface{};
+    if(interface_preference.load(&saved_interface) && saved_interface.magic==INTERFACE_MAGIC)
+      (void)native_network_activate(saved_interface.mode);
     auto preference = esphome::global_preferences->make_preference<SavedNetworkConfig>(
         NETWORK_PREFERENCE_KEY, true);
     SavedNetworkConfig saved{};
@@ -1971,6 +2066,52 @@ void PaxLoader::process_ui_call_() {
   xSemaphoreGive(this->ui_call_done_);
 }
 
+void PaxLoader::show_network_setup() {
+#ifdef PAX_LOADER_USE_LVGL
+  if (this->launched_ || this->launch_pending_ || this->pax_loading_ || pax_c6::busy() || pax_firmware::busy()) return;
+  pax_native_network::Backend backend{};
+  backend.capabilities = native_network_capabilities();
+  backend.mode = []() { return native_network_mode; };
+  backend.select = native_network_select;
+  backend.network_get = svc_network_config_get;
+  backend.network_set = svc_network_config_set;
+  backend.wifi_get = [](pax_wifi_status_t* out) {
+    FILE* file = pax_wifi::open("rb");
+    if (!file) return false;
+    bool ok = fread(out, 1, sizeof(*out), file) == sizeof(*out);
+    fclose(file);
+    return ok;
+  };
+  backend.scan_get = [](pax_wifi_scan_status_t* out) {
+    FILE* file = pax_wifi_scan::open("rb");
+    if (!file) return false;
+    bool ok = fread(out, 1, sizeof(*out), file) == sizeof(*out);
+    fclose(file);
+    return ok;
+  };
+  backend.wifi_apply = [](const pax_wifi_request_t* request) {
+    if (!pax_wifi_request_valid(request) || native_network_busy()) return -1;
+    // Explicit APPLY WI-FI also selects the wireless interface, so Ethernet
+    // mode cannot silently prevent the newly supplied credentials connecting.
+    if (native_network_mode == 2 && native_network_select(1) != 0) return -1;
+    FILE* file = pax_wifi::open("wb");
+    if (!file) return -1;
+    bool ok = fwrite(request, 1, sizeof(*request), file) == sizeof(*request);
+    int result = fclose(file);
+    return ok && result == 0 ? 0 : -1;
+  };
+  backend.scan_start = []() {
+    if (native_network_busy() || native_network_mode == 2) return -1;
+    pax_wifi_scan_request_t request{PAX_WIFI_SCAN_MAGIC};
+    FILE* file = pax_wifi_scan::open("wb");
+    if (!file) return -1;
+    bool ok = fwrite(&request, 1, sizeof(request), file) == sizeof(request);
+    int result = fclose(file);
+    return ok && result == 0 ? 0 : -1;
+  };
+  native_network_panel.open(backend);
+#endif
+}
 void PaxLoader::loop() {
   this->update_hardware_();
   SavedRuntimeSettings current{RUNTIME_SETTINGS_MAGIC,static_cast<uint8_t>(this->master_volume_),
@@ -1978,7 +2119,8 @@ void PaxLoader::loop() {
   if(esphome::global_preferences && memcmp(&current,&saved_runtime_settings,sizeof(current))){
     if(runtime_settings_preference.save(&current))saved_runtime_settings=current;
   }
-  pax_wifi::loop();
+  // Avoid unrelated Wi-Fi status RPCs while the coprocessor is being updated.
+  if (!pax_c6::busy()) pax_wifi::loop();
   pax_c6::loop();
   if (pax_firmware::pending() && this->app_handle_ != nullptr && !this->global_close_requested_)
     this->request_close();
@@ -2029,6 +2171,11 @@ void PaxLoader::loop() {
 #ifdef PAX_LOADER_USE_LVGL
   this->ensure_background_();
   this->update_catalog_status_();
+  if(native_network_panel.active()){
+    pax_keyboard_event_t event{};
+    while(this->read_keyboard_(&event))if(event.down)native_network_panel.key(event.key);
+    native_network_panel.tick(millis());
+  }
 #endif
   if (this->menu_shot_wanted_) {
     this->menu_shot_wanted_ = false;
@@ -2793,12 +2940,13 @@ bool PaxLoader::launch_() {
   if (pax_firmware::busy()) { this->launched_ = false; return false; }
   const std::string source = this->path_;
 #ifdef PAX_LOADER_USE_LVGL
+  native_network_panel.close();
   // Evict the launcher before reading/mapping the next PAX. This gives the
   // loader and its bootstrap task the reclaimed heap during file/URL loading,
   // not only after the executable has already consumed that memory.
   this->release_launcher_runtime_();
 #endif
-  if (is_network_url(source.c_str())) {
+  if (is_network_url(source.c_str()) || source.rfind("pax-supply:",0)==0) {
     if (!network::is_connected()) {
       ESP_LOGE(TAG, "Cannot load network PAX while the device is offline: %s", source.c_str());
       this->launched_ = false;
@@ -3245,7 +3393,13 @@ void PaxLoader::pax_task_entry_(void *arg) {
 
 void PaxLoader::pax_load_task_entry_(void *arg) {
   auto *self = static_cast<PaxLoader *>(arg);
-  const std::string url = self->pax_load_source_;
+  std::string url = self->pax_load_source_;
+  if(url.rfind("pax-supply:",0)==0){
+    url=pax_supply::resolve(url.substr(11),
+      pax_supply::read_setting(runtime_path("/sd/roms/pax/.launcher_ui_network_mode.txt")),
+      pax_supply::read_setting(runtime_path("/sd/roms/pax/.launcher_ui_network_url.txt")));
+    self->pax_load_source_=url;
+  }
   // Fetch the app's data files first, so it never starts without them.
   const esp_err_t data_result = self->sync_app_data_(url);
   self->pax_load_data_failed_ = data_result != ESP_OK;
@@ -8444,12 +8598,13 @@ int PaxLoader::svc_network_config_get(pax_network_config_t *out) {
     return -1;
 
 #ifdef USE_ETHERNET
-  if (ethernet::global_eth_component != nullptr && ethernet::global_eth_component->is_connected())
+  if (ethernet::global_eth_component != nullptr && ethernet::global_eth_component->is_connected() &&
+      netif == ethernet::global_eth_component->get_esp_netif())
     out->network_type = PAX_NETWORK_ETHERNET;
 #endif
 #ifdef USE_WIFI
   if (out->network_type == PAX_NETWORK_NONE && wifi::global_wifi_component != nullptr &&
-      wifi::global_wifi_component->is_connected())
+      wifi::global_wifi_component->is_connected() && netif == wifi::global_wifi_component->get_esp_netif_sta())
     out->network_type = PAX_NETWORK_WIFI;
 #endif
 
@@ -8458,7 +8613,7 @@ int PaxLoader::svc_network_config_get(pax_network_config_t *out) {
     out->ipv4 = ntohl(ip.ip.addr);
     out->netmask = ntohl(ip.netmask.addr);
     out->gateway = ntohl(ip.gw.addr);
-    out->connected = ip.ip.addr != 0;
+    out->connected = ip.ip.addr != 0 && out->network_type != PAX_NETWORK_NONE;
   }
   esp_netif_dhcp_status_t dhcp_status = ESP_NETIF_DHCP_INIT;
   if (esp_netif_dhcpc_get_status(netif, &dhcp_status) == ESP_OK)
@@ -9649,6 +9804,8 @@ void *PaxLoader::svc_file_open(const char *path, const char *mode) {
     if(mode && mode[0]=='w')(void)restore_active_dns_if_missing_();
     return own_pax_file(pax_c6::open(mode));
   }
+  if(path && std::strcmp(path,PAX_WIFI_SCAN_FILE)==0)
+    return own_pax_file(pax_wifi_scan::open(mode));
   if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
     return own_pax_file(pax_wifi::open(mode));
   const std::string mapped = runtime_path(path);
@@ -11463,7 +11620,7 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
 
 
 bool PaxLoader::request_c6_update(uint32_t command) {
-  if(command!=PAX_C6_PREPARE && command!=PAX_C6_INSTALL)return false;
+  if(command!=PAX_C6_PREPARE && command!=PAX_C6_INSTALL && command!=PAX_C6_PREPARE_UNKNOWN)return false;
   if(pax_firmware::busy() || install_task_handle_ || web_storage_busy_)return false;
   (void)restore_active_dns_if_missing_();
   pax_c6_request_t request{};request.magic=PAX_C6_UPDATE_MAGIC;request.command=command;
