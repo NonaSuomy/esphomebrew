@@ -23,8 +23,8 @@ class FirmwareUpdateTests(unittest.TestCase):
             return source[start:end]
         setup=block(source.index('if(esphome::global_preferences){'))
         start=source.index('  SavedRuntimeSettings current{')
-        end=source.index('  pax_wifi::loop();',start)
-        loop=source[start:end]
+        persistence=source.index('if(esphome::global_preferences && memcmp',start)
+        loop=source[start:persistence]+block(persistence)
         definitions=source[source.index('struct SavedRuntimeSettings'):source.index('static int32_t s_brightness')]
         test=r'''#include <cassert>
 #include <cstdint>

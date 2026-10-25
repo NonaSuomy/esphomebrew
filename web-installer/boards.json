@@ -63,7 +63,7 @@
     ],
     "manufacturer": "Waveshare",
     "starters": {
-      "nano-lcd43": "sd/releases/20261023-radios/pax-sd-starter.zip"
+      "nano-lcd43": "sd/releases/20261024-network/pax-sd-starter.zip"
     }
   },
   {

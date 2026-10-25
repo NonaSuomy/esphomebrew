@@ -56,5 +56,5 @@ int main(int argc,char **argv){
   source=(ROOT/'components/pax_loader/pax_loader.cpp').read_text();worker=source[source.index('void PaxLoader::pax_load_task_entry_'):source.index('void PaxLoader::pax_catalog_task_entry_')]
   self.assertLess(worker.index('pax_supply::resolve'),worker.index('sync_app_data_'))
   for name in ('elecrow','waveshare'):
-   self.assertNotIn('dev-builds/launcher_ui.pax',(ROOT/f'esp32-p4-{name}-pax-3button.yaml').read_text())
+   self.assertNotIn('dev-builds/launcher_ui.pax',(ROOT/f'esp32-p4-{name}-pax-web.yaml').read_text())
 if __name__=='__main__':unittest.main()
