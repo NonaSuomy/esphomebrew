@@ -26,7 +26,7 @@
     "Hold Menu 3 s: exit to launcher"
   ],
   "canvas": true,
-  "publish": false,
+  "publish": true,
   "dev_build": true,
   "build": "custom",
   "source": {
@@ -70,5 +70,8 @@
   "ldflags": [
     "-lgcc"
   ],
-  "changelog": "0.6.1: rename the app and shared menu to Workspace; retain the desktop package ID and saved connections.\n0.6.0: on-panel Home Assistant and SD media browser through a token-free firmware bridge.\n0.5.0: buffered audio on a dedicated task; 512x300 video canvas and mono 16 kHz negotiation for P4 playback.\n0.4.1: recover picture timing after audio/network backpressure.\n0.4.0: SVP Relay AVI/MJPEG video and PCM audio, playback timing, pause/stop/mute and end reporting.\n0.3.1: allow Chromium cold startup before the first dashboard picture.\n0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client."
+  "changelog": "0.6.1: rename the app and shared menu to Workspace; retain the desktop package ID and saved connections.\n0.6.0: on-panel Home Assistant and SD media browser through a token-free firmware bridge.\n0.5.0: buffered audio on a dedicated task; 512x300 video canvas and mono 16 kHz negotiation for P4 playback.\n0.4.1: recover picture timing after audio/network backpressure.\n0.4.0: SVP Relay AVI/MJPEG video and PCM audio, playback timing, pause/stop/mute and end reporting.\n0.3.1: allow Chromium cold startup before the first dashboard picture.\n0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client.",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
 }

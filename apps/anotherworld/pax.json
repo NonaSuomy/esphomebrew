@@ -1,0 +1,35 @@
+{
+  "name": "anotherworld",
+  "title": "Another World",
+  "version": "0.1.0",
+  "description": "Another World interpreter for PAX. Current build embeds game data.",
+  "category": "Game",
+  "about": "Eric Chahi's 1991 cinematic action adventure (Out of This World in the US), running on Gregory Montoir's raw interpreter. The game data is compiled into the .pax, so no SD card files are needed. Starts at the intro; the code-wheel copy protection is bypassed.",
+  "controls": [
+    "D-pad: move (Up: jump, Down: crouch)",
+    "A or B: action (run, shoot, kick)",
+    "Menu or L3: quit to launcher",
+    "USB keyboard: arrows or WASD move, Space/Enter act",
+    "USB keyboard: Esc quits"
+  ],
+  "canvas": true,
+  "build": "workspace",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "47a4a9a232cf18d518b1d5751a7be476f596dfa7",
+    "path": "components/anotherworld"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "install_recipe": "install-recipe.json",
+  "changelog": "0.1.0: add a versioned PAX store recipe for the existing native port.",
+  "publish": false,
+  "requires_private_data": true,
+  "publication_blocker": "Current port embeds game banks; move user-provided data to SD before public release.",
+  "workspace_build": {
+    "script": "build_anotherworld_pax.sh",
+    "output": "pax-modules/.cache/native-output/anotherworld.pax"
+  }
+}

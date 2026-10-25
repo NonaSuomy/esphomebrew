@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "app": "spear",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/spear/incoming",
+  "folders": [
+    "/sd/roms/spear/base"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/spear/base/vswap.sod",
+      "note": "Spear of Destiny original campaign data"
+    },
+    {
+      "path": "/sd/roms/spear/base/vgagraph.sod",
+      "note": "Spear of Destiny original campaign data"
+    },
+    {
+      "path": "/sd/roms/spear/base/vgahead.sod",
+      "note": "Spear of Destiny original campaign data"
+    },
+    {
+      "path": "/sd/roms/spear/base/vgadict.sod",
+      "note": "Spear of Destiny original campaign data"
+    },
+    {
+      "path": "/sd/roms/spear/base/gamemaps.sod",
+      "note": "Spear of Destiny original campaign data"
+    },
+    {
+      "path": "/sd/roms/spear/base/maphead.sod",
+      "note": "Spear of Destiny original campaign data"
+    },
+    {
+      "path": "/sd/roms/spear/base/audiot.sod",
+      "note": "Spear of Destiny original campaign data"
+    },
+    {
+      "path": "/sd/roms/spear/base/audiohed.sod",
+      "note": "Spear of Destiny original campaign data"
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nMission packs optionally add matching .sd1 / .sd2 map and VSWAP files; do not mix data sets from different campaigns.\n\nFILES / FOLDERS\n\n/sd/roms/spear/base/vswap.sod \u2014 Spear of Destiny original campaign data\n\n/sd/roms/spear/base/vgagraph.sod \u2014 Spear of Destiny original campaign data\n\n/sd/roms/spear/base/vgahead.sod \u2014 Spear of Destiny original campaign data\n\n/sd/roms/spear/base/vgadict.sod \u2014 Spear of Destiny original campaign data\n\n/sd/roms/spear/base/gamemaps.sod \u2014 Spear of Destiny original campaign data\n\n/sd/roms/spear/base/maphead.sod \u2014 Spear of Destiny original campaign data\n\n/sd/roms/spear/base/audiot.sod \u2014 Spear of Destiny original campaign data\n\n/sd/roms/spear/base/audiohed.sod \u2014 Spear of Destiny original campaign data",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/Wolf4SDL/Wolf4SDL",
+      "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+    }
+  ]
+}

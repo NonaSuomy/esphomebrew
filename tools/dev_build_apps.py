@@ -31,6 +31,8 @@ def wip_apps(apps_dir: Path) -> dict[str, dict]:
     found = {}
     for manifest in sorted(apps_dir.glob("*/pax.json")):
         data = json.loads(manifest.read_text(encoding="utf-8"))
+        if data.get("requires_private_data"):
+            continue  # Native private-data builds never go to public prereleases.
         if data.get("publish", True) is False or data.get("dev_build"):
             found[manifest.parent.name] = data
     return found

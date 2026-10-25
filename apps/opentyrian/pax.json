@@ -108,5 +108,9 @@
       "note": "Tyrian 2.1 item data"
     }
   ],
-  "install_recipe": "install-recipe.json"
+  "install_recipe": "install-recipe.json",
+  "publish": true,
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
 }

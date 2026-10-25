@@ -27,7 +27,7 @@
   },
   "canvas": true,
   "icon": "icon.png",
-  "publish": false,
+  "publish": true,
   "dev_build": true,
   "build": "custom",
   "source": {
@@ -517,5 +517,8 @@
   ],
   "libraries": [
     ".pax-gen/aom-build/libaom.a"
+  ],
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
   ]
 }

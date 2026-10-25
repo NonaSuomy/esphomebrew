@@ -189,6 +189,10 @@
       "optional": true
     }
   ],
-  "publish": false,
-  "install_recipe": "install-recipe.json"
+  "publish": true,
+  "install_recipe": "install-recipe.json",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "dev_build": true
 }
