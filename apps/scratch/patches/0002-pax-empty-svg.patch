@@ -1,0 +1,38 @@
+diff --git a/source/image.cpp b/source/image.cpp
+index bbe77c7..bff4e59 100644
+--- a/source/image.cpp
++++ b/source/image.cpp
+@@ -268,6 +268,19 @@ nonstd::expected<unsigned char *, std::string> Image::loadSVGFromMemory(const ch
+     svgDocument = lunasvg::Document::loadFromData(std::string(data, size).c_str());
+     if (!svgDocument) return nonstd::make_unexpected("LunaSVG failed to parse SVG");
+ 
++#ifdef PAX_APP_SIDE
++    // Scratch exports deliberately blank costumes with a zero-size viewport.
++    // LunaSVG cannot rasterize that viewport; retain a transparent texel instead.
++    if (svgDocument->width() <= 0 || svgDocument->height() <= 0) {
++        width = height = 1;
++        imgData.pitch = 4;
++        imgData.scale = scale;
++        auto *pixels = static_cast<unsigned char *>(calloc(4, 1));
++        if (!pixels) return nonstd::make_unexpected("Failed to allocate empty SVG pixels");
++        return pixels;
++    }
++#endif
++
+     const float targetWidth = svgDocument->width() * scale;
+     const float targetHeight = svgDocument->height() * scale;
+ 
+@@ -314,6 +327,13 @@ nonstd::expected<void, std::string> Image::resizeSVG(float scale) {
+ 
+     if (!svgDocument || scale <= imgData.scale) return {};
+ 
++#ifdef PAX_APP_SIDE
++    if (svgDocument->width() <= 0 || svgDocument->height() <= 0) {
++        imgData.scale = scale;
++        return {};
++    }
++#endif
++
+     // TODO: De-duplicate code.
+ 
+     const float targetWidth = svgDocument->width() * scale;

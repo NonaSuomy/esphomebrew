@@ -1,0 +1,189 @@
+{
+  "name": "spear",
+  "title": "Spear of Destiny",
+  "version": "0.1.0",
+  "description": "Spear of Destiny and mission-pack selector; requires your game data.",
+  "category": "Game",
+  "about": "The 1992 Wolfenstein 3D prequel on Wolf4SDL 1.7. A start menu picks the Original Campaign, Return to Danger or Ultimate Challenge. Needs data in /sd/roms/spear/base/: the .sod files, plus .sd1 (Return to Danger) and .sd2 (Ultimate Challenge) files for the mission packs.",
+  "controls": [
+    "Mission menu: Up/Down choose, A start, B quit",
+    "D-pad: move and turn",
+    "A: fire",
+    "B (hold): run",
+    "X or Select: open doors / use",
+    "Y: Enter (confirm in menus)",
+    "L: weapon 1 (knife)",
+    "R: weapon 2 (pistol)",
+    "Start: game menu",
+    "Menu (tap): game menu",
+    "Menu or L3 (hold 0.75 s): back to mission menu",
+    "USB keyboard: standard Wolf3D keys (Alt strafes)"
+  ],
+  "canvas": true,
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "d0a449f9e2252881ab1ac297d05353f5bc58c046",
+    "path": "components/psram_app_loader"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "cflags": [
+    "-O2",
+    "-fno-common",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fno-tree-loop-distribute-patterns",
+    "-DIRAM_ATTR=",
+    "-Wall",
+    "-Wno-format",
+    "-Wno-unused-variable",
+    "-Wno-unused-function",
+    "-Wno-maybe-uninitialized",
+    "-DWOLF4SDL_PAX=1",
+    "-DPLATFORM_ESP32=1",
+    "-DVERSIONALREADYCHOSEN=1",
+    "-DCARMACIZED",
+    "-DDATADIR=\"/sd/roms/spear/base/\"",
+    "-DSPEAR=1",
+    "-DPAX_AUTO_COPYPROTECTION=1",
+    "-Wno-implicit-function-declaration",
+    "-Wno-pointer-sign",
+    "-Wno-int-conversion"
+  ],
+  "cxxflags": [
+    "-std=gnu++17",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-threadsafe-statics",
+    "-fno-use-cxa-atexit",
+    "-fno-unwind-tables",
+    "-fno-asynchronous-unwind-tables",
+    "-Wno-write-strings",
+    "-Wno-narrowing"
+  ],
+  "groups": [
+    {
+      "dir": "local:apps/wolf4sdl/core",
+      "files": [
+        "SDL_rwops.c",
+        "SDL_wave.c",
+        "SDL_error.c",
+        "SDL_log.c",
+        "SDL_mixer.c",
+        "SDL_mixer-1.2.12/mixer.c",
+        "SDL_mixer-1.2.12/music.c",
+        "SDL_mixer-1.2.12/load_aiff.c",
+        "SDL_mixer-1.2.12/load_voc.c",
+        "SDL_mixer-1.2.12/effects_internal.c",
+        "SDL_mixer-1.2.12/effect_position.c",
+        "wl_main/fmopl.cpp",
+        "wl_main/id_ca.cpp",
+        "wl_main/id_in.cpp",
+        "wl_main/id_pm.cpp",
+        "wl_main/id_sd.cpp",
+        "wl_main/id_us_1.cpp",
+        "wl_main/id_vh.cpp",
+        "wl_main/id_vl.cpp",
+        "wl_main/signon.cpp",
+        "wl_main/wl_act1.cpp",
+        "wl_main/wl_act2.cpp",
+        "wl_main/wl_agent.cpp",
+        "wl_main/wl_atmos.cpp",
+        "wl_main/wl_cloudsky.cpp",
+        "wl_main/wl_debug.cpp",
+        "wl_main/wl_dir3dspr.cpp",
+        "wl_main/wl_draw.cpp",
+        "wl_main/wl_floorceiling.cpp",
+        "wl_main/wl_game.cpp",
+        "wl_main/wl_inter.cpp",
+        "wl_main/wl_main.cpp",
+        "wl_main/wl_menu.cpp",
+        "wl_main/wl_parallax.cpp",
+        "wl_main/wl_play.cpp",
+        "wl_main/wl_shade.cpp",
+        "wl_main/wl_state.cpp",
+        "wl_main/wl_text.cpp"
+      ],
+      "prefix": "core_"
+    },
+    {
+      "dir": "local:apps/wolf4sdl",
+      "files": [
+        "pax_main.cpp",
+        "pax_sdl_system.c",
+        "pax_sdl_video.c",
+        "pax_sdl_event.c",
+        "pax_sdl_audio.c",
+        "pax_syscalls.c",
+        "pax_spear_menu.cpp"
+      ],
+      "prefix": "app_"
+    },
+    {
+      "dir": "local:apps/pax_emulator_common",
+      "files": [
+        "pax_libc.c"
+      ],
+      "prefix": "runtime_"
+    }
+  ],
+  "ldflags": [
+    "-Wl,--wrap=fopen",
+    "-Wl,--wrap=fclose",
+    "-Wl,--wrap=fread",
+    "-Wl,--wrap=fwrite",
+    "-Wl,--wrap=fseek",
+    "-Wl,--wrap=ftell",
+    "-Wl,--wrap=rewind",
+    "-Wl,--wrap=getc",
+    "-Wl,--wrap=fgetc",
+    "-Wl,--wrap=exit"
+  ],
+  "newlib": true,
+  "install_recipe": "install-recipe.json",
+  "changelog": "0.1.0: add a versioned PAX store recipe for the existing native port.",
+  "includes": [
+    "local:apps/wolf4sdl/compat",
+    "local:apps/wolf4sdl/core",
+    "local:apps/wolf4sdl/core/wl_main",
+    "local:apps/wolf4sdl/core/SDL_mixer-1.2.12",
+    "local:apps/pax_emulator_common"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/spear/base/vswap.sod",
+      "note": "Matching original game data set required"
+    },
+    {
+      "path": "/sd/roms/spear/base/vgagraph.sod",
+      "note": "Matching original game data set required"
+    },
+    {
+      "path": "/sd/roms/spear/base/vgahead.sod",
+      "note": "Matching original game data set required"
+    },
+    {
+      "path": "/sd/roms/spear/base/vgadict.sod",
+      "note": "Matching original game data set required"
+    },
+    {
+      "path": "/sd/roms/spear/base/gamemaps.sod",
+      "note": "Matching original game data set required"
+    },
+    {
+      "path": "/sd/roms/spear/base/maphead.sod",
+      "note": "Matching original game data set required"
+    },
+    {
+      "path": "/sd/roms/spear/base/audiot.sod",
+      "note": "Matching original game data set required"
+    },
+    {
+      "path": "/sd/roms/spear/base/audiohed.sod",
+      "note": "Matching original game data set required"
+    }
+  ]
+}

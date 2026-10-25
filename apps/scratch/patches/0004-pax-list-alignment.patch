@@ -1,0 +1,118 @@
+diff --git a/source/render.cpp b/source/render.cpp
+index 81931bc..4047c9d 100644
+--- a/source/render.cpp
++++ b/source/render.cpp
+@@ -168,7 +168,14 @@ void Render::forceUpdateSpritePosition() {
+     }
+ }
+ 
++#if defined(PAX_APP_SIDE)
++extern bool pax_turbo_frame_ready();
++extern int pax_text_center_y(const std::string&, float, float);
++#endif
+ bool Render::checkFramerate() {
++#if defined(PAX_APP_SIDE)
++    if (Scratch::turbo) return pax_turbo_frame_ready();
++#endif
+     static Timer frameTimer;
+     int frameDuration = 1000 / Scratch::FPS;
+     return frameTimer.hasElapsedAndRestart(frameDuration);
+@@ -450,7 +457,12 @@ void Render::renderMonitors(const int &offsetX, const int &offsetY) {
+                 drawBox(monitorW, boxHeight, monitorX + monitorW / 2, monitorY + (boxHeight / 2), 255, 255, 255);
+ 
+                 // List name text
++                #if defined(PAX_APP_SIDE)
++                monitorGfx.name->render(monitorX + monitorW / 2,
++                    monitorY + (boxHeight - monitorGfx.name->getSize()[1]) / 2 + scale);
++#else
+                 monitorGfx.name->render(monitorX + (monitorW / 2), monitorY + (4 * scale) + (monitorGfx.name->getSize()[1] / 2));
++#endif
+ 
+                 // Items
+                 if (monitorGfx.items.size() != var.list.size()) {
+@@ -486,8 +498,16 @@ void Render::renderMonitors(const int &offsetX, const int &offsetY) {
+                         itemIndexText->setScale(1.0f * (scale / 2.0f));
+                         itemIndexText->setCenterAligned(true);
+ 
++#if defined(PAX_APP_SIDE)
++                        const float rowCenter = monitorY + boxHeight + item_y + boxHeight / 2;
++                        itemText->render(monitorX + (24 * scale),
++                            pax_text_center_y(itemText->getText(), itemText->getScale(), rowCenter));
++                        itemIndexText->render(monitorX + (10 * scale),
++                            pax_text_center_y(itemIndexText->getText(), itemIndexText->getScale(), rowCenter));
++#else
+                         itemText->render(monitorX + (24 * scale), monitorY + boxHeight + (4 * scale) + item_y);
+                         itemIndexText->render(monitorX + (10 * scale), monitorY + boxHeight + (12 * scale) + item_y);
++#endif
+ 
+                         index++;
+                         item_y += boxHeight + (4 * scale);
+@@ -508,14 +528,25 @@ void Render::renderMonitors(const int &offsetX, const int &offsetY) {
+                 monitorGfx.length->setCenterAligned(true);
+                 monitorGfx.length->setScale(1.0f * (scale / 2.0f));
+                 monitorGfx.length->setColor(Math::color(0, 0, 0, 255));
++                #if defined(PAX_APP_SIDE)
++                const float footerTop = monitorY + monitorH - boxHeight;
++                monitorGfx.length->render(monitorX + monitorW / 2,
++                    footerTop + (boxHeight - monitorGfx.length->getSize()[1]) / 2 + scale);
++#else
+                 monitorGfx.length->render(monitorX + (monitorW / 2), monitorY + monitorH - (6 * scale));
++#endif
+ 
+                 std::array<int, 2> touchPos = Input::getTouchPosition();
+ 
+                 // plus button
+                 std::unique_ptr<TextObject> plus = createTextObject("+", 0, 0);
+                 const int plusPosX = monitorX + (8 * scale);
++                #if defined(PAX_APP_SIDE)
++                plus->setScale(1.0f * (scale / 2.0f));
++                const int plusPosY = footerTop + (boxHeight - plus->getSize()[1]) / 2 + 2 * scale;
++#else
+                 const int plusPosY = monitorY + monitorH - (14 * scale);
++#endif
+                 plus->setCenterAligned(false);
+                 plus->setColor(Math::color(0, 0, 0, 255));
+                 plus->setScale(1.0f * (scale / 2.0f));
+@@ -730,6 +761,11 @@ void Render::renderMonitors(const int &offsetX, const int &offsetY) {
+                     var.hitboxH = nameBackgroundHeight + (8 * scale);
+                 }
+ #else
++#if defined(PAX_APP_SIDE)
++                constexpr int monitorTextRaise = 1;
++#else
++                constexpr int monitorTextRaise = 0;
++#endif
+                 if (var.mode == "large") {
+                     valueObj->setColor(Math::color(255, 255, 255, 255));
+                     valueObj->setScale(1.25f * (scale / 2.0f));
+@@ -745,7 +781,7 @@ void Render::renderMonitors(const int &offsetX, const int &offsetY) {
+                             valueBackgroundColor.r, valueBackgroundColor.g, valueBackgroundColor.b);
+ 
+                     float valueCenterX = baseRenderX + (valueWidth / 2) - (valueSizeBox[0] / 2);
+-                    valueObj->render(valueCenterX, baseRenderY + (3 * scale));
++                    valueObj->render(valueCenterX, baseRenderY + (3 * scale) - monitorTextRaise);
+                 } else if (var.mode == "slider") {
+                     nameObj->setColor(Math::color(0, 0, 0, 255));
+                     nameObj->setScale(1.0f * (scale / 2.0f));
+@@ -776,8 +812,8 @@ void Render::renderMonitors(const int &offsetX, const int &offsetY) {
+                             valueBackgroundX + valueWidth / 2, valueBackgroundY + valueSizeBox[1] / 2,
+                             valueBackgroundColor.r, valueBackgroundColor.g, valueBackgroundColor.b);
+ 
+-                    nameObj->render(nameBackgroundX, nameBackgroundY + (2 * scale));
+-                    valueObj->render(valueBackgroundX + (valueWidth / 2) - (valueSizeBox[0] / 2), valueBackgroundY + (2 * scale));
++                    nameObj->render(nameBackgroundX, nameBackgroundY + (2 * scale) - monitorTextRaise);
++                    valueObj->render(valueBackgroundX + (valueWidth / 2) - (valueSizeBox[0] / 2), valueBackgroundY + (2 * scale) - monitorTextRaise);
+ 
+                     // draw slider
+                     drawBox(nameBackgroundWidth * 0.97, 9 * scale, nameBackgroundX + nameBackgroundWidth / 2, nameBackgroundY + (8 * scale) + nameBackgroundHeight / 2, 178, 178, 178, 255);
+@@ -854,8 +890,8 @@ void Render::renderMonitors(const int &offsetX, const int &offsetY) {
+                             valueBackgroundX + valueWidth / 2, valueBackgroundY + valueSizeBox[1] / 2,
+                             valueBackgroundColor.r, valueBackgroundColor.g, valueBackgroundColor.b);
+ 
+-                    nameObj->render(nameBackgroundX, nameBackgroundY + (2 * scale));
+-                    valueObj->render(valueBackgroundX + (valueWidth / 2) - (valueSizeBox[0] / 2), valueBackgroundY + (2 * scale));
++                    nameObj->render(nameBackgroundX, nameBackgroundY + (2 * scale) - monitorTextRaise);
++                    valueObj->render(valueBackgroundX + (valueWidth / 2) - (valueSizeBox[0] / 2), valueBackgroundY + (2 * scale) - monitorTextRaise);
+                 }
+ #endif
+             }

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "app": "desktop",
+  "mode": "self-contained",
+  "archive_dir": "/sd/roms/desktop/incoming",
+  "folders": [
+    "/sd/roms/desktop/",
+    "/sd/media/"
+  ],
+  "requires": [],
+  "instructions": "No game data is needed. LISTEN opens the SVP Relay JPEG desktop/dashboard receiver on TCP port 5000 while this app is open. In Home Assistant SVP Relay select this ESPHome device, set its reachable panel address, and enter stream port 5000 manually. Audio player is optional for pictures; select a real audio entity only if needed. Dashboard URL is optional. VIA RELAY requests a VNC desktop using the computer host/port/password fields. It needs /sd/roms/desktop/relay.conf with two lines: Home Assistant origin URL (http://host:8123 or certificate-verified https://host), then a Home Assistant long-lived access token. This is not a worker token. Protect this secret file. CONNECT remains direct VNC. SAVE HOST stores only the computer address and port, never the VNC password. Receiver traffic and direct VNC are unencrypted; use a trusted LAN. VIDEO/AUDIO accepts relay AVI with baseline MJPEG video and 16-bit PCM sound. VIDEO/AUDIO uses a 512x300 canvas upscaled by the panel and mono 16 kHz sound, with a dedicated buffered audio task. Start with video FPS 5, ffmpeg quality 15 and Audio codec Auto or PCM. Shared menu provides Pause/Resume, Stop media and Mute/Unmute. Embedded video sound uses the PAX speaker; standalone HA audio actions still need a separate media-player entity. MP3/FLAC AVI audio and SPICE main/audio/USB channels are not supported. See apps/desktop/README.md for details. MEDIA browses HA and /sd/media using optional firmware package pax-media-browser.yaml. Configure its relay entity and HA IPv4 address; allow HA actions in the existing ESPHome integration. No HA token is needed for this browser. Audio-only files use the relay Audio player (PAX Audio on this device). SD: max 256 entries per folder, 2 GiB per file. See README for controls and remaining limitations.",
+  "media": [],
+  "sources": []
+}

@@ -1,0 +1,174 @@
+diff --git a/include/runtime/value.hpp b/include/runtime/value.hpp
+index ea22919..f953f05 100644
+--- a/include/runtime/value.hpp
++++ b/include/runtime/value.hpp
+@@ -15,7 +15,7 @@ struct SE_EXPORT Undefined {};
+ 
+ // RV32 requires only four-byte alignment for shared_ptr; let the compiler
+ // generate the appropriate double accesses instead of padding each Value to 24.
+-// This keeps every value and its type while saving four bytes per list element.
++// Rare colors use shared immutable storage so ordinary entries need only 12 bytes.
+ #if defined(PAX_APP_SIDE) && __SIZEOF_POINTER__ == 4
+ #pragma pack(push, 4)
+ #endif
+@@ -33,7 +33,11 @@ class SE_EXPORT Value {
+         double d;
+         std::shared_ptr<const std::string> s;
+         bool b;
++#if defined(PAX_APP_SIDE)
++        std::shared_ptr<const ::Color> c;
++#else
+         ::Color c;
++#endif
+ 
+         Storage() {}
+         ~Storage() {}
+@@ -41,6 +45,9 @@ class SE_EXPORT Value {
+ 
+     SE_FORCEINLINE void destroyActive() {
+         if (tag == Tag::String) storage.s.~shared_ptr();
++#if defined(PAX_APP_SIDE)
++        if (tag == Tag::Color) storage.c.~shared_ptr();
++#endif
+     }
+ 
+     SE_FORCEINLINE void constructFrom(const Value &other) {
+@@ -55,7 +62,11 @@ class SE_EXPORT Value {
+             storage.b = other.storage.b;
+             break;
+         case Tag::Color:
++#if defined(PAX_APP_SIDE)
++            new (&storage.c) std::shared_ptr<const ::Color>(other.storage.c);
++#else
+             storage.c = other.storage.c;
++#endif
+             break;
+         case Tag::Undefined:
+             break;
+@@ -74,13 +85,25 @@ class SE_EXPORT Value {
+             storage.b = other.storage.b;
+             break;
+         case Tag::Color:
++#if defined(PAX_APP_SIDE)
++            new (&storage.c) std::shared_ptr<const ::Color>(other.storage.c);
++#else
+             storage.c = other.storage.c;
++#endif
+             break;
+         case Tag::Undefined:
+             break;
+         }
+     }
+ 
++    const ::Color &storedColor() const {
++#if defined(PAX_APP_SIDE)
++        return *storage.c;
++#else
++        return storage.c;
++#endif
++    }
++
+     static const std::shared_ptr<const std::string> &emptyString() {
+         static const std::shared_ptr<const std::string> empty = std::make_shared<const std::string>();
+         return empty;
+@@ -254,6 +277,6 @@ class SE_EXPORT Value {
+ #if defined(PAX_APP_SIDE) && __SIZEOF_POINTER__ == 4
+ #pragma pack(pop)
+ static_assert(alignof(std::shared_ptr<const std::string>) <= 4);
+-static_assert(sizeof(Value) == 20, "PAX RV32 Value must use the compact layout");
++static_assert(sizeof(Value) == 12, "PAX RV32 Value must use the compact layout");
+ static_assert(alignof(Value) == 4);
+ #endif
+diff --git a/source/runtime/blocks/data.cpp b/source/runtime/blocks/data.cpp
+index a3b922c..2a2edae 100644
+--- a/source/runtime/blocks/data.cpp
++++ b/source/runtime/blocks/data.cpp
+@@ -7,6 +7,15 @@
+ 
+ constexpr unsigned int MAX_LIST_ITEMS = 200000;
+ 
++static void clearList(std::vector<Value> &items) {
++#if defined(PAX_APP_SIDE)
++    // A cleared large list must not reserve scarce RAM for the rest of the run.
++    // Keep small lists' capacity to avoid allocator churn in ordinary scripts.
++    if (items.capacity() >= 1024) { std::vector<Value>().swap(items); return; }
++#endif
++    items.clear();
++}
++
+ SCRATCH_BLOCK(data, setvariableto) {
+     Value value;
+     if (!Scratch::getInputValue(block, "VALUE", thread, sprite, value)) return BlockResult::REPEAT;
+@@ -86,7 +95,7 @@ SCRATCH_BLOCK(data, deleteoflist) {
+     }
+ 
+     if (indexStr == "all") {
+-        items->clear();
++        clearList(*items);
+         return BlockResult::CONTINUE;
+     }
+ 
+@@ -111,7 +120,7 @@ SCRATCH_BLOCK(data, deleteoflist) {
+ 
+ SCRATCH_BLOCK(data, deletealloflist) {
+     auto items = Scratch::getListItems(*block, sprite);
+-    if (items) items->clear();
++    if (items) clearList(*items);
+     return BlockResult::CONTINUE;
+ }
+ 
+diff --git a/source/runtime/value.cpp b/source/runtime/value.cpp
+index 04cd859..8dbf3ae 100644
+--- a/source/runtime/value.cpp
++++ b/source/runtime/value.cpp
+@@ -22,7 +22,13 @@ Value::Value(std::shared_ptr<const std::string> val) : tag(Tag::String) { new (&
+ 
+ Value::Value(bool val) : tag(Tag::Bool) { storage.b = val; }
+ 
+-Value::Value(Color val) : tag(Tag::Color) { storage.c = val; }
++Value::Value(Color val) : tag(Tag::Color) {
++#if defined(PAX_APP_SIDE)
++    new (&storage.c) std::shared_ptr<const ::Color>(std::make_shared<const ::Color>(val));
++#else
++    storage.c = val;
++#endif
++}
+ 
+ Value::Value(Undefined) : tag(Tag::Undefined) {}
+ 
+@@ -34,7 +40,7 @@ double Value::asDouble() const {
+         auto &strValue = *storage.s;
+         return Math::parseNumber(strValue).value_or(0);
+     } else if (isColor()) {
+-        const ColorRGBA rgb = CSBT2RGBA(storage.c);
++        const ColorRGBA rgb = CSBT2RGBA(storedColor());
+         return rgb.r * 0x10000 + rgb.g * 0x100 + rgb.b;
+     } else if (isBoolean()) {
+         return storage.b ? 1 : 0;
+@@ -53,7 +59,7 @@ std::string Value::asString() const {
+     } else if (isUndefined()) {
+         return "undefined";
+     } else if (isColor()) {
+-        const ColorRGBA rgb = CSBT2RGBA(storage.c);
++        const ColorRGBA rgb = CSBT2RGBA(storedColor());
+         const char hex_chars[] = "0123456789abcdef";
+         const unsigned char r = static_cast<unsigned char>(rgb.r);
+         const unsigned char g = static_cast<unsigned char>(rgb.g);
+@@ -84,7 +90,7 @@ bool Value::asBoolean() const {
+         return strValue != "" && strValue != "0" && strValue != "false";
+     }
+     if (isColor()) {
+-        const ColorRGBA rgb = CSBT2RGBA(storage.c);
++        const ColorRGBA rgb = CSBT2RGBA(storedColor());
+         return rgb.r != 0 || rgb.g != 0 || rgb.b != 0 || rgb.a != 0;
+     }
+     return false;
+@@ -131,7 +137,7 @@ ColorRGBA Value::asRGB() const {
+ bool Value::operator==(const Value &other) const {
+     if (isDouble() && other.isDouble() && !isNaN() && !other.isNaN()) return storage.d == other.storage.d;
+     if (isBoolean() && other.isBoolean()) return storage.b == other.storage.b;
+-    if (isColor() && other.isColor()) return storage.c == other.storage.c;
++    if (isColor() && other.isColor()) return storedColor() == other.storedColor();
+ 
+     std::string ownedA, ownedB;
+     const std::string *strA = tryGetStringRef();

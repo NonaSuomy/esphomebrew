@@ -397,7 +397,7 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     # current loader ABI header ahead of the pinned upstream SDK header here as
     # well.  Otherwise callbacks appended by the ESPHome loader (such as ZIP
     # extraction) are read at the wrong offsets by the PAX.
-    loader_sdk = (build_sdk_headers(src_root, manifest["sdk_headers"], cache / "sdk" / name)
+    loader_sdk = (build_sdk_headers(src_root, manifest["sdk_headers"], ROOT / ".cache/sdk" / manifest["name"])
                   if manifest.get("sdk_headers") else get_loader_sdk())
     includes = [f"-I{loader_sdk}"] + [f"-I{source_file(src_root, inc)}" for inc in manifest.get("includes", [])]
     base = ARCH_FLAGS + ["-mcmodel=medany"]
@@ -428,6 +428,7 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     if len(set(objs)) != len(objs):
         raise ValueError("two sources map to the same object file; give a group a 'prefix'")
     ldflags = list(manifest.get("ldflags", []))
+    ldflags += [str(source_file(src_root, path)) for path in manifest.get("libraries", [])]
     if manifest.get("newlib"):
         ldflags += [f"-Wl,--wrap={sym}" for sym in NEWLIB_WRAPS] + NEWLIB_LIBS
     return units, ldflags
@@ -443,7 +444,7 @@ def run_prebuild(manifest: dict, src_root: Path, build_dir: Path, cache: Path, e
     MicroPython's qstr extraction), {python} and {jobs} filled in. Generated
     sources are then compiled from "<GEN_DIR>/..." like upstream ones.
     """
-    gen = src_root / GEN_DIR
+    gen = src_root / (".pax-gen" if manifest.get("sdk_headers") else GEN_DIR)
     if gen.exists():
         shutil.rmtree(gen)
     gen.mkdir(parents=True)
@@ -639,6 +640,12 @@ def store_info(name: str, manifest: dict, app_dir: Path) -> dict:
         info.update(canvas_listing(name, manifest["canvas"]))
     if "requires" in manifest:
         info["requires"] = requires_info(name, manifest["requires"])
+    if "install_recipe" in manifest:
+        from install_recipe import load as load_install_recipe
+        recipe_path = manifest["install_recipe"]
+        if not isinstance(recipe_path, str) or Path(recipe_path).name != recipe_path:
+            raise ValueError(f"{name}: install_recipe must be a filename inside the app folder")
+        info["extract"] = load_install_recipe(app_dir / recipe_path)
     if "icon" in manifest:
         info["icon"] = listing_png(name, app_dir, manifest["icon"], "icon", MAX_ICON_BYTES, MAX_ICON_SIDE, MAX_ICON_SIDE)
     if "screenshots" in manifest:
@@ -671,12 +678,92 @@ def build_sdk_headers(src_root: Path, headers: list[str], target: Path) -> Path:
     return target
 
 
+def get_upstream_compat(manifest: dict) -> Path:
+    """Map historical upstream identifiers/includes onto the renamed PAX port SDK."""
+    target = ROOT / ".cache" / "upstream_compat" / manifest.get("name", "unnamed")
+    target.mkdir(parents=True, exist_ok=True)
+    tokens = set()
+    header_guards = set()
+    local_apps = set()
+    def collect(value):
+        if isinstance(value, str) and value.startswith("local:apps/"):
+            parts = value[6:].split("/")
+            local_apps.add(ROOT / "/".join(parts[:3 if parts[1] == "_shared" else 2]))
+        elif isinstance(value, dict):
+            for item in value.values(): collect(item)
+        elif isinstance(value, list):
+            for item in value: collect(item)
+    collect(manifest)
+    for folder in [*sorted(local_apps), ROOT / "esphome" / "components" / "pax_loader"]:
+        for path in folder.rglob("*"):
+            if not path.is_file() or path.suffix not in (".c", ".cpp", ".h", ".hpp"):
+                continue
+            content = path.read_text(errors="ignore")
+            header_guards.update(re.findall(r"#ifndef\s+(\w+)\s+#define\s+\1\b", content))
+            tokens.update(token for token in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", content)
+                          if any(mark in token for mark in ("PAX", "Pax", "pax")))
+            if "pax" in path.name and path.suffix in (".h", ".hpp"):
+                old = path.name.replace("pax", "papp")
+                wrapper = target / old
+                # A repeated basename is allowed only for identical interface wrappers.
+                wrapper.write_text('#include "' + str(path) + '"\n')
+    aliases = ["#ifndef PAX_APP_SIDE\n#define PAX_APP_SIDE 1\n#endif\n"]
+    for token in sorted(tokens - header_guards):
+        old = token.replace("PAX", "PAPP").replace("Pax", "Papp").replace("pax", "papp")
+        aliases.append(f"#ifndef {old}\n#define {old} {token}\n#endif\n")
+    (target / "upstream_compat.h").write_text("".join(aliases))
+    return target
+
+def public_build_manifest(manifest: dict) -> bool:
+    """Private-data recipes must never enter unattended CI builds/releases."""
+    if not manifest.get("requires_private_data", False):
+        return True
+    if manifest.get("publish", True) or not manifest.get("publication_blocker"):
+        raise ValueError("private-data recipes require publish=false and a publication_blocker")
+    return False
+
+def build_workspace_app(manifest: dict, manifest_path: Path, out: Path) -> dict:
+    """Run a preserved native recipe explicitly, without staging SD artifacts.
+
+    This is for private asset-dependent ports, not standalone store CI. An
+    explicit app argument is required; default builds skip private recipes.
+    """
+    if public_build_manifest(manifest):
+        raise ValueError("workspace builds must be marked as private-data recipes")
+    workspace = ROOT.parent
+    spec = manifest["workspace_build"]
+    script = spec["script"]
+    if not re.fullmatch(r"build_[a-z0-9_]+_pax\.sh", script):
+        raise ValueError("invalid workspace build script")
+    builder = workspace / "pax-recipe/tools" / script
+    output = (workspace / spec["output"]).resolve()
+    if not output.is_relative_to(workspace.resolve() / "pax-modules/.cache"):
+        raise ValueError("workspace build output must stay in pax-modules/.cache")
+    if not builder.is_file():
+        raise RuntimeError(f"{manifest['name']}: native build needs the complete PAX workspace ({script})")
+    env = {**os.environ, "PAX_STAGE_SD": "0", "PAX_STAGE_DIR": ""}
+    run(["bash", str(builder)], cwd=workspace, env=env)
+    data = output.read_bytes()
+    info = {"name": manifest["name"], "title": manifest.get("title", manifest["name"]),
+            "version": manifest["version"], "description": manifest.get("description", ""),
+            "file": manifest["name"] + ".pax", "size": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(), "abi": PAX_ABI_VERSION,
+            **parse_header(data), "source": manifest["source"], "publish": False,
+            **store_info(manifest["name"], manifest, manifest_path.parent)}
+    out.mkdir(parents=True, exist_ok=True)
+    (out / info["file"]).write_bytes(data)
+    (out / (manifest["name"] + ".json")).write_text(json.dumps(info, indent=2) + "\n")
+    return info
+
 def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     manifest = json.loads(manifest_path.read_text())
     name = manifest["name"]
     if manifest_path.parent.name != name:
         raise ValueError(f"{manifest_path}: name '{name}' must match its folder")
     print(f"=== {name} ===", flush=True)
+    public_build_manifest(manifest)
+    if manifest["build"] == "workspace":
+        return build_workspace_app(manifest, manifest_path, out)
     data_files = check_data(name, manifest.get("data"))
     listing = store_info(name, manifest, manifest_path.parent)
 
@@ -689,7 +776,7 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     # Only upstream directories are checked out; "." as an include root,
     # generated files and this repository's own (local:) files need nothing fetched.
     sparse = [p for p in sparse if not p.startswith(LOCAL_PREFIX) and p not in ("", ".")
-              and p.split("/")[0] != GEN_DIR]
+              and p.split("/")[0] not in (GEN_DIR, ".pax-gen")]
     sparse, sub_sparse = split_sparse(sparse, submodules)
     sdk = src_root = fetch(source["repo"], source["ref"], cache / f"src-{name}-{source['ref'][:12]}", sparse)
     fetch_submodules(src_root, submodules, sub_sparse)
@@ -750,6 +837,10 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     # checkout path (which __FILE__ would embed) mapped to a fixed name.
     for unit in units:
         unit.flags = unit.flags + [f"-ffile-prefix-map={cache}=/papp-src"]
+    if manifest.get("sdk_headers"):
+        compat = get_upstream_compat(manifest)
+        for unit in units:
+            unit.flags += ["-DPAX_APP_SIDE=1", f"-I{compat}", "-include", str(compat / "upstream_compat.h")]
     print(f"  compiling {len(units)} files (SOURCE_DATE_EPOCH={epoch})", flush=True)
     failures: list[str] = []
 
@@ -842,6 +933,15 @@ def main() -> int:
     args = parser.parse_args()
 
     manifests = [APPS / n / "pax.json" for n in args.apps] if args.apps else sorted(APPS.glob("*/pax.json"))
+    if not args.apps:
+        selected = []
+        for path in manifests:
+            manifest = json.loads(path.read_text())
+            if public_build_manifest(manifest):
+                selected.append(path)
+            else:
+                print(f"Skipping {manifest['name']}: {manifest['publication_blocker']}")
+        manifests = selected
     if not manifests:
         print("no apps found under apps/", file=sys.stderr)
         return 1

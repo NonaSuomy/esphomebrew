@@ -1,0 +1,99 @@
+diff --git a/components/quake2/source/other/q_hunk.c b/components/quake2/source/other/q_hunk.c
+--- a/components/quake2/source/other/q_hunk.c
++++ b/components/quake2/source/other/q_hunk.c
+@@ -148,12 +148,46 @@ void *Hunk_Alloc(int size) {
+ void *Hunk_Alloc(int size) {
+   // round to cacheline
+   size = (size + 31) & ~31;
+ 
+   cursize += size;
+   if (cursize > hunkmaxsize)
+     Sys_Error("Hunk_Alloc overflow");
+ 
+   return (void *)(membase + cursize - size);
+ }
++
++void *Hunk_AllocBlock(int size) {
++  int i, best = -1, bestsize = 0x7fffffff, rem;
++  size = (size + 31) & ~31;
++  if (!numblocks) {
++    blocks[0].start = hunk_pool;
++    blocks[0].size = HUNK_POOL_SIZE;
++    blocks[0].used = 0;
++    numblocks = 1;
++  }
++  for (i = 0; i < numblocks; i++)
++    if (!blocks[i].used && blocks[i].size >= size && blocks[i].size < bestsize) {
++      best = i; bestsize = blocks[i].size;
++    }
++  if (best < 0) return NULL;
++  blocks[best].used = 1;
++  rem = blocks[best].size - size;
++  if (rem >= HUNK_MIN_SPLIT && numblocks < HUNK_MAX_BLOCKS) {
++    memmove(&blocks[best + 2], &blocks[best + 1],
++            (numblocks - best - 1) * sizeof(hunkblock_t));
++    blocks[best + 1].start = blocks[best].start + size;
++    blocks[best + 1].size = rem;
++    blocks[best + 1].used = 0;
++    blocks[best].size = size;
++    numblocks++;
++  } else blocks[best].size = size;
++  memset(blocks[best].start, 0, size);
++  return blocks[best].start;
++}
++
++int Hunk_Contains(void *p) {
++  return p && (unsigned char *)p >= hunk_pool &&
++         (unsigned char *)p < hunk_pool + HUNK_POOL_SIZE;
++}
+ 
+ int Hunk_End(void) {
+diff --git a/components/quake2/source/qcommon/files.c b/components/quake2/source/qcommon/files.c
+--- a/components/quake2/source/qcommon/files.c
++++ b/components/quake2/source/qcommon/files.c
+@@ -474,6 +474,8 @@ void FS_FreeFile (void *buffer)
+ 	case FS_TAG_ARENA:
+-		if (Q_Arena_Contains (b))
+-			Q_Arena_Free (b);
++		if (Hunk_Contains (b))
++			Hunk_Free (b);
++		else if (Q_Arena_Contains (b))
++			Q_Arena_Free (b);
+ 		else
+ 			free (b);
+ 		break;
+diff --git a/components/quake2/source/client/snd_dma.c b/components/quake2/source/client/snd_dma.c
+--- a/components/quake2/source/client/snd_dma.c
++++ b/components/quake2/source/client/snd_dma.c
+@@ -120,5 +120,5 @@ void S_Init (void)
+ 	Com_Printf("\n------- sound initialization -------\n");
+ 
+-	cv = Cvar_Get ("s_initsound", "1", 0);
++	cv = Cvar_Get ("s_initsound", "1", 0);
+ 	if (!cv->value)
+ 		Com_Printf ("not initializing.\n");
+diff --git a/components/quake2/source/ref_soft/r_local.h b/components/quake2/source/ref_soft/r_local.h
+--- a/components/quake2/source/ref_soft/r_local.h
++++ b/components/quake2/source/ref_soft/r_local.h
+@@ -159,3 +159,3 @@
+ // !!! if this is changed, it must be changed in d_ifacea.h too !!!
+-#define MAXHEIGHT       1200
++#define MAXHEIGHT       256
+ #define MAXWIDTH        1600
+@@ -191,6 +191,6 @@
+ #define DS_SPAN_LIST_END        -128
+ 
+-#define NUMSTACKEDGES           2000
++#define NUMSTACKEDGES           512
+ #define MINEDGES                        NUMSTACKEDGES
+-#define NUMSTACKSURFACES        1000
++#define NUMSTACKSURFACES        256
+ #define MINSURFACES                     NUMSTACKSURFACES
+@@ -220,6 +220,6 @@
+ // !!! if this is changed, it must be changed in asm_draw.h too !!!
+ #define NEAR_CLIP       0.01
+ 
+ 
+-#define MAXALIASVERTS           2000    // TODO: tune this
++#define MAXALIASVERTS           MAX_VERTS // match the validated MD2 vertex limit
+ #define ALIAS_Z_CLIP_PLANE      4

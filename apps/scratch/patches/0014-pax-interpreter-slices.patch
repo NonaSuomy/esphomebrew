@@ -1,0 +1,36 @@
+diff --git a/source/runtime/blockExecutor.cpp b/source/runtime/blockExecutor.cpp
+index b7c83f3..2a60f77 100644
+--- a/source/runtime/blockExecutor.cpp
++++ b/source/runtime/blockExecutor.cpp
+@@ -153,7 +153,11 @@ BlockResult BlockExecutor::runThread(ScriptThread &thread, Sprite &sprite) {
+     if (thread.nextBlock == nullptr) return BlockResult::RETURN;
+     BlockResult var = BlockResult::CONTINUE;
+     Timer executionTimer(false);
++#if defined(PAX_APP_SIDE)
++    executionTimer.start();
++#else
+     if (Scratch::warpTimer) executionTimer.start();
++#endif
+     Block *currentBlock = nullptr;
+     unsigned int blocksSinceTimeCheck = 0;
+     constexpr unsigned int timeCheckInterval = 64;
+@@ -193,10 +197,19 @@ BlockResult BlockExecutor::runThread(ScriptThread &thread, Sprite &sprite) {
+             Scratch::resetInput(currentBlock);
+         }
+ 
++#if defined(PAX_APP_SIDE)
++        // Bound a long warp/immediate block chain so the main runtime can
++        // pump audio, input and networking between interpreter slices.
++        if (++blocksSinceTimeCheck >= timeCheckInterval) {
++            blocksSinceTimeCheck = 0;
++            if (executionTimer.getTimeMs() >= 4) break;
++        }
++#else
+         if (Scratch::warpTimer && thread.withoutScreenRefresh && ++blocksSinceTimeCheck >= timeCheckInterval) {
+             blocksSinceTimeCheck = 0;
+             if (executionTimer.getTimeMs() > 500) break;
+         }
++#endif
+ 
+     } while ((var == BlockResult::CONTINUE_IMMEDIATELY || (var == BlockResult::CONTINUE && (!currentBlock->isEndBlock || thread.withoutScreenRefresh))) && !thread.finished && thread.nextBlock != nullptr && !Scratch::shouldStop);
+     if (currentBlock == nullptr || var == BlockResult::RETURN || (var != BlockResult::REPEAT && currentBlock->nextBlock == nullptr)) thread.finished = true;

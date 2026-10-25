@@ -1,0 +1,149 @@
+diff --git a/include/runtime/types.hpp b/include/runtime/types.hpp
+index bd6a992..90063ee 100644
+--- a/include/runtime/types.hpp
++++ b/include/runtime/types.hpp
+@@ -168,7 +168,7 @@ struct SE_EXPORT Variable {
+     std::string id;
+     std::string name;
+ #ifdef ENABLE_CLOUDVARS
+-    bool cloud;
++    bool cloud = false;
+ #endif
+ 
+     std::variant<Value, double, std::shared_ptr<const std::string>, bool> value;
+diff --git a/source/runtime/blockExecutor.cpp b/source/runtime/blockExecutor.cpp
+index 44530b2..b7c83f3 100644
+--- a/source/runtime/blockExecutor.cpp
++++ b/source/runtime/blockExecutor.cpp
+@@ -369,6 +369,10 @@ void BlockExecutor::setVariableValue(const std::string &variableId, const Value
+         const auto it = sprite->variables.find(variableId);
+         if (it != sprite->variables.end()) {
+             assignToVar(it->second);
++#ifdef ENABLE_CLOUDVARS
++            if (it->second.cloud && cloudConnection)
++                cloudConnection->set(it->second.name, getVariableValueAs<std::string>(&it->second));
++#endif
+             return;
+         }
+     }
+@@ -378,7 +382,7 @@ void BlockExecutor::setVariableValue(const std::string &variableId, const Value
+     if (globalIt != Scratch::stageSprite->variables.end()) {
+         assignToVar(globalIt->second);
+ #ifdef ENABLE_CLOUDVARS
+-        if (globalIt->second.cloud) {
++        if (globalIt->second.cloud && cloudConnection) {
+             cloudConnection->set(globalIt->second.name, getVariableValueAs<std::string>(&globalIt->second));
+         }
+ #endif
+@@ -596,7 +600,7 @@ Value BlockExecutor::getListValue(const std::string &listId, Sprite *sprite) {
+ #ifdef ENABLE_CLOUDVARS
+ void BlockExecutor::handleCloudVariableChange(const std::string &name, const std::string &value) {
+     for (auto it = Scratch::stageSprite->variables.begin(); it != Scratch::stageSprite->variables.end(); ++it) {
+-        if (it->second.name != name) continue;
++        if (it->second.name != name || !it->second.cloud) continue;
+         it->second.value = Value(value);
+         return;
+     }
+diff --git a/source/runtime/parser/parser.cpp b/source/runtime/parser/parser.cpp
+index f6e264d..51dc8d2 100644
+--- a/source/runtime/parser/parser.cpp
++++ b/source/runtime/parser/parser.cpp
+@@ -9,6 +9,10 @@
+ #include <os.hpp>
+ #include <runtime.hpp>
+ #include <settings.hpp>
++#if defined(PAX_APP_SIDE)
++#include <unzip.hpp>
++extern std::string pax_cloud_username();
++#endif
+ #include <unordered_map>
+ #if defined(__WIIU__) && defined(ENABLE_CLOUDVARS)
+ #include <whb/sdcard.h>
+@@ -43,7 +47,18 @@ std::unique_ptr<MistConnection> cloudConnection = nullptr;
+ #ifdef ENABLE_CLOUDVARS
+ void Parser::initMist() {
+     OS::initWifi();
++#if defined(PAX_APP_SIDE)
++    auto enabled = Unzip::getSetting("cloudEnabled");
++    if (!enabled.is_boolean() || !enabled.get<bool>()) {
++        cloudConnection.reset();
++        Log::log("Cloud networking is off; set cloudEnabled in project settings to enable it");
++        return;
++    }
++#endif
+ 
++#if defined(PAX_APP_SIDE)
++    Scratch::cloudUsername = pax_cloud_username();
++#else
+     const std::string usernameFilename = OS::getScratchFolderLocation() + "cloud-username.txt";
+ 
+     std::ifstream fileStream(usernameFilename.c_str());
+@@ -60,6 +75,7 @@ void Parser::initMist() {
+         fileStream >> Scratch::cloudUsername;
+     }
+     fileStream.close();
++#endif
+ 
+     std::vector<std::string> assetIds;
+     for (const auto &sprite : Scratch::sprites) {
+@@ -84,10 +100,27 @@ void Parser::initMist() {
+ 
+     std::ostringstream projectID;
+     projectID << "ScratchEverywhere/hash-" << std::hex << std::setw(16) << std::setfill('0') << assetHash;
++#if defined(PAX_APP_SIDE)
++    auto configuredId = Unzip::getSetting("cloudProjectId");
++    auto configuredHost = Unzip::getSetting("cloudHost");
++    if (configuredId.is_string() && !configuredId.get_ref<const std::string&>().empty()) {
++        projectID.str(configuredId.get<std::string>());
++    }
++    const std::string host = configuredHost.is_string() ? configuredHost.get<std::string>() : "wss://clouddata.turbowarp.org/";
++    cloudConnection = std::make_unique<MistConnection>(host, projectID.str(), Scratch::cloudUsername,
++        "https://github.com/NonaSuomy/esphomebrew/issues");
++#else
+     cloudConnection = std::make_unique<MistConnection>(projectID.str(), Scratch::cloudUsername, "contact@grady.link");
++#endif
+ 
+     cloudConnection->onConnectionStatus([](bool connected, const std::string &message) {
+         if (connected) {
++#if defined(PAX_APP_SIDE)
++            // Discard stale saved cloud snapshots only after a real connection.
++            // The server's initial set messages immediately replace these zeros.
++            if (Scratch::stageSprite) for (auto &entry : Scratch::stageSprite->variables)
++                if (entry.second.cloud) entry.second.value = Value(0);
++#endif
+             Log::log("Mist++ Connected: " + message);
+             return;
+         }
+diff --git a/source/runtime/runtime.cpp b/source/runtime/runtime.cpp
+index e8f572f..e2ac1fb 100644
+--- a/source/runtime/runtime.cpp
++++ b/source/runtime/runtime.cpp
+@@ -1,3 +1,7 @@
++#if defined(PAX_APP_SIDE) && defined(ENABLE_CLOUDVARS)
++#include <mist/mist.hpp>
++extern std::unique_ptr<MistConnection> cloudConnection;
++#endif
+ #include "runtime.hpp"
+ #include "audiostack.hpp"
+ #include "blockExecutor.hpp"
+@@ -154,6 +158,9 @@ void Scratch::initializeScratchProject() {
+ }
+ 
+ std::pair<bool, bool> Scratch::stepScratchProject(ScriptThread &monitorDisplayThread) {
++#if defined(PAX_APP_SIDE) && defined(ENABLE_CLOUDVARS)
++    pax_cloud_tick();
++#endif
+     if (!Render::appShouldRun()) {
+ #ifdef ENABLE_MENU
+         if (pauseMenu != nullptr) {
+@@ -310,6 +317,10 @@ bool Scratch::startScratchProject() {
+ }
+ 
+ void Scratch::cleanupScratchProject() {
++#if defined(PAX_APP_SIDE) && defined(ENABLE_CLOUDVARS)
++    cloudConnection.reset();
++    cloudProject = false;
++#endif
+ #ifdef ENABLE_CUSTOM_EXTENSIONS
+     extensions::cleanup();
+ #endif

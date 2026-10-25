@@ -1,0 +1,49 @@
+diff --git a/source/audiostack.cpp b/source/audiostack.cpp
+index 9b3022d..97213a3 100644
+--- a/source/audiostack.cpp
++++ b/source/audiostack.cpp
+@@ -238,7 +238,7 @@ nonstd::expected<void, std::string> SoundStream::init(ZipArchive *zip, std::stri
+ 
+ SoundStream::SoundStream(ZipArchive *zip, std::string path) {
+     auto potentialError = init(zip, path);
+-    if (error.has_value()) error = potentialError.error();
++    if (!potentialError.has_value()) error = potentialError.error();
+ }
+ 
+ SoundStream::~SoundStream() {
+diff --git a/source/runtime/blocks/sound.cpp b/source/runtime/blocks/sound.cpp
+index 518c0c3..d0b3ea5 100644
+--- a/source/runtime/blocks/sound.cpp
++++ b/source/runtime/blocks/sound.cpp
+@@ -7,6 +7,9 @@
+ #include <types.hpp>
+ #include <unzip.hpp>
+ #include <value.hpp>
++#if defined(PAX_APP_SIDE)
++extern void pax_audio_pump();
++#endif
+ 
+ SCRATCH_BLOCK(sound, playuntildone) {
+ #ifdef ENABLE_AUDIO
+@@ -38,6 +41,9 @@ SCRATCH_BLOCK(sound, playuntildone) {
+         }
+ 
+         if (soundFound) {
++#if defined(PAX_APP_SIDE)
++            pax_audio_pump();
++#endif
+             SoundStream *strm;
+             if (Scratch::projectType == ProjectType::UNZIPPED)
+                 strm = new SoundStream(state->name);
+@@ -98,7 +104,10 @@ SCRATCH_BLOCK(sound, play) {
+     }
+ 
+     if (soundFound) {
+-        SoundStream *strm;
++    #if defined(PAX_APP_SIDE)
++    pax_audio_pump();
++#endif
++    SoundStream *strm;
+         if (Scratch::projectType == ProjectType::UNZIPPED)
+             strm = new SoundStream(soundFullName, false);
+         else

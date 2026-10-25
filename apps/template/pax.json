@@ -1,0 +1,33 @@
+{
+  "name": "template",
+  "title": "PAX SDK Test (Template)",
+  "version": "0.1.0",
+  "description": "Current SDK startup, display and input test.",
+  "category": "Tool",
+  "publish": true,
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
+    "path": "components/psram_app_loader"
+  },
+  "groups": [
+    {
+      "dir": "local:apps/template",
+      "files": [
+        "main.c"
+      ]
+    }
+  ],
+  "install_recipe": "install-recipe.json",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "canvas": {
+    "sizes": [
+      "800x480"
+    ],
+    "recommended": "800x480"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld"
+}

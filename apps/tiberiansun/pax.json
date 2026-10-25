@@ -1,0 +1,102 @@
+{
+  "name": "tiberiansun",
+  "title": "Tiberian Sun (OpenTS P4 Port)",
+  "version": "0.0.5",
+  "description": "Staged ESP32-P4 port of OpenTS Tiberian Sun. It decrypts original MIX indexes, mounts the SD-card data layer, parses campaign and mission metadata, validates IsoMapPack5 terrain framing in PSRAM, and keeps a visible runtime shell alive on the device.",
+  "author": "Westwood / Electronic Arts; OpenTS contributors; PAX port",
+  "category": "Game",
+  "license": "GPL-3.0-or-later with OpenTS additional terms",
+  "about": "This development package follows OpenTS archive precedence, reads encrypted MIX directories directly from the SD card, resolves MAPSEL01 campaign stages, parses mission metadata and object counts, validates IsoMapPack5 Base64/LZO framing in PSRAM, and presents the live port status until the loader close control is used.",
+  "changelog": "0.0.5-dev: run MIX probing and runtime shell on a tracked 64 KiB PSRAM stack; 0.0.4-dev: campaign stage and IsoMapPack5 terrain framing validation; 0.0.3-dev: persistent P4 runtime shell with framebuffer status and orderly close; 0.0.2-dev: encrypted MIX decryption, OpenTS-style archive mounting, and PSRAM INI loading",
+  "upstream": {
+    "project": "OpenTS",
+    "version": "84675569c257",
+    "url": "https://github.com/OpenTS-Developers/OpenTS"
+  },
+  "canvas": {
+    "sizes": [
+      "800x480"
+    ],
+    "recommended": "800x480"
+  },
+  "dev_build": true,
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/OpenTS-Developers/OpenTS.git",
+    "ref": "84675569c257529db17fcb0bc6e06889bc258523",
+    "path": "."
+  },
+  "linker_script": "local:apps/tiberiansun/pax_cpp.ld",
+  "includes": [
+    "local:",
+    "local:esphome/components/pax_loader",
+    "local:apps/tiberiansun"
+  ],
+  "cxxflags": [
+    "-std=gnu++20",
+    "-Os",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-threadsafe-statics",
+    "-fno-use-cxa-atexit",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-DPAPP_APP_SIDE=1",
+    "-DOPENTS_PAPP=1"
+  ],
+  "groups": [
+    {
+      "dir": "local:apps/tiberiansun",
+      "prefix": "ts_",
+      "files": [
+        "pax_main.cpp",
+        "ts_mix.cpp",
+        "ts_data.cpp",
+        "ts_ini.cpp",
+        "ts_crypto.cpp",
+        "ts_blowfish.cpp"
+      ]
+    },
+    {
+      "dir": "local:apps/tiberiandawn",
+      "prefix": "ts_",
+      "files": [
+        "pax_syscalls.c"
+      ]
+    }
+  ],
+  "newlib": true,
+  "requires": [
+    {
+      "path": "/sd/roms/tiberiansun/",
+      "note": "Root folder for Tiberian Sun MIX files and game data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiansun/tibsun.mix",
+      "note": "Base Tiberian Sun data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/maps01.mix",
+      "note": "Base map data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/multi.mix",
+      "note": "Multiplayer map data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/scores.mix",
+      "note": "Base music data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/*.mix",
+      "note": "Optional expansion and movie MIX files",
+      "optional": true
+    }
+  ],
+  "install_recipe": "install-recipe.json",
+  "publish": true,
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
+}

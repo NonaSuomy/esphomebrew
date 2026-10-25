@@ -1,0 +1,148 @@
+diff --git a/third_party/aom/av1/common/av1_inv_txfm2d.c b/third_party/aom/av1/common/av1_inv_txfm2d.c
+--- a/third_party/aom/av1/common/av1_inv_txfm2d.c
++++ b/third_party/aom/av1/common/av1_inv_txfm2d.c
+@@ -328,61 +328,61 @@
+ 
+ void av1_inv_txfm2d_add_4x8_c(const int32_t *input, uint16_t *output,
+                               int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[4 * 8 + 8 + 8]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[4 * 8 + 8 + 8]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_4X8, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_8x4_c(const int32_t *input, uint16_t *output,
+                               int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[8 * 4 + 8 + 8]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[8 * 4 + 8 + 8]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_8X4, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_8x16_c(const int32_t *input, uint16_t *output,
+                                int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[8 * 16 + 16 + 16]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[8 * 16 + 16 + 16]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_8X16, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_16x8_c(const int32_t *input, uint16_t *output,
+                                int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[16 * 8 + 16 + 16]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[16 * 8 + 16 + 16]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_16X8, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_16x32_c(const int32_t *input, uint16_t *output,
+                                 int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[16 * 32 + 32 + 32]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[16 * 32 + 32 + 32]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_16X32, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_32x16_c(const int32_t *input, uint16_t *output,
+                                 int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[32 * 16 + 32 + 32]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[32 * 16 + 32 + 32]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_32X16, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_4x4_c(const int32_t *input, uint16_t *output,
+                               int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[4 * 4 + 4 + 4]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[4 * 4 + 4 + 4]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_4X4, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_8x8_c(const int32_t *input, uint16_t *output,
+                               int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[8 * 8 + 8 + 8]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[8 * 8 + 8 + 8]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_8X8, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_16x16_c(const int32_t *input, uint16_t *output,
+                                 int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[16 * 16 + 16 + 16]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[16 * 16 + 16 + 16]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_16X16, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_32x32_c(const int32_t *input, uint16_t *output,
+                                 int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[32 * 32 + 32 + 32]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[32 * 32 + 32 + 32]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_32X32, bd);
+ }
+ 
+@@ -398,7 +398,7 @@
+     memset(mod_input + col * 64 + 32, 0, 32 * sizeof(*mod_input));
+   }
+   memset(mod_input + 32 * 64, 0, 32 * 64 * sizeof(*mod_input));
+-  DECLARE_ALIGNED(32, int, txfm_buf[64 * 64 + 64 + 64]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[64 * 64 + 64 + 64]);
+   inv_txfm2d_add_facade(mod_input, output, stride, txfm_buf, tx_type, TX_64X64,
+                         bd);
+ }
+@@ -411,7 +411,7 @@
+   int32_t mod_input[32 * 64];
+   memcpy(mod_input, input, 32 * 32 * sizeof(*mod_input));
+   memset(mod_input + 32 * 32, 0, 32 * 32 * sizeof(*mod_input));
+-  DECLARE_ALIGNED(32, int, txfm_buf[64 * 32 + 64 + 64]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[64 * 32 + 64 + 64]);
+   inv_txfm2d_add_facade(mod_input, output, stride, txfm_buf, tx_type, TX_64X32,
+                         bd);
+ }
+@@ -426,7 +426,7 @@
+     memcpy(mod_input + col * 64, input + col * 32, 32 * sizeof(*mod_input));
+     memset(mod_input + col * 64 + 32, 0, 32 * sizeof(*mod_input));
+   }
+-  DECLARE_ALIGNED(32, int, txfm_buf[64 * 32 + 64 + 64]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[64 * 32 + 64 + 64]);
+   inv_txfm2d_add_facade(mod_input, output, stride, txfm_buf, tx_type, TX_32X64,
+                         bd);
+ }
+@@ -441,7 +441,7 @@
+     memcpy(mod_input + col * 64, input + col * 32, 32 * sizeof(*mod_input));
+     memset(mod_input + col * 64 + 32, 0, 32 * sizeof(*mod_input));
+   }
+-  DECLARE_ALIGNED(32, int, txfm_buf[16 * 64 + 64 + 64]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[16 * 64 + 64 + 64]);
+   inv_txfm2d_add_facade(mod_input, output, stride, txfm_buf, tx_type, TX_16X64,
+                         bd);
+ }
+@@ -454,31 +454,31 @@
+   int32_t mod_input[16 * 64];
+   memcpy(mod_input, input, 16 * 32 * sizeof(*mod_input));
+   memset(mod_input + 16 * 32, 0, 16 * 32 * sizeof(*mod_input));
+-  DECLARE_ALIGNED(32, int, txfm_buf[16 * 64 + 64 + 64]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[16 * 64 + 64 + 64]);
+   inv_txfm2d_add_facade(mod_input, output, stride, txfm_buf, tx_type, TX_64X16,
+                         bd);
+ }
+ 
+ void av1_inv_txfm2d_add_4x16_c(const int32_t *input, uint16_t *output,
+                                int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[4 * 16 + 16 + 16]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[4 * 16 + 16 + 16]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_4X16, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_16x4_c(const int32_t *input, uint16_t *output,
+                                int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[4 * 16 + 16 + 16]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[4 * 16 + 16 + 16]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_16X4, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_8x32_c(const int32_t *input, uint16_t *output,
+                                int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[8 * 32 + 32 + 32]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[8 * 32 + 32 + 32]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_8X32, bd);
+ }
+ 
+ void av1_inv_txfm2d_add_32x8_c(const int32_t *input, uint16_t *output,
+                                int stride, TX_TYPE tx_type, int bd) {
+-  DECLARE_ALIGNED(32, int, txfm_buf[8 * 32 + 32 + 32]);
++  DECLARE_ALIGNED(32, int32_t, txfm_buf[8 * 32 + 32 + 32]);
+   inv_txfm2d_add_facade(input, output, stride, txfm_buf, tx_type, TX_32X8, bd);
+ }

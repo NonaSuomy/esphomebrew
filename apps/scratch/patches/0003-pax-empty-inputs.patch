@@ -1,0 +1,30 @@
+diff --git a/source/runtime/runtime.cpp b/source/runtime/runtime.cpp
+index 8a1f650..d3937cb 100644
+--- a/source/runtime/runtime.cpp
++++ b/source/runtime/runtime.cpp
+@@ -425,6 +425,12 @@ bool Scratch::getInputValue(Block *block, const std::string &inputName, ScriptTh
+         if (field != block->fieldMap.end()) {
+             outValue = Value(field->second->value);
+         }
++#ifdef PAX_APP_SIDE
++        else {
++            // Disconnected sockets have an empty value, never a previous result.
++            outValue = Value();
++        }
++#endif
+         return true;
+     }
+ 
+@@ -510,6 +516,12 @@ bool Scratch::getInputValueAs(Block *block, const std::string &inputName, Script
+                 outValue = Value(field->second->value);
+             }
+         }
++#ifdef PAX_APP_SIDE
++        else {
++            // Empty Boolean/number/text sockets are false/zero/empty.
++            outValue = T{};
++        }
++#endif
+         return true;
+     }
+ 

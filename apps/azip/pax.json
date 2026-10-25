@@ -1,0 +1,119 @@
+{
+  "name": "azip",
+  "title": "AZIP Z-machine Interpreter",
+  "version": "0.1.0",
+  "description": "Z-machine interpreter for Z-code text adventures and a USB keyboard.",
+  "category": "Interpreter",
+  "about": "Plays Infocom and Inform text adventures (Z-code .z1-.z8 or .dat). /sd/roms/pax/azip.rom holds the story path; the default is /sd/roms/pax/GAME.DAT (Mini-Zork I). Saves are written next to the story as <story>.sav. A USB keyboard is needed to type commands.",
+  "controls": [
+    "USB keyboard: type commands, Enter to submit",
+    "Backspace: delete last character",
+    "A: Space key",
+    "B: Enter",
+    "Menu or L3: quit to launcher"
+  ],
+  "canvas": true,
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "d0a449f9e2252881ab1ac297d05353f5bc58c046",
+    "path": "components/psram_app_loader"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "cflags": [
+    "-O2",
+    "-fno-common",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fno-tree-loop-distribute-patterns",
+    "-DIRAM_ATTR=",
+    "-Wall",
+    "-Wno-format",
+    "-Wno-unused-variable",
+    "-Wno-unused-function",
+    "-Wno-maybe-uninitialized"
+  ],
+  "cxxflags": [
+    "-std=gnu++17",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-threadsafe-statics",
+    "-fno-use-cxa-atexit",
+    "-fno-unwind-tables",
+    "-fno-asynchronous-unwind-tables",
+    "-Wno-write-strings",
+    "-Wno-narrowing"
+  ],
+  "groups": [
+    {
+      "dir": "local:apps/azip/core",
+      "files": [
+        "configur.cpp",
+        "control.cpp",
+        "extern.cpp",
+        "fileio.cpp",
+        "input.cpp",
+        "interpre.cpp",
+        "math.cpp",
+        "object.cpp",
+        "operand.cpp",
+        "osdepend.cpp",
+        "property.cpp",
+        "screen.cpp",
+        "text.cpp",
+        "variable.cpp"
+      ],
+      "prefix": "core_"
+    },
+    {
+      "dir": "local:apps/azip",
+      "files": [
+        "pax_main.cpp"
+      ],
+      "prefix": "app_"
+    },
+    {
+      "dir": "local:apps/pax_emulator_common",
+      "files": [
+        "pax_libc.c"
+      ],
+      "prefix": "runtime_"
+    },
+    {
+      "dir": "local:apps/opentyrian",
+      "files": [
+        "pax_syscalls.c"
+      ],
+      "prefix": "sys_"
+    }
+  ],
+  "ldflags": [
+    "-Wl,--wrap=fopen",
+    "-Wl,--wrap=fclose",
+    "-Wl,--wrap=fread",
+    "-Wl,--wrap=fwrite",
+    "-Wl,--wrap=fseek",
+    "-Wl,--wrap=ftell",
+    "-Wl,--wrap=rewind",
+    "-Wl,--wrap=getc",
+    "-Wl,--wrap=fgetc",
+    "-Wl,--wrap=exit"
+  ],
+  "newlib": true,
+  "install_recipe": "install-recipe.json",
+  "changelog": "0.1.0: add a versioned PAX store recipe for the existing native port.",
+  "includes": [
+    "local:apps/azip",
+    "local:apps/azip/core",
+    "local:apps/pax_emulator_common"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/azip/*.z*",
+      "note": "Choose a Z-code story, or use /sd/roms/pax/GAME.DAT"
+    }
+  ]
+}

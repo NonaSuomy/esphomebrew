@@ -1,0 +1,60 @@
+{
+  "name": "stargus",
+  "title": "Stargus",
+  "version": "0.1.0",
+  "description": "Stargus PAX port using the Stratagus engine and converted StarCraft data.",
+  "category": "Game",
+  "about": "Existing native Stargus port. Requires the pinned Stratagus engine checkout and locally converted game data. This build currently embeds converted graphic and soundtrack assets and is excluded from public store publication.",
+  "controls": [
+    "Mouse or touch: select units and use the game menus",
+    "Keyboard: game shortcuts",
+    "Hold Menu 3 s: return to the launcher"
+  ],
+  "canvas": true,
+  "build": "workspace",
+  "source": {
+    "repo": "https://github.com/Wargus/stratagus",
+    "ref": "377def2b10e921983c2efbec8fd015cf42659661",
+    "path": "src"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "install_recipe": "install-recipe.json",
+  "changelog": "0.1.0: add a versioned PAX store recipe for the existing native port.",
+  "publish": false,
+  "requires_private_data": true,
+  "publication_blocker": "Native build embeds converted game assets and needs local engine dependencies.",
+  "workspace_build": {
+    "script": "build_stargus_pax.sh",
+    "output": "pax-modules/.cache/native/stargus/stargus.pax"
+  },
+  "requires": [
+    {
+      "path": "/sd/roms/stargus/scripts/stratagus.lua",
+      "note": "Startool-converted game scripts"
+    },
+    {
+      "path": "/sd/roms/stargus/graphics",
+      "note": "Converted palette/graphics tree"
+    },
+    {
+      "path": "/sd/roms/stargus/sounds",
+      "note": "Converted sound tree"
+    },
+    {
+      "path": "/sd/roms/stargus/media/terrain.paxtile",
+      "note": "Generate with prepare_stargus_terrain.py from the converted graphics tree"
+    },
+    {
+      "path": "/sd/roms/stargus/media/menu.paxmenu",
+      "note": "Generate with prepare_stargus_menu.py from the converted game tree"
+    },
+    {
+      "path": "/sd/roms/stargus/media/*.ogg",
+      "note": "Converted menu soundtrack companions, if available",
+      "optional": true
+    }
+  ]
+}

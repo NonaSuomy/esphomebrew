@@ -3,7 +3,7 @@ name: Build PAXs
 on:
   push:
     branches: [main]
-    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", "tests/test_launcher_store.py", "esphome/components/pax_loader/psram_app.h", "esphome/components/pax_loader/pax_theme_profile.h", "esphome/components/pax_loader/pax_wifi*.h", "esphome/components/pax_loader/pax_c6_update.h", "esphome/components/pax_loader/pax_firmware_update.h", ".github/workflows/build-paxs.yml"]
+    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", "tests/test_launcher_store.py", "tests/test_store_expansion.py", "tools/dev_build_apps.py", "esphome/components/pax_loader/psram_app.h", "esphome/components/pax_loader/pax_theme_profile.h", "esphome/components/pax_loader/pax_wifi*.h", "esphome/components/pax_loader/pax_c6_update.h", "esphome/components/pax_loader/pax_firmware_update.h", ".github/workflows/build-paxs.yml"]
   pull_request:
   workflow_dispatch:
 
@@ -29,6 +29,9 @@ jobs:
 
       - name: Check Launcher UI store recipe
         run: python3 -m unittest discover -s tests -p 'test_launcher_store.py'
+
+      - name: Check added store recipes and private-data exclusions
+        run: python3 -m unittest discover -s tests -p 'test_store_expansion.py'
 
       - name: Build every app
         shell: bash

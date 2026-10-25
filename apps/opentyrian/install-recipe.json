@@ -1,0 +1,675 @@
+{
+  "version": 2,
+  "app": "opentyrian",
+  "mode": "download",
+  "archive_dir": "/sd/roms/opentyrian/incoming",
+  "folders": [
+    "/sd/tyrian",
+    "/sd/tyrian/data"
+  ],
+  "requires": [
+    {
+      "path": "/sd/tyrian/data/tyrian1.lvl",
+      "note": "Tyrian 2.1 game data; this port uses /sd/tyrian/data"
+    },
+    {
+      "path": "/sd/tyrian/data/tyrian.hdt",
+      "note": "Tyrian 2.1 item data"
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nThis current port reads /sd/tyrian/data and stores configuration under /sd/tyrian; its former /sd/roms/opentyrian listing was incorrect.\n\nFILES / FOLDERS\n\n/sd/tyrian/data/tyrian1.lvl — Tyrian 2.1 game data; this port uses /sd/tyrian/data\n\n/sd/tyrian/data/tyrian.hdt — Tyrian 2.1 item data",
+  "media": [
+    {
+      "format": "zip-files",
+      "zip_name": "tyrian21.zip",
+      "download_label": "Download Tyrian 2.1",
+      "archive_url": "https://camanis.net/tyrian/tyrian21.zip",
+      "archive_size": 4754048,
+      "archive_sha256": "7790d09a2a3addcd33c66ef063d5900eb81cc9c342f4807eb8356364dd1d9277",
+      "files": [
+        {
+          "source": "tyrian21/levels2.dat",
+          "target": "/sd/tyrian/data/levels2.dat",
+          "size": 5534,
+          "sha256": "9aa94b70aae2b24b16c295ed86e392ac16873306012bdd89e0cf995d605178ea"
+        },
+        {
+          "source": "tyrian21/levels1.dat",
+          "target": "/sd/tyrian/data/levels1.dat",
+          "size": 9359,
+          "sha256": "e82164c96abb994450d416a3ab0e5fe6479fd4db831cd0f203a60dfe4aa78dcb"
+        },
+        {
+          "source": "tyrian21/newshn.shp",
+          "target": "/sd/tyrian/data/newshn.shp",
+          "size": 41201,
+          "sha256": "612c38b9d93220d9fb0228594d9597a0637f52fcdf789e9ffc15b0a362a70341"
+        },
+        {
+          "source": "tyrian21/newshc.shp",
+          "target": "/sd/tyrian/data/newshc.shp",
+          "size": 40714,
+          "sha256": "16db0d5faa13c935da700f3bd25ce539bdd37336fa164d23f5fa3405a315f31a"
+        },
+        {
+          "source": "tyrian21/newshr.shp",
+          "target": "/sd/tyrian/data/newshr.shp",
+          "size": 28249,
+          "sha256": "7869a88236e46deaf6e051d4d7d38830865bc0047f09879fc8afd68ab7f30d94"
+        },
+        {
+          "source": "tyrian21/newshs.shp",
+          "target": "/sd/tyrian/data/newshs.shp",
+          "size": 46566,
+          "sha256": "f0bccf154a436ba46834a00b934e7cb8a77d8585b175a39c1270ad7888411c88"
+        },
+        {
+          "source": "tyrian21/newsh2.shp",
+          "target": "/sd/tyrian/data/newsh2.shp",
+          "size": 35236,
+          "sha256": "8773ebcae4be992ecfbb476c0797b0bef4d43faa4c99449890bfaa28c8d9cbcc"
+        },
+        {
+          "source": "tyrian21/newsh5.shp",
+          "target": "/sd/tyrian/data/newsh5.shp",
+          "size": 35813,
+          "sha256": "1e6854ccde0e6b0e0789afadd52f6d8b7d264a61f59185635c5ed119f29d4bad"
+        },
+        {
+          "source": "tyrian21/newsh^.shp",
+          "target": "/sd/tyrian/data/newsh^.shp",
+          "size": 34888,
+          "sha256": "e9884ec4debe73f00c51cca5112dd2e2b0d2c57d1d5953d2902947df36471f23"
+        },
+        {
+          "source": "tyrian21/license.doc",
+          "target": "/sd/tyrian/data/license.doc",
+          "size": 7869,
+          "sha256": "a81955ec129cac3b2a52300e1352be142d12cdd919789d6dda41a211caa8e162"
+        },
+        {
+          "source": "tyrian21/netfont1.pcx",
+          "target": "/sd/tyrian/data/netfont1.pcx",
+          "size": 8692,
+          "sha256": "13cecff9b2bb01c472ca42a6d4081bfb54ef182e086130fc1d82530ea2ed5cda"
+        },
+        {
+          "source": "tyrian21/file_id.diz",
+          "target": "/sd/tyrian/data/file_id.diz",
+          "size": 304,
+          "sha256": "b7a987e1c335c3130e08cae2e98f85fde4b759f7e48ac1d6ac9bdd97a3ef9062"
+        },
+        {
+          "source": "tyrian21/shapesx.dat",
+          "target": "/sd/tyrian/data/shapesx.dat",
+          "size": 217504,
+          "sha256": "53530149c27573244fead5f8325f5a4c9f5108c95a666998140656436aaa8f2a"
+        },
+        {
+          "source": "tyrian21/tyrian1.lvl",
+          "target": "/sd/tyrian/data/tyrian1.lvl",
+          "size": 538262,
+          "sha256": "b41e532214fa8cea36e37fed6512b357c6ac9c8c3267899ceb4a258fcb1bf0b9"
+        },
+        {
+          "source": "tyrian21/setup.exe",
+          "target": "/sd/tyrian/data/setup.exe",
+          "size": 62720,
+          "sha256": "010fff01150ef7b7d8ff9df53426f4cbe51d925e9b50b6d8f27f712d3ac64868"
+        },
+        {
+          "source": "tyrian21/helpme.exe",
+          "target": "/sd/tyrian/data/helpme.exe",
+          "size": 15372,
+          "sha256": "b4da7bab01b03a49fbd20a567ebb3dfc332a1f12e33832d7e4ca98676fa381e3"
+        },
+        {
+          "source": "tyrian21/newshe.shp",
+          "target": "/sd/tyrian/data/newshe.shp",
+          "size": 28945,
+          "sha256": "4be2df495007fc211eeeedf3fe07a0d3eb4fdca4174e1adccb2918967c3f7c7b"
+        },
+        {
+          "source": "tyrian21/user1.shp",
+          "target": "/sd/tyrian/data/user1.shp",
+          "size": 27674,
+          "sha256": "d78f5d084f3a2a087c48810476743434b5eddd144038164deee284a51b9d1913"
+        },
+        {
+          "source": "tyrian21/newsh8.shp",
+          "target": "/sd/tyrian/data/newsh8.shp",
+          "size": 35152,
+          "sha256": "1fb3f52d36bf3d05c4e5867f8fa34035fc8eace8fd27b55b41df1abba7ef41ee"
+        },
+        {
+          "source": "tyrian21/levels3.dat",
+          "target": "/sd/tyrian/data/levels3.dat",
+          "size": 6052,
+          "sha256": "0d935cd7bb3c84451d9f57dbcd31a8d515205b18fb050070a416e9b7411dfbd3"
+        },
+        {
+          "source": "tyrian21/loudness.awe",
+          "target": "/sd/tyrian/data/loudness.awe",
+          "size": 34382,
+          "sha256": "fae838f0dad4894b41b4f1f094203152f5a1cf9a74b9fe24024b12f494d92c6b"
+        },
+        {
+          "source": "tyrian21/order.doc",
+          "target": "/sd/tyrian/data/order.doc",
+          "size": 6334,
+          "sha256": "283347e26fc1b760e82994863005845631c4d438ecca99453c011a6fd4a2476e"
+        },
+        {
+          "source": "tyrian21/newsh7.shp",
+          "target": "/sd/tyrian/data/newsh7.shp",
+          "size": 44079,
+          "sha256": "52c40a2438373f9fc9a7cd2d338ec149f4e81dda56d9c05061ee2264408f0b1a"
+        },
+        {
+          "source": "tyrian21/newsh1.shp",
+          "target": "/sd/tyrian/data/newsh1.shp",
+          "size": 29941,
+          "sha256": "77827c137462ebaa53ad9c6d190224a6e0e1d00bf36cff2c7c66f82b00b7026a"
+        },
+        {
+          "source": "tyrian21/tyrian2.lvl",
+          "target": "/sd/tyrian/data/tyrian2.lvl",
+          "size": 381242,
+          "sha256": "3e18b124cd4ff5f766e5bf2e833eb79d3118010a253a30dc4c0ae6f483ae50e9"
+        },
+        {
+          "source": "tyrian21/tyrian.cdt",
+          "target": "/sd/tyrian/data/tyrian.cdt",
+          "size": 1125,
+          "sha256": "deb2c35297d89a1b2801ae21132d242121d9dee2a794a84b58dbd212f11f04fe"
+        },
+        {
+          "source": "tyrian21/rtm.exe",
+          "target": "/sd/tyrian/data/rtm.exe",
+          "size": 120853,
+          "sha256": "10acd85af3767634450a793f2af1e057de888621cbfc578d35d3fa91abc09661"
+        },
+        {
+          "source": "tyrian21/newsha.shp",
+          "target": "/sd/tyrian/data/newsha.shp",
+          "size": 25622,
+          "sha256": "6fee07e22d028831ee0c54a21982a1e6c8ec8efba94e7576670ea0dfc617c6b9"
+        },
+        {
+          "source": "tyrian21/newsh3.shp",
+          "target": "/sd/tyrian/data/newsh3.shp",
+          "size": 37130,
+          "sha256": "f5ac183f489079505908f3cb431b516a54b24fdf312f2702725abf83732e9c6d"
+        },
+        {
+          "source": "tyrian21/music.mus",
+          "target": "/sd/tyrian/data/music.mus",
+          "size": 153482,
+          "sha256": "b06a509bd8576f63c61859e3a2c59482c4035d79f21725f9ec10479377044a74"
+        },
+        {
+          "source": "tyrian21/user2.shp",
+          "target": "/sd/tyrian/data/user2.shp",
+          "size": 27674,
+          "sha256": "7ac900995a588386ffc70d66ed67bd501e15bf3a8847ad33363bb67cbbc00d1d"
+        },
+        {
+          "source": "tyrian21/newshu.shp",
+          "target": "/sd/tyrian/data/newshu.shp",
+          "size": 35657,
+          "sha256": "762c328b99a824942005e66a4567d3c1d45a680527584367a962eeb4bf4e8c45"
+        },
+        {
+          "source": "tyrian21/netarena.pcx",
+          "target": "/sd/tyrian/data/netarena.pcx",
+          "size": 22826,
+          "sha256": "1b8dffbb1d17af08d9e4dd265c7146b6a5f1dfb49bee1462ebd80ad63cba2fac"
+        },
+        {
+          "source": "tyrian21/netipx.exe",
+          "target": "/sd/tyrian/data/netipx.exe",
+          "size": 27124,
+          "sha256": "e92b1f1a57c48527d3480b95dd8ac801a7d3df5a36a4c94b9510b0e8e47e0de1"
+        },
+        {
+          "source": "tyrian21/shapes).dat",
+          "target": "/sd/tyrian/data/shapes).dat",
+          "size": 118720,
+          "sha256": "36173a95248ed1f60c499122b4b17450af2bc9ddcb958215ed9c400429ae37eb"
+        },
+        {
+          "source": "tyrian21/dpmi16bi.ovl",
+          "target": "/sd/tyrian/data/dpmi16bi.ovl",
+          "size": 50544,
+          "sha256": "afea669e007ff79c8c02b2ae8b3fc908c51b6a86c49f9cef1a9cd3f5ce9635ba"
+        },
+        {
+          "source": "tyrian21/tyrend.anm",
+          "target": "/sd/tyrian/data/tyrend.anm",
+          "size": 3315848,
+          "sha256": "0477bb711d2373c3889da0a792505fff158a0fb9817932c3fb78976424a1c752"
+        },
+        {
+          "source": "tyrian21/tyrian.snd",
+          "target": "/sd/tyrian/data/tyrian.snd",
+          "size": 264512,
+          "sha256": "0f5c37f97f0992026f1736f178bccc64746bc931daf23adbdc82553c140c80b8"
+        },
+        {
+          "source": "tyrian21/shapesw.dat",
+          "target": "/sd/tyrian/data/shapesw.dat",
+          "size": 172480,
+          "sha256": "d06514348982ad364c4b77c4ed4f2f3dbccd8a390e180435a82484bdca5d9c7a"
+        },
+        {
+          "source": "tyrian21/cubetxt1.dat",
+          "target": "/sd/tyrian/data/cubetxt1.dat",
+          "size": 36169,
+          "sha256": "2a0bc26ac4a8cdcbe7a145c9b1868a87ecb4335e9787f2f1e5713c965372df2b"
+        },
+        {
+          "source": "tyrian21/tyrian.shp",
+          "target": "/sd/tyrian/data/tyrian.shp",
+          "size": 443871,
+          "sha256": "b9602b6dd42c1bf4716bdccbe5ab40495fcd064fcc55fd0f8d4436d640c4b450"
+        },
+        {
+          "source": "tyrian21/newsh~.shp",
+          "target": "/sd/tyrian/data/newsh~.shp",
+          "size": 16219,
+          "sha256": "17519efb2aec555a83f0c1406e7d513641440e0b1c12e0832ad4c70ee54023f0"
+        },
+        {
+          "source": "tyrian21/palette.dat",
+          "target": "/sd/tyrian/data/palette.dat",
+          "size": 17664,
+          "sha256": "6f0be74cb1b0026e46029d98d9ade41b8283bad849208543330b717fe5c365fc"
+        },
+        {
+          "source": "tyrian21/netterm.int",
+          "target": "/sd/tyrian/data/netterm.int",
+          "size": 633,
+          "sha256": "58fec99ab9512c588e8f4375e1d17ea9c052f9be8cd74fd1ea411ca00519f300"
+        },
+        {
+          "source": "tyrian21/order.tfp",
+          "target": "/sd/tyrian/data/order.tfp",
+          "size": 272703,
+          "sha256": "26f5f3d8e403676f5f2080fe45285c5a5118780e90b37cfee891c0ee385ccc18"
+        },
+        {
+          "source": "tyrian21/newshg.shp",
+          "target": "/sd/tyrian/data/newshg.shp",
+          "size": 36643,
+          "sha256": "3d4cb3d7e3b6547b637ecf02e8d284abc1e240809cc648d836dfa99afd45f416"
+        },
+        {
+          "source": "tyrian21/newsh6.shp",
+          "target": "/sd/tyrian/data/newsh6.shp",
+          "size": 17578,
+          "sha256": "79098b156a9a1cc1af16a3a03156d58cf45b9a830217d362c3c9935798afe62d"
+        },
+        {
+          "source": "tyrian21/shapesy.dat",
+          "target": "/sd/tyrian/data/shapesy.dat",
+          "size": 152992,
+          "sha256": "cff7f670d85ea73594092966b23b9ec697500ece148cbf65a8131e4e92412990"
+        },
+        {
+          "source": "tyrian21/order.exe",
+          "target": "/sd/tyrian/data/order.exe",
+          "size": 20557,
+          "sha256": "3648ae05c9963b847c3de3adaac556a012af82d7a5d1421e72ae134ca6288e99"
+        },
+        {
+          "source": "tyrian21/modems.txt",
+          "target": "/sd/tyrian/data/modems.txt",
+          "size": 3082,
+          "sha256": "9544cb45be8b5d6907431e4496e56ccb0c2b9b7d2e621f89316761de81106e68"
+        },
+        {
+          "source": "tyrian21/newshj.shp",
+          "target": "/sd/tyrian/data/newshj.shp",
+          "size": 43999,
+          "sha256": "013fbc96bfba79bec9b07d37ec477e7d3ea9d22aab3f9efd392c6253ae5721dd"
+        },
+        {
+          "source": "tyrian21/demo.3",
+          "target": "/sd/tyrian/data/demo.3",
+          "size": 1974,
+          "sha256": "b742a1acf9b64d9d55ee824cf94a335d62495ee4b0a1dafbe5adcadce5c40f29"
+        },
+        {
+          "source": "tyrian21/estsc.shp",
+          "target": "/sd/tyrian/data/estsc.shp",
+          "size": 115338,
+          "sha256": "d4368490c9191442c1255b4feb447bc0265236126bed11c9442cef5338a146df"
+        },
+        {
+          "source": "tyrian21/file0001.exe",
+          "target": "/sd/tyrian/data/file0001.exe",
+          "size": 236032,
+          "sha256": "0f51a58732e47a8a6f1f786788be9925cbf78fc9f086f9b5339030f85dacdf93"
+        },
+        {
+          "source": "tyrian21/tyrian3.lvl",
+          "target": "/sd/tyrian/data/tyrian3.lvl",
+          "size": 393398,
+          "sha256": "0995c7e2279995485576e02b21ac8599b4924c35af5afffdede69c01994b9937"
+        },
+        {
+          "source": "tyrian21/netarena.exe",
+          "target": "/sd/tyrian/data/netarena.exe",
+          "size": 74678,
+          "sha256": "2af257308e67bbe0a6593fb8be0bfb3820901c1afb52e3ae3b181131d4f4c36d"
+        },
+        {
+          "source": "tyrian21/helpme.doc",
+          "target": "/sd/tyrian/data/helpme.doc",
+          "size": 13083,
+          "sha256": "bfa40668e083cb44ead8e0c6176b8ec382f9291c489efdcba8d474d3bf79035b"
+        },
+        {
+          "source": "tyrian21/newshb.shp",
+          "target": "/sd/tyrian/data/newshb.shp",
+          "size": 39025,
+          "sha256": "9bae3eccd4e8793d42553c9798581f0ef77d829fe30d16afa29cf45261ed3c08"
+        },
+        {
+          "source": "tyrian21/tyrian.pic",
+          "target": "/sd/tyrian/data/tyrian.pic",
+          "size": 365969,
+          "sha256": "5bda2ba46511f835e402188f1608b4398ae36303edfaef14304ad08b55bb5684"
+        },
+        {
+          "source": "tyrian21/demo.5",
+          "target": "/sd/tyrian/data/demo.5",
+          "size": 1122,
+          "sha256": "0c708cc80abdf8bd0a62bf1d41e3e96af29e79458be4426c259b84c0b6000f5d"
+        },
+        {
+          "source": "tyrian21/levels4.dat",
+          "target": "/sd/tyrian/data/levels4.dat",
+          "size": 11103,
+          "sha256": "891b9ecbdd223df291077fd95626f37ac03b527ca6fd50f76198067a5edebdb4"
+        },
+        {
+          "source": "tyrian21/file0002.exe",
+          "target": "/sd/tyrian/data/file0002.exe",
+          "size": 84810,
+          "sha256": "4941c19d2b366cdef7414cacf9b6a4a72086ff1f4f7b90a465c7aae8d415543f"
+        },
+        {
+          "source": "tyrian21/shipedit.doc",
+          "target": "/sd/tyrian/data/shipedit.doc",
+          "size": 17174,
+          "sha256": "31d1bb057ccb7a20c4a5175c3e2ff40c37d6d1d3391b162ed700ad502b74ad93"
+        },
+        {
+          "source": "tyrian21/newshi.shp",
+          "target": "/sd/tyrian/data/newshi.shp",
+          "size": 30860,
+          "sha256": "226da9b33b9b16f7a4212b9cc785fbd82c9517172b3a15a7f58798a38b0a12e4"
+        },
+        {
+          "source": "tyrian21/newshv.shp",
+          "target": "/sd/tyrian/data/newshv.shp",
+          "size": 23343,
+          "sha256": "b23f634db62c1db5efe6766368b76ec1700f7b96ecfe054cac308f9742c60075"
+        },
+        {
+          "source": "tyrian21/newshp.shp",
+          "target": "/sd/tyrian/data/newshp.shp",
+          "size": 46204,
+          "sha256": "4bd9a72339e30440c172e385f258c8895b516ff84026a9a6b5a65ada4cf0ab90"
+        },
+        {
+          "source": "tyrian21/manual.doc",
+          "target": "/sd/tyrian/data/manual.doc",
+          "size": 32318,
+          "sha256": "6d61e5b4ddb5af6a510c0b2bd408680134d8a9eaa272dbb5e367b20aa8e6a92e"
+        },
+        {
+          "source": "tyrian21/netterm.exe",
+          "target": "/sd/tyrian/data/netterm.exe",
+          "size": 98336,
+          "sha256": "42926dcfdefd7f02a3a036b8e830b4a2836fd62d5fd08a52058efe19cd2784f5"
+        },
+        {
+          "source": "tyrian21/newshk.shp",
+          "target": "/sd/tyrian/data/newshk.shp",
+          "size": 22913,
+          "sha256": "cc61abb548a4015d71bac98bc0091217660c1146adcac8b15e3d2bc7e5598d73"
+        },
+        {
+          "source": "tyrian21/shapesz.dat",
+          "target": "/sd/tyrian/data/shapesz.dat",
+          "size": 243712,
+          "sha256": "26aa6ab954391714255f368368261d991025e97d852a7403289bab6ded47da4d"
+        },
+        {
+          "source": "tyrian21/voices.snd",
+          "target": "/sd/tyrian/data/voices.snd",
+          "size": 132767,
+          "sha256": "c709ca1e74be6bd4b7917d258d81824d33c38a1a9a0287ec693b6459f58fc27a"
+        },
+        {
+          "source": "tyrian21/shipedit.exe",
+          "target": "/sd/tyrian/data/shipedit.exe",
+          "size": 82944,
+          "sha256": "9be5f168ee0e0743c0e9a541b8620820b6d53b6d8458fdc8d3c50727ee9c3181"
+        },
+        {
+          "source": "tyrian21/tyrianc.shp",
+          "target": "/sd/tyrian/data/tyrianc.shp",
+          "size": 444862,
+          "sha256": "7c1666a748f7b8f7662eff342529c453253cce5c11cbd667de912a9f41bbc02b"
+        },
+        {
+          "source": "tyrian21/newshl.shp",
+          "target": "/sd/tyrian/data/newshl.shp",
+          "size": 14846,
+          "sha256": "9c8ee60bc111a9eb4fb33c7b2528a2f6217c57dc77ec8ee1f2104e8c1f20a34d"
+        },
+        {
+          "source": "tyrian21/newshd.shp",
+          "target": "/sd/tyrian/data/newshd.shp",
+          "size": 42012,
+          "sha256": "08c7c81b4ed590609f97347b1a4ec60aba56925ecc7193a6718c34cb8d698adf"
+        },
+        {
+          "source": "tyrian21/netmodem.exe",
+          "target": "/sd/tyrian/data/netmodem.exe",
+          "size": 41982,
+          "sha256": "24329b1c3278f192897e022c2a2046984f3a1b7cf39a715bc0c15d9b13a42f4d"
+        },
+        {
+          "source": "tyrian21/tyrian4.lvl",
+          "target": "/sd/tyrian/data/tyrian4.lvl",
+          "size": 800006,
+          "sha256": "181fde04387ba47e6b49a7f27010ac92fe00566a5f9fef075d74e4c4b2ebef75"
+        },
+        {
+          "source": "tyrian21/cubetxt3.dat",
+          "target": "/sd/tyrian/data/cubetxt3.dat",
+          "size": 12294,
+          "sha256": "fcfc9762cd4cfad42feb12d975929de86851b216d4491252c701527e22b55539"
+        },
+        {
+          "source": "tyrian21/newsh9.shp",
+          "target": "/sd/tyrian/data/newsh9.shp",
+          "size": 38831,
+          "sha256": "371650303f8b93ae17b76d7c27df202bf6a3f6bb482ffabb7b6b1e16e2774d30"
+        },
+        {
+          "source": "tyrian21/tyrian.ico",
+          "target": "/sd/tyrian/data/tyrian.ico",
+          "size": 766,
+          "sha256": "5aa58773ef65ac7503f102aa65e8e6f34ccf52d59ffbde84fe93e69b6bafdf12"
+        },
+        {
+          "source": "tyrian21/newshh.shp",
+          "target": "/sd/tyrian/data/newshh.shp",
+          "size": 46639,
+          "sha256": "d5bc9e5a6f8a2098f95284a9e675cf6d5b15a29baf8ff8a0fa72943801f351db"
+        },
+        {
+          "source": "tyrian21/demo.4",
+          "target": "/sd/tyrian/data/demo.4",
+          "size": 699,
+          "sha256": "68acfd9f1078cbc5798472ce5168b111cca1b5a8384f0386c572ca878e402aa2"
+        },
+        {
+          "source": "tyrian21/setup.box",
+          "target": "/sd/tyrian/data/setup.box",
+          "size": 24,
+          "sha256": "f87854991cd8ba82d9b99c86f07932fe079089a4d49fd7aeb85b44b409107bf2"
+        },
+        {
+          "source": "tyrian21/setup.ini",
+          "target": "/sd/tyrian/data/setup.ini",
+          "size": 77,
+          "sha256": "06b9345543385b2b7249b45e50236dcb5f718ba688992038bbabafee92b6839d"
+        },
+        {
+          "source": "tyrian21/netmega.pcx",
+          "target": "/sd/tyrian/data/netmega.pcx",
+          "size": 33221,
+          "sha256": "275291eaf4666aba50869adefbf21b3314bc72b951a38b962f26713ef159b8eb"
+        },
+        {
+          "source": "tyrian21/newsh#.shp",
+          "target": "/sd/tyrian/data/newsh#.shp",
+          "size": 17750,
+          "sha256": "45c9e26a7742ce3e9340638349ab6b1b4c834c1ed6dd5d69cc32dd4e481a706d"
+        },
+        {
+          "source": "tyrian21/newsht.shp",
+          "target": "/sd/tyrian/data/newsht.shp",
+          "size": 14187,
+          "sha256": "133fe424165eacbe3f05a8be838c5b962791855e3afff184123209e8f1cc118f"
+        },
+        {
+          "source": "tyrian21/demo.2",
+          "target": "/sd/tyrian/data/demo.2",
+          "size": 2193,
+          "sha256": "516be02853d416e8719f7a895343c055ea079f793fcc97e4d678975dce616f7d"
+        },
+        {
+          "source": "tyrian21/newshf.shp",
+          "target": "/sd/tyrian/data/newshf.shp",
+          "size": 33543,
+          "sha256": "852c2fb552c9077a198be7902d8f58699ed070dabcd36c6e3acfe80dd3804cce"
+        },
+        {
+          "source": "tyrian21/netfont2.pcx",
+          "target": "/sd/tyrian/data/netfont2.pcx",
+          "size": 10327,
+          "sha256": "9d99299c4b224b6489d252c63cca08850f525c7ac4548cfb55241fc36902dc42"
+        },
+        {
+          "source": "tyrian21/tyrset.pcx",
+          "target": "/sd/tyrian/data/tyrset.pcx",
+          "size": 53766,
+          "sha256": "bcb12dff1a6b845fdf26d3eb1f347c5d9d90248365f5113a67a371883f4c2a4a"
+        },
+        {
+          "source": "tyrian21/tshp2.pcx",
+          "target": "/sd/tyrian/data/tshp2.pcx",
+          "size": 62168,
+          "sha256": "1a7b841ce799fac196e136c8dd90e6a0e9184bfdd05fa036cbb5e97d651e6327"
+        },
+        {
+          "source": "tyrian21/setup.int",
+          "target": "/sd/tyrian/data/setup.int",
+          "size": 7451,
+          "sha256": "a972a5253a3c3ce56b00f72e04f77f3bd2b38f946793370f144b3b5b6ff66262"
+        },
+        {
+          "source": "tyrian21/cubetxt2.dat",
+          "target": "/sd/tyrian/data/cubetxt2.dat",
+          "size": 8108,
+          "sha256": "6604a1dcc264e8b8e98f036a8bc35579e9b90b92eccbc4d7c1effee9785d1580"
+        },
+        {
+          "source": "tyrian21/shipedit.pcx",
+          "target": "/sd/tyrian/data/shipedit.pcx",
+          "size": 13450,
+          "sha256": "29caa6ad955f63819dd06ded886a991208a590ee68b88e2b8beb2f55e2e31bb5"
+        },
+        {
+          "source": "tyrian21/exitmsg.bin",
+          "target": "/sd/tyrian/data/exitmsg.bin",
+          "size": 4000,
+          "sha256": "5e09eccbdc6eef0a20715db1eb59dc336401642ed4afa8f4d506e5a1934557a3"
+        },
+        {
+          "source": "tyrian21/newshm.shp",
+          "target": "/sd/tyrian/data/newshm.shp",
+          "size": 22378,
+          "sha256": "ba6998cb74ba122812bacb714c81b8c309af073b5464645eee2856233f37e7c2"
+        },
+        {
+          "source": "tyrian21/cubetxt4.dat",
+          "target": "/sd/tyrian/data/cubetxt4.dat",
+          "size": 62424,
+          "sha256": "f77ac5509d7d644515bccb8e3733d5ea047e22bd03465c75526fb199e91b1b46"
+        },
+        {
+          "source": "tyrian21/demo.1",
+          "target": "/sd/tyrian/data/demo.1",
+          "size": 2745,
+          "sha256": "9128c9276325191acd617d7ff9c520524fb55a286cb25a1c39c78bb6cadc5ecf"
+        },
+        {
+          "source": "tyrian21/tyrian.exe",
+          "target": "/sd/tyrian/data/tyrian.exe",
+          "size": 4336,
+          "sha256": "a7e3075d5b18b917b12478515e60e36c380bae9117515baf12ede48389e46174"
+        },
+        {
+          "source": "tyrian21/newsh4.shp",
+          "target": "/sd/tyrian/data/newsh4.shp",
+          "size": 29449,
+          "sha256": "05fd4174fa1041dbccccf16fffc18b574b9c3c3ca3e2678ba0ba977c9b288fca"
+        },
+        {
+          "source": "tyrian21/voicesc.snd",
+          "target": "/sd/tyrian/data/voicesc.snd",
+          "size": 188275,
+          "sha256": "949d2a2131d230c345397d8f1f6953115166271aeeccb28d8c6009c81a744dbe"
+        },
+        {
+          "source": "tyrian21/newsh0.shp",
+          "target": "/sd/tyrian/data/newsh0.shp",
+          "size": 14096,
+          "sha256": "c443ec4e268205e6a843c1ba783e84cce9d710e3226ddd03b8bfc869bcafbf10"
+        },
+        {
+          "source": "tyrian21/netset.pcx",
+          "target": "/sd/tyrian/data/netset.pcx",
+          "size": 53766,
+          "sha256": "bcb12dff1a6b845fdf26d3eb1f347c5d9d90248365f5113a67a371883f4c2a4a"
+        },
+        {
+          "source": "tyrian21/tyrian.hdt",
+          "target": "/sd/tyrian/data/tyrian.hdt",
+          "size": 153657,
+          "sha256": "c816055863eb91d28ac10b4acc1e312f433deff553f08926e698c9a9ba68daa7"
+        },
+        {
+          "source": "tyrian21/newsho.shp",
+          "target": "/sd/tyrian/data/newsho.shp",
+          "size": 24478,
+          "sha256": "47dbee09f4c94660c42503d721e82ec50627faa241f458f7bfe3835d88cd250a"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://github.com/opentyrian/opentyrian",
+      "note": "Tyrian 2.1 verified package"
+    }
+  ]
+}

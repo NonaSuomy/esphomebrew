@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "app": "scratch",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/scratch/incoming",
+  "folders": [
+    "/sd/roms/scratch/projects",
+    "/sd/roms/scratch/settings",
+    "/sd/roms/scratch/romfs"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scratch/romfs/gfx/translations/languages.json",
+      "note": "Runtime assets from scratch-data.zip"
+    },
+    {
+      "path": "/sd/roms/scratch/projects/",
+      "note": "Scratch 3 projects (.sb3)"
+    }
+  ],
+  "instructions": "Extract scratch-data.zip into /sd/roms/scratch/ before launching. Existing 0.1.0 runtime assets also work with the editor. Choose New to create a project, touch a .sb3 filename to edit it, or Edit to open the selected project. The editor uses the full supported canvas. Board IO blocks need the updated Elecrow PAX firmware. Drag palette blocks into the workspace, tap inputs to edit them, and use Save to export a new .sb3 copy. Run previews the project; touch Stop to return to editing. Exported projects belong under /sd/roms/scratch/projects/.",
+  "media": [],
+  "sources": []
+}

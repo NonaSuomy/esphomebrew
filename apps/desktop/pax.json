@@ -1,0 +1,77 @@
+{
+  "name": "desktop",
+  "title": "Workspace",
+  "version": "0.6.1",
+  "description": "VNC, dashboards, on-panel HA/SD media browsing and relay video/audio.",
+  "category": "Tool",
+  "about": "Connect directly to VNC, or choose LISTEN to receive SVP Relay baseline JPEG pictures on TCP port 5000. Compatible with SVP Relay 0.9.42 panel handshakes, cursor shapes/positions, keyboard/mouse/touch input, statistics, probes and PCM dashboard sound. VIA RELAY asks Home Assistant to start a VNC desktop using the computer fields and the URL/token in /sd/roms/desktop/relay.conf. No firmware change is required on current PAX loaders. Configure the panel address and stream port 5000 in SVP Relay. Receiver runs only while this app is open in relay mode. AVI media reception supports baseline MJPEG video with 16-bit PCM mono/stereo sound, pause/resume, stop/end reporting and mute. MP3/FLAC in AVI and SPICE main/audio/USB channels are not implemented. Use a trusted LAN; receiver traffic has no authentication or encryption. JPEG receiver and network probes validated on ESP32-P4. Home Assistant dashboard display validated on hardware; AVI picture display and PCM speaker submissions validated on ESP32-P4. Version 0.5.0 Video/Audio uses a 512x300 canvas on the 1024x600 panel, mono 16 kHz PCM and a dedicated buffered audio task. Hardware feedback confirms faster pictures and a steady tone, with occasional stall-related audio gaps. Version 0.6.0 adds MEDIA for Home Assistant and SD media browsing through the optional pax_media_bridge firmware component. Playback uses the configured SVP Relay entity; standalone audio requires PAX Audio or another audio player. No HA token is needed for browsing. SD media stays under /sd/media, with 256 entries per folder and 2 GiB per file. Artwork, photos, playlists and seeking are not ported.",
+  "controls": [
+    "MEDIA: browse HA or /sd/media; tap a folder/file",
+    "Media: HA/SD, Up, Load, Prev/Next, Pause/Stop/Mute",
+    "Media keys: arrows, Enter, Backspace up, Esc view, R reload",
+    "VIDEO/AUDIO: receive relay AVI video with PCM sound",
+    "Shared menu: Pause/Resume, Stop media, Mute/Unmute",
+    "During video: Space pause, Esc stop, M mute",
+    "DASHBOARD: show the configured idle dashboard",
+    "Shared menu > Workspace: refresh page or go back",
+    "LISTEN: receive SVP Relay pictures on port 5000",
+    "VIA RELAY: request a relay VNC desktop (relay.conf needed)",
+    "Touch keyboard or USB keyboard: enter host and password",
+    "Enter: next field / connect; Tab: next control",
+    "Touch desktop: left click and drag",
+    "USB mouse: move, left/right/middle click and scroll",
+    "USB keyboard: send keys to the desktop",
+    "Hold two fingers 1.5 s: disconnect",
+    "Shared menu > Workspace: disconnect",
+    "Hold Menu 3 s: exit to launcher"
+  ],
+  "canvas": true,
+  "publish": true,
+  "dev_build": true,
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
+    "path": "components/psram_app_loader"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "includes": [
+    "local:apps/desktop"
+  ],
+  "cflags": [
+    "-std=c11",
+    "-Os",
+    "-ffreestanding",
+    "-fno-common",
+    "-fno-tree-loop-distribute-patterns",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-Wall",
+    "-Wextra",
+    "-Werror"
+  ],
+  "groups": [
+    {
+      "dir": "local:apps/desktop",
+      "files": [
+        "main.c",
+        "rfb.c",
+        "vnc_auth.c",
+        "relay.c",
+        "relay_jpeg.c",
+        "relay_http.c",
+        "jpeg/tjpgd.c",
+        "audio_buffer.c",
+        "media_client.c"
+      ]
+    }
+  ],
+  "install_recipe": "install-recipe.json",
+  "ldflags": [
+    "-lgcc"
+  ],
+  "changelog": "0.6.1: rename the app and shared menu to Workspace; retain the desktop package ID and saved connections.\n0.6.0: on-panel Home Assistant and SD media browser through a token-free firmware bridge.\n0.5.0: buffered audio on a dedicated task; 512x300 video canvas and mono 16 kHz negotiation for P4 playback.\n0.4.1: recover picture timing after audio/network backpressure.\n0.4.0: SVP Relay AVI/MJPEG video and PCM audio, playback timing, pause/stop/mute and end reporting.\n0.3.1: allow Chromium cold startup before the first dashboard picture.\n0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client.",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
+}

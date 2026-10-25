@@ -1,0 +1,32 @@
+diff --git a/third_party/aom/av1/common/cdef_block.c b/third_party/aom/av1/common/cdef_block.c
+--- a/third_party/aom/av1/common/cdef_block.c
++++ b/third_party/aom/av1/common/cdef_block.c
+@@ -292,6 +292,8 @@
+   return var ? (strength * (4 + i) + 8) >> 4 : 0;
+ }
+ 
++_Static_assert(sizeof(int) == sizeof(int32_t), "PAX CDEF variance requires 32-bit int");
++
+ static AOM_INLINE void aom_cdef_find_dir(const uint16_t *in, cdef_list *dlist,
+                                          int var[CDEF_NBLOCKS][CDEF_NBLOCKS],
+                                          int cdef_count, int coeff_shift,
+@@ -306,8 +308,8 @@
+     const int bx2 = dlist[bi + 1].bx;
+     const int pos1 = 8 * by * CDEF_BSTRIDE + 8 * bx;
+     const int pos2 = 8 * by2 * CDEF_BSTRIDE + 8 * bx2;
+-    cdef_find_dir_dual(&in[pos1], &in[pos2], CDEF_BSTRIDE, &var[by][bx],
+-                       &var[by2][bx2], coeff_shift, &dir[by][bx],
++    cdef_find_dir_dual(&in[pos1], &in[pos2], CDEF_BSTRIDE, (int32_t *)&var[by][bx],
++                       (int32_t *)&var[by2][bx2], coeff_shift, &dir[by][bx],
+                        &dir[by2][bx2]);
+   }
+ 
+@@ -316,7 +318,7 @@
+     const int by = dlist[bi].by;
+     const int bx = dlist[bi].bx;
+     dir[by][bx] = cdef_find_dir(&in[8 * by * CDEF_BSTRIDE + 8 * bx],
+-                                CDEF_BSTRIDE, &var[by][bx], coeff_shift);
++                                CDEF_BSTRIDE, (int32_t *)&var[by][bx], coeff_shift);
+   }
+ }
+ 

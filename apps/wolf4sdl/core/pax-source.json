@@ -1,0 +1,6 @@
+{
+  "source_repository": "RetroESP32-P4 workspace",
+  "source_ref": "47a4a9a232cf18d518b1d5751a7be476f596dfa7",
+  "path": "components/wolf4sdl",
+  "note": "Source code snapshot for standalone PAX store builds; workspace core is a symlink."
+}

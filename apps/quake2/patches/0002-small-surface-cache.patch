@@ -1,0 +1,11 @@
+diff --git a/components/quake2/source/ref_soft/r_local.h b/components/quake2/source/ref_soft/r_local.h
+--- a/components/quake2/source/ref_soft/r_local.h
++++ b/components/quake2/source/ref_soft/r_local.h
+@@ -205,6 +205,6 @@
+ #define ALIAS_Z_CLIP                            0x0010
+ #define ALIAS_XY_CLIP_MASK                      0x000F
+ 
+-#define SURFCACHE_SIZE_AT_320X240    1024*768
++#define SURFCACHE_SIZE_AT_320X240    8192
+ 
+ #define BMODEL_FULLY_CLIPPED    0x10 // value returned by R_BmodelCheckBBox ()

@@ -1,0 +1,204 @@
+{
+  "name": "scratch",
+  "title": "Scratch Blocks",
+  "version": "0.4.17",
+  "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
+  "author": "ScratchEverywhere contributors / PAX port",
+  "category": "Game",
+  "license": "LGPL-3.0; bundled dependency licenses in source",
+  "about": "Native touch editor and Scratch 3 player. Drag/snap blocks and reporters, author lists and custom procedures with text/number and Boolean arguments, choose named inputs, edit sprite/stage properties, and zoom the script workspace from 50 to 200 percent. Properties opens costume/backdrop and sound asset browsers. Paint creates a new 32x32 pixel-art SVG copy with brush, eraser, fill, mirror and undo/redo. Import SVG/PNG images or WAV/MP3 audio from /sd/roms/scratch/assets/. The sound waveform editor offers trimming, volume, reversal, fades, preview and undo. Asset changes participate in SB3 save/undo; originals and imported unknown data are preserved. Microphone recording needs an audio capture service absent from the current firmware ABI. Board IO blocks use configured ESPHome hardware services. Playback renders at native LCD resolution with cached antialiased Noto Sans text; turbo batches interpreter steps between periodic device yields.",
+  "controls": [
+    "New: create a project; Edit: open a project in the editor",
+    "Desktop: mouse selects; arrows browse; Enter plays; E edits",
+    "Drag palette blocks into the workspace to add them",
+    "Builder: F5 plays; F6 stops; desktop Shift+F5 also stops",
+    "Properties: edit sprite/stage; Variables > List + adds lists",
+    "Tap named inputs to choose variables, lists or assets",
+    "Drop on a stack or socket to connect blocks",
+    "Tap inputs to edit; on-screen or USB keyboard",
+    "Pan/Home: navigate scripts; Copy/Trash: selected stack",
+    "Save: export a new .sb3 copy; Undo/Redo: edit history",
+    "Green flag: preview; red stop sign or Select+B returns",
+    "Hold Menu (2 s): exit; unsaved editor work is recovered",
+    "Properties > Costumes/Sounds: paint or edit assets",
+    "Import SVG/PNG or WAV/MP3 from scratch/assets/",
+    "My Blocks: create or edit procedures and typed inputs",
+    "Workspace -/+/percent: zoom out, in or reset to 100%",
+    "Sound: trim, reverse, fades, volume, preview and undo",
+    "Playback: tap Turbo or F7 to toggle turbo; F6 stops"
+  ],
+  "canvas": {
+    "recommended": "1024x600",
+    "sizes": [
+      "800x480",
+      "1024x600"
+    ]
+  },
+  "upstream": {
+    "project": "ScratchEverywhere",
+    "version": "1.2.1",
+    "url": "https://github.com/ScratchEverywhere/ScratchEverywhere"
+  },
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/ScratchEverywhere/ScratchEverywhere",
+    "ref": "0bcc42bc1f216be2f75cbdaf9a5cf344dbf33b00",
+    "path": "."
+  },
+  "includes": [
+    "include",
+    "include/runtime",
+    "include/runtime/parser",
+    "include/runtime/blocks",
+    "include/platforms",
+    "source",
+    "include/renderers/headless",
+    "external-include",
+    "local:apps/scratch/port",
+    "local:apps/scratch/deps/json",
+    "local:apps/scratch/deps/expected/include",
+    "local:apps/scratch/deps/miniz",
+    "local:apps/scratch/deps/ryu",
+    "local:apps/scratch/deps/lunasvg/include",
+    "local:apps/scratch/deps/lunasvg/plutovg/include",
+    "local:apps/scratch/deps/stb",
+    "local:apps/scratch/deps/dr_libs",
+    "local:apps/scratch/deps/tsf"
+  ],
+  "cflags": [
+    "-Os",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fno-tree-loop-distribute-patterns",
+    "-DRENDERER_HEADLESS",
+    "-DENABLE_BITMAP",
+    "-DENABLE_SVG",
+    "-DENABLE_AUDIO",
+    "-DSTBI_NO_THREAD_LOCALS",
+    "-DJSON_NOEXCEPTION",
+    "-DMINIZ_NO_TIME",
+    "-DLUNASVG_BUILD_STATIC",
+    "-DPLUTOVG_BUILD_STATIC",
+    "-DLUNASVG_DISABLE_LOAD_SYSTEM_FONTS",
+    "-DLUNASVG_DISABLE_EXTERNAL_RESOURCES",
+    "-DPLUTOVG_DISABLE_FONT_FACE_CACHE_LOAD",
+    "-std=gnu11",
+    "-DENABLE_CLOUDVARS"
+  ],
+  "cxxflags": [
+    "-std=gnu++17",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-use-cxa-atexit",
+    "-fno-threadsafe-statics",
+    "-DENABLE_CLOUDVARS"
+  ],
+  "groups": [
+    {
+      "dir": "source",
+      "prefix": "se0_",
+      "files": [
+        "*.cpp"
+      ],
+      "exclude": [
+        "main.cpp",
+        "libretro.cpp",
+        "log.cpp",
+        "filesystem.cpp",
+        "inspector.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime",
+      "prefix": "se1_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime/blocks",
+      "prefix": "se2_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime/parser",
+      "prefix": "se3_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "source/runtime/zip/miniz",
+      "prefix": "se4_",
+      "files": [
+        "*.cpp"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/port",
+      "prefix": "pax0_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/miniz",
+      "prefix": "pax1_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/ryu/ryu",
+      "prefix": "pax2_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/lunasvg/source",
+      "prefix": "pax3_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/scratch/deps/lunasvg/plutovg/source",
+      "prefix": "pax4_",
+      "files": [
+        "*.cpp",
+        "*.c"
+      ]
+    }
+  ],
+  "newlib": true,
+  "ldflags": [
+    "-lstdc++"
+  ],
+  "linker_script": "local:apps/scratch/port/pax_cpp.ld",
+  "patches": [
+    "local:apps/scratch/patches/*.patch"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/scratch/romfs/gfx/translations/languages.json",
+      "note": "Runtime assets from scratch-data.zip"
+    },
+    {
+      "path": "/sd/roms/scratch/projects/",
+      "note": "Scratch 3 projects (.sb3)"
+    }
+  ],
+  "publish": true,
+  "install_recipe": "install-recipe.json",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "dev_build": true
+}

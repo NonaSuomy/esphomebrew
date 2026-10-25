@@ -1,0 +1,198 @@
+{
+  "name": "quake2",
+  "title": "Quake II",
+  "version": "0.1.0",
+  "description": "Quake II software renderer as a PSRAM app for the PAX launcher.",
+  "author": "id Software / quake2generic; PAX port",
+  "category": "Game",
+  "license": "GPL-2.0",
+  "about": "A 320x240 software-rendered Quake II port. Copy the shareware or retail baseq2 directory to /sd/roms/quake2/baseq2/. Commercial game data is not redistributed.",
+  "controls": [
+    "D-pad: move and turn",
+    "A: fire; B: jump/use",
+    "Menus: A/Start confirms; B backs out",
+    "Select/Minus: Escape / menu / back",
+    "Right analog stick: look around",
+    "L1 (upper-left shoulder): F1 / help computer",
+    "R: strafe right",
+    "Start: enter; Menu (hold 3 s): quit",
+    "USB keyboard and mouse are supported"
+  ],
+  "canvas": {
+    "sizes": [
+      "640x480",
+      "800x480"
+    ],
+    "recommended": "640x480"
+  },
+  "upstream": {
+    "project": "ESP32_QUAKE2 / quake2generic",
+    "version": "0.1.0",
+    "url": "https://github.com/alexkid77/ESP32_QUAKE2"
+  },
+  "build": "custom",
+  "patches": [
+    "local:apps/quake2/patches/*.patch"
+  ],
+  "linker_script": "local:apps/quake2/psram_app.ld",
+  "source": {
+    "repo": "https://github.com/alexkid77/ESP32_QUAKE2",
+    "ref": "0c37920e0af6c01bb88d1e8c4a0fcf148be5e57e",
+    "path": "."
+  },
+  "submodules": [
+    {
+      "path": "third_party/papp_mp3",
+      "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+      "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2"
+    }
+  ],
+  "includes": [
+    "components/quake2/source",
+    "local:apps/quake2"
+  ],
+  "cflags": [
+    "-DPAPP_APP_SIDE=1",
+    "-DIRAM_ATTR=",
+    "-DEXT_RAM_ATTR=",
+    "-DEXT_RAM_BSS=",
+    "-DQUAKE_MEMSIZE=(11*1024*1024+512*1024)",
+    "-std=gnu99",
+    "-Os",
+    "-fcommon",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-Wno-implicit-function-declaration",
+    "-Wno-incompatible-pointer-types",
+    "-Wno-int-conversion",
+    "-Wno-unused-function",
+    "-Wno-unused-variable"
+  ],
+  "cxxflags": [
+    "-std=gnu++17",
+    "-O3",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-use-cxa-atexit",
+    "-fwrapv"
+  ],
+  "groups": [
+    {
+      "dir": "components/quake2/source/client",
+      "prefix": "cl_",
+      "files": [
+        "*.c"
+      ]
+    },
+    {
+      "dir": "components/quake2/source/server",
+      "prefix": "sv_",
+      "files": [
+        "*.c"
+      ],
+      "exclude": [
+        "sv_null.c"
+      ]
+    },
+    {
+      "dir": "components/quake2/source/qcommon",
+      "prefix": "qc_",
+      "files": [
+        "*.c"
+      ]
+    },
+    {
+      "dir": "components/quake2/source/other",
+      "prefix": "ot_",
+      "files": [
+        "*.c"
+      ],
+      "exclude": [
+        "q_system.c",
+        "q_arena.c",
+        "snd_linux.c"
+      ]
+    },
+    {
+      "dir": "local:apps/quake2",
+      "prefix": "net_",
+      "files": [
+        "pax_net.c"
+      ]
+    },
+    {
+      "dir": "components/quake2/source/ref_soft",
+      "prefix": "rf_",
+      "files": [
+        "*.c"
+      ]
+    },
+    {
+      "dir": "components/quake2/source/game",
+      "prefix": "gm_",
+      "files": [
+        "*.c"
+      ]
+    },
+    {
+      "dir": "local:apps/quake2",
+      "prefix": "papp_",
+      "files": [
+        "pax_main.c",
+        "pax_arena.c",
+        "pax_port.c",
+        "pax_video_memory.c",
+        "pax_input.c",
+        "pax_sound.c",
+        "pax_music.c",
+        "pax_system.c",
+        "pax_files.c",
+        "pax_syscalls.c"
+      ]
+    },
+    {
+      "dir": "local:apps/quake2",
+      "prefix": "mp3_",
+      "files": [
+        "pax_mp3.cpp"
+      ],
+      "includes": [
+        "third_party/papp_mp3/apps/psram_quake/third_party/micro-mp3/opencore-mp3dec",
+        "third_party/papp_mp3/apps/psram_quake/third_party/micro-mp3/opencore-mp3dec/oscl"
+      ]
+    },
+    {
+      "dir": "third_party/papp_mp3/apps/psram_quake/third_party/micro-mp3/opencore-mp3dec",
+      "prefix": "mp3_",
+      "files": [
+        "*.cpp"
+      ],
+      "includes": [
+        "third_party/papp_mp3/apps/psram_quake/third_party/micro-mp3/opencore-mp3dec",
+        "third_party/papp_mp3/apps/psram_quake/third_party/micro-mp3/opencore-mp3dec/oscl"
+      ]
+    }
+  ],
+  "newlib": true,
+  "requires": [
+    {
+      "path": "/sd/roms/quake2/baseq2/pak0.pak",
+      "note": "Quake II original or demo baseq2 data"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/players",
+      "note": "Required player models and skins from the same installation"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/video",
+      "note": "Optional original movies",
+      "optional": true
+    }
+  ],
+  "publish": true,
+  "install_recipe": "install-recipe.json",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "dev_build": true
+}

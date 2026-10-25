@@ -1,0 +1,15 @@
+diff --git a/components/quake2/source/qcommon/files.c b/components/quake2/source/qcommon/files.c
+--- a/components/quake2/source/qcommon/files.c
++++ b/components/quake2/source/qcommon/files.c
+@@ -617,6 +617,11 @@ Called to find where to write a file (demos, savegames, etc)
+ */
+ char *FS_Gamedir (void)
+ {
++#ifdef QUAKE2_TEST_NEWGAME
++	/* Device regressions must not overwrite the user's actual save slots. */
++	return "/sd/roms/quake2/baseq2/quake2-death-test";
++#else
+ 	return fs_gamedir;
++#endif
+ }
+ 

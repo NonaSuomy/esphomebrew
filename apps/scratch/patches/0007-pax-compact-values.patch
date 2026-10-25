@@ -1,0 +1,28 @@
+diff --git a/include/runtime/value.hpp b/include/runtime/value.hpp
+index bb2aef4..ea22919 100644
+--- a/include/runtime/value.hpp
++++ b/include/runtime/value.hpp
+@@ -13,6 +13,12 @@
+ 
+ struct SE_EXPORT Undefined {};
+ 
++// RV32 requires only four-byte alignment for shared_ptr; let the compiler
++// generate the appropriate double accesses instead of padding each Value to 24.
++// This keeps every value and its type while saving four bytes per list element.
++#if defined(PAX_APP_SIDE) && __SIZEOF_POINTER__ == 4
++#pragma pack(push, 4)
++#endif
+ class SE_EXPORT Value {
+   private:
+     enum class Tag : uint8_t { Double,
+@@ -244,3 +250,10 @@ class SE_EXPORT Value {
+ 
+     static Value fromJson(const nlohmann::json &jsonVal);
+ };
++
++#if defined(PAX_APP_SIDE) && __SIZEOF_POINTER__ == 4
++#pragma pack(pop)
++static_assert(alignof(std::shared_ptr<const std::string>) <= 4);
++static_assert(sizeof(Value) == 20, "PAX RV32 Value must use the compact layout");
++static_assert(alignof(Value) == 4);
++#endif

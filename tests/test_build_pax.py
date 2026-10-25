@@ -26,7 +26,7 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(app=path.parent.name):
                 m = json.loads(path.read_text())
                 self.assertEqual(m["name"], path.parent.name)
-                self.assertIn(m["build"], ("lvgl", "plain", "custom"))
+                self.assertIn(m["build"], ("lvgl", "plain", "custom", "workspace"))
                 self.assertRegex(m["source"]["ref"], r"^[0-9a-f]{40}$")
                 self.assertRegex(m["version"], r"^\d+\.\d+\.\d+$")
                 if m["build"] == "lvgl":

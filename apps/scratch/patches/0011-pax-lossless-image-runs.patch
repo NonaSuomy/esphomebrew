@@ -1,0 +1,102 @@
+diff --git a/include/audiostack.hpp b/include/audiostack.hpp
+index 9bca797..593e54a 100644
+--- a/include/audiostack.hpp
++++ b/include/audiostack.hpp
+@@ -49,8 +49,8 @@ class SE_EXPORT SoundConfig {
+  * more than wav/mp3
+  */
+ class SE_EXPORT SoundStream {
+-    unsigned char *buffer;
+-    size_t buffer_size;
++    unsigned char *buffer = nullptr;
++    size_t buffer_size = 0;
+     int (*callback)(SoundStream *strm, float *iwave, int length);
+ 
+     bool loadAsWAV();
+@@ -72,7 +72,7 @@ class SE_EXPORT SoundStream {
+ 
+     std::string name;
+ 
+-    int type;
++    int type = SoundStreamUnknown;
+ 
+     int channels;
+     int rate;
+@@ -80,7 +80,7 @@ class SE_EXPORT SoundStream {
+ 
+     bool paused;
+     bool auto_clean;
+-    bool no_lock;
++    bool no_lock = false;
+ 
+     /**
+      * Set if an error occurs in the constructor.
+diff --git a/include/image.hpp b/include/image.hpp
+index 453ad6f..bcee6f1 100644
+--- a/include/image.hpp
++++ b/include/image.hpp
+@@ -47,6 +47,26 @@ enum ImageFormat {
+ #if defined(PAX_APP_SIDE)
+ struct PaxImageRows {
+     std::vector<std::shared_ptr<const std::vector<uint8_t>>> rows;
++    size_t rowBytes = 0;
++    // Only compressed rows borrow this cache; pixel sampling consumes it before
++    // requesting another row. Subrect views share the same immutable storage.
++    mutable std::vector<uint8_t> expanded;
++    mutable const std::vector<uint8_t> *cached = nullptr;
++    const uint8_t *rowData(int y) const {
++        const auto &row = *rows[y];
++        if (row.size() == rowBytes) return row.data();
++        if (cached != &row) {
++            expanded.resize(rowBytes);
++            size_t out = 0;
++            for (size_t at = 0; at < row.size(); at += 6) {
++                const unsigned count = unsigned(row[at]) | unsigned(row[at + 1]) << 8;
++                for (unsigned n = 0; n < count; ++n, out += 4)
++                    memcpy(expanded.data() + out, row.data() + at + 2, 4);
++            }
++            cached = &row;
++        }
++        return expanded.data();
++    }
+ };
+ #endif
+ struct SE_EXPORT ImageData {
+@@ -68,7 +88,7 @@ struct SE_EXPORT ImageData {
+     }
+     const uint8_t *rowData(int y) const {
+ #if defined(PAX_APP_SIDE)
+-        if (scanlines) return scanlines->rows[y + rowOffsetY]->data() + rowOffsetX * 4;
++        if (scanlines) return scanlines->rowData(y + rowOffsetY) + rowOffsetX * 4;
+ #endif
+         return static_cast<const uint8_t *>(pixels) + y * pitch;
+     }
+diff --git a/source/pax_image_rows.hpp b/source/pax_image_rows.hpp
+index f3a289e..69d4274 100644
+--- a/source/pax_image_rows.hpp
++++ b/source/pax_image_rows.hpp
+@@ -5,8 +5,23 @@
+ #include <cstdlib>
+ #include <limits>
+ 
+-// Keep the original RGBA samples; identical adjacent rows share immutable data.
++// Lossless RGBA runs avoid keeping multi-megabyte flat/striped backdrops.
++// High-entropy rows stay raw; decoding needs only one native-resolution row.
+ static void paxStoreImageRow(PaxImageRows &image, std::vector<uint8_t> row) {
++    image.rowBytes = row.size();
++    std::vector<uint8_t> runs;
++    runs.reserve(std::min<size_t>(256, row.size() / 2));
++    bool compress = true;
++    for (size_t at = 0; at < row.size();) {
++        unsigned count = 1;
++        while (count < 65535 && at + (count + 1) * 4 <= row.size() &&
++               std::memcmp(row.data() + at, row.data() + at + count * 4, 4) == 0) ++count;
++        if (runs.size() + 6 >= row.size() / 2) { compress = false; break; }
++        runs.push_back(count & 255); runs.push_back(count >> 8);
++        runs.insert(runs.end(), row.begin() + at, row.begin() + at + 4);
++        at += count * 4;
++    }
++    if (compress) row = std::move(runs);
+     if (!image.rows.empty() && *image.rows.back() == row)
+         image.rows.push_back(image.rows.back());
+     else image.rows.push_back(std::make_shared<std::vector<uint8_t>>(std::move(row)));

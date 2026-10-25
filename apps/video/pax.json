@@ -1,12 +1,12 @@
 {
   "name": "video",
   "title": "Video Player",
-  "version": "0.1.0",
-  "description": "Plays videos and music from the SD card or the web (http and https) with FFmpeg: MP4, MKV/WebM, AVI, MPEG-TS, MP3, Ogg and WAV; H.264, MPEG-4, MJPEG and VP8 video with AAC, MP3, Opus, Vorbis or PCM sound. Work in progress.",
+  "version": "0.2.0",
+  "description": "Plays SD and HTTP(S) video/music with FFmpeg: H.264, MPEG-4, MJPEG, VP8, MSMPEG4v2 and Theora, plus experimental HEVC, VP9 and AV1; AAC, MP3, Opus, Vorbis and PCM audio.",
   "author": "The FFmpeg developers; PAX port",
   "category": "Tool",
   "license": "LGPL-2.1 (FFmpeg, LGPL configuration)",
-  "about": "A small video player built on FFmpeg 7.1 (libavformat, libavcodec, libswresample; LGPL configuration, no GPL parts). Pick a file from /sd/videos/ or /sd/, type an http:// or https:// address on a USB keyboard, or let another app hand one over (NetSurf opens video and sound links here and gets its page back when you quit). Decoding is plain software on the ESP32-P4's two cores, so keep to about 480p: H.264 up to 640x360 or 854x480 plays best; bigger files are shown at half size and drop frames. Sound is the clock: pictures that fall behind are skipped, and the decoder takes shortcuts until it catches up. Streams over https:// use the loader's TLS, which checks certificates against the firmware's bundle; seeking in them uses HTTP Range requests, with a 4 MB read-ahead buffer.",
+  "about": "A small video player built on FFmpeg 7.1 (libavformat, libavcodec, libswresample; LGPL configuration, no GPL parts). Pick a file from /sd/videos/ or /sd/, type an http:// or https:// address on a USB keyboard, or let another app hand one over (NetSurf opens video and sound links here and gets its page back when you quit). MSMPEG4v2 and Theora are included; HEVC, VP9 and AV1 (libaom) are experimental software decoders and are not promises of real-time playback. Decoding is plain software on the ESP32-P4's two cores, so keep to about 480p: H.264 up to 640x360 or 854x480 plays best; bigger files are shown at half size and drop frames. Sound is the clock: pictures that fall behind are skipped, and the decoder takes shortcuts until it catches up. Streams over https:// use the loader's TLS, which checks certificates against the firmware's bundle; seeking in them uses HTTP Range requests, with a 4 MB read-ahead buffer.",
   "controls": [
     "Touch: tap to show or hide the controls",
     "Touch: tap the bar to seek, the middle to pause",
@@ -27,7 +27,7 @@
   },
   "canvas": true,
   "icon": "icon.png",
-  "publish": false,
+  "publish": true,
   "dev_build": true,
   "build": "custom",
   "source": {
@@ -40,25 +40,38 @@
     "compat"
   ],
   "patches": [
-    "local:ports/video/patches/*.patch"
+    "local:apps/video/patches/*.patch"
   ],
   "prebuild": [
     [
       "{python}",
-      "{repo}/ports/video/gen_ffmpeg.py",
+      "{repo}/apps/video/gen_ffmpeg.py",
       "--src",
       "{src}",
       "--gen",
       "{gen}"
+    ],
+    [
+      "{python}",
+      "{repo}/apps/video/gen_aom.py",
+      "--src",
+      "{src}",
+      "--gen",
+      "{gen}",
+      "--jobs",
+      "{jobs}"
     ]
   ],
-  "linker_script": "local:ports/redalert/papp_cpp.ld",
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
   "includes": [
-    ".papp-gen",
+    ".pax-gen",
     ".",
     "compat/atomics/dummy",
-    "local:ports/video",
-    "local:"
+    "local:apps/video",
+    "local:",
+    "libavcodec",
+    "third_party/aom",
+    ".pax-gen/aom-build"
   ],
   "cflags": [
     "-std=gnu17",
@@ -203,6 +216,8 @@
         "allcodecs.c",
         "aom_film_grain.c",
         "atsc_a53.c",
+        "av1_parse.c",
+        "av1_parser.c",
         "avcodec.c",
         "avdct.c",
         "avfft.c",
@@ -210,16 +225,25 @@
         "bitstream_filters.c",
         "blockdsp.c",
         "bsf.c",
+        "bsf/vp9_superframe_split.c",
+        "bswapdsp.c",
         "cabac.c",
         "cbrt_data.c",
+        "cbs.c",
+        "cbs_av1.c",
+        "cbs_bsf.c",
         "codec_desc.c",
         "codec_par.c",
+        "container_fifo.c",
         "d3d11va.c",
         "dct32_fixed.c",
         "dct32_float.c",
         "decode.c",
         "dirac.c",
+        "dovi_rpu.c",
+        "dovi_rpudec.c",
         "dv_profile.c",
+        "dynamic_hdr_vivid.c",
         "encode.c",
         "error_resilience.c",
         "exif.c",
@@ -254,14 +278,29 @@
         "h264pred.c",
         "h264qpel.c",
         "h274.c",
+        "hevc/cabac.c",
+        "hevc/data.c",
+        "hevc/dsp.c",
+        "hevc/filter.c",
+        "hevc/hevcdec.c",
+        "hevc/mvs.c",
+        "hevc/parse.c",
+        "hevc/parser.c",
+        "hevc/pred.c",
+        "hevc/ps.c",
+        "hevc/refs.c",
+        "hevc/sei.c",
         "hpeldsp.c",
         "idctdsp.c",
         "imgconvert.c",
         "ituh263dec.c",
         "jni.c",
+        "jpegquanttables.c",
         "jpegtables.c",
         "jrevdct.c",
         "kbdwin.c",
+        "libaom.c",
+        "libaomdec.c",
         "mathtables.c",
         "me_cmp.c",
         "mediacodec.c",
@@ -293,6 +332,10 @@
         "mpegvideo_dec.c",
         "mpegvideo_motion.c",
         "mpegvideodata.c",
+        "msmpeg4.c",
+        "msmpeg4_vc1_data.c",
+        "msmpeg4data.c",
+        "msmpeg4dec.c",
         "options.c",
         "opus/celt.c",
         "opus/dec.c",
@@ -330,10 +373,24 @@
         "vorbis_parser.c",
         "vorbisdec.c",
         "vorbisdsp.c",
+        "vp3.c",
+        "vp3dsp.c",
         "vp8.c",
         "vp8_parser.c",
         "vp8data.c",
         "vp8dsp.c",
+        "vp9.c",
+        "vp9_parser.c",
+        "vp9block.c",
+        "vp9data.c",
+        "vp9dsp.c",
+        "vp9dsp_10bpp.c",
+        "vp9dsp_12bpp.c",
+        "vp9dsp_8bpp.c",
+        "vp9lpf.c",
+        "vp9mvs.c",
+        "vp9prob.c",
+        "vp9recon.c",
         "vpx_rac.c",
         "xiph.c",
         "xvididct.c"
@@ -420,15 +477,15 @@
       ]
     },
     {
-      "dir": "local:ports/video",
+      "dir": "local:apps/video",
       "prefix": "papp_",
       "files": [
-        "papp_main.c",
-        "papp_player.c",
-        "papp_io.c",
-        "papp_yuv.c",
-        "papp_font.c",
-        "papp_syscalls.c"
+        "pax_main.c",
+        "pax_player.c",
+        "pax_io.c",
+        "pax_yuv.c",
+        "pax_font.c",
+        "pax_syscalls.c"
       ]
     }
   ],
@@ -442,5 +499,26 @@
     "-Wl,-u,__floatdisf",
     "-Wl,-u,__floatdidf"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json",
+  "requires": [
+    {
+      "path": "/sd/videos",
+      "note": "Optional media folder; network URLs also work",
+      "optional": true
+    }
+  ],
+  "submodules": [
+    {
+      "path": "third_party/aom",
+      "repo": "https://aomedia.googlesource.com/aom",
+      "ref": "8ad484f8a18ed1853c094e7d3a4e023b2a92df28"
+    }
+  ],
+  "libraries": [
+    ".pax-gen/aom-build/libaom.a"
+  ],
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
 }

@@ -1,0 +1,73 @@
+{
+  "ScratchEverywhere": {
+    "repo": "https://github.com/ScratchEverywhere/ScratchEverywhere.git",
+    "ref": "0bcc42bc1f216be2f75cbdaf9a5cf344dbf33b00",
+    "patches": [
+      "patches/0001-pax-rgba.patch",
+      "patches/0002-pax-empty-svg.patch",
+      "patches/0003-pax-empty-inputs.patch",
+      "patches/0004-pax-list-alignment.patch",
+      "patches/0005-pax-stream-targets.patch",
+      "patches/0006-pax-asset-memory.patch",
+      "patches/0007-pax-compact-values.patch",
+      "patches/0008-pax-image-scanlines.patch",
+      "patches/0009-pax-audio-errors-and-clock.patch",
+      "patches/0010-pax-compact-color-values.patch",
+      "patches/0011-pax-lossless-image-runs.patch",
+      "patches/0012-pax-cloud-hooks.patch",
+      "patches/0013-pax-cloud-startup-order.patch",
+      "patches/0014-pax-interpreter-slices.patch"
+    ]
+  },
+  "lunasvg": {
+    "repo": "https://github.com/sammycage/lunasvg.git",
+    "ref": "cf3594d5232e075fb344365191f0ecadd1519e1e"
+  },
+  "plutovg": {
+    "repo": "https://github.com/sammycage/lunasvg.git",
+    "ref": "cf3594d5232e075fb344365191f0ecadd1519e1e",
+    "patch": "uint32_t fill and gradient buffer portability; see deps/lunasvg/plutovg/source"
+  },
+  "stb": {
+    "repo": "https://github.com/nothings/stb.git",
+    "ref": "2c980bb59875b0d32144a71867fbdebb2f77cd20"
+  },
+  "dr_libs": {
+    "repo": "https://github.com/mackron/dr_libs.git",
+    "ref": "dfe8377631000664666519fdb83da193fd8037f4"
+  },
+  "TinySoundFont": {
+    "repo": "https://github.com/schellingb/TinySoundFont.git",
+    "ref": "853a0a171759f1ddba0de1442133a75912bbeffa"
+  },
+  "miniz": {
+    "repo": "https://github.com/richgel999/miniz",
+    "tag": "3.1.1",
+    "license": "see dependency snapshot"
+  },
+  "ryuJS": {
+    "repo": "https://github.com/poipole807/ryuJS",
+    "tag": "v3.1",
+    "license": "see dependency snapshot"
+  },
+  "expected-lite": {
+    "repo": "https://github.com/nonstd-lite/expected-lite",
+    "tag": "v0.10.0",
+    "license": "see dependency snapshot"
+  },
+  "nlohmann_json": {
+    "version": "3.12.0",
+    "license": "MIT, copyright retained in each header"
+  },
+  "scratch-editor-reference": {
+    "repo": "https://github.com/scratchfoundation/scratch-editor",
+    "ref": "2e28f0a8e7b7bd4b85ff3699c7ef9515636a4a04",
+    "use": "UI layout/color reference; native rendering is implemented in port/pax_editor_ui.cpp; no browser runtime source vendored",
+    "license": "AGPL-3.0 (reference repository)"
+  },
+  "PAX cloud protocol": {
+    "reference": "https://github.com/ScratchEverywhere/mistpp",
+    "reference_commit": "689409429d0cfae13935b81be8bbf83e74bef625",
+    "transport": "native PAX WebSocket over verified TLS; TurboWarp cloud JSON protocol; no curl dependency"
+  }
+}
