@@ -1,0 +1,43 @@
+Standalone Linux movement experiment
+===================================
+Target: Wargus/stratagus commit 3d87c93f7fd8c0b62ee1be5df0a6d9efc72ca6cc.
+Artifact: stratagus-movement-linux.patch, only src/action/action_move.cpp.
+No ESP headers, SDL bridge, audio, data files or STRATAGUS_PAX define required.
+Do NOT apply the large stratagus-pax.patch to the Linux checkout.
+
+Cause: tilePos is advanced to the next tile and IX/IY initially offset the
+sprite back to its previous visual position. Walk instructions move those
+offsets toward zero. On arrival Moving becomes zero, but the old path-step
+gate waits for the animation instruction index to wrap to zero. Meanwhile
+the old direction keeps consuming more move instructions, overshooting the
+tile. A later path step/reset snaps the sprite back. This is an engine
+movement/animation synchronization problem, not a P4 display-resolution bug.
+
+Correction:
+1. Finish an unbreakable walk animation after tile arrival without applying
+   any further displacement.
+2. Once it is breakable, fetch the next path step based on Moving state,
+   rather than requiring the animation instruction index to be zero.
+3. Clamp tile-arrival offsets to zero and preserve the walk sprite frame
+   between consecutive tiles.
+
+In a SEPARATE clean Linux Stratagus checkout:
+  git apply --check /absolute/path/to/stratagus-movement-linux.patch
+  git apply /absolute/path/to/stratagus-movement-linux.patch
+Then rebuild using that checkout's existing CMake configuration/build folder.
+Run Stargus with the same extracted data and repeat the recorded long move.
+Compare single/group moves, eight directions, short moves, blocked paths,
+moving orders interrupted by Stop/Attack/Harvest, and different movement
+speeds/unit sizes. This is an experimental Linux patch, not a claim that the
+full desktop game has already been tested or that all other mods are safe.
+
+To undo ONLY this patch (after checking no overlapping local edits):
+  git apply --reverse --check /absolute/path/to/stratagus-movement-linux.patch
+  git apply --reverse /absolute/path/to/stratagus-movement-linux.patch
+
+Reproduce the deterministic host comparison through the shared build queue:
+  /usr/bin/python3 tools/export_stratagus_movement_patch.py
+The unchanged source reproduces 33 backward steps. The patched Linux body
+uses no PAX macro and must have zero backward steps and exact destinations
+in all eight headings under ASan/UBSan. Full Linux visual testing is still
+needed; the other chat should apply this artifact, not modify the P4 engine.

@@ -1,0 +1,63 @@
+diff --git a/src/game/loadgame.cpp b/src/game/loadgame.cpp
+--- a/src/game/loadgame.cpp
++++ b/src/game/loadgame.cpp
+@@ -57,6 +57,9 @@
+ #include "unittype.h"
+ #include "upgrade.h"
+ #include "video.h"
++#ifdef STRATAGUS_PAPP
++extern "C" void papp_stratagus_debug(const char *);
++#endif
+ 
+ /*----------------------------------------------------------------------------
+ --  Variables
+@@ -192,6 +195,9 @@ static void PlaceUnits()
+ */
+ void LoadGame(const fs::path &filename)
+ {
++#ifdef STRATAGUS_PAPP
++	papp_stratagus_debug("Warcraft: save restore begin");
++#endif
+ 	// log will be enabled if found in the save game
+ 	CommandLogDisabled = true;
+ 	SaveGameLoading = true;
+@@ -202,21 +208,39 @@ void LoadGame(const fs::path &filename)
+ 	LuaGarbageCollect();
+ 	InitUnitTypes(1);
+ 	LuaLoadFile(filename);
++#ifdef STRATAGUS_PAPP
++	papp_stratagus_debug("Warcraft: save script restored");
++#endif
+ 	LuaGarbageCollect();
+ 
+ 	PlaceUnits();
++#ifdef STRATAGUS_PAPP
++	papp_stratagus_debug("Warcraft: saved units placed");
++	// Match fresh-map initialization: the enhanced desktop fog buffers do
++	// not fit the PAPP memory budget. Select legacy fog before Map.Init.
++	FogOfWar->SetType(FogOfWarTypes::cTiledLegacy);
++#endif
+ 
+ 	const unsigned long game_cycle = GameCycle;
+ 	const unsigned syncrand = SyncRandSeed;
+ 	const unsigned synchash = SyncHash;
+ 
+ 	InitModules();
++#ifdef STRATAGUS_PAPP
++	papp_stratagus_debug("Warcraft: saved modules initialized");
++#endif
+ 	LoadModules();
++#ifdef STRATAGUS_PAPP
++	papp_stratagus_debug("Warcraft: saved graphics loaded");
++#endif
+ 
+ 	GameCycle = game_cycle;
+ 	SyncRandSeed = syncrand;
+ 	SyncHash = synchash;
+ 	SelectionChanged();
++#ifdef STRATAGUS_PAPP
++	papp_stratagus_debug("Warcraft: save restore complete");
++#endif
+ }
+ 
+ //@}

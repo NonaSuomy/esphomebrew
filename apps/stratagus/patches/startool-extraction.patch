@@ -1,0 +1,43 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -140,6 +140,7 @@
+ 
+ set(scmconvert_LIBS ${scmconvert_LIBS} ${ZLIB_LIBRARIES} ${STORMLIB_LIBRARY} ${BZIP2_LIBRARIES})
+ set(startool_LIBS ${scmconvert_LIBS} ${PNG_LIBRARIES} ${ZLIB_LIBRARIES} ${STORMLIB_LIBRARY} ${BZIP2_LIBRARIES})
++set(startool_LIBS ${startool_LIBS} tomcrypt tommath)
+ 
+ # Platform specific definitions and compilation settings
+ 
+diff --git a/src/Storm.cpp b/src/Storm.cpp
+--- a/src/Storm.cpp
++++ b/src/Storm.cpp
+@@ -79,7 +79,7 @@
+   if (nError == ERROR_SUCCESS)
+   {
+     if (!SFileOpenFileEx(mMpqHandle, archivedFile.c_str(), 0, &hFile))
+-      nError = GetLastError();
++      nError = SErrGetLastError();
+   }
+ 
+   int i = 0;
+@@ -138,7 +138,18 @@
+   if (nError == ERROR_SUCCESS)
+   {
+     if (!SFileOpenFileEx(mMpqHandle, archivedFile.c_str(), 0, &hFile))
+-      nError = GetLastError();
++      nError = SErrGetLastError();
+   }
++
++  // Use StormLib's direct extractor for uncompressed output. The old manual
++  // read loop could leave truncated WAV/SMK files in this extraction setup.
++  if (nError == ERROR_SUCCESS && !compress)
++  {
++    CheckPath(extractedName);
++    bool extracted = SFileExtractFile(mMpqHandle, archivedFile.c_str(),
++                                      extractedName.c_str(), SFILE_OPEN_FROM_MPQ);
++    SFileCloseFile(hFile);
++    return extracted;
++  }
+ 
+   // Create the target file

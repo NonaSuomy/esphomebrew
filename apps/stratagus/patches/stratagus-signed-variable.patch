@@ -1,0 +1,12 @@
+diff --git a/src/include/unittype.h b/src/include/unittype.h
+--- a/src/include/unittype.h
++++ b/src/include/unittype.h
+@@ -133,7 +133,7 @@ public:
+ public:
+ 	int Max = 0;        /// Maximum for the variable. (Assume min is 0.)
+ 	int Value = 0;      /// Current (or initial) value of the variable (or initial value).
+-	char Increase = 0;  /// Number to increase(decrease) Value by second.
++	signed char Increase = 0;  /// Signed: spell timers decay by -1, including on unsigned-char targets.
+ 	unsigned char IncreaseFrequency = 0; /// Every how many seconds we should apply the increase
+ 	bool Enable = false; /// True if the unit doesn't have this variable. (f.e shield)
+ };

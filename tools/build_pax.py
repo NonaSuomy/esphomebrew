@@ -409,6 +409,8 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     units: list[Unit] = []
     for group in manifest["groups"]:
         extra = [f"-I{source_file(src_root, inc)}" for inc in group.get("includes", [])]
+        for header in group.get("force_includes", []):
+            extra += ["-include", str(source_file(src_root, header))]
         # "archive": link the group as a static library, like upstream CMake
         # libraries: only objects that resolve something are pulled in, and the
         # app's own definitions win over the library's.
@@ -419,9 +421,9 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
             stem = str(Path(name).with_suffix("")).replace("\\", "/").replace("/", "_")
             obj = build_dir / (group.get("prefix", "") + stem + ".o")
             if src.suffix in (".cpp", ".cc", ".cxx"):
-                units.append(Unit(src, obj, cxxflags + extra, CXX, archive))
+                units.append(Unit(src, obj, cxxflags + extra + group.get("cxxflags", []), CXX, archive))
             elif src.suffix == ".c":
-                units.append(Unit(src, obj, cflags + extra, archive=archive))
+                units.append(Unit(src, obj, cflags + extra + group.get("cflags", []), archive=archive))
             else:
                 raise ValueError(f"{name}: not a C or C++ source")
     objs = [u.obj for u in units]

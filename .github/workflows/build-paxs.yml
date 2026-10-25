@@ -3,7 +3,7 @@ name: Build PAXs
 on:
   push:
     branches: [main]
-    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", "tests/test_launcher_store.py", "tests/test_store_expansion.py", "tools/dev_build_apps.py", "esphome/components/pax_loader/psram_app.h", "esphome/components/pax_loader/pax_theme_profile.h", "esphome/components/pax_loader/pax_wifi*.h", "esphome/components/pax_loader/pax_c6_update.h", "esphome/components/pax_loader/pax_firmware_update.h", ".github/workflows/build-paxs.yml"]
+    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", "tests/test_launcher_store.py", "tests/test_store_expansion.py", "tests/test_external_assets.py", "tools/prepare_anotherworld_data.py", "tools/prepare_stargus_sd.py", "tools/dev_build_apps.py", "esphome/components/pax_loader/psram_app.h", "esphome/components/pax_loader/pax_theme_profile.h", "esphome/components/pax_loader/pax_wifi*.h", "esphome/components/pax_loader/pax_c6_update.h", "esphome/components/pax_loader/pax_firmware_update.h", ".github/workflows/build-paxs.yml"]
   pull_request:
   workflow_dispatch:
 
@@ -32,6 +32,11 @@ jobs:
 
       - name: Check added store recipes and private-data exclusions
         run: python3 -m unittest discover -s tests -p 'test_store_expansion.py'
+
+      - name: Check external game-asset readers
+        run: |
+          python3 -m unittest discover -s tests -p 'test_external_assets.py'
+          python3 -m unittest discover -s tests -p 'test_external_asset_preparation.py'
 
       - name: Build every app
         shell: bash

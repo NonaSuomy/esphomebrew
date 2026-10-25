@@ -1,0 +1,46 @@
+diff --git a/src/sound/script_sound.cpp b/src/sound/script_sound.cpp
+--- a/src/sound/script_sound.cpp
++++ b/src/sound/script_sound.cpp
+@@ -41,5 +41,9 @@
+ #include "script.h"
+ #include "sound_server.h"
++#include "iolib.h"
++#include <SDL_mixer.h>
++#include <cstdio>
++#include <cstring>
+ 
+ /*----------------------------------------------------------------------------
+ --  Variables
+@@ -340,6 +344,25 @@
+ 	return 0;
+ }
+ 
++static int CclSetMidiSoundFont(lua_State *l)
++{
++	LuaCheckArgs(l, 1);
++	const std::string name(LuaToString(l, 1));
++	bool valid = name.rfind("music/", 0) == 0 && name.find("..") == std::string::npos
++		&& name.find('/', 6) == std::string::npos && name.find('\\') == std::string::npos;
++	const std::string full = valid ? LibraryFileName(name) : std::string();
++	FILE *file = valid ? std::fopen(full.c_str(), "rb") : nullptr;
++	char header[12];
++	valid = file && std::fread(header, 1, 12, file) == 12
++		&& !std::memcmp(header, "RIFF", 4) && !std::memcmp(header + 8, "sfbk", 4);
++	if (file) std::fclose(file);
++	// SDL_FORCE_SOUNDFONTS may prioritize the environment over Mix_SetSoundFonts.
++	if (valid) valid = SDL_setenv("SDL_SOUNDFONTS", full.c_str(), 1) == 0
++		&& Mix_SetSoundFonts(full.c_str()) != 0;
++	lua_pushboolean(l, valid);
++	return 1;
++}
++
+ /**
+ **  Register CCL features for sound.
+ */
+@@ -347,5 +369,6 @@
+ void SoundCclRegister()
+ {
++	lua_register(Lua, "SetMidiSoundFont", CclSetMidiSoundFont);
+ 	lua_register(Lua, "SetGlobalSoundRange", CclSetGlobalSoundRange);
+ 	lua_register(Lua, "DefineGameSounds", CclDefineGameSounds);
+ 	lua_register(Lua, "MapSound", CclMapSound);

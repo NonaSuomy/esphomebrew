@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "app": "war1gus",
+  "mode": "processor",
+  "archive_dir": "/sd/roms/war1gus/incoming",
+  "folders": [
+    "/sd/roms/war1gus"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/war1gus/scripts/stratagus.lua",
+      "note": "Complete converted Warcraft I data tree"
+    }
+  ],
+  "instructions": "Use the upstream war1gus extractor on your original Warcraft I installation on the computer. Copy the complete output tree to /sd/roms/war1gus.\n\nRun verify_war1gus_data.py and the matching PAX audio/video preparation tools from pax-recipe/tools. An archive of original game files alone is not prepared runtime data.\n\nThese variants are preserved source ports; their complete playable PAX builds are not currently verified.",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/Wargus/war1gus",
+      "note": "Extraction tool and original-data instructions"
+    }
+  ]
+}

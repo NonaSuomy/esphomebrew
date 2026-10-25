@@ -1,10 +1,10 @@
 {
   "name": "anotherworld",
   "title": "Another World",
-  "version": "0.1.0",
-  "description": "Another World interpreter for PAX. Current build embeds game data.",
+  "version": "0.2.0",
+  "description": "Another World interpreter with original DOS game banks loaded from SD.",
   "category": "Game",
-  "about": "Eric Chahi's 1991 cinematic action adventure (Out of This World in the US), running on Gregory Montoir's raw interpreter. The game data is compiled into the .pax, so no SD card files are needed. Starts at the intro; the code-wheel copy protection is bypassed.",
+  "about": "Development build. Raw interpreter port. Supply your original DOS memlist.bin and bank files under /sd/roms/anotherworld/. Game data is kept outside the executable. Starts at the intro; the legacy protection bypass is preserved.",
   "controls": [
     "D-pad: move (Up: jump, Down: crouch)",
     "A or B: action (run, shoot, kick)",
@@ -13,23 +13,113 @@
     "USB keyboard: Esc quits"
   ],
   "canvas": true,
-  "build": "workspace",
+  "build": "custom",
   "source": {
     "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
-    "ref": "47a4a9a232cf18d518b1d5751a7be476f596dfa7",
-    "path": "components/anotherworld"
+    "ref": "d0a449f9e2252881ab1ac297d05353f5bc58c046",
+    "path": "components/psram_app_loader"
   },
   "linker_script": "local:apps/_shared/psram_app.ld",
   "sdk_headers": [
     "local:esphome/components/pax_loader/psram_app.h"
   ],
+  "cflags": [
+    "-O2",
+    "-fno-common",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fno-tree-loop-distribute-patterns",
+    "-DIRAM_ATTR=",
+    "-Wall",
+    "-Wno-format",
+    "-Wno-unused-variable",
+    "-Wno-unused-function",
+    "-Wno-maybe-uninitialized"
+  ],
+  "cxxflags": [
+    "-std=gnu++17",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-fno-threadsafe-statics",
+    "-fno-use-cxa-atexit",
+    "-fno-unwind-tables",
+    "-fno-asynchronous-unwind-tables",
+    "-Wno-write-strings",
+    "-Wno-narrowing"
+  ],
+  "groups": [
+    {
+      "dir": "local:apps/anotherworld/core",
+      "files": [
+        "bank.cpp",
+        "engine.cpp",
+        "mixer.cpp",
+        "parts.cpp",
+        "resource.cpp",
+        "sfxplayer.cpp",
+        "staticres.cpp",
+        "util.cpp",
+        "video.cpp",
+        "vm.cpp"
+      ],
+      "prefix": "core_"
+    },
+    {
+      "dir": "local:apps/anotherworld",
+      "files": [
+        "pax_main.cpp",
+        "pax_system.cpp",
+        "pax_globals.cpp",
+        "pax_data.cpp"
+      ],
+      "prefix": "app_"
+    },
+    {
+      "dir": "local:apps/pax_emulator_common",
+      "files": [
+        "pax_libc.c"
+      ],
+      "prefix": "runtime_"
+    },
+    {
+      "dir": "local:apps/opentyrian",
+      "files": [
+        "pax_syscalls.c"
+      ],
+      "prefix": "sys_"
+    }
+  ],
+  "ldflags": [
+    "-Wl,--wrap=fopen",
+    "-Wl,--wrap=fclose",
+    "-Wl,--wrap=fread",
+    "-Wl,--wrap=fwrite",
+    "-Wl,--wrap=fseek",
+    "-Wl,--wrap=ftell",
+    "-Wl,--wrap=rewind",
+    "-Wl,--wrap=getc",
+    "-Wl,--wrap=fgetc",
+    "-Wl,--wrap=exit"
+  ],
+  "newlib": true,
   "install_recipe": "install-recipe.json",
-  "changelog": "0.1.0: add a versioned PAX store recipe for the existing native port.",
-  "publish": false,
-  "requires_private_data": true,
-  "publication_blocker": "Current port embeds game banks; move user-provided data to SD before public release.",
-  "workspace_build": {
-    "script": "build_anotherworld_pax.sh",
-    "output": "pax-modules/.cache/native-output/anotherworld.pax"
-  }
+  "changelog": "0.2.0: code-only store build; read resource table and compressed banks from SD, with missing/truncated-data checks.",
+  "includes": [
+    "local:apps/anotherworld",
+    "local:apps/anotherworld/core",
+    "local:apps/pax_emulator_common"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/anotherworld/memlist.bin",
+      "note": "Original DOS resource table"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank01",
+      "note": "Matching original DOS bank files (bank01 through bank0d)"
+    }
+  ],
+  "publish": true,
+  "dev_build": true,
+  "license": "GPL-2.0-or-later; dependency notices in source"
 }

@@ -1,0 +1,24 @@
+--- a/src/unit/unit.cpp
++++ b/src/unit/unit.cpp
+@@ -2322,6 +2322,10 @@
+ */
+ void LetUnitDie(CUnit &unit, bool suicide)
+ {
++#ifdef PAPP_STRATAGUS_WARCRAFT
++	extern void papp_warcraft_health_trace(const CUnit &, const CUnit *, int, const void *);
++	papp_warcraft_health_trace(unit, nullptr, -1, __builtin_return_address(0));
++#endif
+ 	unit.Variable[HP_INDEX].Value = std::min<int>(0, unit.Variable[HP_INDEX].Value);
+ 	unit.Moving = 0;
+ 	unit.TTL = 0;
+@@ -2969,6 +2973,10 @@
+ */
+ void HitUnit(CUnit *attacker, CUnit &target, int damage, const Missile *missile)
+ {
++#ifdef PAPP_STRATAGUS_WARCRAFT
++	extern void papp_warcraft_health_trace(const CUnit &, const CUnit *, int, const void *);
++	papp_warcraft_health_trace(target, attacker, damage, __builtin_return_address(0));
++#endif
+ 	if (!damage) {
+ 		// Can now happen by splash damage
+ 		// Multiple places send x/y as damage, which may be zero

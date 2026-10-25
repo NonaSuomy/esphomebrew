@@ -1,0 +1,40 @@
+--- a/src/action/action_move.cpp
++++ b/src/action/action_move.cpp
+@@ -156,9 +156,14 @@
+ 	Vec2i posd{}; // movement in tile.
+ 	int d{};
+ 
+-	if (unit.Moving != 1
+-	    && (&unit.Type->Animations->Move != unit.Anim.CurrAnim
+-	        || (unit.Anim.Wait == 0 && unit.Anim.Anim == 0))) {
++	// A completed tile must not keep consuming displacement while the
++	// walk animation finishes its unbreakable section.
++	if (unit.Moving == 0 && unit.Anim.Unbreakable) {
++		UnitShowAnimationScaled(unit, &unit.Type->Animations->Move,
++			Map.Field(unit.Offset)->getMoveCost());
++		return PF_MOVE;
++	}
++	if (unit.Moving != 1) {
+ 		if (unit.Anim.Unbreakable && unit.Moving > 1) {
+ 			// subtile movement, we're finished, but inside an unbreakable animation that we have to finish
+ 			int m = UnitShowAnimationScaled(unit, &unit.Type->Animations->Move, 1) >> 1;
+@@ -241,7 +246,9 @@
+ 
+ 		unit.IX += -posd.x * PixelTileSize.x;
+ 		unit.IY += -posd.y * PixelTileSize.y;
+-		unit.Frame = unit.Type->StillFrame;
++		// Preserve walk-frame continuity between path steps.
++		if (unit.Anim.CurrAnim != &unit.Type->Animations->Move)
++			unit.Frame = unit.Type->StillFrame;
+ 		UnitHeadingFromDeltaXY(unit, posd);
+ 	} else {
+ 		const auto direction =
+@@ -271,6 +278,8 @@
+ 	// Finished move to next tile, set Moving to 0 so we recalculate the path
+ 	// next frame
+ 	if ((!unit.Anim.Unbreakable && !unit.IX && !unit.IY) || reached_next_tile) {
++		// Clamp arrival instead of carrying an overshoot into the next tile.
++		resetDisplacement(unit);
+ 		unit.Moving = 0;
+ 	}
+ 	return d;
