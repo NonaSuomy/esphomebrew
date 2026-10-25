@@ -46376,3 +46376,41 @@ index 694e61647..272cb0662 100644
  
    this->pref_ = global_preferences->make_preference<wifi::SavedWifiSettings>(hash, true);
  #ifdef USE_WIFI_FAST_CONNECT
+diff --git a/esphome/components/wifi/wifi_component.cpp b/esphome/components/wifi/wifi_component.cpp
+index 272cb0662..91b4121f1 100644
+--- a/esphome/components/wifi/wifi_component.cpp
++++ b/esphome/components/wifi/wifi_component.cpp
+@@ -783,6 +783,11 @@ void WiFiComponent::loop() {
+     this->update_connected_state_();
+   }
+
++  // Keep consuming driver events while a caller scans, but do not let an old
++  // association failure start another connection and cancel that scan.
++  if (this->connection_attempts_paused_ && !this->connected_)
++    return;
++
+   if (this->has_sta()) {
+ #if defined(USE_WIFI_CONNECT_TRIGGER) || defined(USE_WIFI_DISCONNECT_TRIGGER)
+     if (this->is_connected() != this->handled_connected_state_) {
+diff --git a/esphome/components/wifi/wifi_component.h b/esphome/components/wifi/wifi_component.h
+index cfdbc1a96..9b4e46e30 100644
+--- a/esphome/components/wifi/wifi_component.h
++++ b/esphome/components/wifi/wifi_component.h
+@@ -464,6 +464,9 @@ class WiFiComponent final : public Component {
+   void enable();
+   void disable();
+   bool is_disabled() { return this->state_ == WIFI_COMPONENT_STATE_DISABLED; }
++  // Main-loop callers may pause automatic retries for an external scan.
++  // Events and scan records still drain; callers must resume on completion or failure.
++  void set_connection_attempts_paused(bool paused) { this->connection_attempts_paused_ = paused; }
+   void start_scanning();
+   void check_scanning_finished();
+   void start_connecting(const WiFiAP &ap);
+@@ -926,6 +929,7 @@ class WiFiComponent final : public Component {
+ #endif
+
+   // 1-byte enums and integers
++  bool connection_attempts_paused_{false};
+   WiFiComponentState state_{WIFI_COMPONENT_STATE_OFF};
+   WiFiPowerSaveMode power_save_{WIFI_POWER_SAVE_NONE};
+ #if defined(USE_ESP32) && defined(SOC_WIFI_SUPPORT_5G)
