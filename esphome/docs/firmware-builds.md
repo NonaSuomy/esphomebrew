@@ -41,3 +41,20 @@ python tools/firmware_ci.py build nano-lcd43
 ```
 
 `bootstrap` fetches the pinned source dependencies. It refuses an incompatible existing dependency cache instead of resetting local changes. Outputs go to `firmware-dist/<profile>/`.
+
+### Verified AIO and Nano flash settings
+
+The Elecrow AIO and Waveshare Nano profiles now require ESP32-P4 revision v1.0
+or newer and use 80 MHz flash. The attached AIO reports revision v1.3 with
+JEDEC EF4018 (16 MB Winbond W25Q128 family); the Nano reports revision v1.0 with
+JEDEC C84018 (16 MB GigaDevice GD25Q128 family). These IDs do not identify the
+package or complete part suffix. Check the fitted part before applying these
+settings to a different board revision.
+
+The profiles enable the matching IDF vendor driver through sdkconfig because
+the pinned ESPHome runtime has no `flash_chip` schema. IDF probes the fitted
+flash at startup. HPM is a separate feature for frequencies above 80 MHz; it is
+not required for this setting. `CONFIG_ESP32P4_REV_MIN_100` means v1.0 or newer,
+including v1.0 itself. Keep `engineering_sample: true` for these early P4 chips.
+Flash the updated bootloader as well as the application when changing the flash
+clock; preserve NVS and OTA selection to retain device settings.
