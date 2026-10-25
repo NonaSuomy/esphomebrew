@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40010350971,
-  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+  "build_id": 40145459528,
+  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-jc8012.ota.bin",
-  "bytes": 2101472,
-  "sha256": "d5d9732f7c65b4b0e814c5e51ab7ff922491d94b230ff38abf7c0016455a91ff",
+  "bytes": 2121008,
+  "sha256": "ddc123a2b7fa415b85b3bab3ebc026bf3f6fe6dd2df804022103cf3411268583",
   "c6": {
     "chip": "ESP32C6",
     "transport": "sdio",

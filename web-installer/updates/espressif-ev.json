@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40010350971,
-  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+  "build_id": 40145459528,
+  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-espressif-ev.ota.bin",
-  "bytes": 2087328,
-  "sha256": "2c0f4b5debf1f4e69dbf5e5a80aa6214e6b719e66ab2963d8651ad131d3f5e67",
+  "bytes": 2108608,
+  "sha256": "becb6c3ef0e820dd4591d650fe9a8108a4a255da5c4399648ecbb49aebc2c323",
   "c6": {
     "chip": "ESP32C6",
     "transport": "sdio",

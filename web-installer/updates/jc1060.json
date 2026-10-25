@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40010350971,
-  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+  "build_id": 40145459528,
+  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-jc1060.ota.bin",
-  "bytes": 2044656,
-  "sha256": "c6abaf8c6bd971254c6080519ace32dd3515b068214eb806220c23ce98e23854",
+  "bytes": 2064720,
+  "sha256": "a2911cecaad40ed58a855eae8abc7fde1dae61492c768b7436ff5702ef2b8441",
   "c6": {
     "chip": "ESP32C6",
     "transport": "sdio",

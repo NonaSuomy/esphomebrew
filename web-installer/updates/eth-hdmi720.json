@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40010350971,
-  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+  "build_id": 40145459528,
+  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
   "partitions": [
     {
       "label": "otadata",
@@ -44,7 +44,7 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-eth-hdmi720.ota.bin",
-  "bytes": 1804480,
-  "sha256": "b6ba950996b663605c3fd5e9c720218c6289a1e8d888b44c50c7e6ce5a7a69f6",
+  "bytes": 1819712,
+  "sha256": "045ca718e422200d694d29b0ff66c9fe8c66dd937131d2f7603b5984aa63a0f6",
   "c6": null
 }

@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40010350971,
-  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+  "build_id": 40145459528,
+  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-elecrow.ota.bin",
-  "bytes": 2167648,
-  "sha256": "088b150a2b9cec825b87f6ac6095b64a668ee95599895c20b061ec0989a4408c",
+  "bytes": 2188944,
+  "sha256": "df4ac422ce38e99ce7dfd48664b2dabc4992f60d30aaa51be918c5963fb493e1",
   "c6": {
     "chip": "ESP32C6",
     "transport": "spi-full-duplex",
