@@ -59,7 +59,8 @@
 #define DISC_INSTALLER_PAX "/sd/roms/pax/recipe.pax"
 #define DEFAULT_ARCHIVE_COLLECTION "open_source_software"
 #define MAX_BACKGROUNDS 32
-#define SETTINGS_FOCUS_COUNT 37
+#define SETTINGS_FOCUS_COUNT 38
+#define TOOLTIPS_PREF_FILE "/sd/roms/pax/.launcher_ui_tooltips"
 #define LIST_PREF_FILE "/sd/roms/pax/.launcher_ui_list_view"
 #define LIST_LABEL_BYTES (NAME_BYTES + 120)
 #define DETAIL_ACTION_COUNT 5
@@ -124,6 +125,8 @@ static bool g_network_auto=true;
 static pax_theme_profile_t g_themes[MAX_THEMES];
 static int g_theme_count, g_theme_index, g_theme_direction=1;
 static bool g_app_details_enabled = true;
+static bool g_tooltips_enabled = true;
+static lv_obj_t *g_tooltips_value;
 static bool g_hide_pax_extension, g_list_file_details;
 static int g_sort_mode, g_sort_direction=1;
 static int g_size_unit, g_size_direction=1;
@@ -3976,6 +3979,21 @@ static bool save_app_details_preference(void)
   return g_svc->file_close(file) == 0 && saved;
 }
 
+static void load_tooltips_preference(void)
+{
+  char value[12];
+  g_tooltips_enabled = !read_small_file(TOOLTIPS_PREF_FILE,value,sizeof(value)) || value[0]!='0';
+}
+
+static bool save_tooltips_preference(void)
+{
+  if(!g_svc || !g_svc->file_open || !g_svc->file_write || !g_svc->file_close)return false;
+  void *file=g_svc->file_open(TOOLTIPS_PREF_FILE,"w");if(!file)return false;
+  const char *value=g_tooltips_enabled ? "1\n" : "0\n";
+  bool saved=g_svc->file_write(value,1,2,file)==2;
+  return g_svc->file_close(file)==0 && saved;
+}
+
 static bool normalize_network_url(const char *input, char *out, size_t capacity)
 {
   if(!input || !out || capacity<2)return false;
@@ -4783,6 +4801,8 @@ static void style_button(lv_obj_t *button, bool selected)
   lv_obj_set_style_bg_color(button, lv_color_hex(COL_SELECTED), LV_PART_MAIN | LV_STATE_PRESSED);
   lv_obj_set_style_border_color(button, lv_color_hex(COL_ACCENT), LV_PART_MAIN | LV_STATE_FOCUSED);
 }
+
+#include "tooltips.h"
 
 static void rom_picker_button_event(lv_event_t *event)
 {
@@ -5851,7 +5871,7 @@ static int settings_focus_step(int focus, int delta)
 {
   static const uint8_t order[SETTINGS_FOCUS_COUNT] = {
     18, 19, 0, 1, 2, 3, 12, 13, 14, 15, 16, 25, 26, 36, 27, 28, 17,
-    4, 5, 6, 7, 8, 9, 10, 11, 20, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
+    4, 5, 6, 7, 8, 9, 10, 11, 20, 37, 22, 23, 30, 29, 24, 31, 32, 33, 34, 35, 21
   };
   int position = 0;
   for (int i = 0; i < SETTINGS_FOCUS_COUNT; i++) {
@@ -6127,6 +6147,8 @@ static int update_selection_on_host(void *arg)
   (void)arg;
   sync_search_context();
   sync_keyboard_layout();
+  tooltip_focus_current();
+  if(g_tooltips_value)label_text_changed(g_tooltips_value,g_tooltips_enabled ? "ON" : "OFF");
   if(g_footer_label && !g_settings_mode && g_detail_index<0){
     char footer[160];lv_snprintf(footer,sizeof(footer),"%s   L/R SOURCE   Y STAR   START FAV   SELECT SETTINGS",g_favorites_mode ? "FAVORITES" : source_label(g_source));
     label_text_changed(g_footer_label,footer);
@@ -6721,6 +6743,8 @@ static void sync_keyboard_layout(void)
 
 static int build_ui_on_host(void *arg)
 {
+  tooltip_reset();
+  g_tooltips_value=NULL;
   g_ui_builds++;g_button_appearance_count=0;
   memset(g_row_appearance,0,sizeof(g_row_appearance));
   g_keyboard_layout=-1;g_last_settings_focus=-1;g_footer_label=NULL;
@@ -7213,10 +7237,13 @@ static int build_ui_on_host(void *arg)
       /* Network precedes Archive; callback IDs and the later rows stay stable. */
       if(visual_row>=17 && visual_row<=28)visual_row-=8;
       else if(visual_row>=9 && visual_row<=16)visual_row+=12;
+      if(visual_row>=30)visual_row++; /* Room for Tooltips after App Details. */
       row_y[row] = first_row_y + step_y * visual_row;
       if(visual_row>=18)row_y[row]+=ui_px(18); /* Wi-Fi scan status. */
       if(visual_row>=29)row_y[row]+=ui_px(12); /* Archive S3 status height. */
     }
+
+    row_y[47]=row_y[25]+step_y;
 
     settings_text(panel, "MASTER VOLUME", label_x, row_y[0],
                   control_x - label_x - ui_px(6), font, false);
@@ -7535,6 +7562,13 @@ static int build_ui_on_host(void *arg)
                         (void *)(intptr_t)20);
     lv_obj_add_event_cb(g_app_details_switch, app_details_switch_event, LV_EVENT_VALUE_CHANGED, NULL);
     g_settings_focus_widgets[20] = g_app_details_switch;
+    settings_text(panel,"TOOLTIPS",label_x,row_y[47],control_x-label_x-ui_px(6),font,false);
+    lv_obj_t *tips=settings_button(panel,37,control_x,row_y[47],control_w,ui_px(18),-75);
+    g_tooltips_value=lv_label_create(tips);
+    lv_label_set_text(g_tooltips_value,g_tooltips_enabled ? "ON" : "OFF");
+    lv_obj_set_style_text_font(g_tooltips_value,font,LV_PART_MAIN);
+    lv_obj_set_style_text_color(g_tooltips_value,lv_color_hex(COL_TEXT),LV_PART_MAIN);
+    lv_obj_center(g_tooltips_value);
     const char *list_options[2]={"HIDE .PAX EXTENSION","FILE DETAILS IN LIST"};
     for(int option=0;option<2;option++){
       settings_text(panel,list_options[option],label_x,row_y[26+option],control_x-label_x-ui_px(6),font,false);
@@ -7608,6 +7642,7 @@ static int build_ui_on_host(void *arg)
      * shown, including immediately after an SD eject/rebuild. */
     (void)update_selection_on_host(NULL);
     lv_obj_invalidate(screen);
+    tooltip_configure();
     return 0;
   }
 
@@ -7971,6 +8006,7 @@ static int build_ui_on_host(void *arg)
     lv_obj_move_foreground(header);
     if (g_rom_picker_active) (void)build_rom_picker_overlay(screen);
     lv_obj_invalidate(screen);
+    tooltip_configure();
     return 0;
   }
 
@@ -8103,6 +8139,7 @@ static int build_ui_on_host(void *arg)
   if (g_rom_picker_active) (void)build_rom_picker_overlay(screen);
   /* Ensure the first worker-side timer pass has a dirty screen to render. */
   lv_obj_invalidate(screen);
+  tooltip_configure();
   return 0;
 }
 
@@ -8111,6 +8148,7 @@ static int pump_ui_on_host(void *arg)
   (void)arg;
   if (g_display == NULL) return -1;
   uint64_t start=timing_now();
+  tooltip_poll();
   g_next_handler_ms = lv_timer_handler();
   timing_record(&g_pump_time,timing_now()-start);
   if (g_next_handler_ms > 20) g_next_handler_ms = 20;
@@ -8151,6 +8189,7 @@ static lv_obj_t *settings_button(lv_obj_t *parent, int focus, int x, int y,
 static int teardown_ui_on_host(void *arg)
 {
   (void)arg;
+  tooltip_reset();g_tooltips_value=NULL;
   if (g_indev != NULL) {
     lv_indev_delete(g_indev);
     g_indev = NULL;
@@ -8468,6 +8507,7 @@ static bool poll_controller(void)
     }
     if(a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=34 && g_settings_focus<=35)g_open_index=-73-(g_settings_focus-34);
     if(a && !g_pad_last[PAX_INPUT_A] && g_settings_focus>=31 && g_settings_focus<=33)g_open_index=-70-(g_settings_focus-31);
+    if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 37) g_open_index=-75;
     if (a && !g_pad_last[PAX_INPUT_A] && g_settings_focus == 21) g_open_index = -9;
     if ((b && !g_pad_last[PAX_INPUT_B]) || (x && !g_pad_last[PAX_INPUT_X]) || l3) {
       if (g_background_dropdown_open) {
@@ -8821,6 +8861,7 @@ int app_entry(const app_services_t *svc)
   load_network_url();
   load_themes();
   load_app_details_preference();
+  load_tooltips_preference();
   load_list_preferences();
   svc->log_printf("launcher_ui: App Details on Select=%s (missing preference defaults on)\n",
                   g_app_details_enabled ? "ON" : "OFF");
@@ -9142,6 +9183,11 @@ int app_entry(const app_services_t *svc)
       g_settings_scan_pending=true;g_settings_reload_network=true;
       wait_for_input_release();
       continue;
+    }
+    if(!detail_mode && chosen==-75){
+      g_tooltips_enabled=!g_tooltips_enabled;
+      copy_text(g_settings_message,sizeof(g_settings_message),save_tooltips_preference() ? "Tooltip preference saved on SD card" : "Tooltip preference applied; SD unavailable for saving");
+      g_settings_focus=37;wait_for_input_release();continue;
     }
     if(!detail_mode && chosen==-49){
       g_theme_index=(g_theme_index+g_theme_direction+g_theme_count)%g_theme_count;

@@ -397,7 +397,8 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     # current loader ABI header ahead of the pinned upstream SDK header here as
     # well.  Otherwise callbacks appended by the ESPHome loader (such as ZIP
     # extraction) are read at the wrong offsets by the PAX.
-    loader_sdk = get_loader_sdk()
+    loader_sdk = (build_sdk_headers(src_root, manifest["sdk_headers"], cache / "sdk" / name)
+                  if manifest.get("sdk_headers") else get_loader_sdk())
     includes = [f"-I{loader_sdk}"] + [f"-I{source_file(src_root, inc)}" for inc in manifest.get("includes", [])]
     base = ARCH_FLAGS + ["-mcmodel=medany"]
     cflags = base + manifest.get("cflags", []) + includes
@@ -649,6 +650,27 @@ def store_info(name: str, manifest: dict, app_dir: Path) -> dict:
     return info
 
 
+
+def build_sdk_headers(src_root: Path, headers: list[str], target: Path) -> Path:
+    """Stage only an app's requested ABI/protocol headers, avoiding SDK collisions."""
+    if not isinstance(headers, list) or not headers:
+        raise ValueError("sdk_headers must be a nonempty list")
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(parents=True)
+    for header in headers:
+        source = source_file(src_root, header)
+        # The workspace owns the SDK in a sibling repository; the public
+        # store carries the same headers under esphome/.
+        prefix = "local:esphome/components/pax_loader/"
+        if header.startswith(prefix) and (ROOT.parent / "pax-esphome/components/pax_loader").is_dir():
+            source = ROOT.parent / "pax-esphome/components/pax_loader" / source.name
+        if source.suffix != ".h" or not source.is_file() or (target / source.name).exists():
+            raise ValueError(f"invalid or duplicate SDK header: {header}")
+        shutil.copy2(source, target / source.name)
+    return target
+
+
 def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     manifest = json.loads(manifest_path.read_text())
     name = manifest["name"]
@@ -671,7 +693,7 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     sparse, sub_sparse = split_sparse(sparse, submodules)
     sdk = src_root = fetch(source["repo"], source["ref"], cache / f"src-{name}-{source['ref'][:12]}", sparse)
     fetch_submodules(src_root, submodules, sub_sparse)
-    app_dir = src_root / source["path"]
+    app_dir = source_file(src_root, source["path"])
     sub_paths = [s["path"] for s in submodules]
     patches = apply_patches(src_root, manifest["patches"], sub_paths) if manifest.get("patches") else []
     linker_script = (source_file(src_root, manifest["linker_script"]) if manifest.get("linker_script")
@@ -681,7 +703,8 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     # checkout can lag behind the ESPHome loader's append-only service table;
     # putting the local header first keeps callback offsets (including the ZIP
     # ROM helper) ABI-compatible with the firmware that runs the PAX.
-    loader_sdk = get_loader_sdk()
+    loader_sdk = (build_sdk_headers(src_root, manifest["sdk_headers"], cache / "sdk" / name)
+                  if manifest.get("sdk_headers") else get_loader_sdk())
     cflags = CFLAGS + [f"-I{loader_sdk}", f"-I{sdk / SDK_INCLUDE}", f"-I{app_dir}"]
     build_dir = cache / "build" / name
     if build_dir.exists():
@@ -719,8 +742,10 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
         raise ValueError(f"{name}: unknown build type '{build}'")
 
     if build != "custom":
-        for c in sorted(app_dir.glob("*.c")):
-            units.append(Unit(c, build_dir / (c.stem + ".o"), cflags))
+        # Explicit files avoid compiling assets included by main.c twice.
+        for filename in group_files(src_root, {"dir": source["path"], "files": manifest.get("files", ["*.c"])}):
+            c = app_dir / filename
+            units.append(Unit(c, build_dir / ("_".join(Path(filename).parts)[:-2] + ".o"), cflags))
     # Same bytes on every machine and run: pinned timestamps, and the local
     # checkout path (which __FILE__ would embed) mapped to a fixed name.
     for unit in units:
