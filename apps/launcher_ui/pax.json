@@ -1,0 +1,42 @@
+{
+  "name": "launcher_ui",
+  "title": "Launcher UI",
+  "version": "0.6.1",
+  "description": "PAX launcher with SD/USB apps, GitHub Store, LAN discovery and network settings.",
+  "author": "PAX contributors",
+  "category": "Tool",
+  "about": "Browse and launch PAX apps from SD or USB, install apps from the GitHub Store or a local PAX Supply server, and browse Internet Archive collections. Includes themes, backgrounds, favorites, tooltips and network settings with nearby Wi-Fi scanning. Network setup and firmware update controls require compatible PAX host firmware. No external game data is required.",
+  "changelog": "0.6.1: first GitHub Store release of the current launcher, including asynchronous lists, LAN discovery, Wi-Fi scanning, live connection details and optional tooltips.",
+  "controls": [
+    "Touch or mouse: select an app or source",
+    "Mouse wheel or arrow keys: scroll lists",
+    "Enter: open the selected app",
+    "Settings: configure network, themes and tooltips",
+    "Hold Menu 3 s: return to the firmware launcher"
+  ],
+  "canvas": true,
+  "build": "lvgl",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "d0a449f9e2252881ab1ac297d05353f5bc58c046",
+    "path": "local:apps/launcher_ui"
+  },
+  "lvgl": {
+    "repo": "https://github.com/lvgl/lvgl",
+    "ref": "85aa60d18b3d5e5588d7b247abf90198f07c8a63"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "files": [
+    "main.c",
+    "pax_libc.c",
+    "iso9660_extract.c"
+  ],
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h",
+    "local:esphome/components/pax_loader/pax_theme_profile.h",
+    "local:esphome/components/pax_loader/pax_wifi_settings.h",
+    "local:esphome/components/pax_loader/pax_wifi_scan.h",
+    "local:esphome/components/pax_loader/pax_c6_update.h",
+    "local:esphome/components/pax_loader/pax_firmware_update.h"
+  ]
+}

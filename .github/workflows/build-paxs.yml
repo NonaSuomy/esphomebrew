@@ -3,7 +3,7 @@ name: Build PAXs
 on:
   push:
     branches: [main]
-    paths: ["apps/**", "!apps/launcher_ui/**", "tools/build_pax.py", "tools/make_listing.py", ".github/workflows/build-paxs.yml"]
+    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", "tests/test_launcher_store.py", "esphome/components/pax_loader/psram_app.h", "esphome/components/pax_loader/pax_theme_profile.h", "esphome/components/pax_loader/pax_wifi*.h", "esphome/components/pax_loader/pax_c6_update.h", "esphome/components/pax_loader/pax_firmware_update.h", ".github/workflows/build-paxs.yml"]
   pull_request:
   workflow_dispatch:
 
@@ -26,6 +26,9 @@ jobs:
           restore-keys: |
             pax-sources-
             papp-sources-
+
+      - name: Check Launcher UI store recipe
+        run: python3 -m unittest discover -s tests -p 'test_launcher_store.py'
 
       - name: Build every app
         shell: bash
