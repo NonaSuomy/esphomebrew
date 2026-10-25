@@ -1,5 +1,9 @@
 #pragma once
+#ifdef PAX_STRATAGUS_WARCRAFT
 #include "pax_sound_catalog.h"
+#else
+#include "pax_stargus_sound_catalog.h"
+#endif
 #include "pax_audio_spatial.h"
 #include "pax_audio_ramp.h"
 

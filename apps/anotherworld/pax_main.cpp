@@ -1,6 +1,6 @@
 /* Another World / Out Of This World PAX wrapper.
  *
- * The upstream port embeds the original data banks in the executable. This
+ * The game banks and resource table are read from SD. This
  * wrapper supplies the launcher's LCD, controller, USB keyboard, audio and
  * close services while keeping the game core independent of the VGA board.
  */
@@ -10,6 +10,7 @@
 #include "engine.h"
 #include "gbGlobals.h"
 #include "pax_system.h"
+#include "pax_data.h"
 
 #include <setjmp.h>
 #include <stddef.h>
@@ -72,7 +73,12 @@ int app_entry(const app_services_t *svc)
     memset(gb_vram, 0, sizeof(gb_vram));
     gb_memory = NULL;
 
-    svc->log_printf("Another World PAX: embedded data, LCD mode\n");
+    svc->log_printf("Another World PAX: SD game data, LCD mode\n");
+
+    if (!pax_aw_load_memlist()) {
+        svc->log_printf("Another World: supply valid DOS memlist.bin and bank files in /sd/roms/anotherworld/\n");
+        return -1;
+    }
 
     gb_memory = (unsigned char *)svc->mem_caps_alloc(
         600u * 1024u, PAX_MEM_CAP_SPIRAM);
@@ -96,7 +102,7 @@ int app_entry(const app_services_t *svc)
     gb_use_send_game_part = 0;
 
     PaxAnotherWorldSystem *system = new PaxAnotherWorldSystem(svc);
-    Engine *engine = new Engine(system, ".", ".");
+    Engine *engine = new Engine(system, "/sd/roms/anotherworld", "/sd/roms/anotherworld");
     if (!system || !engine) {
         svc->log_printf("Another World PAX: object allocation failed\n");
         if (engine) delete engine;

@@ -1,11 +1,22 @@
 {
   "version": 2,
   "app": "anotherworld",
-  "mode": "self-contained",
+  "mode": "local-files",
   "archive_dir": "/sd/roms/anotherworld/incoming",
-  "folders": [],
-  "requires": [],
-  "instructions": "No mandatory external game data is needed by this current build.\n\nFILES / FOLDERS",
+  "folders": [
+    "/sd/roms/anotherworld"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/anotherworld/memlist.bin",
+      "note": "Original DOS resource table"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank01",
+      "note": "Supply all matching original DOS bank files"
+    }
+  ],
+  "instructions": "Provide the original DOS memlist.bin and bank01 through bank0d files in /sd/roms/anotherworld/. Run prepare_anotherworld_data.py on the computer to validate and normalize filenames. The --from-headers option migrates private legacy embedded-data headers. Game files are not included in the store PAX.",
   "media": [],
   "sources": []
 }

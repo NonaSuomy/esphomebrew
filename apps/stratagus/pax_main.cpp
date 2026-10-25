@@ -358,7 +358,24 @@ int app_entry(const app_services_t *svc)
 {
 	if (!svc || svc->abi_version != PAX_ABI_VERSION || !svc->task_create || !svc->task_delete) return -1;
 	_pax_svc = svc;
-	pax_exit_requested = 0;
+    pax_exit_requested = 0;
+#ifndef PAX_STRATAGUS_WARCRAFT
+    const char *files[] = {PAX_STRATAGUS_DATA_ROOT "/scripts/stratagus.lua",
+        PAX_STRATAGUS_DATA_ROOT "/media/runtime.paxassets", PAX_STRATAGUS_DATA_ROOT "/media/menu.paxmenu",
+        PAX_STRATAGUS_DATA_ROOT "/media/terrain.paxtile", PAX_STRATAGUS_DATA_ROOT "/media/stargus_intro.ogg"};
+    const char *magic[] = {nullptr, "PAPASST1", "PAPMENU1", "PAPTILE1", "OggS"};
+    for (unsigned i=0; i<sizeof(files)/sizeof(files[0]); ++i) {
+        void *file=svc->file_open ? svc->file_open(files[i],"rb") : nullptr;
+        unsigned char header[8];
+        const bool ok=file && svc->file_read(header,1,sizeof(header),file)==sizeof(header) &&
+            (!magic[i] || !memcmp(header,magic[i],i==4 ? 4 : 8));
+        if(file) svc->file_close(file);
+        if(!ok) {
+            svc->log_printf("Stargus: missing or invalid SD asset %s; run prepare_stargus_sd.py on the converted game tree\n", files[i]);
+            return -1;
+        }
+    }
+#endif
 	pax_run_global_constructors();
 	pax_stratagus_audio_prepare();
 	svc->log_printf("=== %s PAX starting ===\n", PAX_STRATAGUS_BANNER);

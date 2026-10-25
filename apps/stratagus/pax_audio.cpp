@@ -67,8 +67,6 @@ extern "C" int pax_stratagus_audio_music_playing() { return __atomic_load_n(&s_m
 extern "C" void pax_stratagus_audio_music_volume(int volume) {
 	__atomic_store_n(&s_music_volume,volume<0?0:volume>255?255:volume,__ATOMIC_RELEASE);
 }
-extern "C" const unsigned char _binary_stargus_intro_ogg_start[] __attribute__((weak));
-extern "C" const unsigned char _binary_stargus_intro_ogg_end[] __attribute__((weak));
 
 void pax_stratagus_audio_music(int track) {__atomic_store_n(&s_music_track,track,__ATOMIC_RELEASE);}
 int pax_stratagus_audio_music_file(const char *path) {
@@ -211,9 +209,9 @@ static void audio_worker(void *) {
 #endif
 				if(*musicPath) music=stb_vorbis_open_filename(musicPath,&error,&music_alloc);
 #else
-				if(track==1 && _binary_stargus_intro_ogg_start && _binary_stargus_intro_ogg_end)
-					music=stb_vorbis_open_memory(_binary_stargus_intro_ogg_start,_binary_stargus_intro_ogg_end-_binary_stargus_intro_ogg_start,&error,&music_alloc);
-				else music=stb_vorbis_open_filename(track==2?PAX_STRATAGUS_DATA_ROOT "/sounds/music/title.ogg":PAX_STRATAGUS_DATA_ROOT "/sounds/music/terran/1.ogg",&error,&music_alloc);
+                music=stb_vorbis_open_filename(track==1 ? PAX_STRATAGUS_DATA_ROOT "/media/stargus_intro.ogg" :
+                    track==2 ? PAX_STRATAGUS_DATA_ROOT "/sounds/music/title.ogg" :
+                    PAX_STRATAGUS_DATA_ROOT "/sounds/music/terran/1.ogg", &error, &music_alloc);
 #endif
 			}
 			if(music && stb_vorbis_get_info(music).sample_rate!=22050) {stb_vorbis_close(music);music=nullptr;}

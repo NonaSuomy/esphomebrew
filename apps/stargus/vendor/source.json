@@ -1,0 +1,7 @@
+{
+  "engine_repository": "https://github.com/Wargus/stratagus",
+  "engine_ref": "377def2b10e921983c2efbec8fd015cf42659661",
+  "dependencies_repository": "https://github.com/Wargus/dependencies",
+  "dependencies_ref": "4cf90d77cb6661aa72ff72b321ecaa80574dd6b7",
+  "note": "Patched source-code snapshot only; no converted game media."
+}

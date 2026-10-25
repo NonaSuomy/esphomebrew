@@ -34,9 +34,17 @@
       "path": "/sd/roms/stargus/media/*.ogg",
       "optional": true,
       "note": "Converted menu soundtrack companions, if available"
+    },
+    {
+      "path": "/sd/roms/stargus/media/runtime.paxassets",
+      "note": "Generate with prepare_stargus_sd.py"
+    },
+    {
+      "path": "/sd/roms/stargus/media/stargus_intro.ogg",
+      "note": "Prepared intro soundtrack"
     }
   ],
-  "instructions": "Use Startool with your StarCraft/Brood War installation on the computer, then copy the complete converted tree to /sd/roms/stargus.\n\nRun pax-recipe/tools/prepare_stargus_terrain.py GRAPHICS OUTPUT to create media/terrain.paxtile, and prepare_stargus_menu.py GAME_ROOT OUTPUT to create media/menu.paxmenu. Use --help for their input options. Keep generated soundtrack companions in media. The compact runtime graphics and sound catalog are build inputs embedded in stargus.pax; rebuilding uses build_stratagus_pax.sh. Raw MPQ files alone are not the prepared PAX runtime data.\n\n/sd/roms/stargus/scripts/stratagus.lua \u2014 Startool-converted game scripts\n\n/sd/roms/stargus/graphics \u2014 Converted palette/graphics tree\n\n/sd/roms/stargus/sounds \u2014 Converted sound tree\n\n/sd/roms/stargus/media/terrain.paxtile \u2014 Generate with prepare_stargus_terrain.py from the converted graphics tree\n\n/sd/roms/stargus/media/menu.paxmenu \u2014 Generate with prepare_stargus_menu.py from the converted game tree\n\n/sd/roms/stargus/media/*.ogg \u2014 Converted menu soundtrack companions, if available",
+  "instructions": "Convert your original StarCraft data with the upstream Stargus extractor. Run prepare_stargus_sd.py on the complete converted tree, then copy that tree, including media/, to /sd/roms/stargus/. All graphics and sound stay on SD; none are bundled in the store executable.",
   "media": [],
   "sources": []
 }

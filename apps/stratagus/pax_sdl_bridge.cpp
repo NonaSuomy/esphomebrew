@@ -868,8 +868,6 @@ static SDL_Surface *pax_load_embedded_indexed()
 		blob + 16 + palette_size, true);
 }
 
-extern "C" const unsigned char _binary_stargus_assets_bin_start[] __attribute__((weak));
-extern "C" const unsigned char _binary_stargus_assets_bin_end[] __attribute__((weak));
 static unsigned le16(const Uint8 *p) { return p[0] | (p[1] << 8); }
 static unsigned le32(const Uint8 *p) { return le16(p) | (le16(p+2) << 16); }
 extern "C" const unsigned char _binary_stargus_terrain_bin_start[] __attribute__((weak));
@@ -934,33 +932,21 @@ static SDL_Surface *pax_load_terrain(const char *path) {
 	}
 	return nullptr;
 }
+#include "pax_asset_pack.h"
 static SDL_Surface *pax_load_runtime_asset(const char *path)
 {
-	const char *name = path ? strstr(path, "/graphics/") : nullptr;
-	if (!name || !_binary_stargus_assets_bin_start || !_binary_stargus_assets_bin_end) return nullptr;
-	name += 10;
-	const Uint8 *p = _binary_stargus_assets_bin_start, *end = _binary_stargus_assets_bin_end;
-	if (end-p < 12 || memcmp(p, "PAPASST1", 8)) return nullptr;
-	const unsigned count = le32(p+8); p += 12;
-	for (unsigned i = 0; i < count && end-p >= 6; ++i) {
-		const unsigned n = le16(p), bytes = le32(p+2); p += 6;
-		if (n > (unsigned)(end-p) || bytes > (unsigned)(end-p-n)) return nullptr;
-		if (strlen(name) == n && !memcmp(name, p, n)) {
-			const Uint8 *data = p+n;
-			if (bytes < 6) return nullptr;
-			const unsigned w = le16(data), h = le16(data+2), colors = le16(data+4);
-			if (!w || !h || !colors || colors > 256 || 6+colors*4+w*h != bytes) return nullptr;
-			SDL_Surface *s = pax_make_indexed_surface(w, h, colors, data+6, data+6+colors*4, true);
-			if (s) {
-				SDL_SetColorKey(s, SDL_FALSE, 0);
-				for (unsigned j = 0; j < colors; ++j)
-					if (!data[6+j*4+3]) { SDL_SetColorKey(s, SDL_TRUE, j); break; }
-			}
-			return s;
-		}
-		p += n+bytes;
-	}
-	return nullptr;
+    const char *name = path ? strstr(path, "/graphics/") : nullptr;
+    if (!name) return nullptr;
+    FILE *file = fopen(PAX_STRATAGUS_DATA_ROOT "/media/runtime.paxassets", "rb");
+    if (!file) return nullptr;
+    PaxIndexedAsset asset;
+    const bool ok = pax_read_asset_pack(file, name + 10, palloc, pfree, asset);
+    fclose(file);
+    if (!ok) return nullptr;
+    SDL_Surface *surface = pax_make_indexed_surface(asset.width, asset.height,
+        asset.colors, asset.palette, asset.pixels, false);
+    if (!surface) pfree(asset.pixels);
+    return surface;
 }
 
 static SDL_Surface *pax_load_indexed_companion(const char *path)
