@@ -31,7 +31,9 @@ static void fail(const char *message){
 }
 /* Runs on ESPHome's main loop. ESPHome alone consumes the IDF AP records;
  * read its retained, complete result vector after the queued Wi-Fi event has
- * had two main-loop passes to drain. Never change its connection state. */
+ * had two main-loop passes to drain. Connected stations keep their link;
+ * disconnected stations use ESPHome's scanner so automatic connection retries
+ * cannot abort the user-requested scan. */
 static void loop(esphome::wifi::WiFiComponent *wifi,bool connecting){
  if(!registered){
   if(esp_event_handler_register(WIFI_EVENT,WIFI_EVENT_SCAN_DONE,finished_event,nullptr)!=ESP_OK){
@@ -48,6 +50,15 @@ static void loop(esphome::wifi::WiFiComponent *wifi,bool connecting){
   config.scan_type=WIFI_SCAN_TYPE_ACTIVE;config.scan_time.active.min=80;config.scan_time.active.max=160;
   portENTER_CRITICAL(&lock);event_done=false;portEXIT_CRITICAL(&lock);drain_loops=0;
   deadline=esp_timer_get_time()+20000000;
+  if(!wifi->is_connected()){
+   // Stop only an unsuccessful background association. Let ESPHome own the
+   // SCANNING state until completion, then resume its saved-network retries.
+   // An explicit APPLY WI-FI operation was rejected above via connecting.
+   esp_wifi_disconnect();
+   wifi->start_scanning();
+   ESP_LOGI("pax_wifi_scan","Scanning through ESPHome while Wi-Fi is disconnected");
+   return;
+  }
   auto error=esp_wifi_scan_start(&config,false);
   ESP_LOGD("pax_wifi_scan","Scan start: error=%d",static_cast<int>(error));
   if(error!=ESP_OK)fail("Wi-Fi is busy; try again or enter the name manually");
