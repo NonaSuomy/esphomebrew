@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40010350971,
-  "source_commit": "c47ac1546cc22d76a7ff535a38d7e9f83178cf64",
+  "build_id": 40145459528,
+  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-jc4880.ota.bin",
-  "bytes": 2044896,
-  "sha256": "0cea2e9db94212e465271c443cfbb8dd5061a7357dd4202eee4532e7fbbe864d",
+  "bytes": 2064960,
+  "sha256": "071b8ea128c29d19e3bab631f5a19fc38e6ee722ce08f1f9c2e6826727c476a4",
   "c6": {
     "chip": "ESP32C6",
     "transport": "sdio",
