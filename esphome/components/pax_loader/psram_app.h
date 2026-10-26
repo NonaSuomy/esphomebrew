@@ -120,6 +120,19 @@ typedef struct {
 #define PAX_KEY_DOWN     155
 #define PAX_KEY_LEFT     156
 
+/* Optional BLE HID peripheral bridge. Call from ui_call_sync callbacks only.
+ * STATUS returns flags; output returns 0 accepted, -1 unavailable, -2 invalid,
+ * -3 wrong task, -4 disconnected. KEY is a tap: a=modifier mask, b=HID usage.
+ * MOVE: a/b signed deltas; BUTTONS: a=1 left/2 right/4 middle bitmask (0 releases).
+ * SCROLL: a=signed wheel; GAMEPAD: a=16 button bits, b=hat 0..7 clockwise / 8 neutral.
+ * TEXT: max 128 bytes, UTF-8 mapping is backend-defined. ADVERTISE: a=0/1.
+ * RELEASE clears every held keyboard, mouse and gamepad control.
+ */
+enum { PAX_BLE_STATUS=0, PAX_BLE_TEXT=1, PAX_BLE_KEY=2, PAX_BLE_MOUSE_MOVE=3,
+       PAX_BLE_MOUSE_BUTTONS=4, PAX_BLE_MOUSE_SCROLL=5, PAX_BLE_GAMEPAD=6,
+       PAX_BLE_RELEASE=7, PAX_BLE_ADVERTISE=8 };
+enum { PAX_BLE_AVAILABLE=1, PAX_BLE_CONNECTED=2, PAX_BLE_PAIRED=4, PAX_BLE_ADVERTISING=8 };
+
 /* One finger on the touch panel (touch_read_points), in canvas coordinates
  * like touch_read. id stays the same while that finger stays down. */
 typedef struct {
@@ -722,6 +735,8 @@ typedef struct {
      * The loader owns/caches DMA buffers and reclaims them on app exit. */
     int (*jpeg_decode_rgb565)(const uint8_t *data, uint32_t size, uint16_t *out,
                               uint32_t capacity, int width, int height, int stride);
+    /* Append-only: NULL on older firmware and profiles without ble_remote_id. */
+    int (*ble_remote)(uint32_t command, int32_t a, int32_t b, const char *text);
 } app_services_t;
 
 /* Relative HID movement is already in the visible direction. The loader's

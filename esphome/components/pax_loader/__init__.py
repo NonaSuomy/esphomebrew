@@ -66,6 +66,7 @@ LEGACY_CANVAS = (800, 480)
 MAX_SIDE = 4096
 
 pax_loader_ns = cg.esphome_ns.namespace("pax_loader")
+BleRemote = cg.esphome_ns.namespace("espidf_ble_keyboard").class_("EspidfBleKeyboard", cg.Component)
 PaxLoader = pax_loader_ns.class_("PaxLoader", cg.Component)
 LaunchUrlAction = pax_loader_ns.class_("LaunchUrlAction", automation.Action)
 LaunchRomAction = pax_loader_ns.class_("LaunchRomAction", automation.Action)
@@ -236,6 +237,7 @@ CONFIG_SCHEMA = cv.Schema(
         # found files are not downloaded, and app reads of /sd/... fall back here.
         cv.Optional(CONF_DATA_SEARCH, default=["/sd", "/usb0"]): cv.ensure_list(validate_data_root),
         cv.Required(CONF_DISPLAY_ID): cv.use_id(display.Display),
+        cv.Optional("ble_remote_id"): cv.use_id(BleRemote),
         # Optional MIPI DSI fast path: render directly into an idle panel
         # framebuffer instead of copying each full PAX frame into scanout.
         cv.Optional(CONF_MIPI_DSI_ID): cv.use_id(MIPI_DSI),
@@ -477,6 +479,10 @@ async def to_code(config):
         if sensor_id := config.get(key):
             sensor_var = await cg.get_variable(sensor_id)
             cg.add(getattr(var, setter)(sensor_var))
+
+    if ble_remote_id := config.get("ble_remote_id"):
+        cg.add_define("PAX_LOADER_USE_BLE_REMOTE")
+        cg.add(var.set_ble_remote(await cg.get_variable(ble_remote_id)))
 
     if usb_hidx_id := config.get(CONF_USB_HIDX_ID):
         cg.add_define("PAX_LOADER_USE_USB_HIDX")

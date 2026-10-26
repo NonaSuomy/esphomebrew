@@ -1512,6 +1512,9 @@ static bool usb_mouse_button_pressed(binary_sensor::BinarySensor *sensor) {
 #endif
 
 void PaxLoader::setup() {
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  this->ble_remote_task_ = xTaskGetCurrentTaskHandle();
+#endif
   if (PaxLoader::active_ != nullptr) {
     ESP_LOGE(TAG, "Only one PAX loader can be active");
     this->mark_failed();
@@ -4887,6 +4890,7 @@ bool PaxLoader::supports_rom_selector(const std::string &source) const {
 void PaxLoader::finish_app_() {
   if (!begin_pax_quiesce()) return;
   this->close_game_menu_();
+  svc_ble_remote(PAX_BLE_RELEASE, 0, 0, nullptr);
   svc_game_menu_register(nullptr, nullptr, nullptr);
   const int result = this->pax_task_result_;
   ESP_LOGI(TAG, "PAX worker returned %d", result);
@@ -8319,6 +8323,16 @@ int PaxLoader::svc_input_mouse_scroll_read(int *wheel) {
 int PaxLoader::svc_input_keyboard_read(pax_keyboard_event_t *event) {
   return active_ != nullptr ? active_->read_keyboard_(event) : 0;
 }
+int PaxLoader::svc_ble_remote(uint32_t command, int32_t a, int32_t b, const char *text) {
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  if (active_ == nullptr || active_->ble_remote_ == nullptr) return -1;
+  if (xTaskGetCurrentTaskHandle() != active_->ble_remote_task_) return -3;
+  return ble_remote::dispatch(active_->ble_remote_, command, a, b, text);
+#else
+  return -1;
+#endif
+}
+
 int PaxLoader::svc_ui_call_sync(pax_ui_call_fn_t callback, void *arg, uint32_t timeout_ms) {
   PaxLoader *self = active_;
   if (self == nullptr || callback == nullptr || self->ui_call_done_ == nullptr)
@@ -10340,6 +10354,9 @@ void PaxLoader::svc_task_delete(void *handle) {
 void PaxLoader::populate_services(app_services_t *services) {
   std::memset(services, 0, sizeof(*services));
   services->abi_version = PAX_ABI_VERSION;
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  services->ble_remote = &PaxServiceGate<&PaxLoader::svc_ble_remote>::call;
+#endif
   services->display_get_framebuffer = &PaxServiceGate<&PaxLoader::svc_display_get_framebuffer>::call;
   services->display_get_emu_buffer = &PaxServiceGate<&PaxLoader::svc_display_get_emu_buffer>::call;
   services->display_flush = &PaxServiceGate<&PaxLoader::svc_display_flush>::call;

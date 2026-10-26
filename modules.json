@@ -1193,6 +1193,18 @@
           "note": "Place a compatible ROM or disk image here"
         }
       ]
+    },
+    {
+      "name": "ble_remote",
+      "manifest": "apps/ble_remote/pax.json",
+      "dependencies": [
+        "apps/_shared/lvgl"
+      ],
+      "local_inputs": [
+        "apps/ble_remote"
+      ],
+      "output": "ble_remote.pax",
+      "published": false
     }
   ],
   "native_sources": [

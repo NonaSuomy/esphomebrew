@@ -36,6 +36,11 @@
 #include "esphome/components/sd_mmc_card/sd_mmc_card.h"
 #endif
 
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+#include "esphome/components/espidf_ble_keyboard/espidf_ble_keyboard.h"
+#include "pax_ble_remote.h"
+#endif
+
 #include "pax_canvas.h"
 #include "pax_sound.h"
 #include "pax_data.h"
@@ -56,6 +61,13 @@ class CatalogActionTrigger : public Trigger<> {};
 class PaxLoader : public Component {
  public:
   static constexpr uint8_t BUTTON_COUNT = PAX_INPUT_MAX;
+
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  void set_ble_remote(espidf_ble_keyboard::EspidfBleKeyboard *device) { ble_remote_ = device; }
+  espidf_ble_keyboard::EspidfBleKeyboard *ble_remote_{nullptr};
+  TaskHandle_t ble_remote_task_{nullptr};
+#endif
+  static int svc_ble_remote(uint32_t command, int32_t a, int32_t b, const char *text);
 
   void set_path(const std::string &path) { this->path_ = path; }
   void set_catalog_url(const std::string &url) { this->catalog_url_ = url; }
