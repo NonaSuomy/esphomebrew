@@ -7506,7 +7506,17 @@ void PaxLoader::request_remote_ui_input(const std::string &command) {
       (!this->launched_ || pax_stick_mouse_is_quake2(this->running_source_.c_str()) ||
        this->game_menu_callback_ != nullptr);
   const bool diagnostic_menu_touch = this->game_menu_open_ && action.rfind("tap ", 0) == 0;
-  if (!launcher_running && !diagnostic_pad && !diagnostic_menu_touch) {
+  // The BLE Remote app opts into the same existing API touch harness.
+  // Keep other applications behind the existing guard.
+  bool diagnostic_ble_touch = false;
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  static const std::string ble_name = "ble_remote.pax";
+  diagnostic_ble_touch = this->ble_remote_ != nullptr && this->launched_ &&
+      source.size() >= ble_name.size() &&
+      source.compare(source.size() - ble_name.size(), ble_name.size(), ble_name) == 0 &&
+      (action.rfind("tap ", 0) == 0 || action.rfind("swipe ", 0) == 0);
+#endif
+  if (!launcher_running && !diagnostic_pad && !diagnostic_menu_touch && !diagnostic_ble_touch) {
     ESP_LOGW(TAG, "Remote UI input ignored: launcher_ui.pax is not running");
     return;
   }

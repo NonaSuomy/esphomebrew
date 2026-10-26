@@ -240,9 +240,10 @@ class PaxLoader : public Component {
     this->stream_enabled_ = true;
     ESP_LOGI("pax_loader", "Screenshot requested remotely");
   }
-  // Test-only remote input for launcher_ui. Accepts taps, timed holds/swipes,
+  // Test-only remote input for launcher_ui and the optional BLE Remote app.
+  // Accepts taps, timed holds/swipes,
   // all launcher gamepad buttons, wheel scrolling, keyboard keys and text;
-  // requests are ignored unless launcher_ui.pax is active.
+  // requests are ignored unless a supported app is active.
   void request_remote_ui_input(const std::string &command);
   // One file from the SD card (or, for a path ending in '/', a directory
   // listing), sent to the diagnostic stream as a PAXFL01 packet. Only paths

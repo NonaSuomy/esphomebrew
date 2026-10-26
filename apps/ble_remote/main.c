@@ -16,7 +16,7 @@ static uint16_t game_buttons;
 static uint8_t game_hat = 8;
 static lv_point_t last;
 static int source_w = W, source_h = H;
-static uint32_t last_status;
+static uint32_t last_status, click_release_at;
 static bool connected;
 
 typedef struct { int x,y,w,h; uint16_t bit; uint8_t direction; lv_obj_t *obj; } Control;
@@ -26,7 +26,7 @@ static int remote(uint32_t cmd, int32_t a, int32_t b, const char *text) {
 }
 static void release_all(void) {
     remote(PAX_BLE_RELEASE,0,0,NULL);
-    dragging=false; modifiers=0; game_buttons=0; game_hat=8;
+    dragging=false; modifiers=0; game_buttons=0; game_hat=8; click_release_at=0;
     if(drag_button) lv_obj_remove_state(drag_button,LV_STATE_CHECKED);
     if(panels[0])for(uint32_t i=0;i<lv_obj_get_child_count(panels[0]);i++)
         lv_obj_remove_state(lv_obj_get_child(panels[0],i),LV_STATE_CHECKED);
@@ -105,7 +105,8 @@ static void mouse(lv_event_t *e) {
         } else if(action==4||action==5)remote(PAX_BLE_MOUSE_SCROLL,action==4?1:-1,0,NULL);
         else {
             remote(PAX_BLE_MOUSE_BUTTONS,action,0,NULL);
-            remote(PAX_BLE_MOUSE_BUTTONS,dragging?1:0,0,NULL);
+            // Give receivers that poll HID state time to observe a click.
+            click_release_at=tick()+60;
         }
     }
 }
@@ -114,7 +115,8 @@ static void poll_gamepad(void) {
     uint16_t bits=0; unsigned directions=0;
     pax_touch_point_t points[5];int n=0;
     if(svc->touch_read_points)n=svc->touch_read_points(points,5);
-    else {int x,y;if(svc->touch_read(&x,&y)){points[0].x=x;points[0].y=y;n=1;}}
+    // Single-point fallback also supports the loader's timed diagnostic taps.
+    if(n<=0){int x,y;if(svc->touch_read(&x,&y)){points[0].x=x;points[0].y=y;n=1;}}
     for(unsigned i=0;i<12;i++) {
         Control *c=&controls[i]; bool down=false;
         for(int j=0;j<n && j<5;j++) {
@@ -194,6 +196,9 @@ static int setup(void *arg) {
 }
 static int pump(void *arg) {
     (void)arg;lv_timer_handler();
+    if(click_release_at && (int32_t)(tick()-click_release_at)>=0) {
+        remote(PAX_BLE_MOUSE_BUTTONS,dragging?1:0,0,NULL);click_release_at=0;
+    }
     if(tick()-last_status>=500) {
         last_status=tick();int flags=remote(PAX_BLE_STATUS,0,0,NULL);
         bool now=flags>=0&&(flags&PAX_BLE_CONNECTED);

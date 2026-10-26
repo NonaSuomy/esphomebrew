@@ -6,6 +6,8 @@
 #include "../apps/ble_remote/main.c"
 static uint64_t now_us;
 static bool link_up=true;
+static uint64_t click_started_us;
+static int timed_click_releases;
 static pax_touch_point_t fingers[5];static int fingers_n;
 static int keys,shift_a,ctrl_c,move_x,move_y,clicks,scrolls,releases,pad_combo,pad_diagonal;
 static int mock_remote(uint32_t cmd,int32_t a,int32_t b,const char *text){
@@ -14,9 +16,12 @@ static int mock_remote(uint32_t cmd,int32_t a,int32_t b,const char *text){
  case PAX_BLE_STATUS:return link_up?7:5;
  case PAX_BLE_KEY:keys++;if(a==2&&b==4)shift_a++;if(a==1&&b==6)ctrl_c++;break;
  case PAX_BLE_MOUSE_MOVE:move_x+=a;move_y+=b;break;
- case PAX_BLE_MOUSE_BUTTONS:if(a)clicks++;break;
+ case PAX_BLE_MOUSE_BUTTONS:
+  if(a){clicks++;click_started_us=now_us;}
+  else if(click_started_us){assert(now_us-click_started_us>=60000);timed_click_releases++;click_started_us=0;}
+  break;
  case PAX_BLE_MOUSE_SCROLL:scrolls+=a;break;
- case PAX_BLE_RELEASE:releases++;break;
+ case PAX_BLE_RELEASE:releases++;click_started_us=0;break;
  case PAX_BLE_GAMEPAD:if(a==1&&b==0)pad_combo++;if(a==0&&b==3)pad_diagonal++;break;
  }
  return 0;
@@ -38,7 +43,7 @@ int main(int argc,char **argv){
  tap(60,353);tap(225,294); // Ctrl + C
  assert(keys==3&&shift_a==1&&ctrl_c==1);
  tap(400,70);assert(tab==1);advance(200);snapshot("/tmp/pax-ble-remote/mousepad.ppm");
- tap(70,420);tap(390,420);assert(dragging);
+ tap(70,420);assert(timed_click_releases==1);tap(390,420);assert(dragging);
  fingers_n=1;fingers[0]=(pax_touch_point_t){200,220,0};advance(100);
  fingers[0].x+=24;fingers[0].y+=10;advance(100);fingers_n=0;advance(100);
  assert(move_x==24&&move_y==10);tap(545,420);assert(scrolls==1);
