@@ -3,8 +3,8 @@
   "variant": "pax-bluedroid-hid",
   "chip": "esp32c6",
   "idf": "6.1.0",
-  "bytes": 1813200,
-  "sha256": "992e578118f2d5c00413937c2e9cdf79b86d6d0b5b8fd731efff19bb01db0ac7",
+  "bytes": 1814496,
+  "sha256": "4a1ce03d9daba3536604ac09df4b5e56c98c506707cc0a0e8c39b046568601e5",
   "radio_capabilities": [
     "BLE"
   ],
@@ -20,7 +20,9 @@
     "CONFIG_ESP_SPI_GPIO_CLK": "18",
     "CONFIG_ESP_SPI_GPIO_CS": "19",
     "CONFIG_ESP_SPI_GPIO_HANDSHAKE": "23",
-    "CONFIG_ESP_SPI_GPIO_DATA_READY": "22"
+    "CONFIG_ESP_SPI_GPIO_DATA_READY": "22",
+    "CONFIG_BT_GATTC_NOTIF_REG_MAX": "32",
+    "CONFIG_BT_GATTC_MAX_CACHE_CHAR": "100"
   },
   "source": "pax-recipe/firmware/bluedroid-hid/prepare-hosted.py",
   "hardware_test": {
@@ -28,9 +30,12 @@
     "installed_and_version_confirmed": "2.12.12",
     "nearby_devices_found": 9,
     "wifi_after_update": "connected",
-    "pairing": "not tested; no BLE input device available",
-    "classic": "original ESP32 Classic+BLE build passed; hardware unavailable"
+    "pairing": "Verified with PAX NANO BLE Test: keyboard press/release, relative mouse and both buttons, all 12 gamepad controls and neutral releases.",
+    "classic": "original ESP32 Classic+BLE build passed; hardware unavailable",
+    "touchscreen_controls_verified": true,
+    "forced_reconnect": "Unreliable after forced advertising-off disconnect; AIO restart restored input.",
+    "ota": "Final image installed after a clean AIO restart; two earlier write RPCs timed out and retained the old image."
   },
   "discovery": "On-demand bounded nearby discovery; reconnect scan only when bonded peers are missing.",
-  "source_commit": "110bf7dc8a26aff64066d365a9f35f43aa85619f"
+  "source_commit": "244e92d5e027d49b50bbd2bab37d4b128f0b1fe1"
 }

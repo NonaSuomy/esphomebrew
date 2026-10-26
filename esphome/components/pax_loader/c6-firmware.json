@@ -28,7 +28,7 @@
       "spi_mode": 3,
       "idf_version": "5.5.2",
       "note": "Stock ESP-Hosted Wi-Fi/Bluetooth HCI coprocessor, full duplex; never use the SDIO image on this wiring.",
-      "bluetooth_sha256": "992e578118f2d5c00413937c2e9cdf79b86d6d0b5b8fd731efff19bb01db0ac7",
+      "bluetooth_sha256": "4a1ce03d9daba3536604ac09df4b5e56c98c506707cc0a0e8c39b046568601e5",
       "bluetooth_local_path": "/sd/firmware/c6/aio-spi-bluetooth.bin",
       "bluetooth_note": "Optional 2.12.12 PAX Bluedroid BLE HID variant; explicit local/URL source selection required. Same full-duplex pins and OTA layout as stock."
     }
