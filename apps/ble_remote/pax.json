@@ -1,8 +1,8 @@
 {
   "name": "ble_remote",
   "title": "BLE Remote",
-  "version": "0.1.0",
-  "description": "Keyboard, mousepad and game controller over one BLE HID pairing. Requires a BLE-peripheral enabled PAX firmware profile.",
+  "version": "0.2.0",
+  "description": "Keyboard, mousepad and game controller with ten saved BLE host slots. Requires BLE-peripheral enabled PAX firmware.",
   "author": "PAX workspace",
   "category": "Tool",
   "license": "Apache-2.0 (app); LVGL MIT; BLE backend GPL-3.0",
@@ -14,7 +14,8 @@
     "Keyboard: US-layout taps; Ctrl/Shift/Alt/Win latch for the next key",
     "Mousepad: slide, left/right click, drag toggle and scroll",
     "Game controller: multitouch D-pad and A/B/X/Y/L/R/Select/Start",
+    "Hosts: select/connect, disconnect, pair a new device or confirm forgetting a saved pairing",
     "Close or physical L3: return to launcher"
   ],
-  "changelog": "0.1.0: three BLE HID interfaces in one PAX app."
+  "changelog": "0.2.0: ten saved hosts and touchscreen pairing, disconnect and forget controls."
 }

@@ -8,7 +8,7 @@
 static const app_services_t *svc;
 static lv_display_t *display;
 static lv_indev_t *pointer;
-static lv_obj_t *panels[3], *tabs_ui[3], *status_label, *drag_button;
+static lv_obj_t *panels[4], *tabs_ui[4], *status_label, *drag_button;
 static uint16_t *canvas;
 static bool quitting, dragging;
 static unsigned tab, modifiers;
@@ -18,6 +18,11 @@ static lv_point_t last;
 static int source_w = W, source_h = H;
 static uint32_t last_status, click_release_at;
 static bool connected;
+static lv_obj_t *host_buttons[10], *host_info, *forget_button;
+static unsigned selected_host, host_count;
+static bool forget_pending;
+static uint32_t forget_started;
+static const char *host_message="Select a slot, then Connect. Pair new uses an empty slot.";
 
 typedef struct { int x,y,w,h; uint16_t bit; uint8_t direction; lv_obj_t *obj; } Control;
 static Control controls[12];
@@ -61,13 +66,52 @@ static lv_obj_t *button(lv_obj_t *p,const char *text,int x,int y,int w,int h,
 }
 static void change_tab(lv_event_t *e) {
     release_all(); tab=(uintptr_t)lv_event_get_user_data(e);
-    for(unsigned i=0;i<3;i++) {
+    for(unsigned i=0;i<4;i++) {
         if(i==tab){lv_obj_remove_flag(panels[i],LV_OBJ_FLAG_HIDDEN);lv_obj_add_state(tabs_ui[i],LV_STATE_CHECKED);}
         else {lv_obj_add_flag(panels[i],LV_OBJ_FLAG_HIDDEN);lv_obj_remove_state(tabs_ui[i],LV_STATE_CHECKED);}
     }
 }
 static void close_app(lv_event_t *e) {(void)e;release_all();quitting=true;}
 static void advertise(lv_event_t *e) {(void)e;remote(PAX_BLE_ADVERTISE,1,0,NULL);}
+static void refresh_hosts(void) {
+    if(!host_info)return;
+    if(forget_pending && tick()-forget_started>6000)forget_pending=false;
+    for(unsigned i=0;i<host_count;i++) {
+        int flags=remote(PAX_BLE_HOST_STATE,i,0,NULL);
+        const char *state=flags<0?"Starting":(flags&PAX_BLE_HOST_CONNECTED)?"Connected":(flags&PAX_BLE_HOST_SAVED)?"Saved":"Empty";
+        lv_label_set_text_fmt(lv_obj_get_child(host_buttons[i],0),"%u: %s",i+1,state);
+        if(i==selected_host)lv_obj_add_state(host_buttons[i],LV_STATE_CHECKED);
+        else lv_obj_remove_state(host_buttons[i],LV_STATE_CHECKED);
+    }
+    int flags=remote(PAX_BLE_HOST_STATE,selected_host,0,NULL);
+    if(flags<0){lv_label_set_text(host_info,"Bluetooth is starting. Saved hosts will appear shortly.");return;}
+    lv_label_set_text_fmt(host_info,"Slot %u: %s%s\n%s",selected_host+1,(flags&PAX_BLE_HOST_SAVED)?"saved pairing":"empty",(flags&PAX_BLE_HOST_ACTIVE)?" (active)":"",host_message);
+    lv_label_set_text(lv_obj_get_child(forget_button,0),forget_pending?"Confirm forget":"Forget selected");
+}
+static void select_host(lv_event_t *e) {
+    selected_host=(uintptr_t)lv_event_get_user_data(e);forget_pending=false;
+    host_message="Connect selects this host. Disconnect keeps its saved pairing.";refresh_hosts();
+}
+static void host_action(lv_event_t *e) {
+    unsigned action=(uintptr_t)lv_event_get_user_data(e);
+    if(action==3) {
+        int flags=remote(PAX_BLE_HOST_STATE,selected_host,0,NULL);
+        if(flags<0){forget_pending=false;host_message="Bluetooth is starting; try again shortly.";}
+        else if(!(flags&PAX_BLE_HOST_SAVED)){forget_pending=false;host_message="This slot is already empty.";}
+        else if(!forget_pending){forget_pending=true;forget_started=tick();host_message="Tap Confirm forget within 6 seconds to remove the saved pairing.";}
+        else {release_all();remote(PAX_BLE_FORGET_HOST,selected_host,0,NULL);forget_pending=false;
+            host_message="Forgotten. Also forget the NANO in the old host's Bluetooth settings.";}
+    } else {
+        forget_pending=false;
+        if(action==0){release_all();int result=remote(PAX_BLE_SELECT_HOST,selected_host,0,NULL);
+            host_message=result>=0?"Host enabled. For an empty slot, scan for PAX NANO BLE Test.":result==-6?"Bluetooth is starting; try again shortly.":"Host selection needs newer BLE Remote firmware.";}
+        if(action==1){release_all();remote(PAX_BLE_ADVERTISE,0,0,NULL);host_message="Active host disconnected. Saved pairing kept; Connect resumes it.";}
+        if(action==2){release_all();int result=remote(PAX_BLE_PAIR_NEW,0,0,NULL);
+            if(result>=0){selected_host=result;host_message="Pair now: scan for PAX NANO BLE Test in Bluetooth settings.";}
+            else host_message=result==-6?"Bluetooth is starting; try again shortly.":result==-5?"All slots are saved. Select a slot and Forget selected first.":"Pairing needs newer BLE Remote firmware.";}
+    }
+    refresh_hosts();
+}
 // HID keyboard usages for a US layout. Modifiers latch for the next key.
 static void key(lv_event_t *e) {
     unsigned usage=(uintptr_t)lv_event_get_user_data(e);
@@ -135,12 +179,13 @@ static void build_ui(void) {
     lv_obj_set_style_bg_color(root,lv_color_hex(0x081827),0);
     lv_obj_set_style_text_color(root,lv_color_white(),0);
     status_label=label(root,"BLE Remote - checking firmware",12,10);
+    lv_obj_set_width(status_label,540);lv_label_set_long_mode(status_label,LV_LABEL_LONG_DOT);
     button(root,"Advertise",566,3,126,36,advertise,0,LV_EVENT_CLICKED);
     button(root,"Close",704,3,84,36,close_app,0,LV_EVENT_CLICKED);
-    const char *tabs[]={"Keyboard","Mousepad","Game controller"};
-    for(unsigned i=0;i<3;i++)tabs_ui[i]=button(root,tabs[i],12+i*262,48,252,42,change_tab,i,LV_EVENT_CLICKED);
+    const char *tabs[]={"Keyboard","Mousepad","Gamepad","Hosts"};
+    for(unsigned i=0;i<4;i++)tabs_ui[i]=button(root,tabs[i],12+i*196,48,186,42,change_tab,i,LV_EVENT_CLICKED);
     lv_obj_add_state(tabs_ui[0],LV_STATE_CHECKED);
-    for(unsigned i=0;i<3;i++) {
+    for(unsigned i=0;i<4;i++) {
         panels[i]=lv_obj_create(root);lv_obj_set_pos(panels[i],8,100);lv_obj_set_size(panels[i],784,372);
         lv_obj_set_style_pad_all(panels[i],0,0);lv_obj_set_style_border_width(panels[i],0,0);
         lv_obj_set_style_bg_color(panels[i],lv_color_hex(0x102b43),0);
@@ -184,6 +229,19 @@ static void build_ui(void) {
         c->obj=button(panels[2],names[i],xy[i][0],xy[i][1],84,76,NULL,0,LV_EVENT_CLICKED);
     }
     label(panels[2],"16-button / 8-way hat report. Opposite directions cancel.",10,332);
+    int count=remote(PAX_BLE_HOST_COUNT,0,0,NULL);
+    host_count=count>0&&count<=10?(unsigned)count:0;
+    int active=remote(PAX_BLE_ACTIVE_HOST,0,0,NULL);selected_host=active>=0&&active<(int)host_count?active:0;
+    for(unsigned i=0;i<host_count;i++)host_buttons[i]=button(panels[3],"",8+(i%5)*154,8+(i/5)*60,146,52,select_host,i,LV_EVENT_CLICKED);
+    host_info=label(panels[3],"",12,138);lv_obj_set_width(host_info,754);lv_label_set_long_mode(host_info,LV_LABEL_LONG_WRAP);
+    const char *actions[]={"Connect selected","Disconnect","Pair new device","Forget selected"};
+    for(unsigned i=0;i<4;i++){
+        lv_obj_t *b=button(panels[3],actions[i],8+i*194,238,186,56,host_action,i,LV_EVENT_CLICKED);
+        if(i==3)forget_button=b;
+    }
+    label(panels[3],"One active host. Saved pairings survive restarts.",12,322);
+    if(!host_count)host_message="Update the NANO BLE Remote firmware to manage saved hosts.";
+    refresh_hosts();
 }
 static int setup(void *arg) {
     (void)arg;lv_init();lv_tick_set_cb(tick);
@@ -203,7 +261,10 @@ static int pump(void *arg) {
         last_status=tick();int flags=remote(PAX_BLE_STATUS,0,0,NULL);
         bool now=flags>=0&&(flags&PAX_BLE_CONNECTED);
         if(connected&&!now)release_all();connected=now;
-        lv_label_set_text(status_label,now?"BLE Remote - connected":flags<0?"BLE unavailable - enable remote firmware":"BLE Remote - pair from your computer / AIO");
+        int active=remote(PAX_BLE_ACTIVE_HOST,0,0,NULL);
+        const char *state=now?"connected":flags<0?"BLE unavailable":!(flags&PAX_BLE_AVAILABLE)?"starting":(flags&PAX_BLE_ADVERTISING)?"advertising":"disconnected";
+        lv_label_set_text_fmt(status_label,"BLE Remote | Host %u/%u | %s",active>=0?(unsigned)active+1:1,host_count,state);
+        if(tab==3)refresh_hosts();
     }
     if(tab==2 && connected)poll_gamepad();
     return 0;

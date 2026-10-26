@@ -175,3 +175,11 @@ def patch_hosted_rpc_before_compile(target, source, env):
 hosted_rpc_object = env.File(env.subst("$BUILD_DIR/managed_components/espressif__esp_hosted/host/drivers/rpc/wrap/rpc_wrap.c.o"))
 env.AddPreAction(hosted_rpc_object, patch_hosted_rpc_before_compile)
 env.Depends(hosted_rpc_object, str(compat_directory / "hosted_rpc_compat.py"))
+
+# ESP-IDF 6.1.0 has a P4 ECC regression: regularized ECDH scalars must not be
+# truncated by the hardware accelerator. Backport Espressif's fix before BT
+# sources compile; existing SDK fixes and unrelated local changes are retained.
+patch_idf_ecc = run_path(str(compat_directory / "idf_ecc_compat.py"))["patch_idf_ecc"]
+idf_ecc_root = Path(env.PioPlatform().get_package_dir("framework-espidf"))
+if patch_idf_ecc(idf_ecc_root, compat_directory.parent / "patches/0008-idf61-tinycrypt-ecc-pairing.patch"):
+    print("IDF 6.1 compatibility: applied upstream TinyCrypt ECC secure-pairing fix")
