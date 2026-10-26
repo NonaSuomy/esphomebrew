@@ -42,7 +42,7 @@ class EmulatedIOTests(unittest.TestCase):
                 (apps/'.launcher_ui_network_mode.txt').write_text('manual')
                 (apps/'.launcher_ui_network_url.txt').write_text(f'http://127.0.0.1:{server.server_port}/')
                 events=[]
-                for t,x in [(1,680),(2,90),(3,40),(4,290)]:
+                for t,x in [(1,680),(2,90),(3,40),(4,324)]:
                     events.extend([dict(at=t,type='touch',x=x,y=30,down=True),dict(at=t+.15,type='touch',x=x,y=30,down=False)])
                 script=folder/'input.json';script.write_text(json.dumps(events))
                 report=folder/'report.json'

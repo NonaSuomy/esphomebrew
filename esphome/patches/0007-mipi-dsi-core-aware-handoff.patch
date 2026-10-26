@@ -1,0 +1,59 @@
+diff --git a/config/components/mipi_dsi/frame_buffer_handoff.h b/config/components/mipi_dsi/frame_buffer_handoff.h
+index af28e1216..1368a7b9e 100644
+--- a/config/components/mipi_dsi/frame_buffer_handoff.h
++++ b/config/components/mipi_dsi/frame_buffer_handoff.h
+@@ -12,9 +12,12 @@ class FrameBufferHandoff {
+     pending_ = true;
+     completions_left_ = 0;
+   }
+-  void submitted() {
++  // On the DMA interrupt's core, submission cannot interleave with the ISR
++  // between its buffer selection and completion callback. Other cores need
++  // a second completion to cover exactly that race.
++  void submitted(bool on_dma_core = false) {
+     if (pending_ && completions_left_ == 0)
+-      completions_left_ = 2;
++      completions_left_ = on_dma_core ? 1 : 2;
+   }
+   bool frame_complete() {
+     if (!pending_ || completions_left_ == 0 || --completions_left_ != 0)
+diff --git a/config/components/mipi_dsi/mipi_dsi.cpp b/config/components/mipi_dsi/mipi_dsi.cpp
+index b5ae1f11a..45fae9c8e 100644
+--- a/config/components/mipi_dsi/mipi_dsi.cpp
++++ b/config/components/mipi_dsi/mipi_dsi.cpp
+@@ -22,7 +22,7 @@ bool IRAM_ATTR MIPI_DSI::notify_refresh_ready(esp_lcd_panel_handle_t panel, esp_
+   // IDF updates its requested scanout buffer before this callback. A frame
+   // interrupt before this point must not release the previous front buffer.
+   portENTER_CRITICAL_ISR(&self->frame_buffer_lock_);
+-  self->frame_buffer_handoff_.submitted();
++  self->frame_buffer_handoff_.submitted(xPortGetCoreID() == self->dma_core_);
+   portEXIT_CRITICAL_ISR(&self->frame_buffer_lock_);
+   BaseType_t need_yield = pdFALSE;
+   xSemaphoreGiveFromISR(self->io_lock_, &need_yield);
+@@ -34,9 +34,12 @@ bool IRAM_ATTR MIPI_DSI::notify_frame_buf_complete(esp_lcd_panel_handle_t panel,
+   (void) panel;
+   (void) edata;
+   auto *self = static_cast<MIPI_DSI *>(user_ctx);
+-  // DMA may have sampled the old requested buffer just before submission.
+-  // Two completions after submission guarantee it has selected the new one.
++  // On the DMA core one completion selects the submitted buffer. A draw
++  // from the other core keeps the conservative two-completion handoff.
+   portENTER_CRITICAL_ISR(&self->frame_buffer_lock_);
++  // Observe the actual interrupt core: IDF may share a private DMA interrupt
++  // group that was previously allocated by another peripheral.
++  self->dma_core_ = xPortGetCoreID();
+   const bool ready = self->frame_buffer_handoff_.frame_complete();
+   portEXIT_CRITICAL_ISR(&self->frame_buffer_lock_);
+   BaseType_t need_yield = pdFALSE;
+diff --git a/config/components/mipi_dsi/mipi_dsi.h b/config/components/mipi_dsi/mipi_dsi.h
+index 98ad30d6e..b22f99258 100644
+--- a/config/components/mipi_dsi/mipi_dsi.h
++++ b/config/components/mipi_dsi/mipi_dsi.h
+@@ -127,6 +127,7 @@ class MIPI_DSI : public display::Display {
+   bool continuous_clock_{false};
+   uint8_t *frame_buffers_[2]{nullptr, nullptr};
+   FrameBufferHandoff frame_buffer_handoff_{};
++  int dma_core_{-1};
+   portMUX_TYPE frame_buffer_lock_ = portMUX_INITIALIZER_UNLOCKED;
+ 
+   bool invert_colors_{};

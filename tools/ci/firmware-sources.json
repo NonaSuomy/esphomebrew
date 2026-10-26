@@ -4,8 +4,8 @@
     "repo": "https://github.com/NonaSuomy/esphome.git",
     "base": "0e399cfb178d10303d46dee8479d5e3cc574f6b1",
     "patch": "esphome.patch",
-    "patched_revision": "3a054259ac205b0cb45af943c55eb916ef115d42",
-    "patch_sha256": "c1b3ce035573660ee9d4f6372ae22bd9cc2f491a1a8e39683240cbcd3fd1fd99"
+    "patched_revision": "d9698db597f95d0e6495ac2fdea3a90167f6dc2c",
+    "patch_sha256": "91721ed110c8033ec5bbf6152f399e45884beef9f01b0a93ee285d55df4dcc16"
   },
   "esp_idf": {
     "repo": "https://github.com/espressif/esp-idf.git",

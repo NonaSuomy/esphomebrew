@@ -24,7 +24,7 @@ static void io_worker(void *unused)
       g_io_result = g_io_function(g_io_argument);
       __atomic_store_n(&g_io_state, 2, __ATOMIC_RELEASE);
     }
-    g_svc->delay_ms(2);
+    g_svc->delay_ms(10);
   }
   __atomic_store_n(&g_io_state, 3, __ATOMIC_RELEASE);
   /* Delete from the owner after this task has finished all I/O, before the

@@ -11,7 +11,7 @@ class ImageJobsEmulated(unittest.TestCase):
    (apps/'probe.pax').write_bytes(b'PAX')
    (apps/'probe.json').write_text(json.dumps(dict(name='probe',title='Image Probe',version='1.0',base64='iVBORw0KGgoAAAANSUhEUg==')))
    events=[]
-   for at,x,y in [(2,200,200),(5,290,30)]:events.extend([dict(at=at,type='touch',x=x,y=y,down=True),dict(at=at+.15,type='touch',x=x,y=y,down=False)])
+   for at,x,y in [(2,200,200),(5,324,30)]:events.extend([dict(at=at,type='touch',x=x,y=y,down=True),dict(at=at+.15,type='touch',x=x,y=y,down=False)])
    script=folder/'input.json';script.write_text(json.dumps(events));report=folder/'report.json'
    result=subprocess.run([str(ROOT.parent/'pax-tools/python-desktop/bin/python'),str(ROOT/'tests/launcher_touch_fixture.py'),'emulated','--pax',str(Path(BINARY).resolve()),'--headless','--seconds','8','--sd-root',str(sd),'--input-script',str(script),'--report',str(report)],env={**os.environ,'SDL_AUDIODRIVER':'dummy','PAX_FIXTURE_PNG':'1','PAX_FIXTURE_CANCEL_IMAGE':'1'},capture_output=True,text=True,timeout=35)
    self.assertEqual(result.returncode,0,result.stderr[-3000:])

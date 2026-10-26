@@ -12,7 +12,7 @@ class RenderEmulatedTests(unittest.TestCase):
             for i in range(30):
                 (apps/f'app{i:02}.pax').write_bytes(b'PAX')
                 (apps/f'app{i:02}.json').write_text(json.dumps({'title':f'App {i:02}'}))
-            clicks=([(2,290,30),(4,680,97),(5.5,680,97),(7,680,97),(8.5,680,97)] if settings else [(2,680,97),(3.5,680,97),(5,680,97),(6.5,680,97)])
+            clicks=([(2,324,30),(4,680,97),(5.5,680,97),(7,680,97),(8.5,680,97)] if settings else [(2,680,97),(3.5,680,97),(5,680,97),(6.5,680,97)])
             events=[]
             for at,x,y in clicks:
                 events.extend([dict(at=at,type='touch',x=x,y=y,down=True),dict(at=at+.15,type='touch',x=x,y=y,down=False)])

@@ -9441,9 +9441,65 @@ int PaxLoader::svc_app_set_resume_arg(const char *arg) {
   return 0;
 }
 
+#include "pax_directory_page.h"
+// Bounded pages use the existing ABI slot. Each request owns and closes its
+// directory, including unplug/error paths; no idle iterator consumes RAM.
+static int list_app_directory_page(const std::string &folder, uint32_t skip, char *buf, int len) {
+  if (buf == nullptr || len <= static_cast<int>(sizeof(pax_directory_page))) return -1;
+  DIR *dir = opendir(folder.c_str());
+  if (dir == nullptr) return -1;
+  pax_directory_page page{PAX_DIRECTORY_MAGIC, skip, 0, 0, 0};
+  char *names = buf + sizeof(page);
+  const size_t capacity = len - sizeof(page);
+  uint32_t position = 0;
+  for (;;) {
+    errno = 0;
+    dirent *entry = readdir(dir);
+    if (entry == nullptr) {
+      const int error = errno;
+      closedir(dir);
+      if (error != 0) return -1;
+      std::memcpy(buf, &page, sizeof(page));
+      return static_cast<int>(page.count);
+    }
+    const char *name = entry->d_name;
+    if (std::strcmp(name, ".") == 0 || std::strcmp(name, "..") == 0) continue;
+    if (position++ < skip) continue;
+    if (page.count == PAX_DIRECTORY_PAGE_ENTRIES) { page.more = 1; break; }
+    bool is_dir = entry->d_type == DT_DIR;
+    if (entry->d_type == DT_UNKNOWN) {
+      struct stat st{};
+      const std::string full = folder + (folder.back() == '/' ? "" : "/") + name;
+      is_dir = stat(full.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+    }
+    const size_t length = std::strlen(name);
+    const size_t need = length + (is_dir ? 1 : 0) + 1;
+    if (need > capacity) { closedir(dir); return -1; }
+    if (page.bytes + need > capacity) { page.more = 1; break; }
+    std::memcpy(names + page.bytes, name, length);
+    page.bytes += length;
+    if (is_dir) names[page.bytes++] = '/';
+    names[page.bytes++] = 0;
+    page.count++;
+    page.next_offset++;
+  }
+  closedir(dir);
+  std::memcpy(buf, &page, sizeof(page));
+  return static_cast<int>(page.count);
+}
+
 int PaxLoader::svc_file_list_dir(const char *path, char *buf, int len) {
   if (path == nullptr)
     return -1;
+  if (std::strncmp(path, PAX_DIRECTORY_PREFIX, sizeof(PAX_DIRECTORY_PREFIX) - 1) == 0) {
+    const char *number = path + sizeof(PAX_DIRECTORY_PREFIX) - 1;
+    char *end = nullptr;
+    errno = 0;
+    const unsigned long offset = strtoul(number, &end, 10);
+    if (end == number || *end != ':' || errno != 0 || offset > UINT32_MAX || *number == '-') return -1;
+    const std::string folder = app_file_path_(end + 1);
+    return folder.empty() ? -1 : list_app_directory_page(folder, static_cast<uint32_t>(offset), buf, len);
+  }
   const std::string folder = runtime_path(path);
   DIR *dir = opendir(folder.c_str());
   if (dir == nullptr)

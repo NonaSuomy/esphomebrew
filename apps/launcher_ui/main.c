@@ -30,7 +30,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "input_repeat.h"
+#include "pax_directory_page.h"
 #include "list_presentation.h"
+#include "touch_layout.h"
 #include "network_file_info.h"
 #include "list_sort.h"
 #include "pax_theme_profile.h"
@@ -39,7 +41,8 @@
 #define DEFAULT_PANEL_H 480
 #define DEFAULT_CANVAS_W 400
 #define DEFAULT_CANVAS_H 240
-#define MAX_APPS       192
+#define MAX_APPS       2048
+#define MAX_FAVORITES 192
 #define VISIBLE_ROWS   5
 #define NAME_BYTES     64
 #define PATH_BYTES     256
@@ -103,18 +106,17 @@
 
 static const app_services_t *g_svc;
 static uint16_t *g_canvas;
-/* Keep the directory records in the PAX image.  The loader service can write
- * into this memory while enumerating, and the worker can then pass a path
- * back to app_open() without relying on a service-allocated pointer being
- * visible in both address spaces. */
-static char g_names[MAX_APPS][NAME_BYTES];
+#include "catalog_memory.h"
+static CatalogMemory g_catalog_memory;
+static bool g_catalog_limited;
+static char (*g_names)[NAME_BYTES];
 /* Display titles never replace the canonical package names or paths. */
-static char g_titles[MAX_APPS][NAME_BYTES];
-static char g_paths[MAX_APPS][PATH_BYTES];
+static char (*g_titles)[NAME_BYTES];
+static char (*g_paths)[PATH_BYTES];
 static int g_item_source[MAX_APPS];
 static int g_visible_indices[MAX_APPS];
 static int g_view_count;
-static char g_favorite_paths[MAX_APPS][PATH_BYTES];
+static char g_favorite_paths[MAX_FAVORITES][PATH_BYTES];
 static int g_favorite_count;
 static bool g_favorites_mode;
 static bool g_settings_mode;
@@ -131,7 +133,7 @@ static lv_obj_t *g_tooltips_value;
 static bool g_hide_pax_extension, g_list_file_details;
 static int g_sort_mode, g_sort_direction=1;
 static int g_size_unit, g_size_direction=1;
-static pax_file_stat_t g_list_stats[MAX_APPS];
+static pax_file_stat_t *g_list_stats;
 static bool g_list_stats_valid[MAX_APPS];
 static char g_detail_file_info[PATH_BYTES + 240];
 static bool g_auto_brightness_enabled;
@@ -158,7 +160,7 @@ static bool g_archive_download_active;
 static bool g_archive_search_pending;
 static uint32_t g_archive_search_changed_ms;
 static int g_archive_record_type[MAX_APPS];
-static char g_archive_filenames[MAX_APPS][128];
+static char (*g_archive_filenames)[128];
 static char g_background_paths[MAX_BACKGROUNDS][PATH_BYTES];
 static char g_background_options[MAX_BACKGROUNDS * (NAME_BYTES + 1) + 8];
 static int g_background_count;
@@ -1037,6 +1039,18 @@ static lv_obj_t *create_fa_label(lv_obj_t *parent, uint32_t codepoint, lv_color_
   return label;
 }
 
+static void *catalog_allocate(size_t bytes)
+{ return g_svc->mem_caps_alloc(bytes,PAX_MEM_CAP_SPIRAM); }
+static bool catalog_reserve(int needed)
+{
+  if(!catalog_memory_reserve(&g_catalog_memory,needed,catalog_allocate,g_svc->mem_free)){
+    g_catalog_limited=true;return false;
+  }
+  g_names=g_catalog_memory.names;g_titles=g_catalog_memory.titles;
+  g_paths=g_catalog_memory.paths;g_archive_filenames=g_catalog_memory.files;
+  g_list_stats=g_catalog_memory.stats;return true;
+}
+
 static int parse_pax_links(const char *html, int length,
                             char names[MAX_APPS][NAME_BYTES],
                             char paths[MAX_APPS][PATH_BYTES],
@@ -1069,6 +1083,8 @@ static int parse_pax_links(const char *html, int length,
         }
       }
       if (!duplicate) {
+        if(!catalog_reserve(count+1))break;
+        names=g_names;paths=g_paths;
         int name_start = start;
         for (int i = start; i < end; i++) if (html[i] == '/') name_start = i + 1;
         int name_length = end - name_start;
@@ -2868,7 +2884,7 @@ static bool detail_extract_recipe_run(void)
 
 static int archive_add_record(const char *name, const char *path, const char *filename, int type)
 {
-  if (g_app_count >= MAX_APPS || name == NULL || path == NULL) return -1;
+  if (name == NULL || path == NULL || !catalog_reserve(g_app_count+1)) return -1;
   const int slot = g_app_count++;
   copy_text(g_names[slot], NAME_BYTES, name);
   copy_text(g_paths[slot], PATH_BYTES, path);
@@ -3788,7 +3804,7 @@ static void load_favorites(void)
   if (file == NULL) return;
   char path[PATH_BYTES];
   size_t used = 0;
-  while (g_favorite_count < MAX_APPS) {
+  while (g_favorite_count < MAX_FAVORITES) {
     char c = '\0';
     if (g_svc->file_read(&c, 1, 1, file) != 1) break;
     if (c == '\n' || c == '\r') {
@@ -3806,7 +3822,7 @@ static void load_favorites(void)
       path[used++] = c;
     }
   }
-  if (used > 0 && g_favorite_count < MAX_APPS) {
+  if (used > 0 && g_favorite_count < MAX_FAVORITES) {
     path[used] = '\0';
     if (ends_with(path, ".pax") ||
         ((has_prefix(path, "http://archive.org/download/") ||
@@ -3831,7 +3847,8 @@ static void load_favorites_as_catalog(void)
 {
   g_app_count = 0;
   load_favorites();
-  for (int i = 0; i < g_favorite_count && i < MAX_APPS; i++) {
+  for (int i = 0; i < g_favorite_count && i < MAX_FAVORITES; i++) {
+    if(!catalog_reserve(i+1))break;
     copy_text(g_paths[i], PATH_BYTES, g_favorite_paths[i]);
     g_item_source[i] = source_for_path(g_paths[i]);
     const char *base = g_paths[i];
@@ -3882,17 +3899,26 @@ static void apply_filter(void)
         !contains_case_insensitive(g_paths[i], g_search_text)) continue;
     g_visible_indices[g_view_count++] = i;
   }
-  /* Stable insertion sort is bounded by MAX_APPS and keeps all record arrays
-   * untouched, including filenames, paths, metadata and Archive hierarchy. */
-  if(g_sort_mode!=PAX_SORT_SOURCE)for(int i=1;i<g_view_count;i++){
-    int record=g_visible_indices[i],j=i;
-    while(j>0){
-      int previous=g_visible_indices[j-1];
-      if(pax_sort_compare(g_sort_mode,display_name_for(record),g_paths[record],g_list_stats_valid[record] ? &g_list_stats[record] : NULL,
-                         display_name_for(previous),g_paths[previous],g_list_stats_valid[previous] ? &g_list_stats[previous] : NULL)>=0)break;
-      g_visible_indices[j]=previous;j--;
+  /* Stable index-only merge sort stays responsive with thousands of records.
+   * Scratch is PAX data/PSRAM, never an 8 KiB task-stack allocation. */
+  if(g_sort_mode!=PAX_SORT_SOURCE){
+    static int scratch[MAX_APPS];
+    for(int width=1;width<g_view_count;width*=2){
+      for(int first=0;first<g_view_count;first+=width*2){
+        int mid=first+width,end=first+width*2;
+        if(mid>g_view_count)mid=g_view_count;if(end>g_view_count)end=g_view_count;
+        int left=first,right=mid,out=first;
+        while(left<mid && right<end){
+          int a=g_visible_indices[left],b=g_visible_indices[right];
+          int order=pax_sort_compare(g_sort_mode,display_name_for(a),g_paths[a],g_list_stats_valid[a] ? &g_list_stats[a]:NULL,
+              display_name_for(b),g_paths[b],g_list_stats_valid[b] ? &g_list_stats[b]:NULL);
+          scratch[out++]=order<=0 ? g_visible_indices[left++]:g_visible_indices[right++];
+        }
+        while(left<mid)scratch[out++]=g_visible_indices[left++];
+        while(right<end)scratch[out++]=g_visible_indices[right++];
+      }
+      memcpy(g_visible_indices,scratch,(size_t)g_view_count*sizeof(int));
     }
-    g_visible_indices[j]=record;
   }
   if (g_selected >= g_view_count) g_selected = g_view_count > 0 ? g_view_count - 1 : 0;
   if (g_selected < 0) g_selected = 0;
@@ -3937,7 +3963,7 @@ static void toggle_selected_favorite(void)
       return;
     }
   }
-  if (g_favorite_count < MAX_APPS) {
+  if (g_favorite_count < MAX_FAVORITES) {
     copy_text(g_favorite_paths[g_favorite_count++], PATH_BYTES, path);
     save_favorites();
   }
@@ -4602,51 +4628,52 @@ static bool already_listed(const char *name)
 
 static void add_folder_entries(const char *folder)
 {
-  if (g_svc->file_list_dir == NULL || g_app_count >= MAX_APPS) return;
-  /* Keep the directory buffer in the PAX data image.  The loader writes the
-   * result from its ESPHome task; using a PAX-owned buffer keeps the pointer
-   * valid across that service boundary on every ESP-IDF heap configuration. */
-  char *listing = g_listing;
-  for (int i = 0; i < LIST_BYTES; i++) listing[i] = '\0';
-  int written = list_directory_async(folder, listing, LIST_BYTES);
-  if (written < 0) return;
-  g_svc->log_printf("launcher_ui dir '%s': entries=%d bytes=%u,%u,%u,%u\n",
-                    folder, written, (unsigned)listing[0], (unsigned)listing[1],
-                    (unsigned)listing[2], (unsigned)listing[3]);
-  int offset = 0;
-  while (offset < LIST_BYTES && g_app_count < MAX_APPS) {
-    const char *name = listing + offset;
-    size_t length = 0;
-    while (offset + (int)length < LIST_BYTES && name[length] != '\0') length++;
-    if (offset + (int)length >= LIST_BYTES) break;
-    offset += (int)length + 1;
-    if (length == 0 || name[length - 1] == '/' || !ends_with(name, ".pax")) continue;
-    if (already_listed(name)) continue;
-    const int slot = g_app_count;
-    size_t name_bytes = length < NAME_BYTES - 1 ? length : NAME_BYTES - 1;
-    for (size_t j = 0; j < name_bytes; j++) g_names[slot][j] = name[j];
-    g_names[slot][name_bytes] = '\0';
-    size_t used = 0;
-    while (used + 1 < PATH_BYTES && folder[used] != '\0') {
-      g_paths[slot][used] = folder[used];
-      used++;
+  if (!g_svc->file_list_dir || g_app_count >= MAX_APPS) return;
+  uint32_t cursor=0;bool paged=true;
+  do {
+    char request[PATH_BYTES+48];
+    copy_text(request,sizeof(request),PAX_DIRECTORY_PREFIX);
+    append_uint(request,sizeof(request),cursor);append_text(request,sizeof(request),":");
+    if(!append_text_checked(request,sizeof(request),folder))return;
+    memset(g_listing,0,LIST_BYTES);
+    int count=list_directory_async(paged ? request : folder,g_listing,LIST_BYTES);
+    if(g_discard_io)return;
+    if(count<0){
+      if(paged && cursor==0){paged=false;continue;} /* ABI-1 older host. */
+      return;
     }
-    g_paths[slot][used] = '\0';
-    if (used > 0 && g_paths[g_app_count][used - 1] != '/' && used + 1 < PATH_BYTES)
-      g_paths[slot][used++] = '/';
-    size_t path_bytes = length;
-    if (path_bytes > PATH_BYTES - used - 1) path_bytes = PATH_BYTES - used - 1;
-    for (size_t j = 0; j < path_bytes; j++) g_paths[slot][used + j] = name[j];
-    g_paths[slot][used + path_bytes] = '\0';
-    g_svc->log_printf("launcher_ui item %d: name='%s' path='%s'\n",
-                      g_app_count, g_names[g_app_count], g_paths[g_app_count]);
-    g_item_source[g_app_count] = SOURCE_STORAGE;
-    g_app_count++;
-  }
+    const char *names=g_listing;size_t bytes=LIST_BYTES;
+    struct pax_directory_page page={0};
+    if(paged){
+      memcpy(&page,g_listing,sizeof(page));
+      if(page.magic!=PAX_DIRECTORY_MAGIC || page.count!=(uint32_t)count ||
+         page.bytes>LIST_BYTES-sizeof(page) || (page.more && page.next_offset<=cursor))return;
+      names+=sizeof(page);bytes=page.bytes;
+    }
+    size_t offset=0;
+    for(int entry=0;entry<count && offset<bytes;entry++){
+      const char *name=names+offset;size_t length=0;
+      while(length<bytes-offset && name[length])length++;
+      if(length==bytes-offset)return;
+      offset+=length+1;
+      if(!length || name[length-1]=='/' || !ends_with(name,".pax") || already_listed(name))continue;
+      char full[PATH_BYTES];copy_text(full,sizeof(full),folder);
+      if(folder[strlen(folder)-1]!='/' && !append_text_checked(full,sizeof(full),"/"))continue;
+      if(!append_text_checked(full,sizeof(full),name))continue; /* Never launch a truncated path. */
+      if(!catalog_reserve(g_app_count+1))return;
+      int slot=g_app_count++;
+      copy_text(g_names[slot],NAME_BYTES,name);copy_text(g_paths[slot],PATH_BYTES,full);
+      g_item_source[slot]=SOURCE_STORAGE;
+    }
+    if(!paged || !page.more)break;
+    cursor=page.next_offset;
+  }while(!g_discard_io && g_app_count<MAX_APPS);
+  if(g_app_count==MAX_APPS)g_catalog_limited=true;
 }
 
 typedef struct {char path[PATH_BYTES],title[NAME_BYTES];pax_file_stat_t stat;uint32_t expires;bool local,used;} TitleCache;
-static TitleCache g_title_cache[MAX_APPS];
+#define TITLE_CACHE_SIZE 192
+static TitleCache g_title_cache[TITLE_CACHE_SIZE];
 static unsigned g_title_cache_next;
 static bool g_title_attempted[MAX_APPS];
 static uint32_t g_catalog_generation;
@@ -4662,7 +4689,7 @@ static void load_list_title(int index)
   const bool local_ok=!remote && g_svc->file_stat && stat_async(sidecar,&info)==0;
   if(g_discard_io)return;
   uint32_t now=(uint32_t)(g_svc->get_time_us()/1000U);
-  for(int i=0;i<MAX_APPS;i++)if(g_title_cache[i].used && !strcmp(g_title_cache[i].path,sidecar)){
+  for(int i=0;i<TITLE_CACHE_SIZE;i++)if(g_title_cache[i].used && !strcmp(g_title_cache[i].path,sidecar)){
     TitleCache *cache=&g_title_cache[i];
     if((remote && (int32_t)(cache->expires-now)>0) ||
        (local_ok && cache->local && cache->stat.size==info.size && cache->stat.mtime==info.mtime && (int32_t)(cache->expires-now)>0)){
@@ -4674,7 +4701,7 @@ static void load_list_title(int index)
   if(g_discard_io)return;
   if(length>0 && (!json_string_field(g_remote,length,"title",g_titles[index],NAME_BYTES) || !pax_list_title_valid(g_titles[index])))g_titles[index][0]=0;
   if(length>0){
-    TitleCache *cache=&g_title_cache[g_title_cache_next++%MAX_APPS];
+    TitleCache *cache=&g_title_cache[g_title_cache_next++%TITLE_CACHE_SIZE];
     copy_text(cache->path,sizeof(cache->path),sidecar);copy_text(cache->title,sizeof(cache->title),g_titles[index]);
     cache->stat=info;cache->local=local_ok;cache->expires=now+30000;cache->used=true;
   }
@@ -4709,9 +4736,13 @@ static void load_apps(void)
   memset(g_list_stats_valid,0,sizeof(g_list_stats_valid));
   memset(g_title_attempted,0,sizeof(g_title_attempted));
   g_catalog_generation=__atomic_load_n(&g_navigation_generation,__ATOMIC_ACQUIRE);
-  g_app_count = 0;
+  g_app_count = 0;g_view_count=0;
+  catalog_memory_release(&g_catalog_memory,g_svc->mem_free);
+  g_names=NULL;g_titles=NULL;g_paths=NULL;g_archive_filenames=NULL;g_list_stats=NULL;
+  g_catalog_limited=false;
+  if(!catalog_reserve(1)){g_catalog_failed=true;return;}
   g_catalog_failed = false;
-  for (int i = 0; i < MAX_APPS; i++) {
+  for (int i = 0; i < g_catalog_memory.capacity; i++) {
     g_names[i][0] = '\0';
     g_titles[i][0] = '\0';
     g_paths[i][0] = '\0';
@@ -4742,6 +4773,8 @@ static void load_apps(void)
     for (int i = 0; i < g_app_count; i++) g_item_source[i] = g_source;
   }
   if(g_discard_io || g_catalog_generation!=__atomic_load_n(&g_navigation_generation,__ATOMIC_ACQUIRE)){g_app_count=0;g_view_count=0;return;}
+  if(g_app_count==MAX_APPS)g_catalog_limited=true;
+  g_svc->log_printf("launcher_ui catalog: entries=%d capacity=%d limited=%d\n",g_app_count,g_catalog_memory.capacity,g_catalog_limited);
   /* Publish filenames first. File stats and titles arrive progressively. */
   apply_filter();
 }
@@ -5083,7 +5116,7 @@ static int build_rom_picker_overlay(lv_obj_t *screen)
   lv_obj_set_style_text_font(g_rom_picker_status, &lv_font_montserrat_12, LV_PART_MAIN);
   lv_obj_align(g_rom_picker_status, LV_ALIGN_BOTTOM_MID, 0, -cancel_h - ui_px(8));
   lv_obj_t *cancel = lv_button_create(panel);
-  lv_obj_set_size(cancel, ui_px(100), cancel_h);
+  lv_obj_set_size(cancel, touch_keyboard_height(g_canvas_h,ui_px(100)), cancel_h);
   lv_obj_align(cancel, LV_ALIGN_BOTTOM_MID, 0, -ui_px(2));
   style_button(cancel, false);
   lv_obj_add_event_cb(cancel, rom_picker_button_event, LV_EVENT_CLICKED, (void *)(intptr_t)-1);
@@ -6241,7 +6274,7 @@ static int update_selection_on_host(void *arg)
     }
   }
   if (g_count_label != NULL)
-    label_number_changed(g_count_label,g_view_count," APPS");
+    label_number_changed(g_count_label,g_view_count,g_catalog_limited ? "+ APPS":" APPS");
   if (g_archive_status_label != NULL)
     label_text_changed(g_archive_status_label, g_archive_status);
   if (g_archive_progress != NULL) {
@@ -6641,7 +6674,12 @@ static int mouse_scroll_on_host(void *arg)
   if (g_settings_mode) {
     if (!mouse_inside_object(g_settings_panel)) return 0;
     const int steps = wheel > 8 ? 8 : (wheel < -8 ? -8 : wheel);
-    lv_obj_scroll_by(g_settings_panel, 0, -steps * ui_px(32), LV_ANIM_ON);
+    int y=lv_obj_get_scroll_y(g_settings_panel);
+    int bottom=y+lv_obj_get_scroll_bottom(g_settings_panel);
+    if(bottom<0)bottom=0;
+    int target=y+steps*ui_px(32);
+    if(target<0)target=0;if(target>bottom)target=bottom;
+    lv_obj_scroll_to_y(g_settings_panel,target,LV_ANIM_ON);
     return 1;
   }
   if (!mouse_inside_object(g_list) || g_view_count <= 0) return 0;
@@ -6662,6 +6700,53 @@ static int mouse_scroll_on_host(void *arg)
   return 1;
 }
 
+/* Preserve readable fonts; narrower panels stack each label above its controls.
+ * Reflow once on creation, leaving scrolling and live updates in place. */
+static void settings_touch_layout(lv_obj_t *panel,int content_w,int control_x,
+                                  int control_w,int first_y,int step_y)
+{
+  const bool stacked=content_w<760;
+  const int new_step=touch_settings_step(step_y,stacked);
+  const int top=0; /* A separate fixed Settings header reserves the title space. */
+  lv_obj_update_layout(panel);
+  const uint32_t count=lv_obj_get_child_count(panel);
+  int section_y[16],section_count=0;
+  if(stacked)for(uint32_t i=0;i<count && section_count<16;i++){
+    lv_obj_t *child=lv_obj_get_child(panel,i);
+    if(lv_obj_check_type(child,&lv_label_class) && lv_obj_get_y(child)>=first_y &&
+       lv_color_eq(lv_obj_get_style_text_color(child,LV_PART_MAIN),lv_color_hex(COL_ACCENT)))
+      section_y[section_count++]=lv_obj_get_y(child);
+  }
+  for(uint32_t i=0;i<count;i++){
+    lv_obj_t *child=lv_obj_get_child(panel,i);
+    int x=lv_obj_get_x(child),y=lv_obj_get_y(child),w=lv_obj_get_width(child);
+    if(y<first_y-ui_px(3))continue;
+    int next_y=top+(y-first_y)*new_step/step_y;
+    for(int section=0;section<section_count;section++)if(y>=section_y[section]+step_y/2)
+      next_y-=new_step-TOUCH_TARGET_MIN; /* Headings do not need a two-line control row. */
+    if(stacked && x>=control_x-ui_px(2)){
+      x=ui_px(8)+(x-control_x)*(content_w-ui_px(16))/control_w;
+      w=w*(content_w-ui_px(16))/control_w;
+      next_y+=36;
+    }else if(stacked && x<control_x && w<content_w*7/10){
+      w=content_w-x-ui_px(8);
+    }
+    lv_obj_set_align(child,LV_ALIGN_DEFAULT);
+    lv_obj_set_pos(child,x,next_y);lv_obj_set_width(child,w);
+    if(lv_obj_has_flag(child,LV_OBJ_FLAG_CLICKABLE)){
+      if(child==g_volume_slider || child==g_brightness_slider){
+        lv_obj_set_ext_click_area(child,TOUCH_TARGET_MIN/2);
+      }else{
+        lv_obj_set_style_min_height(child,TOUCH_TARGET_MIN,LV_PART_MAIN);
+        lv_obj_set_style_min_width(child,TOUCH_TARGET_MIN,LV_PART_MAIN);
+      }
+    }
+  }
+  lv_obj_set_style_min_height(g_settings_back_button,TOUCH_TARGET_MIN,LV_PART_MAIN);
+  lv_obj_set_style_min_width(g_settings_back_button,96,LV_PART_MAIN);
+  lv_obj_update_layout(panel);
+}
+
 static void ensure_keyboard(lv_obj_t *screen)
 {
   if(g_keyboard)return;
@@ -6670,13 +6755,13 @@ static void ensure_keyboard(lv_obj_t *screen)
       g_svc->log_printf("launcher_ui: keyboard created; screen=%dx%d initial=%dx%d\n",
                         lv_obj_get_width(screen), lv_obj_get_height(screen),
                         lv_obj_get_width(g_keyboard), lv_obj_get_height(g_keyboard));
-      lv_obj_set_size(g_keyboard, g_canvas_w - 2 * ui_px(8), ui_px(100));
+      lv_obj_set_size(g_keyboard, g_canvas_w - 2 * ui_px(8), touch_keyboard_height(g_canvas_h,ui_px(100)));
       /* lv_keyboard_create() aligns itself to the parent's bottom edge.
        * Clear that inherited alignment before applying an explicit position;
        * otherwise LVGL interprets keyboard_y as a bottom-alignment offset and
        * places the keyboard below the screen. */
       lv_obj_set_align(g_keyboard, LV_ALIGN_DEFAULT);
-      lv_obj_set_pos(g_keyboard, ui_px(8), g_canvas_h-ui_px(100)-ui_px(4));
+      lv_obj_set_pos(g_keyboard, ui_px(8), g_canvas_h-touch_keyboard_height(g_canvas_h,ui_px(100))-ui_px(4));
       /* LVGL stores position/size as style values and resolves object coords
        * during layout. Force that pass before rendering the first keyboard
        * frame; otherwise the fresh button-matrix can remain at 0x0 until a
@@ -6739,7 +6824,7 @@ static void sync_keyboard_layout(void)
   if(g_archive_status_label){if(g_keyboard_open)lv_obj_add_flag(g_archive_status_label,LV_OBJ_FLAG_HIDDEN);else lv_obj_clear_flag(g_archive_status_label,LV_OBJ_FLAG_HIDDEN);}
   if(g_archive_progress){if(g_keyboard_open)lv_obj_add_flag(g_archive_progress,LV_OBJ_FLAG_HIDDEN);else lv_obj_clear_flag(g_archive_progress,LV_OBJ_FLAG_HIDDEN);}
   const int list_y=ui_px(24)+ui_px(30)+ui_px(5),pad=ui_px(5),gap=ui_px(4);
-  const int keyboard_y=g_canvas_h-ui_px(100)-ui_px(4);
+  const int keyboard_y=g_canvas_h-touch_keyboard_height(g_canvas_h,ui_px(100))-ui_px(4);
   if(g_settings_panel){
     const int bottom=g_keyboard_open ? keyboard_y-ui_px(4) : g_canvas_h-ui_px(10);
     lv_obj_set_height(g_settings_panel,bottom-(ui_px(24)+ui_px(30)+ui_px(7)));
@@ -6902,12 +6987,14 @@ static int build_ui_on_host(void *arg)
 
   /* Keep the LAN source distinct from the live Ethernet status glyph at the
    * right of the top bar. */
+  const int view_size=touch_at_least(ui_px(18),TOUCH_TARGET_MIN);
+  const int view_gap=touch_at_least(ui_px(2),8);
   const uint32_t view_icons[6] = {0xf0a0U, 0xf6ffU, 0xf54eU, 0xf187U, 0xf005U, 0xf013U};
   for (int i = 0; i < 6; i++) {
     lv_obj_t *button = lv_button_create(topbar);
     g_toolbar_buttons[i] = button;
-    lv_obj_set_size(button, ui_px(18), ui_px(18));
-    lv_obj_set_pos(button, ui_px(8 + i * 20), (status_h - ui_px(18)) / 2);
+    lv_obj_set_size(button,view_size,view_size);
+    lv_obj_set_pos(button,ui_px(8)+i*(view_size+view_gap),(status_h-view_size)/2);
     lv_obj_set_style_pad_all(button, 0, LV_PART_MAIN);
     style_button(button, i < SOURCE_COUNT ?
                  (!g_favorites_mode && i == g_source) :
@@ -6975,15 +7062,17 @@ static int build_ui_on_host(void *arg)
   const int clock_icon_x = clock_x - ui_px(18);
   /* Keep the centered brand clear of the time on narrower panels. */
   const int brand_right = clock_icon_x - ui_px(4);
-  int available_brand = brand_right - ui_px(128);
+  int available_brand = brand_right - (ui_px(8)+6*(view_size+view_gap));
   if (available_brand <= 0) lv_obj_add_flag(brand, LV_OBJ_FLAG_HIDDEN);
   else {
     if (available_brand > brand_width) available_brand = brand_width;
     lv_obj_set_width(brand, available_brand);
     lv_text_get_size(&brand_size, "ESPHOMEBREW", brand_font, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
     if (brand_size.x > available_brand) {
-      brand_font = &lv_font_montserrat_14;
+      brand_font = &lv_font_montserrat_20;
       lv_obj_set_style_text_font(brand, brand_font, LV_PART_MAIN);
+      lv_text_get_size(&brand_size,"ESPHOMEBREW",brand_font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+      if(brand_size.x>available_brand)lv_obj_add_flag(brand,LV_OBJ_FLAG_HIDDEN);
     }
     if ((g_canvas_w + available_brand) / 2 > brand_right)
       lv_obj_set_x(brand, brand_right - available_brand - (g_canvas_w - available_brand) / 2);
@@ -7030,11 +7119,11 @@ static int build_ui_on_host(void *arg)
 
   lv_obj_t *favorite_item_button = lv_button_create(header);
   g_toolbar_buttons[6] = favorite_item_button;
-  const int button_h = ui_px(22);
+  const int button_h = touch_at_least(ui_px(22),TOUCH_TARGET_MIN);
   const int search_h = ui_px(25);
   const int search_y = (header_h - search_h) / 2;
   const int button_y = (header_h - button_h) / 2;
-  const int button_w = ui_px(20);
+  const int button_w = touch_at_least(ui_px(20),TOUCH_TARGET_MIN);
   lv_obj_set_size(favorite_item_button, button_w, button_h);
   lv_obj_set_pos(favorite_item_button, ui_px(8), button_y);
   lv_obj_set_style_pad_all(favorite_item_button, 0, LV_PART_MAIN);
@@ -7053,7 +7142,7 @@ static int build_ui_on_host(void *arg)
   g_archive_up_button = lv_button_create(header);
   g_toolbar_buttons[11] = g_archive_up_button;
   lv_obj_set_size(g_archive_up_button, button_w, button_h);
-  lv_obj_set_pos(g_archive_up_button, ui_px(36), button_y);
+  lv_obj_set_pos(g_archive_up_button,ui_px(8)+button_w+ui_px(8),button_y);
   lv_obj_set_style_pad_all(g_archive_up_button, 0, LV_PART_MAIN);
   style_button(g_archive_up_button, g_toolbar_focus == 11);
   if (!archive_source) lv_obj_add_flag(g_archive_up_button, LV_OBJ_FLAG_HIDDEN);
@@ -7095,7 +7184,7 @@ static int build_ui_on_host(void *arg)
 
   const int right_pad = ui_px(8);
   const int button_gap = ui_px(4);
-  const int search_x = ui_px(36) + (archive_source ? button_w + button_gap : 0);
+  const int search_x = ui_px(8)+button_w+ui_px(8)+(archive_source ? button_w+button_gap:0);
   const int count_w = ui_px(90);
   const int count_x = g_canvas_w - right_pad - count_w;
   const int refresh_x = count_x - button_gap - button_w;
@@ -7180,7 +7269,7 @@ static int build_ui_on_host(void *arg)
   lv_obj_clear_flag(count_cell, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_t *count = lv_label_create(count_cell);
   g_count_label = count;
-  lv_label_set_text_fmt(count, "%d APPS", g_view_count);
+  lv_label_set_text_fmt(count, "%d%s APPS", g_view_count,g_catalog_limited ? "+" : "");
   lv_obj_set_style_text_color(count, lv_color_hex(COL_OK), LV_PART_MAIN);
   lv_obj_set_style_text_font(count, &lv_font_montserrat_14, LV_PART_MAIN);
   lv_label_set_long_mode(count, LV_LABEL_LONG_CLIP);
@@ -7195,7 +7284,7 @@ static int build_ui_on_host(void *arg)
     const int panel_w = g_canvas_w - 2 * margin;
     const int panel_pad = ui_px(8);
     const int content_w = panel_w - 2 * panel_pad;
-    const int keyboard_height = ui_px(100);
+    const int keyboard_height = touch_keyboard_height(g_canvas_h,ui_px(100));
     const int keyboard_y = g_canvas_h - keyboard_height - ui_px(4);
     const int panel_bottom = g_keyboard_open ? keyboard_y - ui_px(4) : g_canvas_h - ui_px(10);
     lv_obj_set_pos(panel, margin, panel_y);
@@ -7649,15 +7738,35 @@ static int build_ui_on_host(void *arg)
     g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[29],
                                               content_w-ui_px(12),&lv_font_montserrat_14,true);
 
+    settings_touch_layout(panel,content_w,control_x,control_w,first_row_y,step_y);
+    /* Keep the title/back target visible while the long Settings list scrolls. */
+    const int settings_header_h=TOUCH_TARGET_MIN+TOUCH_GAP_MIN;
+    lv_obj_set_style_pad_top(panel,panel_pad+settings_header_h,LV_PART_MAIN);
+    lv_obj_t *settings_header=lv_obj_create(screen);
+    lv_obj_remove_style_all(settings_header);
+    lv_obj_set_pos(settings_header,margin+1,panel_y+1);
+    lv_obj_set_size(settings_header,panel_w-2,settings_header_h);
+    lv_obj_set_style_bg_color(settings_header,lv_color_hex(COL_PANEL),LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(settings_header,LV_OPA_COVER,LV_PART_MAIN);
+    lv_obj_clear_flag(settings_header,LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_parent(heading,settings_header);lv_obj_align(heading,LV_ALIGN_LEFT_MID,ui_px(8),0);
+    lv_obj_set_parent(g_settings_back_button,settings_header);
+    lv_obj_align(g_settings_back_button,LV_ALIGN_RIGHT_MID,-ui_px(8),0);
     ensure_keyboard(screen);
     g_footer_label=lv_label_create(screen);
     lv_label_set_text(g_footer_label,"SETTINGS  A EDIT/SELECT  LEFT/RIGHT ADJUST  B BACK");
     lv_obj_set_style_text_color(g_footer_label,lv_color_hex(COL_MUTED),LV_PART_MAIN);
     lv_obj_align(g_footer_label,LV_ALIGN_BOTTOM_MID,0,-ui_px(4));
+    g_last_settings_focus=g_settings_focus;
+    lv_obj_scroll_to_y(panel,0,LV_ANIM_OFF);
     /* This branch returns before the regular list-page refresh. Populate the
      * settings controls now so LVGL's default label text ('Text') is never
      * shown, including immediately after an SD eject/rebuild. */
     (void)update_selection_on_host(NULL);
+    lv_obj_update_layout(panel);
+    g_svc->log_printf("launcher_ui touch settings: viewport=%dx%d scroll=%d bottom=%d SD=%d volume=%d\n",
+      lv_obj_get_width(panel),lv_obj_get_height(panel),(int)lv_obj_get_scroll_y(panel),(int)lv_obj_get_scroll_bottom(panel),
+      (int)lv_obj_get_y(g_storage_buttons[0]),(int)lv_obj_get_y(g_volume_slider));
     lv_obj_invalidate(screen);
     tooltip_configure();
     return 0;
@@ -8029,7 +8138,7 @@ static int build_ui_on_host(void *arg)
 
   g_list = lv_obj_create(screen);
   const int list_y = status_h + header_h + ui_px(5);
-  const int keyboard_height = ui_px(100);
+  const int keyboard_height = touch_keyboard_height(g_canvas_h,ui_px(100));
   const int keyboard_y = g_canvas_h - keyboard_height - ui_px(4);
   const int list_bottom = g_keyboard_open ? keyboard_y - ui_px(4) :
       (g_source == SOURCE_ARCHIVE ? g_canvas_h - ui_px(34) : g_canvas_h - status_h - ui_px(5));
@@ -8866,11 +8975,6 @@ int app_entry(const app_services_t *svc)
   g_canvas = (uint16_t *)svc->mem_caps_alloc((size_t)g_canvas_w * g_canvas_h * sizeof(uint16_t),
                                              PAX_MEM_CAP_SPIRAM | PAX_MEM_CAP_DMA);
   if (g_canvas == NULL) {io_finish();return -2;}
-  for (int i = 0; i < MAX_APPS; i++) {
-    g_names[i][0] = '\0';
-    g_titles[i][0] = '\0';
-    g_paths[i][0] = '\0';
-  }
 
   g_selected = 0;
   g_first_visible = 0;
@@ -9536,6 +9640,7 @@ int app_entry(const app_services_t *svc)
   svc->display_clear(0x0000);
   svc->display_flush();
   svc->mem_free(g_canvas);
+  catalog_memory_release(&g_catalog_memory,svc->mem_free);
   g_canvas = NULL;
   return 0;
 }

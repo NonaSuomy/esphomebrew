@@ -13,7 +13,7 @@ class WifiPickerEmulated(unittest.TestCase):
  def test_controller_scan_and_manual_entry_keep_connection_staged(self):
   with tempfile.TemporaryDirectory() as td:
    folder=Path(td);sd=folder/'sd';(sd/'roms/pax').mkdir(parents=True)
-   events=[dict(at=1,type='touch',x=290,y=30,down=True),dict(at=1.15,type='touch',x=290,y=30,down=False)]
+   events=[dict(at=1,type='touch',x=324,y=30,down=True),dict(at=1.15,type='touch',x=324,y=30,down=False)]
    script=folder/'input.json';script.write_text(json.dumps(sorted(events,key=lambda e:e['at'])))
    report=folder/'report.json'
    result=subprocess.run([str(ROOT.parent/'pax-tools/python-desktop/bin/python'),str(ROOT/'tests/launcher_wifi_fixture.py'),'--fixture-navigation','emulated','--pax',str(Path(BINARY).resolve()),'--headless','--seconds','45','--sd-root',str(sd),'--input-script',str(script),'--report',str(report),'--screenshot','/tmp/pax-wifi-picker-emulated.ppm'],env={**os.environ,'SDL_AUDIODRIVER':'dummy'},capture_output=True,text=True,timeout=80)
