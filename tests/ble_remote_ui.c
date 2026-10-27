@@ -8,6 +8,7 @@ static uint64_t now_us;
 static bool link_up=true;
 static bool saved[10]={true},enabled[10]={true,true,true,true,true,true,true,true,true,true};
 static unsigned active_slot;
+static char names[10][32];
 static uint64_t click_started_us;
 static int timed_click_releases;
 static pax_touch_point_t fingers[5];static int fingers_n;
@@ -16,12 +17,15 @@ static int mock_remote(uint32_t cmd,int32_t a,int32_t b,const char *text){
  (void)text;
  switch(cmd){
  case PAX_BLE_STATUS:return link_up?7:enabled[active_slot]?9:1;
+ case PAX_BLE_HOST_NAME_GET:return b<(int)strlen(names[a])?(unsigned char)names[a][b]:0;
+ case PAX_BLE_HOST_NAME_SET:snprintf(names[a],32,"%s",text);return 0;
+ case PAX_BLE_HOST_ADDRESS:return saved[a]?a+b:-3;
  case PAX_BLE_HOST_COUNT:return 10;
  case PAX_BLE_ACTIVE_HOST:return active_slot;
  case PAX_BLE_HOST_STATE:return (saved[a]?PAX_BLE_HOST_SAVED:0)|(a==(int)active_slot?PAX_BLE_HOST_ACTIVE:0)|(a==(int)active_slot&&link_up?PAX_BLE_HOST_CONNECTED:0)|(enabled[a]?PAX_BLE_HOST_ENABLED:0);
  case PAX_BLE_SELECT_HOST:active_slot=a;enabled[a]=true;link_up=false;return a;
  case PAX_BLE_ADVERTISE:enabled[active_slot]=a;if(!a)link_up=false;return 0;
- case PAX_BLE_FORGET_HOST:saved[a]=false;enabled[a]=false;if(a==(int)active_slot)link_up=false;return 0;
+ case PAX_BLE_FORGET_HOST:names[a][0]=0;saved[a]=false;enabled[a]=false;if(a==(int)active_slot)link_up=false;return 0;
  case PAX_BLE_PAIR_NEW:for(int i=0;i<10;i++)if(!saved[i]){active_slot=i;enabled[i]=true;link_up=false;return i;}return -5;
  case PAX_BLE_KEY:keys++;if(a==2&&b==4)shift_a++;if(a==1&&b==6)ctrl_c++;break;
  case PAX_BLE_MOUSE_MOVE:move_x+=a;move_y+=b;break;
@@ -63,6 +67,14 @@ int main(int argc,char **argv){
  fingers_n=1;fingers[0]=(pax_touch_point_t){145,170,0};advance(100);assert(game_hat==0);
  link_up=false;advance(600);assert(game_hat==8&&game_buttons==0);fingers_n=0;link_up=true;advance(600);
  tap(700,70);assert(tab==3);advance(200);snapshot("/tmp/pax-ble-remote/hosts.ppm");
+ // Naming is local and must not send keyboard HID input.
+ int previous_keys=keys;
+ tap(90,430);assert(name_dialog&&name_editor);
+ lv_textarea_set_text(name_editor,"iPhone SE");advance(100);snapshot("/tmp/pax-ble-remote/rename.ppm");
+ tap(680,443);assert(!name_dialog&&!strcmp(names[0],"iPhone SE")&&keys==previous_keys);
+ advance(600);assert(strstr(lv_label_get_text(lv_obj_get_child(host_buttons[0],0)),"iPhone SE"));
+ tap(90,430);assert(name_dialog);lv_textarea_set_text(name_editor,"Cancelled");tap(90,443);
+ assert(!name_dialog&&!strcmp(names[0],"iPhone SE"));
  tap(480,366);assert(selected_host==1&&active_slot==1&&saved[0]&&!link_up); // Pair new
  tap(300,366);assert(!enabled[1]&&saved[0]); // Disconnect
  tap(90,366);assert(enabled[1]); // Connect selected

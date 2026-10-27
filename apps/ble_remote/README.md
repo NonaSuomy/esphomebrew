@@ -29,3 +29,11 @@ Bluetooth startup is delayed until hosted networking is initialized. Until then,
 The firmware build hook backports Espressif's [TinyCrypt ECC fix](https://github.com/espressif/esp-idf/commit/9fd7cb7e606) to ESP-IDF 6.1.0. Its original P4 accelerator path can truncate the regularized ECDH scalar and fail LE Secure Connections with a DHKey mismatch. The backport retains secure pairing and is checked against independent P-256/P-192 ECDH results with and without blinding; the original SDK fails the regression. Run `python -m unittest discover -s pax-esphome/tests -p test_tinycrypt_ecc.py`.
 
 Hardware validation on 2026-10-26: Linux paired and bonded successfully, resolved all HID services, reconnected after switching slots, and received keyboard Q press/release, relative mouse motion, left-button press/release, and gamepad A/D-pad with neutral releases. The two-tap Forget control was verified on that temporary pairing, then it was removed from both devices. The AIO pairing in slot 1 was preserved and the user confirmed Android pairing and controls working on slot 2. This does not certify iOS/macOS/Windows or resolve the AIO receiver's separate reconnect limitation.
+
+## Host names and addresses
+
+Select a saved host in **Hosts**, then tap **Edit name**. Enter a label such as `iPhone SE`, `Android` or `AIO` and tap **Save name**. The local editor does not send Bluetooth keystrokes. Each label is stored with its host slot in the NANO's NVS, survives reboots and app updates, and is removed when the pairing is forgotten. Labels accept up to 31 UTF-8 bytes; an empty label restores the unnamed display. Save failures keep the editor open.
+
+Slot cards show the name and connection state separately. The selected host also shows its Bluetooth address, using the peer's stable identity when available. These are user labels: the current peripheral backend does not read a central device's GAP Device Name. A Bluetooth address does not reliably identify its model or OS, particularly when privacy addresses are used.
+
+The optional test firmware reserves Host 4 for an authenticated Secure Connections iOS compatibility test. Its PIN comes from the ignored `ble_ios_test_passkey` secret; other slots retain no-PIN pairing. iPhone SE on iOS 15.8.8 still requires a successful typing test before being described as supported.

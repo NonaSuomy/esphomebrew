@@ -19,6 +19,8 @@ static int source_w = W, source_h = H;
 static uint32_t last_status, click_release_at;
 static bool connected;
 static lv_obj_t *host_buttons[10], *host_info, *forget_button;
+static lv_obj_t *name_dialog, *name_editor, *name_error;
+static char host_names[10][32];
 static unsigned selected_host, host_count;
 static bool forget_pending;
 static uint32_t forget_started;
@@ -79,14 +81,51 @@ static void refresh_hosts(void) {
     for(unsigned i=0;i<host_count;i++) {
         int flags=remote(PAX_BLE_HOST_STATE,i,0,NULL);
         const char *state=flags<0?"Starting":(flags&PAX_BLE_HOST_CONNECTED)?"Connected":(flags&PAX_BLE_HOST_SAVED)?"Saved":"Empty";
-        lv_label_set_text_fmt(lv_obj_get_child(host_buttons[i],0),"%u: %s",i+1,state);
+        for(unsigned j=0;j<32;j++) {
+            int c=remote(PAX_BLE_HOST_NAME_GET,i,j,NULL);
+            host_names[i][j]=c>0&&c<=255?(char)c:0;
+            if(!host_names[i][j])break;
+        }
+        host_names[i][31]=0;
+        lv_label_set_text_fmt(lv_obj_get_child(host_buttons[i],0),"%u: %s",i+1,host_names[i][0]?host_names[i]:"Unnamed");
+        lv_label_set_text(lv_obj_get_child(host_buttons[i],1),state);
         if(i==selected_host)lv_obj_add_state(host_buttons[i],LV_STATE_CHECKED);
         else lv_obj_remove_state(host_buttons[i],LV_STATE_CHECKED);
     }
     int flags=remote(PAX_BLE_HOST_STATE,selected_host,0,NULL);
     if(flags<0){lv_label_set_text(host_info,"Bluetooth is starting. Saved hosts will appear shortly.");return;}
-    lv_label_set_text_fmt(host_info,"Slot %u: %s%s\n%s",selected_host+1,(flags&PAX_BLE_HOST_SAVED)?"saved pairing":"empty",(flags&PAX_BLE_HOST_ACTIVE)?" (active)":"",host_message);
+    int addr[6];bool have_addr=true;
+    for(unsigned i=0;i<6;i++){addr[i]=remote(PAX_BLE_HOST_ADDRESS,selected_host,i,NULL);if(addr[i]<0)have_addr=false;}
+    char address[24]="not paired";
+    if(have_addr)lv_snprintf(address,sizeof(address),"%02X:%02X:%02X:%02X:%02X:%02X",addr[0],addr[1],addr[2],addr[3],addr[4],addr[5]);
+    lv_label_set_text_fmt(host_info,"Slot %u: %s%s | %s\nBluetooth address: %s\n%s",selected_host+1,
+        host_names[selected_host][0]?host_names[selected_host]:"Unnamed",(flags&PAX_BLE_HOST_ACTIVE)?" (active)":"",
+        (flags&PAX_BLE_HOST_SAVED)?"saved pairing":"empty",address,host_message);
     lv_label_set_text(lv_obj_get_child(forget_button,0),forget_pending?"Confirm forget":"Forget selected");
+}
+static void finish_name(lv_event_t *e) {
+    if((uintptr_t)lv_event_get_user_data(e)) {
+        int result=remote(PAX_BLE_HOST_NAME_SET,selected_host,0,lv_textarea_get_text(name_editor));
+        if(result<0){lv_label_set_text(name_error,"Could not save. Use a name up to 31 bytes; update firmware if needed.");return;}
+        host_message="Name saved on this device. It survives restarts.";
+    }
+    lv_obj_delete(name_dialog);name_dialog=name_editor=name_error=NULL;refresh_hosts();
+}
+static void rename_host(lv_event_t *e) {
+    (void)e;
+    int flags=remote(PAX_BLE_HOST_STATE,selected_host,0,NULL);
+    if(flags<0||!(flags&PAX_BLE_HOST_SAVED)){host_message="Pair a device before naming this slot.";refresh_hosts();return;}
+    release_all();forget_pending=false;
+    name_dialog=lv_obj_create(lv_screen_active());lv_obj_set_pos(name_dialog,0,0);lv_obj_set_size(name_dialog,W,H);
+    lv_obj_remove_flag(name_dialog,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_pad_all(name_dialog,0,0);lv_obj_set_style_bg_color(name_dialog,lv_color_hex(0x071e2b),0);
+    label(name_dialog,"Name this device",20,14);
+    name_editor=lv_textarea_create(name_dialog);lv_obj_set_pos(name_editor,20,45);lv_obj_set_size(name_editor,760,48);
+    lv_textarea_set_one_line(name_editor,true);lv_textarea_set_max_length(name_editor,31);lv_textarea_set_text(name_editor,host_names[selected_host]);
+    lv_obj_t *keyboard=lv_keyboard_create(name_dialog);lv_obj_align(keyboard,LV_ALIGN_TOP_LEFT,10,150);lv_obj_set_size(keyboard,780,255);
+    lv_keyboard_set_textarea(keyboard,name_editor);
+    name_error=label(name_dialog,"Local label only; typing here is not sent over Bluetooth.",20,108);lv_obj_set_width(name_error,760);
+    button(name_dialog,"Cancel",20,420,180,45,finish_name,0,LV_EVENT_CLICKED);
+    button(name_dialog,"Save name",580,420,200,45,finish_name,1,LV_EVENT_CLICKED);
 }
 static void select_host(lv_event_t *e) {
     selected_host=(uintptr_t)lv_event_get_user_data(e);forget_pending=false;
@@ -232,14 +271,21 @@ static void build_ui(void) {
     int count=remote(PAX_BLE_HOST_COUNT,0,0,NULL);
     host_count=count>0&&count<=10?(unsigned)count:0;
     int active=remote(PAX_BLE_ACTIVE_HOST,0,0,NULL);selected_host=active>=0&&active<(int)host_count?active:0;
-    for(unsigned i=0;i<host_count;i++)host_buttons[i]=button(panels[3],"",8+(i%5)*154,8+(i/5)*60,146,52,select_host,i,LV_EVENT_CLICKED);
+    for(unsigned i=0;i<host_count;i++) {
+        host_buttons[i]=button(panels[3],"",8+(i%5)*154,8+(i/5)*60,146,52,select_host,i,LV_EVENT_CLICKED);
+        lv_obj_set_style_pad_all(host_buttons[i],5,0);
+        lv_obj_t *title=lv_obj_get_child(host_buttons[i],0);lv_obj_set_size(title,134,19);
+        lv_label_set_long_mode(title,LV_LABEL_LONG_MODE_DOTS);lv_obj_align(title,LV_ALIGN_TOP_MID,0,0);
+        lv_obj_t *state=label(host_buttons[i],"",0,20);lv_obj_set_width(state,134);lv_obj_set_style_text_align(state,LV_TEXT_ALIGN_CENTER,0);
+    }
     host_info=label(panels[3],"",12,138);lv_obj_set_width(host_info,754);lv_label_set_long_mode(host_info,LV_LABEL_LONG_WRAP);
     const char *actions[]={"Connect selected","Disconnect","Pair new device","Forget selected"};
     for(unsigned i=0;i<4;i++){
         lv_obj_t *b=button(panels[3],actions[i],8+i*194,238,186,56,host_action,i,LV_EVENT_CLICKED);
         if(i==3)forget_button=b;
     }
-    label(panels[3],"One active host. Saved pairings survive restarts.",12,322);
+    button(panels[3],"Edit name",8,306,186,44,rename_host,0,LV_EVENT_CLICKED);
+    label(panels[3],"Use a name such as iPhone SE, Android or AIO.\nNames stay saved until the pairing is forgotten.",210,310);
     if(!host_count)host_message="Update the NANO BLE Remote firmware to manage saved hosts.";
     refresh_hosts();
 }

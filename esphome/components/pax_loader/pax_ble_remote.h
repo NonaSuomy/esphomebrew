@@ -18,6 +18,21 @@ int dispatch(Device *device, uint32_t command, int32_t a, int32_t b, const char 
     return PAX_BLE_AVAILABLE | (device->is_connected() ? PAX_BLE_CONNECTED : 0) |
            (device->is_paired() ? PAX_BLE_PAIRED : 0) |
            (device->is_advertising() ? PAX_BLE_ADVERTISING : 0);
+  if (command == PAX_BLE_HOST_NAME_GET || command == PAX_BLE_HOST_NAME_SET || command == PAX_BLE_HOST_ADDRESS) {
+    if (a < 0 || a >= device->host_slots()) return -2;
+    const auto &slot = device->get_host_slot(a);
+    if (command == PAX_BLE_HOST_NAME_GET) {
+      if (b < 0 || b > 31) return -2;
+      return b < (int)slot.name.size() ? (unsigned char)slot.name[b] : 0;
+    }
+    if (!slot.occupied) return -3;
+    if (command == PAX_BLE_HOST_ADDRESS) {
+      if (b < 0 || b > 5) return -2;
+      return slot.has_identity ? slot.identity[b] : slot.addr[b];
+    }
+    if (!text || strnlen(text,32)>31) return -2;
+    return device->set_host_name(a,text) ? 0 : -7;
+  }
   if (command == PAX_BLE_RELEASE) {
     device->release_held();
     device->send_mouse_click_release();

@@ -132,13 +132,17 @@ typedef struct {
  * it and returns its index. PAIR_NEW selects the first empty slot and returns
  * its index, or -5 when full. FORGET_HOST: a=slot, removes its pairing and pauses
  * its advertising. Host commands work disconnected; slot bounds return -2.
+ * HOST_NAME_GET: a=slot,b=byte offset 0..31, returns name byte or zero.
+ * HOST_NAME_SET: a=slot,text=UTF-8 label up to 31 bytes; empty clears label.
+ * HOST_ADDRESS: a=slot,b=byte 0..5, returns stable identity when available.
  * Mutations return -6 while the BLE backend is starting; saved hosts are retained.
  */
 enum { PAX_BLE_STATUS=0, PAX_BLE_TEXT=1, PAX_BLE_KEY=2, PAX_BLE_MOUSE_MOVE=3,
        PAX_BLE_MOUSE_BUTTONS=4, PAX_BLE_MOUSE_SCROLL=5, PAX_BLE_GAMEPAD=6,
        PAX_BLE_RELEASE=7, PAX_BLE_ADVERTISE=8,
        PAX_BLE_HOST_COUNT=9, PAX_BLE_ACTIVE_HOST=10, PAX_BLE_HOST_STATE=11,
-       PAX_BLE_SELECT_HOST=12, PAX_BLE_FORGET_HOST=13, PAX_BLE_PAIR_NEW=14 };
+       PAX_BLE_SELECT_HOST=12, PAX_BLE_FORGET_HOST=13, PAX_BLE_PAIR_NEW=14,
+       PAX_BLE_HOST_NAME_GET=15, PAX_BLE_HOST_NAME_SET=16, PAX_BLE_HOST_ADDRESS=17 };
 // Host indices are zero based. Query commands also work while disconnected.
 enum { PAX_BLE_HOST_SAVED=1, PAX_BLE_HOST_ACTIVE=2, PAX_BLE_HOST_CONNECTED=4,
        PAX_BLE_HOST_ADVERTISING=8, PAX_BLE_HOST_ENABLED=16 };
