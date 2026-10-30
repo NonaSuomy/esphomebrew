@@ -116,7 +116,55 @@
     },
     {
       "path": "/sd/roms/anotherworld/bank01",
-      "note": "Matching original DOS bank files (bank01 through bank0d)"
+      "note": "Original DOS resource bank 01"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank02",
+      "note": "Original DOS resource bank 02"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank03",
+      "note": "Original DOS resource bank 03"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank04",
+      "note": "Original DOS resource bank 04"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank05",
+      "note": "Original DOS resource bank 05"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank06",
+      "note": "Original DOS resource bank 06"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank07",
+      "note": "Original DOS resource bank 07"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank08",
+      "note": "Original DOS resource bank 08"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank09",
+      "note": "Original DOS resource bank 09"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0a",
+      "note": "Original DOS resource bank 0A"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0b",
+      "note": "Original DOS resource bank 0B"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0c",
+      "note": "Original DOS resource bank 0C"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0d",
+      "note": "Original DOS resource bank 0D"
     }
   ],
   "publish": true,
