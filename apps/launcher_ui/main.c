@@ -13,6 +13,7 @@
  * and pumps input/UI while a single cancellable worker handles catalog I/O.
  */
 
+#define LAUNCHER_UI_VERSION "0.6.5"
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "lvgl.h"
@@ -7789,6 +7790,11 @@ static int build_ui_on_host(void *arg)
     lv_obj_set_height(g_firmware_labels[2],ui_px(112));lv_label_set_long_mode(g_firmware_labels[2],LV_LABEL_LONG_WRAP);
     g_settings_message_label = settings_text(panel,g_settings_message,label_x,row_y[29],
                                               content_w-ui_px(12),&lv_font_montserrat_14,true);
+
+    settings_text(panel,"ABOUT",label_x,row_y[29]+step_y*2,
+                  content_w-ui_px(12),font,false);
+    settings_text(panel,"Launcher UI " LAUNCHER_UI_VERSION,label_x,row_y[29]+step_y*3,
+                  content_w-ui_px(12),font,true);
 
     settings_touch_layout(panel,content_w,control_x,control_w,first_row_y,step_y);
     /* Keep the title/back target visible while the long Settings list scrolls. */

@@ -1,6 +1,8 @@
 """Exercise installed-detail refresh without refetching the Store listing."""
 from pathlib import Path
 import subprocess
+import json
+import re
 import tempfile
 import unittest
 from test_launcher_catalog_pages import function
@@ -9,6 +11,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class InstallRefresh(unittest.TestCase):
+    def test_about_reports_compiled_version_matching_manifest(self):
+        source = (ROOT / 'apps/launcher_ui/main.c').read_text()
+        version = re.search(r'#define LAUNCHER_UI_VERSION "([^"]+)"', source).group(1)
+        manifest = json.loads((ROOT / 'apps/launcher_ui/pax.json').read_text())
+        self.assertEqual(version, manifest['version'])
+        self.assertIn('settings_text(panel,"ABOUT"', source)
+        self.assertIn('"Launcher UI " LAUNCHER_UI_VERSION', source)
+
     def test_committed_metadata_replaces_version_and_update_action(self):
         source = (ROOT / 'apps/launcher_ui/main.c').read_text()
         code = r'''
