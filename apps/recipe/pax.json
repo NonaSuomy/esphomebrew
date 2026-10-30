@@ -1,8 +1,8 @@
 {
   "name": "recipe",
   "title": "Recipe Installer",
-  "version": "0.1.0",
-  "description": "Install game-data recipes from ZIP, ISO and CUE/BIN files.",
+  "version": "0.1.1",
+  "description": "Install game-data recipes from ZIP, DOS floppy, ISO and CUE/BIN files.",
   "category": "Tool",
   "about": "Standalone recipe installer used by Launcher UI. Validates recipe downloads and extracts supported archives and disc images to SD or USB. Open an app detail page in Launcher UI to select its recipe and source media.",
   "controls": [
@@ -22,7 +22,7 @@
     "local:esphome/components/pax_loader/psram_app.h"
   ],
   "install_recipe": "install-recipe.json",
-  "changelog": "0.1.0: add a versioned PAX store recipe for the existing native port.",
+  "changelog": "0.1.1: extract Another World DOS files from FAT floppy images and ZIP archives.",
   "lvgl": {
     "repo": "https://github.com/lvgl/lvgl",
     "ref": "85aa60d18b3d5e5588d7b247abf90198f07c8a63"

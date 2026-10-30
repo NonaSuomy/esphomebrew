@@ -60,11 +60,11 @@ def validate(recipe):
     targets, count = set(), 0
     for group in media:
         fmt = group.get('format')
-        if fmt not in ('zip-iso9660', 'zip-cue-bin', 'zip-files', 'download'):
+        if fmt not in ('zip-iso9660', 'zip-cue-bin', 'zip-files', 'zip-dos-floppy', 'download'):
             raise ValueError('Unsupported media format')
         if recipe['version'] == 1 and fmt not in ('zip-iso9660', 'zip-cue-bin'):
             raise ValueError('Version 1 media requires an ISO or CUE')
-        if fmt not in ('download', 'zip-files'):
+        if fmt not in ('download', 'zip-files', 'zip-dos-floppy'):
             if group.get('auto_entry'):
                 if fmt != 'zip-iso9660' or 'entry' in group: raise ValueError('Invalid automatic ISO entry')
             else:
