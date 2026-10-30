@@ -1,12 +1,12 @@
 {
   "name": "launcher_ui",
   "title": "Launcher UI",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "PAX launcher with SD/USB apps, GitHub Store, LAN discovery and network settings.",
   "author": "PAX contributors",
   "category": "Tool",
   "about": "Browse and launch PAX apps from SD or USB, install apps from the GitHub Store or a local PAX Supply server, and browse Internet Archive collections. Includes themes, backgrounds, favorites, tooltips and network settings with nearby Wi-Fi scanning. Network setup and firmware update controls require compatible PAX host firmware. No external game data is required. Bluetooth settings scan nearby devices and connect supported HID input devices through compatible companion firmware. C6 supports BLE; original ESP32 companions can provide Classic and BLE. Other device profiles require separate integrations.",
-  "changelog": "0.6.3: Paged SD/USB discovery, catalog memory allocated as needed, and larger touchscreen controls.",
+  "changelog": "0.6.4: Refresh installed version and update action immediately after a successful app installation.",
   "controls": [
     "Touch or mouse: select an app or source",
     "Mouse wheel or arrow keys: scroll lists",

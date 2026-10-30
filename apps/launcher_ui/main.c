@@ -360,6 +360,7 @@ static lv_obj_t *g_rom_picker_rows[ROM_PICKER_VISIBLE_ROWS];
 static lv_obj_t *g_rom_picker_row_labels[ROM_PICKER_VISIBLE_ROWS];
 static lv_obj_t *g_rom_picker_status;
 static lv_obj_t *g_detail_status_label;
+static lv_obj_t *g_detail_version_label;
 static lv_obj_t *g_detail_progress;
 static lv_obj_t *g_search_area;
 static lv_obj_t *g_archive_up_button;
@@ -3732,6 +3733,52 @@ static bool fetch_app_detail(int index)
   return true;
 }
 
+/* Read committed local metadata only; keep the Store listing and artwork in place. */
+static void refresh_installed_detail(void)
+{
+  g_detail_is_installed = detail_package_present(g_detail_name, g_detail_local_path,
+                                                sizeof(g_detail_local_path));
+  g_detail_local_version[0] = '\0';
+  g_detail_update_available = false;
+  g_detail_uninstall_confirm = false;
+  char path[PATH_BYTES];
+  if (!g_detail_is_installed ||
+      !replace_package_suffix(g_detail_local_path, path, sizeof(path), ".json")) return;
+  const int length = read_json_file(path);
+  if (length > 0)
+    (void)json_string_field(g_remote, length, "version", g_detail_local_version,
+                            sizeof(g_detail_local_version));
+  if (g_detail_local_version[0] && g_detail_version[0])
+    g_detail_update_available = compare_package_versions(g_detail_local_version,
+                                                         g_detail_version) < 0;
+}
+
+static void detail_version_text(char *version_text, size_t capacity)
+{
+  if (g_detail_version[0] != '\0') {
+    copy_text(version_text, capacity, g_detail_is_remote ? "STORE " : "VERSION ");
+    append_text(version_text, capacity, g_detail_version);
+    if (g_detail_is_remote && g_detail_is_installed && g_detail_local_version[0] != '\0') {
+      append_text(version_text, capacity, "  |  LOCAL ");
+      append_text(version_text, capacity, g_detail_local_version);
+      append_text(version_text, capacity,
+                  g_detail_update_available ? "  |  UPDATE AVAILABLE" : "  |  CURRENT");
+    } else if (g_detail_size > 0) {
+      append_text(version_text, capacity, "  |  ");
+      append_uint(version_text, capacity, g_detail_size / 1024U);
+      append_text(version_text, capacity, " KB");
+    }
+  } else {
+    copy_text(version_text, capacity, g_detail_is_installed ?
+              "INSTALLED APP" : "NETWORK APP");
+    if (g_detail_size > 0) {
+      append_text(version_text, capacity, "  |  ");
+      append_uint(version_text, capacity, g_detail_size / 1024U);
+      append_text(version_text, capacity, " KB");
+    }
+  }
+}
+
 static const char *detail_action_text(int action)
 {
   if(action==1 && g_detail_is_remote && (g_action_busy || g_transfer_busy))return "INSTALLING...";
@@ -6220,6 +6267,11 @@ static int update_selection_on_host(void *arg)
           lv_obj_clear_state(g_detail_buttons[i], LV_STATE_DISABLED);
       }
     }
+    if (g_detail_version_label != NULL) {
+      char version_text[96];
+      detail_version_text(version_text, sizeof(version_text));
+      label_text_changed(g_detail_version_label, version_text);
+    }
     if (g_detail_status_label != NULL)
       label_text_changed(g_detail_status_label, g_install_status);
     if (g_detail_progress != NULL) {
@@ -7844,28 +7896,7 @@ static int build_ui_on_host(void *arg)
     char version_text[96];
     char description_text[DETAIL_TEXT_BYTES];
     char metadata_text[256];
-    if (g_detail_version[0] != '\0') {
-      copy_text(version_text, sizeof(version_text), g_detail_is_remote ? "STORE " : "VERSION ");
-      append_text(version_text, sizeof(version_text), g_detail_version);
-      if (g_detail_is_remote && g_detail_is_installed && g_detail_local_version[0] != '\0') {
-        append_text(version_text, sizeof(version_text), "  |  LOCAL ");
-        append_text(version_text, sizeof(version_text), g_detail_local_version);
-        append_text(version_text, sizeof(version_text),
-                    g_detail_update_available ? "  |  UPDATE AVAILABLE" : "  |  CURRENT");
-      } else if (g_detail_size > 0) {
-        append_text(version_text, sizeof(version_text), "  |  ");
-        append_uint(version_text, sizeof(version_text), g_detail_size / 1024U);
-        append_text(version_text, sizeof(version_text), " KB");
-      }
-    } else {
-      copy_text(version_text, sizeof(version_text), g_detail_is_installed ?
-                "INSTALLED APP" : "NETWORK APP");
-      if (g_detail_size > 0) {
-        append_text(version_text, sizeof(version_text), "  |  ");
-        append_uint(version_text, sizeof(version_text), g_detail_size / 1024U);
-        append_text(version_text, sizeof(version_text), " KB");
-      }
-    }
+    detail_version_text(version_text, sizeof(version_text));
     copy_text(description_text, sizeof(description_text), g_detail_description[0] != '\0' ?
               g_detail_description : "No description was provided for this app.");
     copy_text(metadata_text, sizeof(metadata_text), g_detail_category);
@@ -7873,6 +7904,7 @@ static int build_ui_on_host(void *arg)
       if (metadata_text[0] != '\0') append_text(metadata_text, sizeof(metadata_text), "  |  ");
       append_text(metadata_text, sizeof(metadata_text), g_detail_author);
     }
+    g_detail_version_label = version_label;
     lv_label_set_text(version_label, version_text);
     lv_label_set_text(metadata_label, metadata_text[0] != '\0' ? metadata_text : "App information");
 
@@ -8339,6 +8371,7 @@ static int teardown_ui_on_host(void *arg)
   __atomic_store_n(&g_mouse_wheel_pending, 0, __ATOMIC_RELAXED);
   g_empty_label = NULL;
   g_detail_status_label = NULL;
+  g_detail_version_label = NULL;
   g_detail_progress = NULL;
   g_search_area = NULL;
   g_keyboard = NULL;g_footer_label=NULL;
@@ -9127,8 +9160,7 @@ int app_entry(const app_services_t *svc)
       if(g_transfer_verify_pending){
         g_transfer_verify_pending=false;
         if(g_detail_index>=0 && g_detail_is_remote && strcmp(g_detail_name,g_transfer_name)==0){
-          g_detail_is_installed=detail_package_present(g_detail_name,g_detail_local_path,sizeof(g_detail_local_path));
-          g_detail_uninstall_confirm=false;
+          refresh_installed_detail();
           (void)svc->ui_call_sync(update_selection_on_host,NULL,1000);
         }
       }
