@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "app": "doom",
+  "mode": "download",
+  "archive_dir": "/sd/roms/doom/incoming",
+  "folders": [
+    "/sd/roms/doom"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/doom/doom1.wad",
+      "note": "Free shareware/support data; full owned-game data may replace it"
+    },
+    {
+      "path": "/sd/roms/doom/prboom.wad",
+      "note": "Free shareware/support data; full owned-game data may replace it"
+    }
+  ],
+  "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/doom/doom1.wad — Free shareware/support data; full owned-game data may replace it\n\n/sd/roms/doom/prboom.wad — Free shareware/support data; full owned-game data may replace it",
+  "media": [
+    {
+      "format": "download",
+      "download_label": "Download shareware / support files",
+      "files": [
+        {
+          "source": "doom1.wad",
+          "target": "/sd/roms/doom/doom1.wad",
+          "size": 4196020,
+          "sha256": "1d7d43be501e67d927e415e0b8f3e29c3bf33075e859721816f652a526cac771",
+          "url": "https://raw.githubusercontent.com/NonaSuomy/RetroESP32-P4/ae04c88d166c55fa60722276ccc1cc50b7d100f2/SDcard/roms/doom/doom1.wad"
+        },
+        {
+          "source": "prboom.wad",
+          "target": "/sd/roms/doom/prboom.wad",
+          "size": 143312,
+          "sha256": "b4dd3642932193cc42bca0ee98bf30004888ca4850d69e85023b8baacfba1d1d",
+          "url": "https://raw.githubusercontent.com/NonaSuomy/RetroESP32-P4/ae04c88d166c55fa60722276ccc1cc50b7d100f2/SDcard/roms/doom/prboom.wad"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://github.com/NonaSuomy/RetroESP32-P4",
+      "license": "doom1.wad is the Doom shareware v1.9 IWAD (id Software permits redistributing the unmodified shareware release); prboom.wad is part of PrBoom (GPL-2.0).",
+      "ref": "ae04c88d166c55fa60722276ccc1cc50b7d100f2"
+    }
+  ]
+}
