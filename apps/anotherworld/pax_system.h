@@ -43,6 +43,13 @@ private:
     Timer _timers[8];
     unsigned int _nextTimerId;
     unsigned int _audioRemainder;
+    void *_audioTask;
+    int _audioRunning;
+    int _audioDone;
+    int _mutexes[2];
+    bool _mutexUsed[2];
+
+    static void audioTask(void *arg);
 
     void pumpAudio(unsigned int frames);
     void serviceTimers();

@@ -18,10 +18,13 @@ void delay(unsigned long milliseconds)
 
 PaxAnotherWorldSystem::PaxAnotherWorldSystem(const app_services_t *services)
     : _svc(services), _initialized(false), _frame(NULL), _audioCallback(NULL), _audioParam(NULL),
-      _nextTimerId(1), _audioRemainder(0)
+      _nextTimerId(1), _audioRemainder(0), _audioTask(NULL),
+      _audioRunning(0), _audioDone(0)
 {
     memset(_palette, 0, sizeof(_palette));
     memset(_timers, 0, sizeof(_timers));
+    memset(_mutexes, 0, sizeof(_mutexes));
+    memset(_mutexUsed, 0, sizeof(_mutexUsed));
     s_system = this;
 }
 
@@ -129,10 +132,12 @@ void PaxAnotherWorldSystem::sleep(unsigned int duration)
         unsigned int step = remaining > 5 ? 5 : remaining;
         if (_svc && _svc->delay_ms) _svc->delay_ms((int)step);
         remaining -= step;
-        _audioRemainder += step * getOutputSampleRate();
-        unsigned int frames = _audioRemainder / 1000u;
-        _audioRemainder %= 1000u;
-        if (frames) pumpAudio(frames);
+        if (!_audioTask) {
+            _audioRemainder += step * getOutputSampleRate();
+            unsigned int frames = _audioRemainder / 1000u;
+            _audioRemainder %= 1000u;
+            if (frames) pumpAudio(frames);
+        }
         serviceTimers();
         if (input.quit) return;
     }
@@ -148,12 +153,46 @@ void PaxAnotherWorldSystem::startAudio(AudioCallback callback, void *param)
 {
     _audioCallback = callback;
     _audioParam = param;
+    _audioRemainder = 0;
+    if (_svc && _svc->task_create && _svc->task_delete && _svc->delay_ms) {
+        __atomic_store_n(&_audioDone, 0, __ATOMIC_RELEASE);
+        __atomic_store_n(&_audioRunning, 1, __ATOMIC_RELEASE);
+        if (_svc->task_create(audioTask, "aw_audio", 4096, this, 8,
+                              &_audioTask, 1) != 0) {
+            _audioTask = NULL;
+            __atomic_store_n(&_audioRunning, 0, __ATOMIC_RELEASE);
+            if (_svc->log_printf) _svc->log_printf("Another World: audio task unavailable\n");
+        }
+    }
 }
 
 void PaxAnotherWorldSystem::stopAudio()
 {
+    if (_audioTask) {
+        __atomic_store_n(&_audioRunning, 0, __ATOMIC_RELEASE);
+        while (!__atomic_load_n(&_audioDone, __ATOMIC_ACQUIRE))
+            _svc->delay_ms(10);
+        _svc->task_delete(_audioTask);
+        _audioTask = NULL;
+    }
     _audioCallback = NULL;
     _audioParam = NULL;
+}
+
+void PaxAnotherWorldSystem::audioTask(void *arg)
+{
+    PaxAnotherWorldSystem *system = static_cast<PaxAnotherWorldSystem *>(arg);
+    while (__atomic_load_n(&system->_audioRunning, __ATOMIC_ACQUIRE)) {
+        const unsigned start = system->getTimeStamp();
+        system->pumpAudio(512);
+        /* Normally audio_submit blocks on the speaker. If it returns early,
+         * pace the producer so a missing or inactive speaker cannot spin. */
+        const unsigned elapsed = system->getTimeStamp() - start;
+        const unsigned period = 512000u / system->getOutputSampleRate();
+        if (elapsed < period) system->_svc->delay_ms((int)(period - elapsed));
+    }
+    __atomic_store_n(&system->_audioDone, 1, __ATOMIC_RELEASE);
+    for (;;) system->_svc->delay_ms(100);
 }
 
 unsigned int PaxAnotherWorldSystem::getOutputSampleRate()
@@ -206,7 +245,7 @@ void PaxAnotherWorldSystem::pumpAudio(unsigned int frames)
         unsigned chunk = frames > 512 ? 512 : frames;
         _audioCallback(_audioParam, mono, (int)chunk);
         for (unsigned i = 0; i < chunk; ++i) {
-            short sample = (short)(((signed char)mono[i]) << 8);
+            short sample = (short)((int)(signed char)mono[i] * 256);
             stereo[i * 2] = sample;
             stereo[i * 2 + 1] = sample;
         }
@@ -215,7 +254,29 @@ void PaxAnotherWorldSystem::pumpAudio(unsigned int frames)
     }
 }
 
-void *PaxAnotherWorldSystem::createMutex() { return this; }
-void PaxAnotherWorldSystem::destroyMutex(void *mutex) { (void)mutex; }
-void PaxAnotherWorldSystem::lockMutex(void *mutex) { (void)mutex; }
-void PaxAnotherWorldSystem::unlockMutex(void *mutex) { (void)mutex; }
+void *PaxAnotherWorldSystem::createMutex()
+{
+    for (unsigned i = 0; i < 2; ++i) {
+        if (!_mutexUsed[i]) {
+            _mutexUsed[i] = true;
+            _mutexes[i] = 0;
+            return &_mutexes[i];
+        }
+    }
+    return NULL;
+}
+void PaxAnotherWorldSystem::destroyMutex(void *mutex)
+{
+    for (unsigned i = 0; i < 2; ++i)
+        if (mutex == &_mutexes[i]) _mutexUsed[i] = false;
+}
+void PaxAnotherWorldSystem::lockMutex(void *mutex)
+{
+    if (!mutex) return;
+    while (__atomic_exchange_n(static_cast<int *>(mutex), 1, __ATOMIC_ACQUIRE))
+        _svc->delay_ms(1);
+}
+void PaxAnotherWorldSystem::unlockMutex(void *mutex)
+{
+    if (mutex) __atomic_store_n(static_cast<int *>(mutex), 0, __ATOMIC_RELEASE);
+}
