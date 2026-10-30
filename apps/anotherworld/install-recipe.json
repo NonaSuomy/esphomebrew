@@ -13,10 +13,134 @@
     },
     {
       "path": "/sd/roms/anotherworld/bank01",
-      "note": "Supply all matching original DOS bank files"
+      "note": "Original DOS resource bank 01"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank02",
+      "note": "Original DOS resource bank 02"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank03",
+      "note": "Original DOS resource bank 03"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank04",
+      "note": "Original DOS resource bank 04"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank05",
+      "note": "Original DOS resource bank 05"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank06",
+      "note": "Original DOS resource bank 06"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank07",
+      "note": "Original DOS resource bank 07"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank08",
+      "note": "Original DOS resource bank 08"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank09",
+      "note": "Original DOS resource bank 09"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0a",
+      "note": "Original DOS resource bank 0A"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0b",
+      "note": "Original DOS resource bank 0B"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0c",
+      "note": "Original DOS resource bank 0C"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0d",
+      "note": "Original DOS resource bank 0D"
     }
   ],
-  "instructions": "Provide the original DOS memlist.bin and bank01 through bank0d files in /sd/roms/anotherworld/. Run prepare_anotherworld_data.py on the computer to validate and normalize filenames. The --from-headers option migrates private legacy embedded-data headers. Game files are not included in the store PAX.",
-  "media": [],
+  "instructions": "Place your original DOS floppy ZIP (containing .ima or .img images), or individual floppy images, in /sd/roms/anotherworld/incoming/. Select each disk in Recipe Installer. Existing files are kept. Alternatively copy the matching MEMLIST.BIN and BANK files directly to /sd/roms/anotherworld/. Game data is not included.",
+  "media": [
+    {
+      "format": "zip-dos-floppy",
+      "files": [
+        {
+          "source": "memlist.bin",
+          "target": "/sd/roms/anotherworld/memlist.bin",
+          "optional": true
+        },
+        {
+          "source": "bank01",
+          "target": "/sd/roms/anotherworld/bank01",
+          "optional": true
+        },
+        {
+          "source": "bank02",
+          "target": "/sd/roms/anotherworld/bank02",
+          "optional": true
+        },
+        {
+          "source": "bank03",
+          "target": "/sd/roms/anotherworld/bank03",
+          "optional": true
+        },
+        {
+          "source": "bank04",
+          "target": "/sd/roms/anotherworld/bank04",
+          "optional": true
+        },
+        {
+          "source": "bank05",
+          "target": "/sd/roms/anotherworld/bank05",
+          "optional": true
+        },
+        {
+          "source": "bank06",
+          "target": "/sd/roms/anotherworld/bank06",
+          "optional": true
+        },
+        {
+          "source": "bank07",
+          "target": "/sd/roms/anotherworld/bank07",
+          "optional": true
+        },
+        {
+          "source": "bank08",
+          "target": "/sd/roms/anotherworld/bank08",
+          "optional": true
+        },
+        {
+          "source": "bank09",
+          "target": "/sd/roms/anotherworld/bank09",
+          "optional": true
+        },
+        {
+          "source": "bank0a",
+          "target": "/sd/roms/anotherworld/bank0a",
+          "optional": true
+        },
+        {
+          "source": "bank0b",
+          "target": "/sd/roms/anotherworld/bank0b",
+          "optional": true
+        },
+        {
+          "source": "bank0c",
+          "target": "/sd/roms/anotherworld/bank0c",
+          "optional": true
+        },
+        {
+          "source": "bank0d",
+          "target": "/sd/roms/anotherworld/bank0d",
+          "optional": true
+        }
+      ]
+    }
+  ],
   "sources": []
 }

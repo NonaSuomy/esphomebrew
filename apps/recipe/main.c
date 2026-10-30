@@ -418,7 +418,7 @@ static bool parse_recipe(const char *json, int length)
     media->auto_entry = json_get_bool(json, item_end, item_start, "auto_entry");
     const bool has_entry = json_get_string(json, item_end, item_start, "entry",
                                            media->entry, sizeof(media->entry));
-    const bool simple = version == 2 && (strcmp(media->format, "download") == 0 || strcmp(media->format, "zip-files") == 0);
+    const bool simple = version == 2 && (strcmp(media->format, "download") == 0 || strcmp(media->format, "zip-files") == 0 || strcmp(media->format, "zip-dos-floppy") == 0);
     if (!simple && media->auto_entry) {
       if (strcmp(media->format, "zip-iso9660") != 0 || has_entry) return false;
     } else if (!simple && (!has_entry || !relative_path_valid(media->entry))) {
@@ -616,7 +616,9 @@ static int scan_incoming_files(void)
       const char *name = cursor;
       cursor += length + 1;
       if (length == 0 || strchr(name, '/') != NULL ||
-          (!ends_with_ci(name, ".zip") && !ends_with_ci(name, ".iso"))) continue;
+          (!ends_with_ci(name, ".zip") && !ends_with_ci(name, ".iso") &&
+           !(g_recipe.media_count == 1 && strcmp(g_recipe.media[0].format, "zip-dos-floppy") == 0 &&
+             (ends_with_ci(name, ".ima") || ends_with_ci(name, ".img"))))) continue;
       /* ZIPs extracted from a previous attempt are resumable work files, not
        * source discs to offer back to the user. */
       if (strncmp(name, ".disc-installer-cache-", 22) == 0) continue;
@@ -654,6 +656,8 @@ static int incoming_media_index(const char *name)
      * the remaining outputs on a later selection. */
     return g_recipe.media_count == 1 ? 0 : -1;
   }
+  if ((ends_with_ci(name, ".ima") || ends_with_ci(name, ".img")) && g_recipe.media_count == 1 &&
+      strcmp(g_recipe.media[0].format, "zip-dos-floppy") == 0) return 0;
   if (!ends_with_ci(name, ".iso")) return -1;
   for (int i = 0; i < g_recipe.media_count; ++i)
     if (g_recipe.media[i].iso_name[0] && text_equal_ci(name, g_recipe.media[i].iso_name)) return i;
@@ -1450,6 +1454,36 @@ static bool prepare_folders(void)
   (void)g_svc->ui_call_sync(show_instructions_on_host,NULL,1500);return true;
 }
 
+#include "dos_floppy.h"
+
+/* The table identifies every bank and byte range needed by this game build. */
+static bool df_game_ready(void)
+{
+  unsigned char data[3000]; pax_file_stat_t st={0};
+  const char *path="/sd/roms/anotherworld/memlist.bin";
+  if(g_svc->file_stat(path,&st) || st.is_dir || !st.size || st.size>sizeof(data)) return false;
+  void *f=g_svc->file_open(path,"rb"); if(!f)return false;
+  bool read_ok=g_svc->file_read(data,1,(size_t)st.size,f)==st.size;
+  g_svc->file_close(f); if(!read_ok)return false;
+  for(unsigned i=0;i<150 && i*20<st.size;i++) {
+    unsigned off=i*20; if(data[off]==255)return i>0;
+    if(off+20>st.size || data[off+1]>6)return false;
+    unsigned packed=((unsigned)data[off+14]<<8)|data[off+15];
+    unsigned unpacked=((unsigned)data[off+18]<<8)|data[off+19];
+    if((!packed)!=(!unpacked) || packed>unpacked)return false;
+    if(packed) {
+      unsigned bank=data[off+7];
+      uint32_t offset=((uint32_t)data[off+8]<<24)|((uint32_t)data[off+9]<<16)|((uint32_t)data[off+10]<<8)|data[off+11];
+      if(!bank || bank>13)return false;
+      char bankpath[]="/sd/roms/anotherworld/bank00";
+      const char *hex="0123456789abcdef"; bankpath[sizeof(bankpath)-3]=hex[bank>>4]; bankpath[sizeof(bankpath)-2]=hex[bank&15];
+      pax_file_stat_t b={0};
+      if(g_svc->file_stat(bankpath,&b) || b.is_dir || (uint64_t)offset+packed>b.size)return false;
+    }
+  }
+  return false;
+}
+
 static bool run_recipe_for_incoming(int incoming_index)
 {
   if (g_svc->file_open == NULL || g_svc->file_close == NULL || g_svc->file_read == NULL ||
@@ -1476,6 +1510,21 @@ static bool run_recipe_for_incoming(int incoming_index)
   }
 
   if (strcmp(media->format,"zip-files")==0) return extract_zip_media(media,archive);
+  if (strcmp(media->format,"zip-dos-floppy")==0) {
+    unsigned found=0;
+    g_success=false;
+    if (!g_svc->file_remove || !g_svc->file_mkdir ||
+        (ends_with_ci(archive_name,".zip") && !g_svc->file_zip_extract_named)) {
+      report("Update firmware to extract ZIP images, or use an individual IMA file.",0,0,COL_WARN); return false;
+    }
+    report("Reading DOS floppy image...",0,0,COL_TEXT);
+    bool ok=ends_with_ci(archive_name,".zip") ? df_copy_zip(archive,media,&found) : df_copy_image(archive,media,&found);
+    if(!ok) { report("Could not read DOS FAT floppy image; existing files were kept.",0,0,COL_ERROR); return false; }
+    if(!found) { report("No Another World files found on this media.",0,0,COL_WARN); return false; }
+    g_success=df_game_ready();
+    if(!g_success) { report("Files copied. More disks or matching DOS files are needed.",0,0,COL_WARN); return false; }
+    report("Another World DOS files installed and checked.",0,0,COL_OK); return true;
+  }
   g_total = (uint32_t)media->file_count;
   g_done = 0;
   char heading[STATUS_CAP] = "Checking ";

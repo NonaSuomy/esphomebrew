@@ -1,7 +1,7 @@
 {
   "name": "anotherworld",
   "title": "Another World",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Another World interpreter with original DOS game banks loaded from SD.",
   "category": "Game",
   "about": "Development build. Raw interpreter port. Supply your original DOS memlist.bin and bank files under /sd/roms/anotherworld/. Game data is kept outside the executable. Starts at the intro; the legacy protection bypass is preserved.",
@@ -103,7 +103,7 @@
   ],
   "newlib": true,
   "install_recipe": "install-recipe.json",
-  "changelog": "0.2.0: code-only store build; read resource table and compressed banks from SD, with missing/truncated-data checks.",
+  "changelog": "0.2.1: feed audio on a dedicated task to reduce interruptions during rendering. Original DOS game data is still required on SD.",
   "includes": [
     "local:apps/anotherworld",
     "local:apps/anotherworld/core",
@@ -116,7 +116,55 @@
     },
     {
       "path": "/sd/roms/anotherworld/bank01",
-      "note": "Matching original DOS bank files (bank01 through bank0d)"
+      "note": "Original DOS resource bank 01"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank02",
+      "note": "Original DOS resource bank 02"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank03",
+      "note": "Original DOS resource bank 03"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank04",
+      "note": "Original DOS resource bank 04"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank05",
+      "note": "Original DOS resource bank 05"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank06",
+      "note": "Original DOS resource bank 06"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank07",
+      "note": "Original DOS resource bank 07"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank08",
+      "note": "Original DOS resource bank 08"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank09",
+      "note": "Original DOS resource bank 09"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0a",
+      "note": "Original DOS resource bank 0A"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0b",
+      "note": "Original DOS resource bank 0B"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0c",
+      "note": "Original DOS resource bank 0C"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0d",
+      "note": "Original DOS resource bank 0D"
     }
   ],
   "publish": true,

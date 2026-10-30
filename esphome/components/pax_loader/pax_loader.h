@@ -557,10 +557,15 @@ class PaxLoader : public Component {
       const char *archive, const char *extensions, const char *cache_dir,
       const char *cache_stem, char *out_path, size_t out_size,
       pax_file_progress_fn_t progress, void *context);
+  static int svc_file_zip_extract_named(const char *archive, const char *entry,
+                                        const char *destination, uint32_t max_bytes,
+                                        uint32_t *written_bytes);
   static int svc_file_zip_extract_first_impl(
       const char *archive, const char *extensions, const char *cache_dir,
       const char *cache_stem, char *out_path, size_t out_size,
-      pax_file_progress_fn_t progress, void *context);
+      pax_file_progress_fn_t progress, void *context,
+      const char *named_entry = nullptr, const char *destination = nullptr,
+      uint32_t max_bytes = 0xffffffffU, uint32_t *written_bytes = nullptr);
   static int svc_ui_call_sync(pax_ui_call_fn_t callback, void *arg, uint32_t timeout_ms);
   static int svc_store_install_start(const char *url, const char *name, const char *title,
                                      const char *version, uint32_t size, const char *sha256);

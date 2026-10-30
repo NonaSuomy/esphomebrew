@@ -10,7 +10,18 @@ instead of `pax-recipe/tools/`. The commands below use the workspace layout.
 
 ## Another World
 
-Use the DOS data layout supported by the existing raw interpreter:
+Recipe Installer can read original DOS FAT12/16 floppy images. Place a ZIP
+containing `.ima` or `.img` images, or individual images, in
+`/sd/roms/anotherworld/incoming/`, open Another World in the launcher and
+select its data installer. The installer reads root-directory `MEMLIST.BIN`
+and `BANKxx` files, keeping existing destination files. Select each image when
+the game spans separate files. ZIP extraction requires firmware with the
+named ZIP extraction service; an individual image works without that service.
+After copying, the installer checks the table and all referenced bank ranges.
+This is not support for installer executables, FAT32, partitioned disks, or
+files inside subdirectories on an image.
+
+Alternatively, use the DOS data layout supported by the existing raw interpreter:
 
 ```sh
 python3 pax-recipe/tools/prepare_anotherworld_data.py /path/to/original-dos-data /path/to/card/roms/anotherworld

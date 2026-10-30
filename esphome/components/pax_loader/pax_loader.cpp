@@ -9516,10 +9516,26 @@ int PaxLoader::svc_file_zip_extract_first_progress(
                                          out_path, out_size, progress, context);
 }
 
+int PaxLoader::svc_file_zip_extract_named(const char *archive, const char *entry,
+                                          const char *destination, uint32_t max_bytes,
+                                          uint32_t *written_bytes) {
+  if (written_bytes != nullptr) *written_bytes = 0;
+  if (entry == nullptr || entry[0] == '\0' || destination == nullptr || max_bytes == 0)
+    return -1;
+  const std::string path(destination);
+  const size_t slash = path.find_last_of('/');
+  if (slash == std::string::npos || slash == 0 || slash + 1 == path.size()) return -1;
+  const std::string dir = path.substr(0, slash);
+  char ignored[512];
+  return svc_file_zip_extract_first_impl(archive, ".ima|", dir.c_str(), "pax-named",
+      ignored, sizeof(ignored), nullptr, nullptr, entry, destination, max_bytes, written_bytes);
+}
+
 int PaxLoader::svc_file_zip_extract_first_impl(
     const char *archive, const char *extensions, const char *cache_dir,
     const char *cache_stem, char *out_path, size_t out_size,
-    pax_file_progress_fn_t progress, void *context) {
+    pax_file_progress_fn_t progress, void *context, const char *named_entry,
+    const char *destination, uint32_t max_bytes, uint32_t *written_bytes) {
   ESP_LOGI(TAG, "ZIP ROM: extractor entered archive=%s extensions=%s cache=%s stem=%s",
            archive != nullptr ? archive : "(null)",
            extensions != nullptr ? extensions : "(null)",
@@ -9609,6 +9625,7 @@ int PaxLoader::svc_file_zip_extract_first_impl(
       uint32_t compressed = 0;
       uint32_t uncompressed = 0;
       uint32_t local_offset = 0;
+      uint32_t crc = 0;
       std::string extension;
     } selected;
     bool found = false;
@@ -9636,7 +9653,7 @@ int PaxLoader::svc_file_zip_extract_first_impl(
       if (found)
         continue;
       std::string extension;
-      if (!zip_extension_(name, extensions, &extension))
+      if (named_entry != nullptr ? name != named_entry : !zip_extension_(name, extensions, &extension))
         continue;
       const uint16_t flags = zip_u16_(central + 8);
       const uint16_t method = zip_u16_(central + 10);
@@ -9649,6 +9666,7 @@ int PaxLoader::svc_file_zip_extract_first_impl(
       selected.compressed = zip_u32_(central + 20);
       selected.uncompressed = zip_u32_(central + 24);
       selected.local_offset = zip_u32_(central + 42);
+      selected.crc = zip_u32_(central + 16);
       selected.extension = std::move(extension);
       found = true;
     }
@@ -9656,10 +9674,14 @@ int PaxLoader::svc_file_zip_extract_first_impl(
       failure = "no supported ROM entry";
       break;
     }
+    if (selected.uncompressed == 0 || selected.uncompressed > max_bytes) {
+      failure = "entry exceeds size limit";
+      break;
+    }
     if (progress != nullptr)
       progress(context, 0, selected.uncompressed);
 
-    output_portable = std::string(cache_dir) + "/" + cache_stem + selected.extension;
+    output_portable = destination != nullptr ? destination : std::string(cache_dir) + "/" + cache_stem + selected.extension;
     if (output_portable.size() + 1 > out_size) {
       failure = "output path too long";
       break;
@@ -9673,6 +9695,11 @@ int PaxLoader::svc_file_zip_extract_first_impl(
     // under the final cache name.  Commit it only after the full member has
     // been flushed and synced.
     output_tmp_fs = output_fs + ".part";
+    if (named_entry != nullptr && (access(output_fs.c_str(), F_OK) == 0 || access(output_tmp_fs.c_str(), F_OK) == 0)) {
+      failure = "destination already exists";
+      output_tmp_fs.clear();
+      break;
+    }
     std::remove(output_tmp_fs.c_str());
     output = std::fopen(output_tmp_fs.c_str(), "wb");
     if (output == nullptr) {
@@ -9695,6 +9722,7 @@ int PaxLoader::svc_file_zip_extract_first_impl(
     }
 
     uint64_t written = 0;
+    uLong checksum = crc32(0L, Z_NULL, 0);
     std::vector<unsigned char> input(4096);
     std::vector<unsigned char> buffer(8192);
     if (selected.method == 0) {
@@ -9702,9 +9730,11 @@ int PaxLoader::svc_file_zip_extract_first_impl(
       while (remaining != 0) {
         const size_t want = std::min<size_t>(input.size(), remaining);
         const size_t got = std::fread(input.data(), 1, want, zip);
-        if (got == 0 || std::fwrite(input.data(), 1, got, output) != got)
+        if (got == 0 || written + got > selected.uncompressed || written + got > max_bytes ||
+            std::fwrite(input.data(), 1, got, output) != got)
           break;
         remaining -= static_cast<uint32_t>(got);
+        checksum = crc32(checksum, input.data(), got);
         written += got;
         if (progress != nullptr)
           progress(context, written, selected.uncompressed);
@@ -9741,8 +9771,10 @@ int PaxLoader::svc_file_zip_extract_first_impl(
         // zlib wrapper, so there is no wrapper checksum to verify here.
         inflate_result = inflate(&stream, Z_NO_FLUSH, 0);
         const size_t produced = buffer.size() - stream.avail_out;
+        if (produced > max_bytes - written || written + produced > selected.uncompressed) { ok = false; break; }
         if (produced != 0 && std::fwrite(buffer.data(), 1, produced, output) != produced)
           ok = false;
+        checksum = crc32(checksum, buffer.data(), produced);
         written += produced;
         if (produced != 0 && progress != nullptr)
           progress(context, written, selected.uncompressed);
@@ -9757,7 +9789,7 @@ int PaxLoader::svc_file_zip_extract_first_impl(
         break;
       }
     }
-    if (written != selected.uncompressed || !sync_file_(output, output_tmp_fs.c_str())) {
+    if (written != selected.uncompressed || checksum != selected.crc || !sync_file_(output, output_tmp_fs.c_str())) {
       failure = "ROM size or flush";
       break;
     }
@@ -9769,7 +9801,11 @@ int PaxLoader::svc_file_zip_extract_first_impl(
       break;
     }
     output = nullptr;
-    std::remove(output_fs.c_str());
+    if (named_entry != nullptr && access(output_fs.c_str(), F_OK) == 0) {
+      failure = "destination appeared during extraction";
+      break;
+    }
+    if (named_entry == nullptr) std::remove(output_fs.c_str());
     if (std::rename(output_tmp_fs.c_str(), output_fs.c_str()) != 0) {
       failure = "ROM cache commit";
       break;
@@ -9777,6 +9813,7 @@ int PaxLoader::svc_file_zip_extract_first_impl(
     warn_if_not_durable_(output_fs);
     std::memcpy(out_path, output_portable.c_str(), output_portable.size() + 1);
     ESP_LOGI(TAG, "ZIP ROM: %s -> %s", archive, output_portable.c_str());
+    if (written_bytes != nullptr) *written_bytes = static_cast<uint32_t>(written);
     result = 0;
   } while (false);
 
@@ -10341,6 +10378,7 @@ void PaxLoader::populate_services(app_services_t *services) {
   services->file_remove = &PaxServiceGate<&PaxLoader::svc_file_remove>::call;
   services->file_rename = &PaxServiceGate<&PaxLoader::svc_file_rename>::call;
   services->file_stat = &PaxServiceGate<&PaxLoader::svc_file_stat>::call;
+  services->file_zip_extract_named = &PaxServiceGate<&PaxLoader::svc_file_zip_extract_named>::call;
   services->file_zip_extract_first = &PaxServiceGate<&PaxLoader::svc_file_zip_extract_first>::call;
   services->file_zip_extract_first_progress = &PaxServiceGate<&PaxLoader::svc_file_zip_extract_first_progress>::call;
   services->game_menu_register = &PaxServiceGate<&PaxLoader::svc_game_menu_register>::call;
