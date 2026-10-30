@@ -1,7 +1,7 @@
 {
   "name": "anotherworld",
   "title": "Another World",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Another World interpreter with original DOS game banks loaded from SD.",
   "category": "Game",
   "about": "Development build. Raw interpreter port. Supply your original DOS memlist.bin and bank files under /sd/roms/anotherworld/. Game data is kept outside the executable. Starts at the intro; the legacy protection bypass is preserved.",
@@ -103,7 +103,7 @@
   ],
   "newlib": true,
   "install_recipe": "install-recipe.json",
-  "changelog": "0.2.0: code-only store build; read resource table and compressed banks from SD, with missing/truncated-data checks.",
+  "changelog": "0.2.1: feed audio on a dedicated task to reduce interruptions during rendering. Original DOS game data is still required on SD.",
   "includes": [
     "local:apps/anotherworld",
     "local:apps/anotherworld/core",
