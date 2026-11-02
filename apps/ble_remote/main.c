@@ -3,6 +3,7 @@
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "lvgl.h"
+#include <string.h>
 #define W 800
 #define H 480
 static const app_services_t *svc;
