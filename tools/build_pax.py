@@ -52,11 +52,7 @@ def get_loader_sdk() -> Path:
     """
     LOADER_SDK_DIR.mkdir(parents=True, exist_ok=True)
     target = LOADER_SDK_DIR / "psram_app.h"
-    # The loader component was renamed from papp_loader to pax_loader. Keep
-    # compatibility with older checkouts while preferring the current path.
-    source = ROOT / "esphome" / "components" / "pax_loader" / "psram_app.h"
-    if not source.is_file():
-        source = ROOT / "esphome" / "components" / "papp_loader" / "psram_app.h"
+    source = ROOT / "esphome" / "components" / "papp_loader" / "psram_app.h"
     if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
         shutil.copy2(source, target)
     return LOADER_SDK_DIR
