@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PAX NetSurf feature checks</title>
+<style>
+:root { --accent: #2267ab; }
+body { font: 16px sans-serif; margin: 1em; }
+section { margin: 1em 0; padding: .75em; border: 1px solid #888; }
+.flex { display: flex; gap: 8px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.box { padding: 10px; background: var(--accent); color: white; border-radius: 8px; }
+.gradient { background: linear-gradient(to right, #dd3322, #2255cc); color: white; padding: 10px; }
+</style></head><body>
+<h1>PAX NetSurf feature checks</h1>
+<p>Expected: blue rounded boxes in rows, a red-to-blue gradient, a working button and a changing timer.</p>
+<section><h2>CSS flexbox and variables</h2><div class="flex"><div class="box">Flex A</div><div class="box">Flex B</div><div class="box">Flex C</div></div></section>
+<section><h2>CSS grid</h2><div class="grid"><div class="box">Grid 1</div><div class="box">Grid 2</div><div class="box">Grid 3</div></div></section>
+<section><h2>Gradient</h2><div class="gradient">Red on the left, blue on the right</div></section>
+<section><h2>JavaScript and DOM</h2><button id="check" type="button">Press me</button> <span id="result">Not pressed</span><p>Timer: <span id="timer">not started</span></p></section>
+<section><h2>Inline video</h2><p>Play and pause without leaving this page.</p><video width="320" controls preload="none"><source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">Video unsupported.</video></section>
+<section><h2>Inline audio</h2><audio controls preload="none" src="https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3">Audio unsupported.</audio></section>
+<script>
+var button = document.getElementById('check');
+button.addEventListener('click', function () { document.getElementById('result').textContent = 'JavaScript button works'; });
+var seconds = 0; setInterval(function () { document.getElementById('timer').textContent = ++seconds + ' s'; }, 1000);
+</script></body></html>

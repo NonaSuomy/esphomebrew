@@ -1,0 +1,1422 @@
+--- a/content/fetch.c
++++ b/content/fetch.c
+@@ -54,7 +54,9 @@
+ #include "content/fetchers.h"
+ #include "content/fetchers/resource.h"
+ #include "content/fetchers/about/about.h"
++#ifdef WITH_CURL
+ #include "content/fetchers/curl.h"
++#endif
+ #include "content/fetchers/data.h"
+ #include "content/fetchers/file/file.h"
+ #include "javascript/fetcher.h"
+@@ -84,6 +86,11 @@
+ } scheme_fetcher;
+ 
+ static scheme_fetcher fetchers[MAX_FETCHERS];
++
++#ifdef PAPP_NETSURF
++/* HTTP over the PAPP loader's TCP services (ports/netsurf/papp_http.c) */
++nserror papp_fetch_http_register(void);
++#endif
+ 
+ /** Information for a single fetch. */
+ struct fetch {
+@@ -285,6 +292,13 @@
+ nserror fetcher_init(void)
+ {
+ 	nserror ret;
++
++#ifdef PAPP_NETSURF
++	ret = papp_fetch_http_register();
++	if (ret != NSERROR_OK) {
++		return ret;
++	}
++#endif
+ 
+ #ifdef WITH_CURL
+ 	ret = fetch_curl_register();
+--- a/content/fetchers/about/about.c
++++ b/content/fetchers/about/about.c
+@@ -62,6 +62,12 @@
+ #include "atestament.h"
+ #include "websearch.h"
+ 
++#ifdef PAPP_NETSURF
++/* ports/netsurf/papp_hotlist.c: the bookmarks and the pages visited */
++bool fetch_about_papp_hotlist_handler(struct fetch_about_context *ctx);
++bool fetch_about_papp_history_handler(struct fetch_about_context *ctx);
++#endif
++
+ typedef bool (*fetch_about_handler)(struct fetch_about_context *);
+ 
+ /**
+@@ -463,7 +469,25 @@
+ 		NULL,
+ 		fetch_about_websearch_handler,
+ 		true
+-	}
++	},
++#ifdef PAPP_NETSURF
++	{
++		/* the bookmarks (NetSurf's hotlist) */
++		"hotlist",
++		SLEN("hotlist"),
++		NULL,
++		fetch_about_papp_hotlist_handler,
++		false
++	},
++	{
++		/* pages visited, newest first */
++		"history",
++		SLEN("history"),
++		NULL,
++		fetch_about_papp_history_handler,
++		false
++	},
++#endif
+ };
+ 
+ #define about_handler_list_len \
+--- a/content/fetchers/about/query_privacy.c
++++ b/content/fetchers/about/query_privacy.c
+@@ -114,6 +114,32 @@
+ 		}
+ 	}
+ 
++#ifdef PAPP_NETSURF
++	/* The PAPP loader makes the TLS connection and always checks the
++	 * certificate; there is no way to go on without that check. */
++	(void)reason;
++	(void)chainurl;
++	res = fetch_about_ssenddataf(ctx,
++			 "<div><p>The device could not make a secure connection "
++			 "to this site. Either the site's certificate could not "
++			 "be verified against the device's certificate bundle "
++			 "(it is self-signed, expired, for another name, or from "
++			 "an authority the bundle does not know), or the "
++			 "connection or TLS handshake failed. The device log "
++			 "says which.</p></div>"
++			 "<div><p>This browser cannot skip the certificate "
++			 "check. If the site also works without encryption, "
++			 "try its http:// address.</p></div>");
++	if (res != NSERROR_OK) {
++		goto fetch_about_query_ssl_handler_aborted;
++	}
++	res = fetch_about_ssenddataf(ctx,
++			 "<div id=\"buttons\">"
++			 "<input type=\"submit\" id=\"back\" name=\"back\" "
++			 "value=\"%s\" class=\"default-action\">"
++			 "</div>",
++			 messages_get("Backtosafety"));
++#else
+ 	if (chainurl == NULL) {
+ 		res = fetch_about_ssenddataf(ctx,
+ 				 "<div><p>%s</p></div>"
+@@ -140,6 +166,7 @@
+ 			 "</div>",
+ 			 messages_get("Backtosafety"),
+ 			 messages_get("Proceed"));
++#endif
+ 	if (res != NSERROR_OK) {
+ 		goto fetch_about_query_ssl_handler_aborted;
+ 	}
+--- a/content/handlers/image/jpeg.c
++++ b/content/handlers/image/jpeg.c
+@@ -44,6 +44,9 @@
+ #define JPEG_INTERNAL_OPTIONS
+ #include "jpeglib.h"
+ #include "jpeg.h"
++#ifdef PAPP_NETSURF
++#include "pax_port.h"
++#endif
+ 
+ /** absolute minimum size of a jpeg below which it is not even worth
+  * trying to read header data
+@@ -302,6 +305,51 @@
+ 
+ 	/* read JPEG header information */
+ 	jpeg_read_header(&cinfo, TRUE);
++
++#ifdef PAPP_NETSURF
++	/* The P4 service handles baseline JPEGs; keep libjpeg for progressive,
++	 * grayscale, oversized, unavailable or failed hardware decodes. Bound
++	 * the temporary RGB565 allocation on this memory-constrained device. */
++	if (pax_svc && pax_svc->jpeg_decode_rgb565 && !cinfo.progressive_mode &&
++	    cinfo.jpeg_color_space != JCS_GRAYSCALE &&
++	    cinfo.jpeg_color_space != JCS_CMYK && cinfo.jpeg_color_space != JCS_YCCK &&
++	    cinfo.image_width > 0 && cinfo.image_height > 0 &&
++	    (uint64_t)cinfo.image_width * cinfo.image_height <= 262144 &&
++	    source_size <= UINT32_MAX) {
++		const size_t count = (size_t)cinfo.image_width * cinfo.image_height;
++		uint16_t *rgb = malloc(count * sizeof(*rgb));
++		if (rgb != NULL) {
++			int ok = pax_svc->jpeg_decode_rgb565(source_data, (uint32_t)source_size,
++				rgb, (uint32_t)(count * sizeof(*rgb)), cinfo.image_width,
++				cinfo.image_height, cinfo.image_width * 2);
++			if (ok == 0) {
++				bitmap = guit->bitmap->create(cinfo.image_width, cinfo.image_height, BITMAP_OPAQUE);
++				pixels = bitmap ? guit->bitmap->get_buffer(bitmap) : NULL;
++				if (pixels != NULL) {
++					rowstride = guit->bitmap->get_rowstride(bitmap);
++					for (unsigned y = 0; y < cinfo.image_height; ++y) {
++						uint8_t *dst = pixels + y * rowstride;
++						for (unsigned x = 0; x < cinfo.image_width; ++x) {
++							uint16_t v = rgb[(size_t)y * cinfo.image_width + x];
++							dst[bitmap_layout.r] = (uint8_t)(((v >> 11) & 31) * 255 / 31);
++							dst[bitmap_layout.g] = (uint8_t)(((v >> 5) & 63) * 255 / 63);
++							dst[bitmap_layout.b] = (uint8_t)((v & 31) * 255 / 31);
++							dst[bitmap_layout.a] = 255;
++							dst += 4;
++						}
++					}
++					free(rgb);
++					guit->bitmap->modified(bitmap);
++					jpeg_destroy_decompress(&cinfo);
++					return bitmap;
++				}
++				if (bitmap != NULL) guit->bitmap->destroy(bitmap);
++				bitmap = NULL;
++			}
++			free(rgb);
++		}
++	}
++#endif
+ 
+ 	/* set output processing parameters */
+ 	if (cinfo.jpeg_color_space == JCS_CMYK ||
+--- a/desktop/hotlist.c
++++ b/desktop/hotlist.c
+@@ -119,6 +119,13 @@
+ 	if (path == NULL) {
+ 		return NSERROR_OK;
+ 	}
++
++#ifdef PAPP_NETSURF
++	/* The PAPP loader's files cannot be renamed or removed: write the
++	 * hotlist in place. Without the folder (no card, or no
++	 * /sd/roms/netsurf) this fails and the hotlist stays in memory. */
++	return hotlist_export(path, NULL);
++#endif
+ 
+ 	/* Get path to export to */
+ 	res = hotlist_get_temp_path(path, &temp_path);
+--- a/frontends/framebuffer/fbfx.c
++++ b/frontends/framebuffer/fbfx.c
+@@ -52,8 +52,9 @@
+ #define NS_B(c) ((int)(((c) >> 16) & 0xff))
+ 
+ struct fx_surface {
+-	uint32_t *ptr;
+-	int stride; /* in pixels */
++	uint8_t *ptr;
++	int stride; /* in bytes */
++	int bpp;
+ 	int w, h;
+ 	bool bgr; /* pixel layout 0xXXBBGGRR (else 0xXXRRGGBB) */
+ 	int cx0, cy0, cx1, cy1; /* effective clip */
+@@ -72,12 +73,14 @@
+ 	if (nsfb_get_geometry(fx_nsfb, &s->w, &s->h, &fmt) != 0)
+ 		return false;
+ 	if (fmt != NSFB_FMT_XBGR8888 && fmt != NSFB_FMT_ABGR8888 &&
+-	    fmt != NSFB_FMT_XRGB8888 && fmt != NSFB_FMT_ARGB8888)
++	    fmt != NSFB_FMT_XRGB8888 && fmt != NSFB_FMT_ARGB8888 &&
++	    fmt != NSFB_FMT_RGB565)
+ 		return false;
+ 	if (nsfb_get_buffer(fx_nsfb, &ptr, &stride) != 0 || ptr == NULL)
+ 		return false;
+-	s->ptr = (uint32_t *)ptr;
+-	s->stride = stride / 4;
++	s->ptr = ptr;
++	s->stride = stride;
++	s->bpp = fmt == NSFB_FMT_RGB565 ? 2 : 4;
+ 	s->bgr = (fmt == NSFB_FMT_XBGR8888 || fmt == NSFB_FMT_ABGR8888);
+ 
+ 	nsfb_plot_get_clip(fx_nsfb, &clip);
+@@ -91,7 +94,11 @@
+ static inline void fx_unpack(const struct fx_surface *s, uint32_t p,
+ 		int *r, int *g, int *b)
+ {
+-	if (s->bgr) {
++	if (s->bpp == 2) {
++		*r = ((p >> 11) & 31) * 255 / 31;
++		*g = ((p >> 5) & 63) * 255 / 63;
++		*b = (p & 31) * 255 / 31;
++	} else if (s->bgr) {
+ 		*r = p & 0xff; *g = (p >> 8) & 0xff; *b = (p >> 16) & 0xff;
+ 	} else {
+ 		*b = p & 0xff; *g = (p >> 8) & 0xff; *r = (p >> 16) & 0xff;
+@@ -100,13 +107,27 @@
+ 
+ static inline uint32_t fx_pack(const struct fx_surface *s, int r, int g, int b)
+ {
++	if (s->bpp == 2)
++		return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+ 	if (s->bgr)
+ 		return 0xff000000u | (b << 16) | (g << 8) | r;
+ 	return 0xff000000u | (r << 16) | (g << 8) | b;
+ }
+ 
++/* Pixels can be RGB565 or 32-bit and rows may have padding. */
++static inline uint32_t fx_read(const struct fx_surface *s, const uint8_t *px)
++{
++    if (s->bpp == 2) { uint16_t v; memcpy(&v, px, sizeof(v)); return v; }
++    uint32_t v; memcpy(&v, px, sizeof(v)); return v;
++}
++static inline void fx_write(const struct fx_surface *s, uint8_t *px, uint32_t v)
++{
++    if (s->bpp == 2) { uint16_t p = (uint16_t)v; memcpy(px, &p, sizeof(p)); }
++    else memcpy(px, &v, sizeof(v));
++}
++
+ /** blend colour (r,g,b) with coverage a (0..256) onto pixel */
+-static inline void fx_blend(const struct fx_surface *s, uint32_t *px,
++static inline void fx_blend(const struct fx_surface *s, uint8_t *px,
+ 		int r, int g, int b, int a)
+ {
+ 	int dr, dg, db;
+@@ -114,14 +135,14 @@
+ 	if (a <= 0)
+ 		return;
+ 	if (a >= 256) {
+-		*px = fx_pack(s, r, g, b);
++		fx_write(s, px, fx_pack(s, r, g, b));
+ 		return;
+ 	}
+-	fx_unpack(s, *px, &dr, &dg, &db);
++	fx_unpack(s, fx_read(s, px), &dr, &dg, &db);
+ 	dr += ((r - dr) * a) >> 8;
+ 	dg += ((g - dg) * a) >> 8;
+ 	db += ((b - db) * a) >> 8;
+-	*px = fx_pack(s, dr, dg, db);
++	fx_write(s, px, fx_pack(s, dr, dg, db));
+ }
+ 
+ /**
+@@ -256,7 +277,7 @@
+ 	y1 = outer->y1 < s.cy1 ? outer->y1 : s.cy1;
+ 
+ 	for (y = y0; y < y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		bool simple = fx_rr_row_simple(&ro, y);
+ 		for (x = x0; x < x1; x++) {
+ 			int cov;
+@@ -282,7 +303,7 @@
+ 					cov -= fx_rr_cover(&ri, x, y);
+ 			}
+ 			if (cov > 0)
+-				fx_blend(&s, row + x, r, g, b,
++				fx_blend(&s, row + x * s.bpp, r, g, b,
+ 						(cov * alpha) >> 8);
+ 		}
+ 	}
+@@ -355,21 +376,21 @@
+ 			fx_gradient_colour(g, t, &r, &gg, &b, &a);
+ 			a = a + (a >> 7);
+ 			for (y = y0; y < y1; y++)
+-				fx_blend(&s, s.ptr + y * s.stride + x,
++				fx_blend(&s, s.ptr + y * s.stride + x * s.bpp,
+ 						r, gg, b, a);
+ 		}
+ 		return NSERROR_OK;
+ 	}
+ 
+ 	for (y = y0; y < y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		if (!g->radial && fabsf(g->dx) < 0.0001f) {
+ 			/* vertical gradient: one colour per row */
+ 			float t = ((y + 0.5f - g->y0) * g->dy) / g->length;
+ 			fx_gradient_colour(g, t, &r, &gg, &b, &a);
+ 			a = a + (a >> 7);
+ 			for (x = x0; x < x1; x++)
+-				fx_blend(&s, row + x, r, gg, b, a);
++				fx_blend(&s, row + x * s.bpp, r, gg, b, a);
+ 			continue;
+ 		}
+ 		for (x = x0; x < x1; x++) {
+@@ -385,7 +406,7 @@
+ 				     (y + 0.5f - g->y0) * g->dy) / g->length;
+ 			}
+ 			fx_gradient_colour(g, t, &r, &gg, &b, &a);
+-			fx_blend(&s, row + x, r, gg, b, a + (a >> 7));
++			fx_blend(&s, row + x * s.bpp, r, gg, b, a + (a >> 7));
+ 		}
+ 	}
+ 	return NSERROR_OK;
+@@ -448,7 +469,7 @@
+ 	if (y1 > s.cy1) y1 = s.cy1;
+ 
+ 	for (y = y0; y < y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		for (x = x0; x < x1; x++) {
+ 			float d, v;
+ 			int cb = fx_rr_cover(&rb, x, y);
+@@ -482,7 +503,7 @@
+ 				v *= cb / 256.0f;
+ 			else
+ 				v *= (256 - cb) / 256.0f;
+-			fx_blend(&s, row + x, r, g, b, (int)(v * a * 256 / 255));
++			fx_blend(&s, row + x * s.bpp, r, g, b, (int)(v * a * 256 / 255));
+ 		}
+ 	}
+ 	return NSERROR_OK;
+@@ -537,9 +558,9 @@
+ 		return NSERROR_OK;
+ 	}
+ 	for (y = l->y0; y < l->y1; y++) {
+-		memcpy(l->pixels + (size_t)(y - l->y0) * w,
+-				s.ptr + y * s.stride + l->x0,
+-				w * sizeof(uint32_t));
++		for (int x = 0; x < w; ++x)
++			l->pixels[(size_t)(y - l->y0) * w + x] =
++				fx_read(&s, s.ptr + y * s.stride + (l->x0 + x) * s.bpp);
+ 	}
+ 	return NSERROR_OK;
+ }
+@@ -610,7 +631,7 @@
+ 	w = l->x1 - l->x0;
+ 
+ 	for (y = l->y0; y < l->y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		uint32_t *saved = l->pixels + (size_t)(y - l->y0) * w - l->x0;
+ 		bool simple_row = !rounded || fx_rr_row_simple(&rr, y);
+ 
+@@ -622,9 +643,9 @@
+ 				bx0 = bx1 = l->x0;
+ 			}
+ 			for (x = l->x0; x < bx0; x++)
+-				row[x] = saved[x];
++				fx_write(&s, row + x * s.bpp, saved[x]);
+ 			for (x = bx1 > l->x0 ? bx1 : l->x0; x < l->x1; x++)
+-				row[x] = saved[x];
++				fx_write(&s, row + x * s.bpp, saved[x]);
+ 			continue;
+ 		}
+ 
+@@ -643,24 +664,24 @@
+ 			if (cov >= 256 && !filter)
+ 				continue;
+ 			/* pixels the layer did not paint are backdrop */
+-			if (cov > 0 && row[x] == saved[x])
++			if (cov > 0 && fx_read(&s, row + x * s.bpp) == saved[x])
+ 				continue;
+ 			if (cov <= 0) {
+-				row[x] = saved[x];
++				fx_write(&s, row + x * s.bpp, saved[x]);
+ 				continue;
+ 			}
+-			fx_unpack(&s, row[x], &r, &g, &b);
++			fx_unpack(&s, fx_read(&s, row + x * s.bpp), &r, &g, &b);
+ 			if (filter)
+ 				fx_filter(p, &r, &g, &b);
+ 			if (cov >= 256) {
+-				row[x] = fx_pack(&s, r, g, b);
++				fx_write(&s, row + x * s.bpp, fx_pack(&s, r, g, b));
+ 				continue;
+ 			}
+ 			fx_unpack(&s, saved[x], &sr, &sg, &sb);
+ 			sr += ((r - sr) * cov) >> 8;
+ 			sg += ((g - sg) * cov) >> 8;
+ 			sb += ((b - sb) * cov) >> 8;
+-			row[x] = fx_pack(&s, sr, sg, sb);
++			fx_write(&s, row + x * s.bpp, fx_pack(&s, sr, sg, sb));
+ 		}
+ 	}
+ 
+@@ -779,7 +800,7 @@
+ 		float acc = 0;
+ 		float *row = r->a + y * stride;
+ 		int dy = r->y0 + y;
+-		uint32_t *px;
++		uint8_t *px;
+ 
+ 		if (dy < s->cy0 || dy >= s->cy1)
+ 			continue;
+@@ -792,7 +813,7 @@
+ 			if (v < 0.002f || dx < s->cx0 || dx >= s->cx1)
+ 				continue;
+ 			cov = v >= 1.0f ? 256 : (int)(v * 256.0f);
+-			fx_blend(s, px + dx, cr, cg, cb, (cov * alpha) >> 8);
++			fx_blend(s, px + dx * s->bpp, cr, cg, cb, (cov * alpha) >> 8);
+ 		}
+ 	}
+ }
+@@ -1165,14 +1186,14 @@
+ 	for (dy = y0; dy < y1; dy++) {
+ 		int sy = (dy - y) * bh / height;
+ 		const uint32_t *srow = (const uint32_t *)(bptr + sy * bstride);
+-		uint32_t *drow = s.ptr + dy * s.stride;
++		uint8_t *drow = s.ptr + dy * s.stride;
+ 		for (dx = x0; dx < x1; dx++) {
+ 			int sx = (dx - x) * bw / width;
+ 			int a = (srow[sx] >> 24) & 0xff;
+ 			if (fmt == NSFB_FMT_XBGR8888 || fmt == NSFB_FMT_XRGB8888)
+ 				a = 255;
+ 			a = a + (a >> 7);
+-			fx_blend(&s, drow + dx, r, g, b, (a * ta) >> 8);
++			fx_blend(&s, drow + dx * s.bpp, r, g, b, (a * ta) >> 8);
+ 		}
+ 	}
+ 	return true;
+@@ -1215,22 +1236,12 @@
+ 	for (y = y0; y < y1; y++) {
+ 		const uint32_t *srow = px + (size_t)((int64_t)(y - dst->y0) *
+ 				h / dh) * w;
+-		uint32_t *drow = s.ptr + y * s.stride + x0;
++		uint8_t *drow = s.ptr + y * s.stride + x0 * s.bpp;
+ 		int n = x1 - x0;
+-		if (s.bgr) {
+-			/* source bytes R,G,B,X match 0xXXBBGGRR */
+-			if (w == dw) {
+-				memcpy(drow, srow + xmap[0], n * 4);
+-			} else {
+-				for (x = 0; x < n; x++)
+-					drow[x] = srow[xmap[x]] | 0xff000000u;
+-			}
+-		} else {
+-			for (x = 0; x < n; x++) {
+-				uint32_t p = srow[xmap[x]];
+-				drow[x] = 0xff000000u | ((p & 0xff) << 16) |
+-					(p & 0xff00) | ((p >> 16) & 0xff);
+-			}
++		for (x = 0; x < n; x++) {
++			uint32_t pixel = srow[xmap[x]];
++			fx_write(&s, drow + x * s.bpp,
++				fx_pack(&s, pixel & 255, (pixel >> 8) & 255, (pixel >> 16) & 255));
+ 		}
+ 	}
+ 	free(xmap);
+--- a/frontends/framebuffer/fbtk.h
++++ b/frontends/framebuffer/fbtk.h
+@@ -270,6 +270,14 @@
+  */
+ bool fbtk_get_caret(fbtk_widget_t *widget, int *x, int *y, int *height);
+ 
++#ifdef PAPP_NETSURF
++/**
++ * Whether a mapped widget drawn above this one (such as the on-screen
++ * keyboard over the page) covers part of it.
++ */
++bool fbtk_papp_covered(fbtk_widget_t *widget);
++#endif
++
+ 
+ /******************* Widget Manipulation **********************/
+ 
+@@ -609,4 +617,25 @@
+  */
+ void map_osk(void);
+ 
++#ifdef PAPP_NETSURF
++/**
++ * The caret was set or taken away: show the on-screen keyboard for a text
++ * field (unless a USB keyboard is in use), hide it soon after the caret
++ * goes if it was shown that way.
++ */
++void fbtk_papp_osk_caret(bool has_caret);
++
++/**
++ * The on-screen keyboard's rows on the screen, [y0, y1).
++ *
++ * @return false when the keyboard is hidden.
++ */
++bool fbtk_papp_osk_area(int *y0, int *y1);
++
++/**
++ * Put the on-screen keyboard at the top of the screen or back at the bottom.
++ */
++void fbtk_papp_osk_place(bool top);
+ #endif
++
++#endif
+--- a/frontends/framebuffer/fbtk/event.c
++++ b/frontends/framebuffer/fbtk/event.c
+@@ -261,6 +261,26 @@
+ 	return unused;
+ }
+ 
++#ifdef PAPP_NETSURF
++/* The PAPP loader sends printable keys as the ASCII character typed
++ * (already shifted), so every printable code maps to itself. */
++static int keymap[] = {
++	/* 0    1    2    3    4    5    6    7    8    9               */
++	-1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,   8,   9, /*   0 -   9 */
++	-1,  -1,  -1,  13,  -1,  -1,  -1,  -1,  -1,  -1, /*  10 -  19 */
++	-1,  -1,  -1,  -1,  -1,  -1,  -1,  27,  -1,  -1, /*  20 -  29 */
++	-1,  -1, ' ', '!', '"', '#', '$', '%', '&','\'', /*  30 -  39 */
++	'(', ')', '*', '+', ',', '-', '.', '/', '0', '1', /*  40 -  49 */
++	'2', '3', '4', '5', '6', '7', '8', '9', ':', ';', /*  50 -  59 */
++	'<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', /*  60 -  69 */
++	'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', /*  70 -  79 */
++	'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', /*  80 -  89 */
++	'Z', '[','\\', ']', '^', '_', '`', 'a', 'b', 'c', /*  90 -  99 */
++	'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', /* 100 - 109 */
++	'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', /* 110 - 119 */
++	'x', 'y', 'z', '{', '|', '}', '~',  -1,  -1,  -1, /* 120 - 129 */
++};
++#else
+ static int keymap[] = {
+ 	/* 0    1    2    3    4    5    6    7    8    9               */
+ 	-1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,   8,   9, /*   0 -   9 */
+@@ -277,6 +297,7 @@
+ 	'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', /* 110 - 119 */
+ 	'x', 'y', 'z',  -1,  -1,  -1,  -1,  -1,  -1,  -1, /* 120 - 129 */
+ };
++#endif
+ 
+ static int sh_keymap[] = {
+ 	/* 0    1    2    3    4    5    6    7    8    9               */
+--- a/frontends/framebuffer/fbtk/fbtk.c
++++ b/frontends/framebuffer/fbtk/fbtk.c
+@@ -275,6 +275,11 @@
+ 		root->u.root.caret.owner = NULL;
+ 		root->u.root.caret.remove_cb = NULL;
+ 	}
++#ifdef PAPP_NETSURF
++	/* the on-screen keyboard comes up for a text field and goes
++	 * again with its caret */
++	fbtk_papp_osk_caret(root->u.root.caret.owner != NULL);
++#endif
+ }
+ 
+ /* exported function documented in fbtk.h */
+@@ -618,6 +623,35 @@
+ 	return root->redraw.needed | root->redraw.child;
+ }
+ 
++#ifdef PAPP_NETSURF
++/* whether two bounding boxes overlap */
++static bool
++fbtk_papp_overlap(const nsfb_bbox_t *a, const nsfb_bbox_t *b)
++{
++	return a->x0 < b->x1 && b->x0 < a->x1 && a->y0 < b->y1 && b->y0 < a->y1;
++}
++
++/* exported function documented in fbtk.h */
++bool
++fbtk_papp_covered(fbtk_widget_t *widget)
++{
++	nsfb_bbox_t area, above;
++	fbtk_widget_t *w, *s;
++
++	fbtk_get_bbox(widget, &area);
++	for (w = widget; w->parent != NULL; w = w->parent) {
++		for (s = w->prev; s != NULL; s = s->prev) {
++			if (s->mapped) {
++				fbtk_get_bbox(s, &above);
++				if (fbtk_papp_overlap(&area, &above))
++					return true;
++			}
++		}
++	}
++	return false;
++}
++#endif
++
+ /** Perform a depth-first tree-walk, calling the redraw callback of the widgets in turn.
+  *
+  * This function makes no decisions of its own and simply walks the
+@@ -649,6 +683,26 @@
+ 			fbtk_post_callback(widget, FBTK_CBT_REDRAW);
+ 		}
+ 		widget->redraw.needed = false;
++#ifdef PAPP_NETSURF
++		{
++			/* Siblings drawn above this widget, or above one of
++			 * its parents, that it overlaps (the on-screen
++			 * keyboard over the page) were just painted over:
++			 * they are drawn again after it in this pass. */
++			fbtk_widget_t *w, *s;
++			nsfb_bbox_t above;
++
++			for (w = widget; w->parent != NULL; w = w->parent) {
++				for (s = w->prev; s != NULL; s = s->prev) {
++					if (!s->mapped || s->redraw.needed)
++						continue;
++					fbtk_get_bbox(s, &above);
++					if (fbtk_papp_overlap(&plot_ctx, &above))
++						fbtk_request_redraw(s);
++				}
++			}
++		}
++#endif
+ 	}
+ 
+ 	/* walk the widgets children if child flag is set */
+--- a/frontends/framebuffer/fbtk/osk.c
++++ b/frontends/framebuffer/fbtk/osk.c
+@@ -109,6 +109,95 @@
+ 
+ static fbtk_widget_t *osk;
+ 
++#ifdef PAPP_NETSURF
++#include "utils/errors.h"
++#include "framebuffer/schedule.h"
++
++/* ports/netsurf/papp_surface.c: false once a USB keyboard has been used */
++int papp_osk_auto_allowed(void);
++
++static bool osk_auto = false; /* shown because a text field has the caret */
++static bool osk_top = false;  /* at the top of the screen, not the bottom */
++static bool osk_dismissed = false; /* closed by hand while a field had the caret */
++
++/* move the keyboard to the top or the bottom of the screen */
++static void
++osk_papp_move(bool top)
++{
++	int height;
++	bool mapped;
++
++	if (osk == NULL || top == osk_top)
++		return;
++	osk_top = top;
++	height = fbtk_get_height(osk);
++	mapped = osk->mapped;
++	if (mapped)
++		fbtk_set_mapping(osk, false);
++	fbtk_set_pos_and_size(osk, 0,
++			top ? 0 : fbtk_get_height(fbtk_get_root_widget(osk)) - height,
++			0, height);
++	if (mapped)
++		fbtk_set_mapping(osk, true);
++}
++
++static void
++osk_papp_hide_cb(void *p)
++{
++	fbtk_widget_t *root;
++
++	if (osk == NULL || !osk_auto)
++		return;
++	root = fbtk_get_root_widget(osk);
++	if (root->u.root.caret.owner != NULL)
++		return; /* a text field has the caret again */
++	osk_auto = false;
++	fbtk_set_mapping(osk, false);
++	osk_papp_move(false);
++}
++
++/* exported function documented in fbtk.h */
++void
++fbtk_papp_osk_caret(bool has_caret)
++{
++	if (osk == NULL)
++		return;
++	if (has_caret) {
++		if (!osk->mapped && !osk_dismissed &&
++		    papp_osk_auto_allowed()) {
++			fbtk_set_zorder(osk, INT_MIN);
++			fbtk_set_mapping(osk, true);
++			osk_auto = true;
++		}
++	} else {
++		/* the next field to get the caret brings it up again */
++		osk_dismissed = false;
++		/* hide it unless a text field takes the caret again soon
++		 * (the caret moving between fields, or to the address bar) */
++		if (osk_auto)
++			framebuffer_schedule(100, osk_papp_hide_cb, NULL);
++	}
++}
++
++/* exported function documented in fbtk.h */
++bool
++fbtk_papp_osk_area(int *y0, int *y1)
++{
++	if (osk == NULL || !osk->mapped)
++		return false;
++	*y0 = fbtk_get_absy(osk);
++	*y1 = *y0 + fbtk_get_height(osk);
++	return true;
++}
++
++/* exported function documented in fbtk.h */
++void
++fbtk_papp_osk_place(bool top)
++{
++	osk_papp_move(top);
++}
++#endif
++
+ static int
+ osk_close(fbtk_widget_t *widget, fbtk_callback_info *cbi)
+ {
+@@ -116,6 +205,12 @@
+ 		return 0;
+ 
+ 	fbtk_set_mapping(osk, false);
++#ifdef PAPP_NETSURF
++	/* stay closed while this field keeps the caret */
++	osk_dismissed = fbtk_get_root_widget(osk)->u.root.caret.owner != NULL;
++	osk_auto = false;
++	osk_papp_move(false);
++#endif
+ 
+ 	return 0;
+ }
+@@ -190,6 +285,10 @@
+ {
+ 	fbtk_set_zorder(osk, INT_MIN);
+ 	fbtk_set_mapping(osk, true);
++#ifdef PAPP_NETSURF
++	/* opened by hand: it stays until closed by hand */
++	osk_auto = false;
++#endif
+ }
+ 
+ /*
+--- a/frontends/framebuffer/fbtk/text.c
++++ b/frontends/framebuffer/fbtk/text.c
+@@ -448,6 +448,14 @@
+ 			break;
+ 		}
+ 
++#ifdef PAPP_NETSURF
++		/* printable ASCII only: other keys (F-keys, Delete) are
++		 * not text */
++		if ((fbtk_keycode_to_ucs4(value, modifier) < 32) ||
++		    (fbtk_keycode_to_ucs4(value, modifier) > 126))
++			break;
++#endif
++
+ 		/* allow for new character and null */
+ 		temp = realloc(widget->u.text.text, widget->u.text.len + 2);
+ 		if (temp == NULL) {
+--- a/frontends/framebuffer/fetch.c
++++ b/frontends/framebuffer/fetch.c
+@@ -90,11 +90,21 @@
+ 	return "text/html";
+ }
+ 
++#ifdef PAPP_NETSURF
++/* resources compiled into the PAPP (ports/netsurf/papp_main.c) */
++nserror papp_get_resource_data(const char *path, const uint8_t **data, size_t *data_len);
++nserror papp_release_resource_data(const uint8_t *data);
++#endif
++
+ /* table for fetch operations */
+ static struct gui_fetch_table fetch_table = {
+ 	.filetype = fetch_filetype,
+ 
+ 	.get_resource_url = get_resource_url,
++#ifdef PAPP_NETSURF
++	.get_resource_data = papp_get_resource_data,
++	.release_resource_data = papp_release_resource_data,
++#endif
+ };
+ 
+ struct gui_fetch_table *framebuffer_fetch_table = &fetch_table;
+--- a/frontends/framebuffer/framebuffer.c
++++ b/frontends/framebuffer/framebuffer.c
+@@ -44,6 +44,12 @@
+ 
+ /* netsurf framebuffer library handle */
+ static nsfb_t *nsfb;
++
++#ifdef PAPP_NETSURF
++/* ports/netsurf/papp_path.c: paths (SVG images) drawn with FreeType */
++nserror papp_plot_path(nsfb_t *nsfb, const plot_style_t *style,
++		const float *p, unsigned int n, const float transform[6]);
++#endif
+ 
+ 
+ /**
+@@ -284,8 +290,12 @@
+ 		unsigned int n,
+ 		const float transform[6])
+ {
++#ifdef PAPP_NETSURF
++	return papp_plot_path(nsfb, pstyle, p, n, transform);
++#else
+ 	NSLOG(netsurf, INFO, "path unimplemented");
+ 	return NSERROR_OK;
++#endif
+ }
+ 
+ 
+--- a/frontends/framebuffer/gui.c
++++ b/frontends/framebuffer/gui.c
+@@ -60,6 +60,9 @@
+ #include "utils/filepath.h"
+ #include "utils/log.h"
+ #include "utils/messages.h"
++#include "desktop/hotlist.h"
++#include "utils/file.h"
++#include "framebuffer/switch_audio.h"
+ #include "netsurf/browser_window.h"
+ #include "netsurf/keypress.h"
+ #include "desktop/browser_history.h"
+@@ -94,9 +97,138 @@
+ 
+ #define NSFB_TOOLBAR_DEFAULT_LAYOUT "blfsrukmjtc"
+ 
++#ifdef PAPP_NETSURF
++#include <strings.h>
++
++/* ports/netsurf/papp_main.c: option defaults for the PAPP device */
++void papp_netsurf_set_defaults(void);
++
++static void fb_update_back_forward(struct gui_window *gw);
++
++/* focus an empty url bar, ready for a new address */
++static void fb_papp_focus_url(struct gui_window *gw)
++{
++	nsfb_event_t event;
++
++	if (gw->url == NULL)
++		return;
++	memset(&event, 0, sizeof(event));
++	event.type = NSFB_EVENT_KEY_DOWN;
++	event.value.keycode = NSFB_KEY_MOUSE_1;
++	fbtk_set_text(gw->url, "");
++	fbtk_set_focus(gw->url);
++	fbtk_post_callback(gw->url, FBTK_CBT_CLICK, &event, 0, 0);
++}
++
++/* ports/netsurf/papp_http.c: whether the loader offers TLS */
++int papp_have_tls(void);
++
++/* an address as typed: a path is a file on the card and a name without
++ * a scheme is a web site, https: when the loader has TLS, except for
++ * local names and numeric addresses, which get http: */
++static nserror fb_papp_url(const char *text, nsurl **url)
++{
++	const char *prefix;
++	char *full;
++	size_t len;
++	nserror error;
++
++	while (*text == ' ')
++		text++;
++	if (text[0] == '/') {
++		prefix = "file://";
++	} else if (strstr(text, "://") == NULL &&
++		   strncasecmp(text, "about:", 6) != 0 &&
++		   strncasecmp(text, "data:", 5) != 0 &&
++		   strncasecmp(text, "file:", 5) != 0 &&
++		   strncasecmp(text, "resource:", 9) != 0 &&
++		   strncasecmp(text, "javascript:", 11) != 0) {
++		size_t hostlen = strcspn(text, ":/?#");
++		bool local = (memchr(text, '.', hostlen) == NULL) ||
++			(strspn(text, "0123456789.") >= hostlen);
++		prefix = (papp_have_tls() && !local) ? "https://" : "http://";
++	} else {
++		return nsurl_create(text, url);
++	}
++	len = strlen(prefix) + strlen(text) + 1;
++	full = malloc(len);
++	if (full == NULL)
++		return NSERROR_NOMEM;
++	snprintf(full, len, "%s%s", prefix, text);
++	error = nsurl_create(full, url);
++	free(full);
++	return error;
++}
++#endif
++
+ /* widths of the toolbar text buttons */
+ #define FB_JS_BUTTON_WIDTH 58
+ #define FB_BKM_BUTTON_WIDTH 72
++
++#ifdef PAPP_NETSURF
++/* ports/netsurf/papp_hotlist.c: bookmarks (NetSurf's hotlist) and history */
++void papp_netsurf_started(void);
++void papp_netsurf_stopping(void);
++bool papp_hotlist_has(struct nsurl *url);
++bool papp_hotlist_toggle(struct nsurl *url);
++
++/* Toolbar buttons 'a' (a star: bookmark this page) and 'k' (the
++ * bookmarks page), between the address bar and the throbber. */
++#undef NSFB_TOOLBAR_DEFAULT_LAYOUT
++#define NSFB_TOOLBAR_DEFAULT_LAYOUT "blfsruazjtc"
++
++#define FB_PAPP_STAR_OFF "\xe2\x98\x86"	/* U+2606 white star */
++#define FB_PAPP_STAR_ON "\xe2\x98\x85"	/* U+2605 black star */
++#define FB_PAPP_LIST "\xe2\x98\xb0"	/* U+2630, three bars: a list */
++
++/* show on the star whether the page is bookmarked: filled or hollow */
++static void fb_papp_update_star(struct gui_window *gw, struct nsurl *url)
++{
++	bool on;
++
++	if (gw->papp_star == NULL)
++		return;
++	on = url != NULL && papp_hotlist_has(url);
++	fbtk_set_text(gw->papp_star, on ? FB_PAPP_STAR_ON : FB_PAPP_STAR_OFF);
++}
++
++/* bookmark the page, or remove its bookmark */
++static void fb_papp_toggle_bookmark(struct gui_window *gw)
++{
++	struct nsurl *url = browser_window_access_url(gw->bw);
++
++	if (url == NULL)
++		return;
++	papp_hotlist_toggle(url);
++	fb_papp_update_star(gw, url);
++}
++
++/* open one of NetSurf's own pages */
++static void fb_papp_open(struct gui_window *gw, const char *address)
++{
++	nsurl *url;
++
++	if (nsurl_create(address, &url) != NSERROR_OK)
++		return;
++	browser_window_navigate(gw->bw, url, NULL, BW_NAVIGATE_HISTORY,
++			NULL, NULL, NULL);
++	nsurl_unref(url);
++}
++
++static int fb_papp_star_click(fbtk_widget_t *widget, fbtk_callback_info *cbi)
++{
++	if (cbi->event->type == NSFB_EVENT_KEY_UP)
++		fb_papp_toggle_bookmark(cbi->context);
++	return 1;
++}
++
++static int fb_papp_hotlist_click(fbtk_widget_t *widget, fbtk_callback_info *cbi)
++{
++	if (cbi->event->type == NSFB_EVENT_KEY_UP)
++		fb_papp_open(cbi->context, "about:hotlist");
++	return 1;
++}
++#endif
+ 
+ fbtk_widget_t *fbtk;
+ 
+@@ -284,7 +416,13 @@
+ 
+ 	/* if the pan exceeds the viewport size just redraw the whole area */
+ 	if (bwidget->pany >= height || bwidget->pany <= -height ||
+-	    bwidget->panx >= width || bwidget->panx <= -width) {
++	    bwidget->panx >= width || bwidget->panx <= -width
++#ifdef PAPP_NETSURF
++	    /* or when a window above (the on-screen keyboard) covers part
++	     * of it: copying would move that window's pixels too */
++	    || fbtk_papp_covered(widget)
++#endif
++	    ) {
+ 
+ 		bwidget->scrolly += bwidget->pany;
+ 		bwidget->scrollx += bwidget->panx;
+@@ -1250,6 +1388,10 @@
+ 		{ NSOPTION_LISTEND, 0},
+ 	};
+ 
++#ifdef PAPP_NETSURF
++	papp_netsurf_set_defaults();
++#endif
++
+ 	/* Set defaults for absent option strings */
+ #ifdef __SWITCH__
+ 	/* JavaScript (QuickJS) is on by default; the Switch CPU is
+@@ -1372,6 +1514,25 @@
+ 			gui_drag.y = y;
+ 			break;
+ 
++#ifdef PAPP_NETSURF
++		case NSFB_KEY_MOUSE_4:
++		case NSFB_KEY_MOUSE_5: {
++			/* the papp surface's wheel events carry the distance:
++			 * vector.y down and vector.z right (papp_surface.c) */
++			int dy = cbi->event->value.vector.y;
++			int dx = cbi->event->value.vector.z;
++
++			if (browser_window_scroll_at_point(gw->bw,
++							   x, y,
++							   dx, dy) == false) {
++				if (dy != 0)
++					widget_scroll_y(gw, dy, false);
++				if (dx != 0)
++					widget_scroll_x(gw, dx, false);
++			}
++			break;
++		}
++#else
+ 		case NSFB_KEY_MOUSE_4:
+ 			/* scroll up */
+ 			if (browser_window_scroll_at_point(gw->bw,
+@@ -1387,6 +1548,7 @@
+ 							   0, 100) == false)
+ 				widget_scroll_y(gw, 100, false);
+ 			break;
++#endif
+ 
+ 		default:
+ 			break;
+@@ -1650,6 +1812,73 @@
+ 			}
+ 			break;
+ 
++#ifdef PAPP_NETSURF
++		case NSFB_KEY_F5:
++			browser_window_reload(gw->bw, true);
++			break;
++
++		case NSFB_KEY_F6:
++			fb_papp_focus_url(gw);
++			break;
++
++		case NSFB_KEY_F13: /* back (Alt+Left, gamepad B) */
++			if (browser_window_back_available(gw->bw))
++				browser_window_history_back(gw->bw, false);
++			fb_update_back_forward(gw);
++			break;
++
++		case NSFB_KEY_F14: /* forward (Alt+Right) */
++			if (browser_window_forward_available(gw->bw))
++				browser_window_history_forward(gw->bw, false);
++			fb_update_back_forward(gw);
++			break;
++
++		case NSFB_KEY_HOME:
++			if (browser_window_key_press(gw->bw,
++					NS_KEY_TEXT_START) == false)
++				widget_scroll_y(gw, 0, true);
++			break;
++
++		case NSFB_KEY_END:
++			if (browser_window_key_press(gw->bw,
++					NS_KEY_TEXT_END) == false)
++				widget_scroll_y(gw, INT_MAX, true);
++			break;
++
++		case NSFB_KEY_l:
++			if (modifier & FBTK_MOD_RCTRL ||
++					modifier & FBTK_MOD_LCTRL) {
++				fb_papp_focus_url(gw);
++				break;
++			}
++			ucs4 = fbtk_keycode_to_ucs4(cbi->event->value.keycode,
++						    modifier);
++			if (ucs4 != -1)
++				browser_window_key_press(gw->bw, ucs4);
++			break;
++#endif
++
++#ifdef PAPP_NETSURF
++		case NSFB_KEY_d: /* Ctrl-D: bookmark the page, or not */
++		case NSFB_KEY_b: /* Ctrl-B: the bookmarks page */
++		case NSFB_KEY_h: /* Ctrl-H: the history page */
++			if (modifier & FBTK_MOD_RCTRL ||
++					modifier & FBTK_MOD_LCTRL) {
++				if (cbi->event->value.keycode == NSFB_KEY_d)
++					fb_papp_toggle_bookmark(gw);
++				else if (cbi->event->value.keycode == NSFB_KEY_b)
++					fb_papp_open(gw, "about:hotlist");
++				else
++					fb_papp_open(gw, "about:history");
++				break;
++			}
++			ucs4 = fbtk_keycode_to_ucs4(cbi->event->value.keycode,
++						    modifier);
++			if (ucs4 != -1)
++				browser_window_key_press(gw->bw, ucs4);
++			break;
++#endif
++
+ 		case NSFB_KEY_RSHIFT:
+ 			modifier |= FBTK_MOD_RSHIFT;
+ 			break;
+@@ -1955,13 +2184,27 @@
+ 	nsurl *url;
+ 	nserror error;
+ 
++#ifdef PAPP_NETSURF
++	error = fb_papp_url(text, &url);
++#else
+ 	error = nsurl_create(text, &url);
++#endif
+ 	if (error != NSERROR_OK) {
+ 		fb_warn_user("Errorcode:", messages_get_errorcode(error));
+ 	} else {
+ 		browser_window_navigate(bw, url, NULL, BW_NAVIGATE_HISTORY,
+ 				NULL, NULL, NULL);
+ 		nsurl_unref(url);
++#ifdef PAPP_NETSURF
++		{
++			/* back to the page, so keys and the d-pad scroll it */
++			struct gui_window *gw;
++			for (gw = window_list; gw != NULL; gw = gw->next) {
++				if (gw->bw == bw)
++					fbtk_set_focus(gw->browser);
++			}
++		}
++#endif
+ 	}
+ 
+ 	return 0;
+@@ -2161,6 +2404,30 @@
+ 			gw->reload = widget;
+ 			break;
+ 
++#ifdef PAPP_NETSURF
++		case 'a': /* bookmark the page (a star) */
++		case 'z': /* the bookmarks page */
++			widget = fbtk_create_text_button(toolbar,
++					(xdir == 1) ? xpos :
++					 xpos - (toolbar_height - 2 * padding),
++					padding,
++					toolbar_height - 2 * padding,
++					-padding,
++					frame_col,
++					FB_COLOUR_BLACK,
++					(*itmtype == 'a') ? fb_papp_star_click :
++					 fb_papp_hotlist_click,
++					gw);
++			if (*itmtype == 'a') {
++				fbtk_set_text(widget, FB_PAPP_STAR_OFF);
++				gw->papp_star = widget;
++			} else {
++				fbtk_set_text(widget, FB_PAPP_LIST);
++				gw->papp_hotlist = widget;
++			}
++			break;
++#endif
++
+ 		case 't': /* throbber/activity indicator */
+ 			widget = fbtk_create_bitmap(toolbar,
+ 						    (xdir == 1)?xpos :
+@@ -2378,6 +2645,17 @@
+ 			w = reload.width;
+ 			h = -padding;
+ 			break;
++
++#ifdef PAPP_NETSURF
++		case 'a': /* bookmark the page (a star) */
++		case 'z': /* the bookmarks page */
++			widget = (*itmtype == 'a') ? gw->papp_star : gw->papp_hotlist;
++			w = toolbar_height - 2 * padding;
++			x = (xdir == 1) ? xpos : xpos - w;
++			y = padding;
++			h = -padding;
++			break;
++#endif
+ 
+ 		case 't': /* throbber/activity indicator */
+ 			widget = gw->throbber;
+@@ -2851,6 +3129,9 @@
+ gui_window_set_url(struct gui_window *g, nsurl *url)
+ {
+ 	fbtk_set_text(g->url, nsurl_access(url));
++#ifdef PAPP_NETSURF
++	fb_papp_update_star(g, url);
++#endif
+ 	fb_update_bookmark_button(g);
+ 	return NSERROR_OK;
+ }
+@@ -3012,6 +3293,39 @@
+ 	}
+ }
+ 
++#ifdef PAPP_NETSURF
++#define FB_PAPP_OSK_MARGIN 8
++
++/* keep a caret at y..y+height in the page clear of the on-screen
++ * keyboard: scroll the page up, or when it cannot scroll that far, move
++ * the keyboard to the top of the screen */
++static void
++fb_papp_osk_follow(struct gui_window *g, int y, int height)
++{
++	struct browser_widget_s *bwidget = fbtk_get_userpw(g->browser);
++	int k0, k1, top, bottom;
++
++	if (!fbtk_papp_osk_area(&k0, &k1))
++		return;
++	top = fbtk_get_absy(g->browser) + y -
++		(bwidget->scrolly + bwidget->pany) - FB_PAPP_OSK_MARGIN;
++	bottom = top + height + 2 * FB_PAPP_OSK_MARGIN;
++	if (bottom <= k0 || top >= k1)
++		return; /* clear of the keyboard */
++	if (k0 == 0) {
++		/* the keyboard is at the top, over the caret: back down */
++		fbtk_papp_osk_place(false);
++		if (!fbtk_papp_osk_area(&k0, &k1) || bottom <= k0)
++			return;
++	}
++	widget_scroll_y(g, bottom - k0, false);
++	bottom = fbtk_get_absy(g->browser) + y + height -
++		(bwidget->scrolly + bwidget->pany) + FB_PAPP_OSK_MARGIN;
++	if (bottom > k0)
++		fbtk_papp_osk_place(true);
++}
++#endif
++
+ static void
+ gui_window_place_caret(struct gui_window *g, int x, int y, int height,
+ 		const struct rect *clip)
+@@ -3034,6 +3348,9 @@
+ 	/* set new pos */
+ 	fbtk_set_caret(g->browser, true, x, y, height,
+ 			gui_window_remove_caret_cb);
++#ifdef PAPP_NETSURF
++	fb_papp_osk_follow(g, y, height);
++#endif
+ 
+ 	/* redraw new caret pos */
+ 	fb_queue_redraw(g->browser,
+@@ -3141,7 +3458,7 @@
+ 		.media = framebuffer_media_table,
+ #endif
+ #ifdef FB_USE_FREETYPE
+-		.canvas = framebuffer_canvas_table,
++		.canvas = NULL,
+ #endif
+ 	};
+ 
+@@ -3221,7 +3538,7 @@
+ 		die("Unable to initialise the font system");
+ 
+ 	/* let the html core hand fetched @font-face blobs to freetype */
+-	html_webfont_set_register_cb(fb_font_register_webfont);
++	/* The PAX FreeType frontend does not provide webfonts yet. */
+ 
+ 	fbtk = fbtk_init(nsfb);
+ 
+@@ -3232,10 +3549,17 @@
+ 	/* Bookmarks live in an HTML hotlist file on the SD card. This must
+ 	 * come after fb_font_init(): hotlist_init builds a treeview, which
+ 	 * measures its text with the font system. */
++#ifndef PAPP_NETSURF
+ 	ret = hotlist_init(FB_HOTLIST_PATH, FB_HOTLIST_PATH);
+ 	if (ret != NSERROR_OK) {
+ 		NSLOG(netsurf, INFO, "hotlist init failed: %d", ret);
+ 	}
++#endif
++
++#ifdef PAPP_NETSURF
++	/* bookmarks and the history of visited pages */
++	papp_netsurf_started();
++#endif
+ 
+ 	/* create an initial browser window */
+ 
+@@ -3260,7 +3584,13 @@
+ 
+ 	/* stop any audio and flush bookmarks before the core goes down */
+ 	switch_audio_stop();
++#ifndef PAPP_NETSURF
+ 	hotlist_fini();
++#endif
++
++#ifdef PAPP_NETSURF
++	papp_netsurf_stopping();
++#endif
+ 
+ 	netsurf_exit();
+ 
+--- a/frontends/framebuffer/gui.h
++++ b/frontends/framebuffer/gui.h
+@@ -57,6 +57,11 @@
+ 
+ 	struct gui_window *next;
+ 	struct gui_window *prev;
++
++#ifdef PAPP_NETSURF
++	struct fbtk_widget_s *papp_star; /* bookmark the page */
++	struct fbtk_widget_s *papp_hotlist; /* the bookmarks page */
++#endif
+ };
+ 
+ 
+--- a/libs/libcss/src/select/autogenerated_destroy.inc
++++ b/libs/libcss/src/select/autogenerated_destroy.inc
+@@ -145,7 +145,7 @@
+ /* set_visibility(style, 0, 0, CSS_UNIT_PX); */
+ /* set_white_space(style, 0, 0, CSS_UNIT_PX); */
+ /* set_widows(style, 0, 0, CSS_UNIT_PX); */
+-set_width(style, 0, (css_fixed_or_calc)0, CSS_UNIT_PX);
++set_width(style, 0, (css_fixed_or_calc)(css_fixed)0, CSS_UNIT_PX);
+ /* set_word_break(style, 0, 0, CSS_UNIT_PX); */
+ /* set_word_spacing(style, 0, 0, CSS_UNIT_PX); */
+ /* set_writing_mode(style, 0, 0, CSS_UNIT_PX); */
+--- a/libs/libcss/src/select/properties/helpers.c
++++ b/libs/libcss/src/select/properties/helpers.c
+@@ -232,7 +232,7 @@
+ 				css_unit))
+ {
+ 	uint16_t value = CSS_BOTTOM_INHERIT;
+-	css_fixed_or_calc length = (css_fixed_or_calc)0;
++	css_fixed_or_calc length = (css_fixed_or_calc)(css_fixed)0;
+ 	uint32_t unit = CSS_UNIT_PX;
+ 	uint32_t snum = 0;
+ 
+--- a/libs/libcss/src/select/properties/width.c
++++ b/libs/libcss/src/select/properties/width.c
+@@ -29,14 +29,14 @@
+ 
+ css_error css__initial_width(css_select_state *state)
+ {
+-	return set_width(state->computed, CSS_WIDTH_AUTO, (css_fixed_or_calc)0, CSS_UNIT_PX);
++	return set_width(state->computed, CSS_WIDTH_AUTO, (css_fixed_or_calc)(css_fixed)0, CSS_UNIT_PX);
+ }
+ 
+ css_error css__copy_width(
+ 		const css_computed_style *from,
+ 		css_computed_style *to)
+ {
+-	css_fixed_or_calc length = (css_fixed_or_calc)0;
++	css_fixed_or_calc length = (css_fixed_or_calc)(css_fixed)0;
+ 	css_unit unit = CSS_UNIT_PX;
+ 	uint8_t type = get_width(from, &length, &unit);
+ 
+@@ -51,7 +51,7 @@
+ 		const css_computed_style *child,
+ 		css_computed_style *result)
+ {
+-	css_fixed_or_calc length = (css_fixed_or_calc)0;
++	css_fixed_or_calc length = (css_fixed_or_calc)(css_fixed)0;
+ 	css_unit unit = CSS_UNIT_PX;
+ 	uint8_t type = get_width(child, &length, &unit);
+ 
+--- a/utils/config.h
++++ b/utils/config.h
+@@ -213,4 +213,31 @@
+ 	#define NO_IPV6
+ #endif
+ 
+-#endif
++/* ESP32-P4 PAPP loader: newlib without sockets, directory listing, mmap,
++ * regex or signals. The port (ports/netsurf) supplies the headers and
++ * the functions NetSurf's own fallbacks (utils/utils.c) do not cover. */
++#if defined(PAPP_NETSURF)
++#undef HAVE_MMAP
++#undef WITH_MMAP
++#undef HAVE_SCANDIR
++#undef HAVE_DIRFD
++#undef HAVE_UNLINKAT
++#undef HAVE_FSTATAT
++#undef HAVE_REGEX
++#undef HAVE_SIGPIPE
++#undef HAVE_REALPATH
++char *realpath(const char *path, char *resolved_path);
++#undef HAVE_INETATON
++#undef HAVE_INETPTON
++#undef HAVE_EXECINFO
++#ifndef NO_IPV6
++#define NO_IPV6 1
++#endif
++#include <errno.h>
++#include <limits.h>
++#ifndef PATH_MAX
++#define PATH_MAX 1024
++#endif
++#endif
++
++#endif
+--- a/utils/idna.c
++++ b/utils/idna.c
+@@ -167,7 +167,7 @@
+ 
+ #ifdef WITH_UTF8PROC
+ 
+-#include <libutf8proc/utf8proc.h>
++#include <utf8proc.h>
+ 
+ int32_t idna_contexto[] = {
+ 	/* CONTEXTO codepoints which have a rule defined */

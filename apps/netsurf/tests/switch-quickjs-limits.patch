@@ -1,0 +1,27 @@
+--- a/content/handlers/javascript/quickjs/quickjs.c
++++ b/content/handlers/javascript/quickjs/quickjs.c
+@@ -41,7 +41,13 @@
+ 
+ #include <nsutils/time.h>
+ 
++#ifdef PAPP_NETSURF
++#define QJS_MEMORY_LIMIT (4 * 1024 * 1024)
++#define QJS_STACK_LIMIT (128 * 1024)
++#define QJS_TIMEOUT_LIMIT 3
++#else
+ #define QJS_MEMORY_LIMIT (64 * 1024 * 1024)
++#endif
+ 
+ /* abort long-running scripts via the runtime interrupt hook */
+ static int qjs_interrupt_handler(JSRuntime *rt, void *opaque)
+@@ -140,6 +146,10 @@
+ 	}
+ 
+ 	JS_SetMemoryLimit(heap->rt, QJS_MEMORY_LIMIT);
++#ifdef PAPP_NETSURF
++	JS_SetMaxStackSize(heap->rt, QJS_STACK_LIMIT);
++	if (timeout <= 0 || timeout > QJS_TIMEOUT_LIMIT) timeout = QJS_TIMEOUT_LIMIT;
++#endif
+ 	if (getenv("NS_JS_LEAKS") != NULL)
+ 		JS_SetDumpFlags(heap->rt, JS_DUMP_LEAKS);
+ 	JS_SetInterruptHandler(heap->rt, qjs_interrupt_handler, heap);

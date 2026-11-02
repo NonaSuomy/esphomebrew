@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "app": "gw",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/gw/incoming",
+  "folders": [
+    "/sd/roms/gw"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/gw/*",
+      "note": "compatible Game & Watch .gw ROM"
+    }
+  ],
+  "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\ncompatible Game & Watch .gw ROM\n\nFILES / FOLDERS\n\n/sd/roms/gw/* — compatible Game & Watch .gw ROM",
+  "media": [],
+  "sources": []
+}

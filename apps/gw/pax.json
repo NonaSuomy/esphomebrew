@@ -1,7 +1,7 @@
 {
   "name": "gw",
   "title": "Game & Watch",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Nintendo Game & Watch emulator. Put the system ROM in /sd/roms/gw/.",
   "author": "RetroESP32-P4 port",
   "category": "Emulator",
@@ -20,8 +20,8 @@
   "icon": "icon.png",
   "requires": [
     {
-      "path": "/sd/roms/gw/",
-      "note": "Place a compatible ROM or disk image here"
+      "path": "/sd/roms/gw/*",
+      "note": "compatible Game & Watch .gw ROM"
     }
   ],
   "build": "custom",
@@ -31,15 +31,15 @@
     "path": "components/psram_app_loader"
   },
   "includes": [
-    "local:ports/retroesp32/apps/psram_gw",
-    "local:ports/retroesp32/components/gw_emulator",
-    "local:ports/retroesp32/components/gw_emulator/src",
-    "local:ports/retroesp32/components/gw_emulator/src/cpus",
-    "local:ports/retroesp32/components/gw_emulator/src/gw_sys",
-    "local:ports/retroesp32/apps/papp_emulator_common",
-    "local:ports/retroesp32/apps/papp_emulator_common/compat",
-    "local:ports/retroesp32/apps/psram_c64",
-    "local:ports/retroesp32/components"
+    "local:apps/gw",
+    "local:apps/gw/core",
+    "local:apps/gw/core/src",
+    "local:apps/gw/core/src/cpus",
+    "local:apps/gw/core/src/gw_sys",
+    "local:apps/pax_emulator_common",
+    "local:apps/pax_emulator_common/compat",
+    "local:apps/c64",
+    "local:apps/_shared/component-includes"
   ],
   "cflags": [
     "-DPAPP_APP_SIDE=1",
@@ -77,7 +77,7 @@
   ],
   "groups": [
     {
-      "dir": "local:ports/retroesp32/components/gw_emulator",
+      "dir": "local:apps/gw/core",
       "files": [
         "src/lz4_depack.c",
         "src/cpus/sm500core.c",
@@ -94,23 +94,23 @@
       "prefix": "core_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_gw",
+      "dir": "local:apps/gw",
       "files": [
-        "papp_main.c"
+        "pax_main.c"
       ],
       "prefix": "app_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/papp_emulator_common",
+      "dir": "local:apps/pax_emulator_common",
       "files": [
-        "papp_libc.c"
+        "pax_libc.c"
       ],
       "prefix": "common_"
     },
     {
-      "dir": "local:ports/retroesp32/apps/psram_c64",
+      "dir": "local:apps/c64",
       "files": [
-        "papp_syscalls.c"
+        "pax_syscalls.c"
       ],
       "prefix": "sys_"
     }
@@ -128,5 +128,10 @@
     "-Wl,--wrap=fgetc",
     "-Wl,--wrap=exit"
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json",
+  "changelog": "0.1.1 updates audio playback and the PAX menu integration.",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
 }

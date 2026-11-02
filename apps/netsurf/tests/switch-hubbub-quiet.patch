@@ -1,0 +1,11 @@
+--- a/libs/libhubbub/src/treebuilder/treebuilder.c
++++ b/libs/libhubbub/src/treebuilder/treebuilder.c
+@@ -213,7 +213,7 @@
+ 	assert((signed) treebuilder->context.current_node >= 0);
+ 
+ /* A slightly nasty debugging hook, but very useful */
+-#ifdef NDEBUG
++#if defined(NDEBUG) || defined(PAPP_NETSURF)
+ # define mode(x) \
+ 		case x:
+ #else

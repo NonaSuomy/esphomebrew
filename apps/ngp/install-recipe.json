@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "app": "ngp",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/ngp/incoming",
+  "folders": [
+    "/sd/roms/ngp"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/ngp/*",
+      "note": ".ngp or .ngc"
+    }
+  ],
+  "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\n.ngp or .ngc\n\nFILES / FOLDERS\n\n/sd/roms/ngp/* — .ngp or .ngc",
+  "media": [],
+  "sources": []
+}

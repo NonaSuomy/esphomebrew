@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "app": "stella",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/stella/incoming",
+  "folders": [
+    "/sd/roms/stella"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/stella/*",
+      "note": ".a26 or compatible cartridge ROM"
+    }
+  ],
+  "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\n.a26 or compatible cartridge ROM\n\nFILES / FOLDERS\n\n/sd/roms/stella/* — .a26 or compatible cartridge ROM",
+  "media": [],
+  "sources": []
+}

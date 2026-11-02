@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "app": "pce",
+  "mode": "local-files",
+  "archive_dir": "/sd/roms/pce/incoming",
+  "folders": [
+    "/sd/roms/pce"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/pce/*",
+      "note": ".pce cartridge; this adapter is not a PC Engine CD BIOS installer"
+    }
+  ],
+  "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\n.pce cartridge; this adapter is not a PC Engine CD BIOS installer\n\nFILES / FOLDERS\n\n/sd/roms/pce/* — .pce cartridge; this adapter is not a PC Engine CD BIOS installer",
+  "media": [],
+  "sources": []
+}

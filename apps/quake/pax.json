@@ -1,7 +1,7 @@
 {
   "name": "quake",
   "title": "Quake",
-  "version": "0.1.2",
+  "version": "0.1.6",
   "description": "WinQuake as a PSRAM app, with MP3 music. The store downloads the shareware id1/pak0.pak to /sd/roms/quake/.",
   "author": "id Software (WinQuake); P4 port by RetroESP32-P4",
   "category": "Game",
@@ -32,7 +32,7 @@
     "path": "apps/psram_quake"
   },
   "includes": [
-    "apps/psram_quake/compat",
+    "local:apps/quake/compat",
     "components/psram_app_loader/include",
     "components/quake/winquake",
     "components/quake/esp32quake",
@@ -157,21 +157,21 @@
       ]
     },
     {
-      "dir": "apps/psram_quake",
+      "dir": "local:apps/quake",
       "files": [
-        "papp_main.c",
-        "papp_vid.c",
-        "papp_snd.c",
-        "papp_input.c",
-        "papp_sys.c",
-        "papp_rg_stubs.c",
-        "papp_syscalls.c"
+        "pax_main.c",
+        "pax_vid.c",
+        "pax_snd.c",
+        "pax_input.c",
+        "pax_sys.c",
+        "pax_rg_stubs.c",
+        "pax_syscalls.c"
       ]
     },
     {
-      "dir": "apps/psram_quake",
+      "dir": "local:apps/quake",
       "files": [
-        "papp_mp3.cpp"
+        "pax_mp3.cpp"
       ],
       "prefix": "mp3_",
       "includes": [
@@ -180,7 +180,7 @@
       ]
     },
     {
-      "dir": "apps/psram_quake/third_party/micro-mp3/opencore-mp3dec",
+      "dir": "local:apps/quake/third_party/micro-mp3/opencore-mp3dec",
       "files": [
         "pvmp3_alias_reduction.cpp",
         "pvmp3_crc.cpp",
@@ -235,5 +235,10 @@
         "sha256": "35a9c55e5e5a284a159ad2a62e0e8def23d829561fe2f54eb402dbc0a9a946af"
       }
     ]
-  }
+  },
+  "install_recipe": "install-recipe.json",
+  "changelog": "0.1.6 restores high audio-task priority after device logs showed the 0.1.5 mixer falling below the target sample rate; retains 256-frame output blocks.",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
 }

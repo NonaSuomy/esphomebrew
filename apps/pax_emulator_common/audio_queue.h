@@ -4,7 +4,12 @@
 /* Single producer/single consumer. The producer owns a slot until publishing
  * ready; the consumer releases it only after the synchronous I2S call ends.
  * No allocation, libc FILE access, or core state is shared with this task. */
+#ifndef EMU_AUDIO_SLOTS
 #define EMU_AUDIO_SLOTS 3
+#endif
+#ifndef EMU_AUDIO_PREFILL
+#define EMU_AUDIO_PREFILL 1
+#endif
 #define EMU_AUDIO_FRAMES 1152
 static struct {
     int16_t *data;
@@ -17,6 +22,14 @@ static void emu_audio_task(void *unused)
 {
     (void)unused;
     unsigned tail=0;
+    /* Let the producer establish a small reserve before starting playback. */
+    while (!__atomic_load_n(&emu_audio.stop,__ATOMIC_ACQUIRE)) {
+        unsigned ready=0;
+        for (unsigned i=0; i<EMU_AUDIO_SLOTS; ++i)
+            ready += !!__atomic_load_n(&emu_audio.ready[i],__ATOMIC_ACQUIRE);
+        if (ready >= EMU_AUDIO_PREFILL) break;
+        _pax_svc->delay_ms(1);
+    }
     for (;;) {
         if (__atomic_load_n(&emu_audio.ready[tail],__ATOMIC_ACQUIRE)) {
             _pax_svc->audio_submit(emu_audio.data+tail*EMU_AUDIO_FRAMES*2,emu_audio.count[tail]);
@@ -38,7 +51,7 @@ static void emu_audio_task(void *unused)
 static void emu_audio_start(int rate)
 {
     _pax_svc->audio_init(rate);
-    emu_audio.data=calloc(EMU_AUDIO_SLOTS*EMU_AUDIO_FRAMES*2,sizeof(int16_t));
+    emu_audio.data=(int16_t *)calloc(EMU_AUDIO_SLOTS*EMU_AUDIO_FRAMES*2,sizeof(int16_t));
     if (!emu_audio.data) return; /* synchronous fallback */
     if (_pax_svc->task_create(emu_audio_task,"pax_audio",4096,NULL,6,&emu_audio.task,1)) {
         free(emu_audio.data); emu_audio.data=NULL; emu_audio.task=NULL;

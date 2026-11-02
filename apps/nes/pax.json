@@ -1,24 +1,33 @@
 {
   "name": "nes",
   "title": "NES (nofrendo)",
-  "version": "0.1.4",
+  "version": "0.6.1",
   "description": "Nintendo Entertainment System emulator as a PSRAM app. Add .nes ROMs under /sd/roms/nes/ or /usb0/roms/nes/.",
   "author": "nofrendo; P4 PAX port by NonaSuomy",
   "category": "Emulator",
   "license": "LGPL-2.0",
   "icon": "icon_nes_platform.png",
   "about": "The classic nofrendo 2.0 NES core running as an ESP32-P4 PAX. The launcher selects a .nes ROM from the configured storage; no ROMs are bundled.",
-  "changelog": "0.1.3 fixes ZIP ROM extraction (build against correct loader ABI header); 0.1.1 fixes a heap-corruption crash when closing the NES app.",
+  "changelog": "0.6.1 allows saved ZIP ROM selections to reach extraction instead of rejecting them as stale; 0.6.0 swaps NES save/load and video pages inside the shared GAME MENU without closing the overlay, and fixes legacy menu rendering; 0.5.0 adds NES OPTIONS to GAME MENU; 0.3.0 adds per-ROM screenshots and video options; 0.2.0 adds ten SNSS save slots and previews.",
   "controls": [
     "D-pad: D-pad",
     "A / B: A / B",
     "Start / Select: Start / Select",
-    "Menu or L+R: quit to launcher",
-    "L3 / on-screen close: quit to launcher",
-    "Save states are disabled in this port"
+    "Switch Capture/Picture button: open the slide-down GAME MENU",
+    "NES OPTIONS: swap GAME MENU rows for NES controls",
+    "Swipe down from the top edge: open GAME MENU",
+    "GAME MENU: choose RESUME GAME to return to play",
+    "L+R or L3 / on-screen close: quit to launcher",
+    "A select; D-pad move; Left/Right adjust; B previous page",
+    "Save/load states: 10 per-ROM slots with previews",
+    "Options: palette, side crop, 1.5x/2x/2.5x zoom",
+    "Screenshot: saves a BMP under /sd/roms/nes/.states/"
   ],
   "requires": [
-    {"path": "/sd/roms/nes/", "note": "Place .nes or .zip ROMs here; Select game scans this folder", "optional": true}
+    {
+      "path": "/sd/roms/nes/*",
+      "note": ".nes or ZIP"
+    }
   ],
   "upstream": {
     "project": "nofrendo",
@@ -32,11 +41,12 @@
     "path": "apps/psram_nes"
   },
   "patches": [
-    "local:ports/nes/patches/*.patch"
+    "local:apps/nes/patches/0001-save-state-core.patch"
   ],
   "includes": [
-    "apps/psram_nes",
-    "apps/papp_emulator_common",
+    "local:apps/nes",
+    "local:apps/nes",
+    "local:apps/pax_emulator_common",
     "components/psram_app_loader/include",
     "components/nofrendo/include"
   ],
@@ -127,6 +137,7 @@
         "nes/nes_ppu.c",
         "nes/nes_rom.c",
         "nes/nesinput.c",
+        "nes/nesstate.c",
         "sndhrdw/fds_snd.c",
         "sndhrdw/mmc5_snd.c",
         "sndhrdw/nes_apu.c",
@@ -134,20 +145,30 @@
       ]
     },
     {
-      "dir": "apps/psram_nes",
+      "dir": "local:apps/nes",
       "files": [
-        "papp_main.c",
-        "papp_osd.c",
-        "papp_platform.c",
-        "papp_libc.c"
+        "pax_main.c",
+        "pax_osd.c",
+        "pax_platform.c",
+        "pax_libc.c"
       ]
     },
     {
-      "dir": "apps/psram_opentyrian",
+      "dir": "local:apps/opentyrian",
       "files": [
-        "papp_syscalls.c"
+        "pax_syscalls.c"
+      ]
+    },
+    {
+      "dir": "local:apps/nes",
+      "files": [
+        "pax_nes_options.c"
       ]
     }
   ],
-  "newlib": true
+  "newlib": true,
+  "install_recipe": "install-recipe.json",
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ]
 }

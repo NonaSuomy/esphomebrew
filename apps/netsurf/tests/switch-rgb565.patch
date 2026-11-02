@@ -1,0 +1,289 @@
+--- a/frontends/framebuffer/fbfx.c
++++ b/frontends/framebuffer/fbfx.c
+@@ -52,8 +52,9 @@
+ #define NS_B(c) ((int)(((c) >> 16) & 0xff))
+ 
+ struct fx_surface {
+-	uint32_t *ptr;
+-	int stride; /* in pixels */
++	uint8_t *ptr;
++	int stride; /* in bytes */
++	int bpp;
+ 	int w, h;
+ 	bool bgr; /* pixel layout 0xXXBBGGRR (else 0xXXRRGGBB) */
+ 	int cx0, cy0, cx1, cy1; /* effective clip */
+@@ -72,12 +73,14 @@
+ 	if (nsfb_get_geometry(fx_nsfb, &s->w, &s->h, &fmt) != 0)
+ 		return false;
+ 	if (fmt != NSFB_FMT_XBGR8888 && fmt != NSFB_FMT_ABGR8888 &&
+-	    fmt != NSFB_FMT_XRGB8888 && fmt != NSFB_FMT_ARGB8888)
++	    fmt != NSFB_FMT_XRGB8888 && fmt != NSFB_FMT_ARGB8888 &&
++	    fmt != NSFB_FMT_RGB565)
+ 		return false;
+ 	if (nsfb_get_buffer(fx_nsfb, &ptr, &stride) != 0 || ptr == NULL)
+ 		return false;
+-	s->ptr = (uint32_t *)ptr;
+-	s->stride = stride / 4;
++	s->ptr = ptr;
++	s->stride = stride;
++	s->bpp = fmt == NSFB_FMT_RGB565 ? 2 : 4;
+ 	s->bgr = (fmt == NSFB_FMT_XBGR8888 || fmt == NSFB_FMT_ABGR8888);
+ 
+ 	nsfb_plot_get_clip(fx_nsfb, &clip);
+@@ -91,7 +94,11 @@
+ static inline void fx_unpack(const struct fx_surface *s, uint32_t p,
+ 		int *r, int *g, int *b)
+ {
+-	if (s->bgr) {
++	if (s->bpp == 2) {
++		*r = ((p >> 11) & 31) * 255 / 31;
++		*g = ((p >> 5) & 63) * 255 / 63;
++		*b = (p & 31) * 255 / 31;
++	} else if (s->bgr) {
+ 		*r = p & 0xff; *g = (p >> 8) & 0xff; *b = (p >> 16) & 0xff;
+ 	} else {
+ 		*b = p & 0xff; *g = (p >> 8) & 0xff; *r = (p >> 16) & 0xff;
+@@ -100,13 +107,27 @@
+ 
+ static inline uint32_t fx_pack(const struct fx_surface *s, int r, int g, int b)
+ {
++	if (s->bpp == 2)
++		return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
+ 	if (s->bgr)
+ 		return 0xff000000u | (b << 16) | (g << 8) | r;
+ 	return 0xff000000u | (r << 16) | (g << 8) | b;
+ }
+ 
++/* Pixels can be RGB565 or 32-bit and rows may have padding. */
++static inline uint32_t fx_read(const struct fx_surface *s, const uint8_t *px)
++{
++    if (s->bpp == 2) { uint16_t v; memcpy(&v, px, sizeof(v)); return v; }
++    uint32_t v; memcpy(&v, px, sizeof(v)); return v;
++}
++static inline void fx_write(const struct fx_surface *s, uint8_t *px, uint32_t v)
++{
++    if (s->bpp == 2) { uint16_t p = (uint16_t)v; memcpy(px, &p, sizeof(p)); }
++    else memcpy(px, &v, sizeof(v));
++}
++
+ /** blend colour (r,g,b) with coverage a (0..256) onto pixel */
+-static inline void fx_blend(const struct fx_surface *s, uint32_t *px,
++static inline void fx_blend(const struct fx_surface *s, uint8_t *px,
+ 		int r, int g, int b, int a)
+ {
+ 	int dr, dg, db;
+@@ -114,14 +135,14 @@
+ 	if (a <= 0)
+ 		return;
+ 	if (a >= 256) {
+-		*px = fx_pack(s, r, g, b);
++		fx_write(s, px, fx_pack(s, r, g, b));
+ 		return;
+ 	}
+-	fx_unpack(s, *px, &dr, &dg, &db);
++	fx_unpack(s, fx_read(s, px), &dr, &dg, &db);
+ 	dr += ((r - dr) * a) >> 8;
+ 	dg += ((g - dg) * a) >> 8;
+ 	db += ((b - db) * a) >> 8;
+-	*px = fx_pack(s, dr, dg, db);
++	fx_write(s, px, fx_pack(s, dr, dg, db));
+ }
+ 
+ /**
+@@ -256,7 +277,7 @@
+ 	y1 = outer->y1 < s.cy1 ? outer->y1 : s.cy1;
+ 
+ 	for (y = y0; y < y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		bool simple = fx_rr_row_simple(&ro, y);
+ 		for (x = x0; x < x1; x++) {
+ 			int cov;
+@@ -282,7 +303,7 @@
+ 					cov -= fx_rr_cover(&ri, x, y);
+ 			}
+ 			if (cov > 0)
+-				fx_blend(&s, row + x, r, g, b,
++				fx_blend(&s, row + x * s.bpp, r, g, b,
+ 						(cov * alpha) >> 8);
+ 		}
+ 	}
+@@ -355,21 +376,21 @@
+ 			fx_gradient_colour(g, t, &r, &gg, &b, &a);
+ 			a = a + (a >> 7);
+ 			for (y = y0; y < y1; y++)
+-				fx_blend(&s, s.ptr + y * s.stride + x,
++				fx_blend(&s, s.ptr + y * s.stride + x * s.bpp,
+ 						r, gg, b, a);
+ 		}
+ 		return NSERROR_OK;
+ 	}
+ 
+ 	for (y = y0; y < y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		if (!g->radial && fabsf(g->dx) < 0.0001f) {
+ 			/* vertical gradient: one colour per row */
+ 			float t = ((y + 0.5f - g->y0) * g->dy) / g->length;
+ 			fx_gradient_colour(g, t, &r, &gg, &b, &a);
+ 			a = a + (a >> 7);
+ 			for (x = x0; x < x1; x++)
+-				fx_blend(&s, row + x, r, gg, b, a);
++				fx_blend(&s, row + x * s.bpp, r, gg, b, a);
+ 			continue;
+ 		}
+ 		for (x = x0; x < x1; x++) {
+@@ -385,7 +406,7 @@
+ 				     (y + 0.5f - g->y0) * g->dy) / g->length;
+ 			}
+ 			fx_gradient_colour(g, t, &r, &gg, &b, &a);
+-			fx_blend(&s, row + x, r, gg, b, a + (a >> 7));
++			fx_blend(&s, row + x * s.bpp, r, gg, b, a + (a >> 7));
+ 		}
+ 	}
+ 	return NSERROR_OK;
+@@ -448,7 +469,7 @@
+ 	if (y1 > s.cy1) y1 = s.cy1;
+ 
+ 	for (y = y0; y < y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		for (x = x0; x < x1; x++) {
+ 			float d, v;
+ 			int cb = fx_rr_cover(&rb, x, y);
+@@ -482,7 +503,7 @@
+ 				v *= cb / 256.0f;
+ 			else
+ 				v *= (256 - cb) / 256.0f;
+-			fx_blend(&s, row + x, r, g, b, (int)(v * a * 256 / 255));
++			fx_blend(&s, row + x * s.bpp, r, g, b, (int)(v * a * 256 / 255));
+ 		}
+ 	}
+ 	return NSERROR_OK;
+@@ -537,9 +558,9 @@
+ 		return NSERROR_OK;
+ 	}
+ 	for (y = l->y0; y < l->y1; y++) {
+-		memcpy(l->pixels + (size_t)(y - l->y0) * w,
+-				s.ptr + y * s.stride + l->x0,
+-				w * sizeof(uint32_t));
++		for (int x = 0; x < w; ++x)
++			l->pixels[(size_t)(y - l->y0) * w + x] =
++				fx_read(&s, s.ptr + y * s.stride + (l->x0 + x) * s.bpp);
+ 	}
+ 	return NSERROR_OK;
+ }
+@@ -610,7 +631,7 @@
+ 	w = l->x1 - l->x0;
+ 
+ 	for (y = l->y0; y < l->y1; y++) {
+-		uint32_t *row = s.ptr + y * s.stride;
++		uint8_t *row = s.ptr + y * s.stride;
+ 		uint32_t *saved = l->pixels + (size_t)(y - l->y0) * w - l->x0;
+ 		bool simple_row = !rounded || fx_rr_row_simple(&rr, y);
+ 
+@@ -622,9 +643,9 @@
+ 				bx0 = bx1 = l->x0;
+ 			}
+ 			for (x = l->x0; x < bx0; x++)
+-				row[x] = saved[x];
++				fx_write(&s, row + x * s.bpp, saved[x]);
+ 			for (x = bx1 > l->x0 ? bx1 : l->x0; x < l->x1; x++)
+-				row[x] = saved[x];
++				fx_write(&s, row + x * s.bpp, saved[x]);
+ 			continue;
+ 		}
+ 
+@@ -643,24 +664,24 @@
+ 			if (cov >= 256 && !filter)
+ 				continue;
+ 			/* pixels the layer did not paint are backdrop */
+-			if (cov > 0 && row[x] == saved[x])
++			if (cov > 0 && fx_read(&s, row + x * s.bpp) == saved[x])
+ 				continue;
+ 			if (cov <= 0) {
+-				row[x] = saved[x];
++				fx_write(&s, row + x * s.bpp, saved[x]);
+ 				continue;
+ 			}
+-			fx_unpack(&s, row[x], &r, &g, &b);
++			fx_unpack(&s, fx_read(&s, row + x * s.bpp), &r, &g, &b);
+ 			if (filter)
+ 				fx_filter(p, &r, &g, &b);
+ 			if (cov >= 256) {
+-				row[x] = fx_pack(&s, r, g, b);
++				fx_write(&s, row + x * s.bpp, fx_pack(&s, r, g, b));
+ 				continue;
+ 			}
+ 			fx_unpack(&s, saved[x], &sr, &sg, &sb);
+ 			sr += ((r - sr) * cov) >> 8;
+ 			sg += ((g - sg) * cov) >> 8;
+ 			sb += ((b - sb) * cov) >> 8;
+-			row[x] = fx_pack(&s, sr, sg, sb);
++			fx_write(&s, row + x * s.bpp, fx_pack(&s, sr, sg, sb));
+ 		}
+ 	}
+ 
+@@ -779,7 +800,7 @@
+ 		float acc = 0;
+ 		float *row = r->a + y * stride;
+ 		int dy = r->y0 + y;
+-		uint32_t *px;
++		uint8_t *px;
+ 
+ 		if (dy < s->cy0 || dy >= s->cy1)
+ 			continue;
+@@ -792,7 +813,7 @@
+ 			if (v < 0.002f || dx < s->cx0 || dx >= s->cx1)
+ 				continue;
+ 			cov = v >= 1.0f ? 256 : (int)(v * 256.0f);
+-			fx_blend(s, px + dx, cr, cg, cb, (cov * alpha) >> 8);
++			fx_blend(s, px + dx * s->bpp, cr, cg, cb, (cov * alpha) >> 8);
+ 		}
+ 	}
+ }
+@@ -1165,14 +1186,14 @@
+ 	for (dy = y0; dy < y1; dy++) {
+ 		int sy = (dy - y) * bh / height;
+ 		const uint32_t *srow = (const uint32_t *)(bptr + sy * bstride);
+-		uint32_t *drow = s.ptr + dy * s.stride;
++		uint8_t *drow = s.ptr + dy * s.stride;
+ 		for (dx = x0; dx < x1; dx++) {
+ 			int sx = (dx - x) * bw / width;
+ 			int a = (srow[sx] >> 24) & 0xff;
+ 			if (fmt == NSFB_FMT_XBGR8888 || fmt == NSFB_FMT_XRGB8888)
+ 				a = 255;
+ 			a = a + (a >> 7);
+-			fx_blend(&s, drow + dx, r, g, b, (a * ta) >> 8);
++			fx_blend(&s, drow + dx * s.bpp, r, g, b, (a * ta) >> 8);
+ 		}
+ 	}
+ 	return true;
+@@ -1215,22 +1236,12 @@
+ 	for (y = y0; y < y1; y++) {
+ 		const uint32_t *srow = px + (size_t)((int64_t)(y - dst->y0) *
+ 				h / dh) * w;
+-		uint32_t *drow = s.ptr + y * s.stride + x0;
++		uint8_t *drow = s.ptr + y * s.stride + x0 * s.bpp;
+ 		int n = x1 - x0;
+-		if (s.bgr) {
+-			/* source bytes R,G,B,X match 0xXXBBGGRR */
+-			if (w == dw) {
+-				memcpy(drow, srow + xmap[0], n * 4);
+-			} else {
+-				for (x = 0; x < n; x++)
+-					drow[x] = srow[xmap[x]] | 0xff000000u;
+-			}
+-		} else {
+-			for (x = 0; x < n; x++) {
+-				uint32_t p = srow[xmap[x]];
+-				drow[x] = 0xff000000u | ((p & 0xff) << 16) |
+-					(p & 0xff00) | ((p >> 16) & 0xff);
+-			}
++		for (x = 0; x < n; x++) {
++			uint32_t pixel = srow[xmap[x]];
++			fx_write(&s, drow + x * s.bpp,
++				fx_pack(&s, pixel & 255, (pixel >> 8) & 255, (pixel >> 16) & 255));
+ 		}
+ 	}
+ 	free(xmap);
