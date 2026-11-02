@@ -19,9 +19,14 @@
     "Close or physical L3: return to launcher"
   ],
   "changelog": "0.5.0: full-screen 1024x600 layout with scaled controls and touch targets.",
+  "publish": true,
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "linker_script": "local:apps/stargus/psram_app.ld",
   "source": {
     "repo": "https://github.com/NonaSuomy/esphomebrew",
-    "ref": "eb592fd4106dc8a269115d65687b932d91c2321d",
+    "ref": "e22b5b054c7b4c0e04835b299d15036e876d4645",
     "path": "apps/ble_remote"
   },
   "lvgl": {
