@@ -9,27 +9,19 @@
   "requires": [
     {
       "path": "/sd/roms/war1gus/scripts/stratagus.lua",
-      "note": "Converted Warcraft I game scripts"
+      "note": "Complete converted Warcraft I data tree"
     },
     {
-      "path": "/sd/roms/war1gus/graphics",
-      "note": "Converted game graphics"
-    },
-    {
-      "path": "/sd/roms/war1gus/sounds",
-      "note": "Converted game sounds"
-    },
-    {
-      "path": "/sd/roms/war1gus/campaigns",
-      "note": "Converted campaign data"
+      "path": "/sd/roms/war1gus/media/menu.paxmenu",
+      "note": "PAX video pack generated from extracted PC movie files"
     }
   ],
-  "instructions": "Convert your original Warcraft I data with the upstream war1gus extractor. Copy the complete converted data tree to /sd/roms/war1gus/. The store PAX contains the engine only; original game assets are not included.",
+  "instructions": "HOST COMPUTER REQUIRED: war1tool is not an ESP32-P4 program. On Linux, use your own Warcraft I PC ISO and a local Wargus/war1gus source checkout. Install CMake, a C++ compiler, cdrtools (isoinfo), FFmpeg/ffprobe, Python 3, and Pillow. Run: python3 ~/code/pax/pax-recipe/tools/prepare_war1gus_iso.py --iso /path/to/warcraft.iso --source /path/to/war1gus --output /path/to/new-war1gus-data --soundfont /path/to/your.sf2. This builds war1tool, extracts /DATA/*.WAR, converts the assets and movie pack, then verifies the output. Copy the generated tree contents to /sd/roms/war1gus/ and keep media/menu.paxmenu at that exact path. Omit --soundfont to skip OGG music rendering; supplying one also requires FluidSynth. The recipe PAX only creates SD folders and shows these instructions; it does not run war1tool. Game assets stay private and are not uploaded. Hardware testing covers menu/startup and the first mission path; full-campaign, save-state, and all-control coverage is not certified.",
   "media": [],
   "sources": [
     {
       "url": "https://github.com/Wargus/war1gus",
-      "note": "Upstream data extractor and conversion instructions"
+      "note": "Extraction tool and original-data instructions"
     }
   ]
 }

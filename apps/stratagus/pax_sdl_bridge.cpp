@@ -17,6 +17,10 @@
 #include <algorithm>
 #include <filesystem>
 
+#ifdef PAX_STRATAGUS_MIDI_WAR1
+extern "C" int pax_stratagus_midi_soundfont(const char *);
+#endif
+
 /* A deliberately small software SDL2 implementation. Stratagus uses SDL2 as
  * an internal pixel/event/audio API; the PAX has no desktop window system.
  * Surfaces are real SDL layouts, while windows/renderers/textures are opaque
@@ -1047,6 +1051,21 @@ extern "C" SDL_Surface *IMG_Load(const char *path)
 extern "C" int Mix_OpenAudio(int, Uint16, int, int) { return 0; }
 extern "C" int Mix_Init(int flags) { return flags; }
 extern "C" void Mix_Quit(void) {}
+extern "C" int Mix_SetSoundFonts(const char *paths) {
+	if (!paths || !*paths) return 0;
+#ifdef PAX_STRATAGUS_MIDI_WAR1
+	// The Stratagus CCL binding passes an absolute game-data path. The native
+	// MIDI worker accepts only a validated game-local music/<file>.sf2 path.
+	constexpr char root[] = PAX_STRATAGUS_DATA_ROOT;
+	constexpr size_t root_length = sizeof(root) - 1;
+	if (strncmp(paths, root, root_length) != 0 || paths[root_length] != '/') return 0;
+	const char *relative = paths + root_length + 1;
+	if (strchr(relative, ';') || strchr(relative, ':')) return 0;
+	return pax_stratagus_midi_soundfont(relative);
+#else
+	return 1;
+#endif
+}
 extern "C" int Mix_AllocateChannels(int n) { return n < 0 ? 0 : n; }
 extern "C" int Mix_Volume(int, int volume) { return volume; }
 extern "C" int Mix_VolumeMusic(int volume) { return volume; }

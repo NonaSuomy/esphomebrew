@@ -4,8 +4,14 @@
 #include "psram_app.h"
 #include "lvgl.h"
 #include <string.h>
-#define W 800
-#define H 480
+#define W 1024
+#define H 600
+#define BASE_W 800
+#define BASE_H 480
+// Keep the UI layout authored in its original 800x480 coordinate system, then
+// scale every placement and touch target to the full 1024x600 Elecrow panel.
+static int sx(int value) { return (value * W + BASE_W / 2) / BASE_W; }
+static int sy(int value) { return (value * H + BASE_H / 2) / BASE_H; }
 static const app_services_t *svc;
 static lv_display_t *display;
 static lv_indev_t *pointer;
@@ -17,7 +23,7 @@ static unsigned tab, modifiers;
 static uint16_t game_buttons;
 static uint8_t game_hat = 8;
 static lv_point_t last;
-static int source_w = W, source_h = H;
+static int source_w = BASE_W, source_h = BASE_H;
 static uint32_t last_status, click_release_at;
 static bool connected;
 static lv_obj_t *host_buttons[10], *host_info, *forget_button;
@@ -56,12 +62,12 @@ static void read_touch(lv_indev_t *indev,lv_indev_data_t *data) {
     } else data->state=LV_INDEV_STATE_RELEASED;
 }
 static lv_obj_t *label(lv_obj_t *p,const char *text,int x,int y) {
-    lv_obj_t *o=lv_label_create(p); lv_label_set_text(o,text);lv_obj_set_pos(o,x,y);
+    lv_obj_t *o=lv_label_create(p); lv_label_set_text(o,text);lv_obj_set_pos(o,sx(x),sy(y));
     lv_obj_set_style_text_color(o,lv_color_hex(0xd9eaf4),0);return o;
 }
 static lv_obj_t *button(lv_obj_t *p,const char *text,int x,int y,int w,int h,
                         lv_event_cb_t cb,uintptr_t value,lv_event_code_t event) {
-    lv_obj_t *o=lv_button_create(p);lv_obj_set_pos(o,x,y);lv_obj_set_size(o,w,h);
+    lv_obj_t *o=lv_button_create(p);lv_obj_set_pos(o,sx(x),sy(y));lv_obj_set_size(o,sx(w),sy(h));
     lv_obj_set_style_bg_color(o,lv_color_hex(0x235473),0);
     lv_obj_set_style_bg_color(o,lv_color_hex(0x138cb7),LV_STATE_CHECKED);
     lv_obj_t *t=lv_label_create(o);lv_label_set_text(t,text);lv_obj_center(t);
@@ -121,11 +127,11 @@ static void rename_host(lv_event_t *e) {
     name_dialog=lv_obj_create(lv_screen_active());lv_obj_set_pos(name_dialog,0,0);lv_obj_set_size(name_dialog,W,H);
     lv_obj_remove_flag(name_dialog,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_pad_all(name_dialog,0,0);lv_obj_set_style_bg_color(name_dialog,lv_color_hex(0x071e2b),0);
     label(name_dialog,"Name this device",20,14);
-    name_editor=lv_textarea_create(name_dialog);lv_obj_set_pos(name_editor,20,45);lv_obj_set_size(name_editor,760,48);
+    name_editor=lv_textarea_create(name_dialog);lv_obj_set_pos(name_editor,sx(20),sy(45));lv_obj_set_size(name_editor,sx(760),sy(48));
     lv_textarea_set_one_line(name_editor,true);lv_textarea_set_max_length(name_editor,31);lv_textarea_set_text(name_editor,host_names[selected_host]);
-    lv_obj_t *keyboard=lv_keyboard_create(name_dialog);lv_obj_align(keyboard,LV_ALIGN_TOP_LEFT,10,150);lv_obj_set_size(keyboard,780,255);
+    lv_obj_t *keyboard=lv_keyboard_create(name_dialog);lv_obj_align(keyboard,LV_ALIGN_TOP_LEFT,sx(10),sy(150));lv_obj_set_size(keyboard,sx(780),sy(255));
     lv_keyboard_set_textarea(keyboard,name_editor);
-    name_error=label(name_dialog,"Local label only; typing here is not sent over Bluetooth.",20,108);lv_obj_set_width(name_error,760);
+    name_error=label(name_dialog,"Local label only; typing here is not sent over Bluetooth.",20,108);lv_obj_set_width(name_error,sx(760));
     button(name_dialog,"Cancel",20,420,180,45,finish_name,0,LV_EVENT_CLICKED);
     button(name_dialog,"Save name",580,420,200,45,finish_name,1,LV_EVENT_CLICKED);
 }
@@ -281,22 +287,22 @@ static void build_ui(void) {
     lv_obj_set_style_bg_color(root,lv_color_hex(0x081827),0);
     lv_obj_set_style_text_color(root,lv_color_white(),0);
     status_label=label(root,"BLE Remote - checking firmware",12,10);
-    lv_obj_set_width(status_label,540);lv_label_set_long_mode(status_label,LV_LABEL_LONG_DOT);
+    lv_obj_set_width(status_label,sx(540));lv_label_set_long_mode(status_label,LV_LABEL_LONG_DOT);
     button(root,"Advertise",566,3,126,36,advertise,0,LV_EVENT_CLICKED);
     button(root,"Close",704,3,84,36,close_app,0,LV_EVENT_CLICKED);
     const char *tabs[]={"Keyboard","Mousepad","Gamepad","Hosts"};
     for(unsigned i=0;i<4;i++)tabs_ui[i]=button(root,tabs[i],12+i*196,48,186,42,change_tab,i,LV_EVENT_CLICKED);
     lv_obj_add_state(tabs_ui[0],LV_STATE_CHECKED);
     for(unsigned i=0;i<4;i++) {
-        panels[i]=lv_obj_create(root);lv_obj_set_pos(panels[i],8,100);lv_obj_set_size(panels[i],784,372);
+        panels[i]=lv_obj_create(root);lv_obj_set_pos(panels[i],sx(8),sy(100));lv_obj_set_size(panels[i],sx(784),sy(372));
         lv_obj_set_style_pad_all(panels[i],0,0);lv_obj_set_style_border_width(panels[i],0,0);
         lv_obj_set_style_bg_color(panels[i],lv_color_hex(0x102b43),0);
         lv_obj_remove_flag(panels[i],LV_OBJ_FLAG_SCROLLABLE);
         if(i)lv_obj_add_flag(panels[i],LV_OBJ_FLAG_HIDDEN);
     }
     remote_keyboard=lv_keyboard_create(panels[0]);
-    lv_obj_set_size(remote_keyboard,768,306);
-    lv_obj_align(remote_keyboard,LV_ALIGN_TOP_LEFT,8,4);
+    lv_obj_set_size(remote_keyboard,sx(768),sy(306));
+    lv_obj_align(remote_keyboard,LV_ALIGN_TOP_LEFT,sx(8),sy(4));
     lv_obj_set_style_bg_color(remote_keyboard,lv_color_hex(0x193d54),LV_PART_MAIN);
     lv_obj_set_style_bg_color(remote_keyboard,lv_color_hex(0x285674),LV_PART_ITEMS);
     lv_obj_set_style_bg_color(remote_keyboard,lv_color_hex(0x3b708c),LV_PART_ITEMS|LV_STATE_CHECKED);
@@ -317,8 +323,8 @@ static void build_ui(void) {
     button(panels[0],"Esc",340,318,82,40,extra_key,41,LV_EVENT_CLICKED);
     button(panels[0],"Tab",430,318,82,40,extra_key,43,LV_EVENT_CLICKED);
     lv_obj_t *kb_help=label(panels[0],"Ctrl / Alt / Win latch. ABC / 1# switch; ABC is one-shot Shift.",520,331);
-    lv_obj_set_width(kb_help,250);lv_label_set_long_mode(kb_help,LV_LABEL_LONG_WRAP);
-    lv_obj_t *pad=lv_obj_create(panels[1]);lv_obj_set_pos(pad,8,8);lv_obj_set_size(pad,768,270);
+    lv_obj_set_width(kb_help,sx(250));lv_label_set_long_mode(kb_help,LV_LABEL_LONG_WRAP);
+    lv_obj_t *pad=lv_obj_create(panels[1]);lv_obj_set_pos(pad,sx(8),sy(8));lv_obj_set_size(pad,sx(768),sy(270));
     lv_obj_set_style_bg_color(pad,lv_color_hex(0x193d54),0);
     lv_obj_set_style_border_color(pad,lv_color_hex(0x32637e),0);
     lv_obj_remove_flag(pad,LV_OBJ_FLAG_SCROLLABLE);lv_obj_add_event_cb(pad,mouse,LV_EVENT_ALL,(void *)10);
@@ -333,7 +339,7 @@ static void build_ui(void) {
     const int xy[12][2]={{96,40},{182,126},{96,212},{10,126},{390,70},{486,70},{582,70},{678,70},{390,180},{486,180},{582,180},{678,180}};
     label(panels[2],"Touch D-pad and buttons together. Standard BLE HID gamepad.",10,8);
     for(unsigned i=0;i<12;i++) {
-        Control *c=&controls[i]; c->x=8+xy[i][0];c->y=100+xy[i][1];c->w=84;c->h=76;
+        Control *c=&controls[i]; c->x=sx(8+xy[i][0]);c->y=sy(100+xy[i][1]);c->w=sx(84);c->h=sy(76);
         c->bit=bits[i];c->direction=i<4?(1u<<i):0;
         c->obj=button(panels[2],names[i],xy[i][0],xy[i][1],84,76,NULL,0,LV_EVENT_CLICKED);
     }
@@ -344,11 +350,11 @@ static void build_ui(void) {
     for(unsigned i=0;i<host_count;i++) {
         host_buttons[i]=button(panels[3],"",8+(i%5)*154,8+(i/5)*60,146,52,select_host,i,LV_EVENT_CLICKED);
         lv_obj_set_style_pad_all(host_buttons[i],5,0);
-        lv_obj_t *title=lv_obj_get_child(host_buttons[i],0);lv_obj_set_size(title,134,19);
+        lv_obj_t *title=lv_obj_get_child(host_buttons[i],0);lv_obj_set_size(title,sx(134),sy(19));
         lv_label_set_long_mode(title,LV_LABEL_LONG_MODE_DOTS);lv_obj_align(title,LV_ALIGN_TOP_MID,0,0);
-        lv_obj_t *state=label(host_buttons[i],"",0,20);lv_obj_set_width(state,134);lv_obj_set_style_text_align(state,LV_TEXT_ALIGN_CENTER,0);
+        lv_obj_t *state=label(host_buttons[i],"",0,20);lv_obj_set_width(state,sx(134));lv_obj_set_style_text_align(state,LV_TEXT_ALIGN_CENTER,0);
     }
-    host_info=label(panels[3],"",12,138);lv_obj_set_width(host_info,754);lv_label_set_long_mode(host_info,LV_LABEL_LONG_WRAP);
+    host_info=label(panels[3],"",12,138);lv_obj_set_width(host_info,sx(754));lv_label_set_long_mode(host_info,LV_LABEL_LONG_WRAP);
     const char *actions[]={"Connect selected","Disconnect","Pair new device","Forget selected"};
     for(unsigned i=0;i<4;i++){
         lv_obj_t *b=button(panels[3],actions[i],8+i*194,238,186,56,host_action,i,LV_EVENT_CLICKED);

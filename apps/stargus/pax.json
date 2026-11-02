@@ -1,7 +1,7 @@
 {
   "name": "stargus",
   "title": "Stargus",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Stargus code-only PAX port; converted StarCraft assets stay on SD.",
   "category": "Game",
   "about": "Development build. Stratagus-based Stargus port. Requires a separately converted game tree and prepared media/runtime.paxassets, media/menu.paxmenu, media/terrain.paxtile and media/stargus_intro.ogg. No game graphics, music or sound samples are linked into the PAX.",
@@ -22,7 +22,7 @@
     "local:esphome/components/pax_loader/psram_app.h"
   ],
   "install_recipe": "install-recipe.json",
-  "changelog": "0.2.0: load all game graphics and audio from storage; standalone code-only store build.",
+  "changelog": "0.2.1: added the PAX sound-font bridge used by Warcraft variants.",
   "publish": true,
   "requires": [
     {

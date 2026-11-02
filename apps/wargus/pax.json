@@ -1,7 +1,7 @@
 {
   "name": "wargus",
   "title": "Wargus",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Wargus Stratagus PAX port; converted Warcraft II: Tides of Darkness assets stay on SD.",
   "category": "Game",
   "about": "Verified ESP32-P4 build of the Wargus Stratagus port. The native menus and first mission path have been exercised on hardware. Requires a complete data tree converted from your original Warcraft II: Tides of Darkness files; game data is not included. Full-campaign, save-state and all-control coverage is not certified.",
@@ -22,7 +22,7 @@
     "local:esphome/components/pax_loader/psram_app.h"
   ],
   "install_recipe": "install-recipe.json",
-  "changelog": "0.1.0: first reproducible ESP32-P4 store build; requires converted Warcraft II: Tides of Darkness data on SD.",
+  "changelog": "0.1.1: updated PAX engine bridge and refreshed the host-side extraction recipe.",
   "publish": true,
   "requires": [
     {
@@ -40,6 +40,10 @@
     {
       "path": "/sd/roms/wargus/campaigns",
       "note": "Converted campaign data"
+    },
+    {
+      "path": "/sd/roms/wargus/media/menu.paxmenu",
+      "note": "PAX-compatible intro movie pack generated from original game videos"
     }
   ],
   "includes": [
@@ -397,9 +401,6 @@
         "pax_singleplayer_stubs.cpp"
       ],
       "prefix": "port_",
-      "cxxflags": [
-        "-fno-rtti"
-      ],
       "force_includes": [
         "local:apps/stratagus/pax_compat.h",
         "local:apps/stratagus/pax_net_compat.h"
@@ -414,7 +415,6 @@
       ],
       "prefix": "hot_port_",
       "cxxflags": [
-        "-fno-rtti",
         "-O2"
       ],
       "force_includes": [

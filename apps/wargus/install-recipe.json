@@ -4,32 +4,25 @@
   "mode": "processor",
   "archive_dir": "/sd/roms/wargus/incoming",
   "folders": [
-    "/sd/roms/wargus"
+    "/sd/roms/wargus",
+    "/sd/roms/wargus/media"
   ],
   "requires": [
     {
       "path": "/sd/roms/wargus/scripts/stratagus.lua",
-      "note": "Converted Warcraft II: Tides of Darkness game scripts"
+      "note": "Complete converted Warcraft II data tree"
     },
     {
-      "path": "/sd/roms/wargus/graphics",
-      "note": "Converted game graphics"
-    },
-    {
-      "path": "/sd/roms/wargus/sounds",
-      "note": "Converted game sounds"
-    },
-    {
-      "path": "/sd/roms/wargus/campaigns",
-      "note": "Converted campaign data"
+      "path": "/sd/roms/wargus/media/menu.paxmenu",
+      "note": "PAX video pack generated from extracted PC movie files"
     }
   ],
-  "instructions": "Convert your original Warcraft II: Tides of Darkness data with the upstream wargus extractor. Copy the complete converted data tree to /sd/roms/wargus/. The store PAX contains the engine only; original game assets are not included.",
+  "instructions": "HOST COMPUTER REQUIRED: wartool is not an ESP32-P4 program. On Linux, use your own Warcraft II Battle.net Edition data and build/run the upstream wartool extractor using the steps in pax-modules/upstream/retroesp32/GUS_GAME_RECIPES.md (Recipe 3). Add the matching stock scripts/maps, prepare audio, and run prepare_warcraft_videos.py on the output to create media/menu.paxmenu. Copy the complete prepared tree to /sd/roms/wargus/ and keep that movie pack at /sd/roms/wargus/media/menu.paxmenu. Recipe PAX only creates the SD folders and shows instructions; it does not run wartool. An ISO or archive by itself is not prepared runtime data. Hardware testing covers menu/startup and the first mission path; full-campaign, save-state, and all-control coverage is not certified.",
   "media": [],
   "sources": [
     {
       "url": "https://github.com/Wargus/wargus",
-      "note": "Upstream data extractor and conversion instructions"
+      "note": "Extraction tool and original-data instructions"
     }
   ]
 }
