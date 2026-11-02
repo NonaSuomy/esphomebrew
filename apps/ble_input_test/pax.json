@@ -1,0 +1,51 @@
+{
+  "name": "ble_input_test",
+  "title": "BLE Input Test",
+  "version": "0.1.0",
+  "description": "Diagnostic receiver for testing PAX BLE keyboard, mouse and gamepad input.",
+  "author": "PAX workspace",
+  "category": "Tool",
+  "license": "Apache-2.0",
+  "about": "Experimental diagnostic app for the PAX NANO BLE Test peripheral and compatible PAX BLE receiver firmware. It records input counts and connection status to /sd/roms/pax/ble_input_test.json. This is a test utility, not a general-purpose BLE pairing app.",
+  "controls": [
+    "Shows BLE connection and keyboard, mouse, gamepad input",
+    "Writes /sd/roms/pax/ble_input_test.json",
+    "Close with the device remote"
+  ],
+  "canvas": true,
+  "build": "custom",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
+    "path": "components/psram_app_loader"
+  },
+  "groups": [
+    {
+      "dir": "local:apps/ble_input_test",
+      "files": [
+        "receiver.c"
+      ]
+    }
+  ],
+  "includes": [
+    "local:apps/ble_input_test"
+  ],
+  "cflags": [
+    "-Wall",
+    "-Wextra",
+    "-Werror"
+  ],
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "install_recipe": "install-recipe.json",
+  "changelog": "0.1.0: add the BLE HID diagnostic receiver for PAX BLE test peripherals.",
+  "publish": true,
+  "requires": [
+    {
+      "path": "/sd/roms/pax/",
+      "note": "Folder for the BLE input JSON report"
+    }
+  ]
+}

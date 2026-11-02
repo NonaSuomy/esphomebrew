@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "app": "ble_input_test",
+  "mode": "self-contained",
+  "archive_dir": "/sd/roms/ble_input_test/incoming",
+  "folders": ["/sd/roms/pax"],
+  "requires": [
+    {
+      "path": "/sd/roms/pax/",
+      "note": "BLE input test report folder"
+    }
+  ],
+  "instructions": "This diagnostic receiver is intended for a compatible PAX BLE test setup. It searches for the named PAX NANO BLE Test peripheral and records keyboard, mouse and gamepad input. It does not include firmware or BLE radio images. Use compatible BLE-enabled PAX receiver firmware, then open the app while the test peripheral is powered on.\n\nThe app writes /sd/roms/pax/ble_input_test.json. Close it with the device remote when testing is complete.",
+  "media": [],
+  "sources": []
+}
