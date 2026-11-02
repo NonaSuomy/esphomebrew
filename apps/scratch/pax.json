@@ -5,6 +5,7 @@
   "description": "Touch block editor and Scratch 3 project player for ESP32-P4.",
   "author": "ScratchEverywhere contributors / PAX port",
   "category": "Game",
+  "icon": "icon.png",
   "license": "LGPL-3.0; bundled dependency licenses in source",
   "about": "Native touch editor and Scratch 3 player. Drag/snap blocks and reporters, author lists and custom procedures with text/number and Boolean arguments, choose named inputs, edit sprite/stage properties, and zoom the script workspace from 50 to 200 percent. Properties opens costume/backdrop and sound asset browsers. Paint creates a new 32x32 pixel-art SVG copy with brush, eraser, fill, mirror and undo/redo. Import SVG/PNG images or WAV/MP3 audio from /sd/roms/scratch/assets/. The sound waveform editor offers trimming, volume, reversal, fades, preview and undo. Asset changes participate in SB3 save/undo; originals and imported unknown data are preserved. Microphone recording needs an audio capture service absent from the current firmware ABI. Board IO blocks use configured ESPHome hardware services. Playback renders at native LCD resolution with cached antialiased Noto Sans text; turbo batches interpreter steps between periodic device yields.",
   "controls": [
