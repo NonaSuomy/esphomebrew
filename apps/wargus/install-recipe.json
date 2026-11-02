@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "app": "wargus",
+  "mode": "processor",
+  "archive_dir": "/sd/roms/wargus/incoming",
+  "folders": [
+    "/sd/roms/wargus"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/wargus/scripts/stratagus.lua",
+      "note": "Converted Warcraft II: Tides of Darkness game scripts"
+    },
+    {
+      "path": "/sd/roms/wargus/graphics",
+      "note": "Converted game graphics"
+    },
+    {
+      "path": "/sd/roms/wargus/sounds",
+      "note": "Converted game sounds"
+    },
+    {
+      "path": "/sd/roms/wargus/campaigns",
+      "note": "Converted campaign data"
+    }
+  ],
+  "instructions": "Convert your original Warcraft II: Tides of Darkness data with the upstream wargus extractor. Copy the complete converted data tree to /sd/roms/wargus/. The store PAX contains the engine only; original game assets are not included.",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/Wargus/wargus",
+      "note": "Upstream data extractor and conversion instructions"
+    }
+  ]
+}

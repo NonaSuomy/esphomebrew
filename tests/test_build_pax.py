@@ -19,6 +19,12 @@ APPS = Path(__file__).resolve().parent.parent / "apps"
 
 
 class ManifestTests(unittest.TestCase):
+    def test_custom_library_flags_follow_static_libraries(self):
+        manifest = {"groups": [], "libraries": ["local:apps/stargus/psram_app.ld", "-lm", "-lgcc"]}
+        units, link_tail = bp.custom_units(manifest, bp.ROOT, Path("/tmp/pax-test-build"))
+        self.assertEqual(units, [])
+        self.assertEqual(link_tail, [str(bp.ROOT / "apps/stargus/psram_app.ld"), "-lm", "-lgcc"])
+
     def test_every_manifest_is_valid(self):
         manifests = sorted(APPS.glob("*/pax.json"))
         self.assertTrue(manifests)

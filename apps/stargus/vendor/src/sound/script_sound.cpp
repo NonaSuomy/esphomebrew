@@ -44,6 +44,9 @@
 #include <SDL_mixer.h>
 #include <cstdio>
 #include <cstring>
+#ifdef PAX_STRATAGUS_WARCRAFT
+extern "C" int pax_stratagus_midi_soundfont(const char *path);
+#endif
 
 /*----------------------------------------------------------------------------
 --  Variables
@@ -357,9 +360,15 @@ static int CclSetMidiSoundFont(lua_State *l)
 	valid = file && std::fread(header, 1, 12, file) == 12
 		&& !std::memcmp(header, "RIFF", 4) && !std::memcmp(header + 8, "sfbk", 4);
 	if (file) std::fclose(file);
+#ifdef PAX_STRATAGUS_WARCRAFT
+	// Warcraft PAX builds synthesize MIDI in their audio worker, so register
+	// this game-local bank there instead of requiring SDL_mixer's MIDI backend.
+	if (valid) valid = pax_stratagus_midi_soundfont(full.c_str()) != 0;
+#else
 	// SDL_FORCE_SOUNDFONTS may prioritize the environment over Mix_SetSoundFonts.
 	if (valid) valid = SDL_setenv("SDL_SOUNDFONTS", full.c_str(), 1) == 0
 		&& Mix_SetSoundFonts(full.c_str()) != 0;
+#endif
 	lua_pushboolean(l, valid);
 	return 1;
 }

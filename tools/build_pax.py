@@ -52,7 +52,11 @@ def get_loader_sdk() -> Path:
     """
     LOADER_SDK_DIR.mkdir(parents=True, exist_ok=True)
     target = LOADER_SDK_DIR / "psram_app.h"
-    source = ROOT / "esphome" / "components" / "papp_loader" / "psram_app.h"
+    # The loader component was renamed from papp_loader to pax_loader. Keep
+    # compatibility with older checkouts while preferring the current path.
+    source = ROOT / "esphome" / "components" / "pax_loader" / "psram_app.h"
+    if not source.is_file():
+        source = ROOT / "esphome" / "components" / "papp_loader" / "psram_app.h"
     if not target.exists() or target.stat().st_mtime < source.stat().st_mtime:
         shutil.copy2(source, target)
     return LOADER_SDK_DIR
@@ -430,7 +434,10 @@ def custom_units(manifest: dict, src_root: Path, build_dir: Path) -> tuple[list[
     if len(set(objs)) != len(objs):
         raise ValueError("two sources map to the same object file; give a group a 'prefix'")
     ldflags = list(manifest.get("ldflags", []))
-    ldflags += [str(source_file(src_root, path)) for path in manifest.get("libraries", [])]
+    # Keep static libraries before trailing linker flags such as -lm.  Link
+    # options beginning with '-' are accepted here as post-library flags.
+    ldflags += [str(source_file(src_root, path)) if not path.startswith("-") else path
+                for path in manifest.get("libraries", [])]
     if manifest.get("newlib"):
         ldflags += [f"-Wl,--wrap={sym}" for sym in NEWLIB_WRAPS] + NEWLIB_LIBS
     return units, ldflags

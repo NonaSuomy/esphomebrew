@@ -43,6 +43,8 @@ static char s_soundfont_path[256] = PAX_STRATAGUS_DATA_ROOT "/music/TimGM6mb.sf2
 extern "C" int pax_stratagus_midi_soundfont(const char *path) {
 	// Only game-local SF2 banks; reject malformed/oversized banks before the
 	// audio worker attempts allocation. File size is not a RAM-use guarantee.
+	const size_t rootLength = strlen(PAX_STRATAGUS_DATA_ROOT);
+	if(path && strlen(path)>rootLength && !strncmp(path,PAX_STRATAGUS_DATA_ROOT,rootLength) && path[rootLength]=='/') path += rootLength + 1;
 	if(!path || strncmp(path,"music/",6) || strchr(path+6,'/') || strchr(path,'\\') || strstr(path,"..")) return 0;
 	const size_t length=strlen(path);
 	if(length<10 || pax_strncasecmp(path+length-4,".sf2",4)) return 0;
@@ -61,6 +63,8 @@ extern "C" int pax_stratagus_midi_soundfont(const char *path) {
 	__atomic_store_n(&s_music_lock,0,__ATOMIC_RELEASE);
 	return 1;
 }
+#elif defined(PAX_STRATAGUS_WARCRAFT)
+extern "C" int pax_stratagus_midi_soundfont(const char *) { return 0; }
 #endif
 static int s_music_playing, s_music_volume=85;
 extern "C" int pax_stratagus_audio_music_playing() { return __atomic_load_n(&s_music_playing,__ATOMIC_ACQUIRE); }

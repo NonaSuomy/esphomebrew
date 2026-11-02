@@ -117,6 +117,35 @@ typedef struct {
 #define PAX_KEY_ENTER    13
 #define PAX_KEY_UP       153
 #define PAX_KEY_RIGHT    154
+
+/* Optional BLE HID peripheral bridge. Call from ui_call_sync callbacks only.
+ * STATUS returns flags; output returns 0 accepted, -1 unavailable, -2 invalid,
+ * -3 wrong task, -4 disconnected. KEY is a tap: a=modifier mask, b=HID usage.
+ * MOVE: a/b signed deltas; BUTTONS: a=1 left/2 right/4 middle bitmask (0 releases).
+ * SCROLL: a=signed wheel; GAMEPAD: a=16 button bits, b=hat 0..7 clockwise / 8 neutral.
+ * TEXT: max 128 bytes, UTF-8 mapping is backend-defined. ADVERTISE: a=0/1.
+ * RELEASE clears every held keyboard, mouse and gamepad control.
+ * HOST_COUNT / ACTIVE_HOST return the configured count / zero-based active slot.
+ * HOST_STATE: a=slot, returns PAX_BLE_HOST_* flags. SELECT_HOST: a=slot, enables
+ * it and returns its index. PAIR_NEW selects the first empty slot and returns
+ * its index, or -5 when full. FORGET_HOST: a=slot, removes its pairing and pauses
+ * its advertising. Host commands work disconnected; slot bounds return -2.
+ * HOST_NAME_GET: a=slot,b=byte offset 0..31, returns name byte or zero.
+ * HOST_NAME_SET: a=slot,text=UTF-8 label up to 31 bytes; empty clears label.
+ * HOST_ADDRESS: a=slot,b=byte 0..5, returns stable identity when available.
+ * Mutations return -6 while the BLE backend is starting; saved hosts are retained.
+ */
+enum { PAX_BLE_STATUS=0, PAX_BLE_TEXT=1, PAX_BLE_KEY=2, PAX_BLE_MOUSE_MOVE=3,
+       PAX_BLE_MOUSE_BUTTONS=4, PAX_BLE_MOUSE_SCROLL=5, PAX_BLE_GAMEPAD=6,
+       PAX_BLE_RELEASE=7, PAX_BLE_ADVERTISE=8,
+       PAX_BLE_HOST_COUNT=9, PAX_BLE_ACTIVE_HOST=10, PAX_BLE_HOST_STATE=11,
+       PAX_BLE_SELECT_HOST=12, PAX_BLE_FORGET_HOST=13, PAX_BLE_PAIR_NEW=14,
+       PAX_BLE_HOST_NAME_GET=15, PAX_BLE_HOST_NAME_SET=16, PAX_BLE_HOST_ADDRESS=17 };
+// Host indices are zero based. Query commands also work while disconnected.
+enum { PAX_BLE_HOST_SAVED=1, PAX_BLE_HOST_ACTIVE=2, PAX_BLE_HOST_CONNECTED=4,
+       PAX_BLE_HOST_ADVERTISING=8, PAX_BLE_HOST_ENABLED=16 };
+enum { PAX_BLE_AVAILABLE=1, PAX_BLE_CONNECTED=2, PAX_BLE_PAIRED=4, PAX_BLE_ADVERTISING=8 };
+
 #define PAX_KEY_DOWN     155
 #define PAX_KEY_LEFT     156
 
@@ -722,6 +751,8 @@ typedef struct {
      * The loader owns/caches DMA buffers and reclaims them on app exit. */
     int (*jpeg_decode_rgb565)(const uint8_t *data, uint32_t size, uint16_t *out,
                               uint32_t capacity, int width, int height, int stride);
+    /* Optional append-only BLE HID bridge; NULL on older firmware. */
+    int (*ble_remote)(uint32_t command, int32_t a, int32_t b, const char *text);
 } app_services_t;
 
 /* Relative HID movement is already in the visible direction. The loader's

@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "app": "war1gus",
+  "mode": "processor",
+  "archive_dir": "/sd/roms/war1gus/incoming",
+  "folders": [
+    "/sd/roms/war1gus"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/war1gus/scripts/stratagus.lua",
+      "note": "Converted Warcraft I game scripts"
+    },
+    {
+      "path": "/sd/roms/war1gus/graphics",
+      "note": "Converted game graphics"
+    },
+    {
+      "path": "/sd/roms/war1gus/sounds",
+      "note": "Converted game sounds"
+    },
+    {
+      "path": "/sd/roms/war1gus/campaigns",
+      "note": "Converted campaign data"
+    }
+  ],
+  "instructions": "Convert your original Warcraft I data with the upstream war1gus extractor. Copy the complete converted data tree to /sd/roms/war1gus/. The store PAX contains the engine only; original game assets are not included.",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/Wargus/war1gus",
+      "note": "Upstream data extractor and conversion instructions"
+    }
+  ]
+}

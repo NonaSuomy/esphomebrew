@@ -1,0 +1,45 @@
+{
+  "name": "ble_remote",
+  "title": "BLE Remote",
+  "version": "0.4.0",
+  "description": "LVGL touch keyboard, mousepad, gamepad and persistent BLE host manager for compatible PAX firmware.",
+  "author": "PAX workspace",
+  "category": "Tool",
+  "license": "Apache-2.0 (app); LVGL MIT; BLE backend GPL-3.0",
+  "about": "Requires BLE-peripheral enabled PAX firmware with the optional BLE Remote service. Includes no Bluetooth stack; the firmware owns pairing and BLE HID. The app releases controls on close.",
+  "controls": [
+    "Keyboard: US keys; ABC uppercase, 1# symbols",
+    "Ctrl, Alt, Win latch; Esc and Tab are below the keyboard",
+    "Mousepad: move, click, drag and scroll",
+    "Gamepad: multitouch D-pad and A/B/X/Y/L/R/Select/Start",
+    "Hosts: select, connect, disconnect, pair, rename or forget",
+    "Close or L3: release controls and return to launcher"
+  ],
+  "canvas": {
+    "recommended": "800x480",
+    "sizes": [
+      "800x480"
+    ]
+  },
+  "upstream": {
+    "project": "LVGL",
+    "version": "9.5.0",
+    "url": "https://github.com/lvgl/lvgl"
+  },
+  "build": "lvgl",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/esphomebrew.git",
+    "ref": "85911acd73b2cc442ee1f89035038ccdb38d50e5",
+    "path": "apps/ble_remote"
+  },
+  "lvgl": {
+    "repo": "https://github.com/lvgl/lvgl",
+    "ref": "85aa60d18b3d5e5588d7b247abf90198f07c8a63"
+  },
+  "changelog": "0.4.0: replaced the custom key grid with LVGL\u2019s keyboard widget and retained HID key, modifier, mouse, gamepad, and host controls.",
+  "publish": true,
+  "sdk_headers": [
+    "local:esphome/components/pax_loader/psram_app.h"
+  ],
+  "linker_script": "local:apps/stargus/psram_app.ld"
+}

@@ -1,0 +1,2431 @@
+{
+  "files": [
+    "sounds/pax/005f7ffb16a8c5dd.ogg",
+    "sounds/pax/00e1ad5e26082e3c.ogg",
+    "sounds/pax/012ecc1b96be058e.ogg",
+    "sounds/pax/018166a13a07a189.ogg",
+    "sounds/pax/023555730bd7cad8.ogg",
+    "sounds/pax/06b03577bfd89f5a.ogg",
+    "sounds/pax/07c575220180938a.ogg",
+    "sounds/pax/0af7c0c86e32d665.ogg",
+    "sounds/pax/0f138bf2e8510c81.ogg",
+    "sounds/pax/10833e7f590f8c87.ogg",
+    "sounds/pax/12f87e3325752391.ogg",
+    "sounds/pax/163dc56566c9f0c5.ogg",
+    "sounds/pax/1abac0ece4092fc9.ogg",
+    "sounds/pax/1ebde3cddf8f6c99.ogg",
+    "sounds/pax/1fc4e2804f3e357a.ogg",
+    "sounds/pax/287f149f8478335b.ogg",
+    "sounds/pax/2c8f62b0be82c708.ogg",
+    "sounds/pax/2ef6159ed6e94e89.ogg",
+    "sounds/pax/356a971584a7bd26.ogg",
+    "sounds/pax/3de360cdb2cb4073.ogg",
+    "sounds/pax/41c05612e504ac01.ogg",
+    "sounds/pax/42eb04c8427cc2e5.ogg",
+    "sounds/pax/4334e787db95feee.ogg",
+    "sounds/pax/43732b1e5d79892c.ogg",
+    "sounds/pax/43b1c232f6e624a9.ogg",
+    "sounds/pax/476724e7a41fabe2.ogg",
+    "sounds/pax/487188994c069f66.ogg",
+    "sounds/pax/504e43675e7c3dcc.ogg",
+    "sounds/pax/521483d546143c37.ogg",
+    "sounds/pax/528c9af967ff9eb3.ogg",
+    "sounds/pax/5419ec345c50bfc0.ogg",
+    "sounds/pax/562a91c275064b99.ogg",
+    "sounds/pax/57eb7740e08bc166.ogg",
+    "sounds/pax/5b2aa99802589f97.ogg",
+    "sounds/pax/5cc57437c1fb64e5.ogg",
+    "sounds/pax/5d61cc956ef320ae.ogg",
+    "sounds/pax/606650cc00ca667b.ogg",
+    "sounds/pax/606fa17920b9b4b4.ogg",
+    "sounds/pax/62f431b14b61026f.ogg",
+    "sounds/pax/67b2a1bc67f50f45.ogg",
+    "sounds/pax/67cb2e78c5a0c833.ogg",
+    "sounds/pax/6886b58faa7aa55b.ogg",
+    "sounds/pax/700e9d1195d96c7d.ogg",
+    "sounds/pax/7185ec1458f3e28f.ogg",
+    "sounds/pax/71a0f694da2057e3.ogg",
+    "sounds/pax/726d94f71bfb2f2f.ogg",
+    "sounds/pax/75fc53ba24d47636.ogg",
+    "sounds/pax/7603c6ae6ee715c5.ogg",
+    "sounds/pax/810aece1d1045a28.ogg",
+    "sounds/pax/85002d5085613239.ogg",
+    "sounds/pax/857579a7735101ed.ogg",
+    "sounds/pax/876191e2c8d1da86.ogg",
+    "sounds/pax/8831f486df4ff787.ogg",
+    "sounds/pax/8bb8883d06ed143d.ogg",
+    "sounds/pax/9248610f38c37946.ogg",
+    "sounds/pax/927f3fd273624b53.ogg",
+    "sounds/pax/950458b790c9e65f.ogg",
+    "sounds/pax/9b80efe100f13815.ogg",
+    "sounds/pax/a8516b7243efd851.ogg",
+    "sounds/pax/a8845154fb9de8af.ogg",
+    "sounds/pax/ab400fd07ac80c75.ogg",
+    "sounds/pax/ac93bb16aa0cb35c.ogg",
+    "sounds/pax/b07c1c7614bfa62a.ogg",
+    "sounds/pax/b2a14c5d19fe1258.ogg",
+    "sounds/pax/bbcb04cfd0dea2eb.ogg",
+    "sounds/pax/beed119d08c3577d.ogg",
+    "sounds/pax/c580fc35b2085f47.ogg",
+    "sounds/pax/d1ce6d0d2e2543f3.ogg",
+    "sounds/pax/d7828da44ec85185.ogg",
+    "sounds/pax/d7a69dc0baac29ca.ogg",
+    "sounds/pax/d927aa8fabb71e1f.ogg",
+    "sounds/pax/de3645d82de1f527.ogg",
+    "sounds/pax/ded4e5fdd35e80cf.ogg",
+    "sounds/pax/dff36e585da4f3db.ogg",
+    "sounds/pax/e161fa9615669907.ogg",
+    "sounds/pax/e9881de710163f46.ogg",
+    "sounds/pax/eac58f25d0e8161a.ogg",
+    "sounds/pax/ed2cbfba9c5e8bb6.ogg",
+    "sounds/pax/eec8ee5b446e51cf.ogg",
+    "sounds/pax/f225e5e1f1a81eb8.ogg",
+    "sounds/pax/f513adc768e58bc0.ogg",
+    "sounds/pax/f704c7c7cb95827f.ogg",
+    "sounds/pax/f81cf2f2f17d1087.ogg"
+  ],
+  "groups": [
+    {
+      "name": "arrow attack",
+      "files": [
+        "sounds/pax/67cb2e78c5a0c833.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "arrow hit",
+      "files": [
+        "sounds/pax/eec8ee5b446e51cf.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "blacksmith",
+      "files": [
+        "sounds/pax/b07c1c7614bfa62a.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "build road",
+      "files": [
+        "sounds/pax/562a91c275064b99.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "building construction",
+      "files": [
+        "sounds/pax/dff36e585da4f3db.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "building destroyed",
+      "files": [
+        "sounds/pax/75fc53ba24d47636.ogg",
+        "sounds/pax/018166a13a07a189.ogg",
+        "sounds/pax/876191e2c8d1da86.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "burning",
+      "files": [
+        "sounds/pax/ac93bb16aa0cb35c.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "catapult attack",
+      "files": [
+        "sounds/pax/487188994c069f66.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "catapult hit",
+      "files": [
+        "sounds/pax/476724e7a41fabe2.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "click",
+      "files": [
+        "sounds/pax/67b2a1bc67f50f45.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "explosion",
+      "files": [
+        "sounds/pax/5cc57437c1fb64e5.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "fireball attack",
+      "files": [
+        "sounds/pax/857579a7735101ed.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "fist attack",
+      "files": [
+        "sounds/pax/6886b58faa7aa55b.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "human acknowledge",
+      "files": [
+        "sounds/pax/10833e7f590f8c87.ogg",
+        "sounds/pax/606fa17920b9b4b4.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human annoyed",
+      "files": [
+        "sounds/pax/8831f486df4ff787.ogg",
+        "sounds/pax/287f149f8478335b.ogg",
+        "sounds/pax/8bb8883d06ed143d.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human dead",
+      "files": [
+        "sounds/pax/e161fa9615669907.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human help 1",
+      "files": [
+        "sounds/pax/7603c6ae6ee715c5.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human help 2",
+      "files": [
+        "sounds/pax/beed119d08c3577d.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human help 3",
+      "files": [
+        "sounds/pax/521483d546143c37.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human help 4",
+      "files": [
+        "sounds/pax/43732b1e5d79892c.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human ready",
+      "files": [
+        "sounds/pax/9b80efe100f13815.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human selected",
+      "files": [
+        "sounds/pax/bbcb04cfd0dea2eb.ogg",
+        "sounds/pax/1fc4e2804f3e357a.ogg",
+        "sounds/pax/06b03577bfd89f5a.ogg",
+        "sounds/pax/c580fc35b2085f47.ogg",
+        "sounds/pax/7185ec1458f3e28f.ogg"
+      ],
+      "annoyed": [
+        "sounds/pax/8831f486df4ff787.ogg",
+        "sounds/pax/287f149f8478335b.ogg",
+        "sounds/pax/8bb8883d06ed143d.ogg"
+      ],
+      "source": ""
+    },
+    {
+      "name": "human work complete",
+      "files": [
+        "sounds/pax/71a0f694da2057e3.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "human-blacksmith-selected",
+      "files": [
+        "sounds/pax/b07c1c7614bfa62a.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human-church-selected",
+      "files": [
+        "sounds/pax/07c575220180938a.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human-defeat",
+      "files": [
+        "sounds/pax/0af7c0c86e32d665.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human-selected",
+      "files": [
+        "sounds/pax/bbcb04cfd0dea2eb.ogg",
+        "sounds/pax/1fc4e2804f3e357a.ogg",
+        "sounds/pax/06b03577bfd89f5a.ogg",
+        "sounds/pax/c580fc35b2085f47.ogg",
+        "sounds/pax/7185ec1458f3e28f.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human-stable-selected",
+      "files": [
+        "sounds/pax/d7828da44ec85185.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "human-victory",
+      "files": [
+        "sounds/pax/00e1ad5e26082e3c.ogg",
+        "sounds/pax/2ef6159ed6e94e89.ogg",
+        "sounds/pax/f225e5e1f1a81eb8.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/human/sound.lua"
+    },
+    {
+      "name": "missing",
+      "files": [
+        "sounds/pax/12f87e3325752391.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "orc acknowledge",
+      "files": [
+        "sounds/pax/ab400fd07ac80c75.ogg",
+        "sounds/pax/504e43675e7c3dcc.ogg",
+        "sounds/pax/9248610f38c37946.ogg",
+        "sounds/pax/de3645d82de1f527.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc annoyed",
+      "files": [
+        "sounds/pax/b2a14c5d19fe1258.ogg",
+        "sounds/pax/ded4e5fdd35e80cf.ogg",
+        "sounds/pax/810aece1d1045a28.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc dead",
+      "files": [
+        "sounds/pax/57eb7740e08bc166.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc help 1",
+      "files": [
+        "sounds/pax/d1ce6d0d2e2543f3.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc help 2",
+      "files": [
+        "sounds/pax/356a971584a7bd26.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc help 3",
+      "files": [
+        "sounds/pax/927f3fd273624b53.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc help 4",
+      "files": [
+        "sounds/pax/012ecc1b96be058e.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc ready",
+      "files": [
+        "sounds/pax/023555730bd7cad8.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc selected",
+      "files": [
+        "sounds/pax/5b2aa99802589f97.ogg",
+        "sounds/pax/163dc56566c9f0c5.ogg",
+        "sounds/pax/4334e787db95feee.ogg",
+        "sounds/pax/5419ec345c50bfc0.ogg",
+        "sounds/pax/a8516b7243efd851.ogg"
+      ],
+      "annoyed": [
+        "sounds/pax/b2a14c5d19fe1258.ogg",
+        "sounds/pax/ded4e5fdd35e80cf.ogg",
+        "sounds/pax/810aece1d1045a28.ogg"
+      ],
+      "source": ""
+    },
+    {
+      "name": "orc work complete",
+      "files": [
+        "sounds/pax/f81cf2f2f17d1087.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "orc-blacksmith-selected",
+      "files": [
+        "sounds/pax/b07c1c7614bfa62a.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc-defeat",
+      "files": [
+        "sounds/pax/a8845154fb9de8af.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc-kennel-selected",
+      "files": [
+        "sounds/pax/f513adc768e58bc0.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc-selected",
+      "files": [
+        "sounds/pax/5b2aa99802589f97.ogg",
+        "sounds/pax/163dc56566c9f0c5.ogg",
+        "sounds/pax/4334e787db95feee.ogg",
+        "sounds/pax/5419ec345c50bfc0.ogg",
+        "sounds/pax/a8516b7243efd851.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc-temple-selected",
+      "files": [
+        "sounds/pax/43b1c232f6e624a9.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "orc-victory",
+      "files": [
+        "sounds/pax/950458b790c9e65f.ogg",
+        "sounds/pax/606650cc00ca667b.ogg",
+        "sounds/pax/700e9d1195d96c7d.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/orc/sound.lua"
+    },
+    {
+      "name": "placement error",
+      "files": [
+        "sounds/pax/12f87e3325752391.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "placement success",
+      "files": [
+        "sounds/pax/67b2a1bc67f50f45.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "sounds/blacksmith.ogg",
+      "files": [
+        "sounds/pax/b07c1c7614bfa62a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/blacksmith.wav",
+      "files": [
+        "sounds/pax/b07c1c7614bfa62a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/cannon.ogg",
+      "files": [
+        "sounds/pax/42eb04c8427cc2e5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/cannon2.ogg",
+      "files": [
+        "sounds/pax/726d94f71bfb2f2f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/dead_spider,scorpion.ogg",
+      "files": [
+        "sounds/pax/ed2cbfba9c5e8bb6.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/acknowledgement_1.ogg",
+      "files": [
+        "sounds/pax/10833e7f590f8c87.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/acknowledgement_1.wav",
+      "files": [
+        "sounds/pax/10833e7f590f8c87.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/acknowledgement_2.ogg",
+      "files": [
+        "sounds/pax/606fa17920b9b4b4.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/acknowledgement_2.wav",
+      "files": [
+        "sounds/pax/606fa17920b9b4b4.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/annoyed_1.ogg",
+      "files": [
+        "sounds/pax/8831f486df4ff787.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/annoyed_1.wav",
+      "files": [
+        "sounds/pax/8831f486df4ff787.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/annoyed_2.ogg",
+      "files": [
+        "sounds/pax/287f149f8478335b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/annoyed_2.wav",
+      "files": [
+        "sounds/pax/287f149f8478335b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/annoyed_3.ogg",
+      "files": [
+        "sounds/pax/8bb8883d06ed143d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/annoyed_3.wav",
+      "files": [
+        "sounds/pax/8bb8883d06ed143d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/church.ogg",
+      "files": [
+        "sounds/pax/07c575220180938a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/church.wav",
+      "files": [
+        "sounds/pax/07c575220180938a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/dead.ogg",
+      "files": [
+        "sounds/pax/e161fa9615669907.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/dead.wav",
+      "files": [
+        "sounds/pax/e161fa9615669907.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/defeat.ogg",
+      "files": [
+        "sounds/pax/0af7c0c86e32d665.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/defeat.wav",
+      "files": [
+        "sounds/pax/0af7c0c86e32d665.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_1.ogg",
+      "files": [
+        "sounds/pax/7603c6ae6ee715c5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_1.wav",
+      "files": [
+        "sounds/pax/7603c6ae6ee715c5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_2.ogg",
+      "files": [
+        "sounds/pax/beed119d08c3577d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_2.wav",
+      "files": [
+        "sounds/pax/beed119d08c3577d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_3.ogg",
+      "files": [
+        "sounds/pax/521483d546143c37.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_3.wav",
+      "files": [
+        "sounds/pax/521483d546143c37.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_4.ogg",
+      "files": [
+        "sounds/pax/43732b1e5d79892c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/help_4.wav",
+      "files": [
+        "sounds/pax/43732b1e5d79892c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/ready.ogg",
+      "files": [
+        "sounds/pax/9b80efe100f13815.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/ready.wav",
+      "files": [
+        "sounds/pax/9b80efe100f13815.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_1.ogg",
+      "files": [
+        "sounds/pax/bbcb04cfd0dea2eb.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_1.wav",
+      "files": [
+        "sounds/pax/bbcb04cfd0dea2eb.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_2.ogg",
+      "files": [
+        "sounds/pax/1fc4e2804f3e357a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_2.wav",
+      "files": [
+        "sounds/pax/1fc4e2804f3e357a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_3.ogg",
+      "files": [
+        "sounds/pax/06b03577bfd89f5a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_3.wav",
+      "files": [
+        "sounds/pax/06b03577bfd89f5a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_4.ogg",
+      "files": [
+        "sounds/pax/c580fc35b2085f47.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_4.wav",
+      "files": [
+        "sounds/pax/c580fc35b2085f47.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_5.ogg",
+      "files": [
+        "sounds/pax/7185ec1458f3e28f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/selected_5.wav",
+      "files": [
+        "sounds/pax/7185ec1458f3e28f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/stable.ogg",
+      "files": [
+        "sounds/pax/d7828da44ec85185.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/stable.wav",
+      "files": [
+        "sounds/pax/d7828da44ec85185.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/victory_1.ogg",
+      "files": [
+        "sounds/pax/00e1ad5e26082e3c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/victory_1.wav",
+      "files": [
+        "sounds/pax/00e1ad5e26082e3c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/victory_2.ogg",
+      "files": [
+        "sounds/pax/2ef6159ed6e94e89.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/victory_2.wav",
+      "files": [
+        "sounds/pax/2ef6159ed6e94e89.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/victory_3.ogg",
+      "files": [
+        "sounds/pax/f225e5e1f1a81eb8.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/victory_3.wav",
+      "files": [
+        "sounds/pax/f225e5e1f1a81eb8.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/work_complete.ogg",
+      "files": [
+        "sounds/pax/71a0f694da2057e3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/human/work_complete.wav",
+      "files": [
+        "sounds/pax/71a0f694da2057e3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/intro_1.ogg",
+      "files": [
+        "sounds/pax/41c05612e504ac01.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/intro_2.ogg",
+      "files": [
+        "sounds/pax/f704c7c7cb95827f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/intro_3.ogg",
+      "files": [
+        "sounds/pax/005f7ffb16a8c5dd.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/intro_4.ogg",
+      "files": [
+        "sounds/pax/3de360cdb2cb4073.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/intro_5.ogg",
+      "files": [
+        "sounds/pax/2c8f62b0be82c708.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/intro_door.ogg",
+      "files": [
+        "sounds/pax/1abac0ece4092fc9.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/logo.ogg",
+      "files": [
+        "sounds/pax/5d61cc956ef320ae.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/build_road.ogg",
+      "files": [
+        "sounds/pax/562a91c275064b99.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/build_road.wav",
+      "files": [
+        "sounds/pax/562a91c275064b99.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building.ogg",
+      "files": [
+        "sounds/pax/dff36e585da4f3db.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building.wav",
+      "files": [
+        "sounds/pax/dff36e585da4f3db.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building_collapse_1.ogg",
+      "files": [
+        "sounds/pax/75fc53ba24d47636.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building_collapse_1.wav",
+      "files": [
+        "sounds/pax/75fc53ba24d47636.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building_collapse_2.ogg",
+      "files": [
+        "sounds/pax/018166a13a07a189.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building_collapse_2.wav",
+      "files": [
+        "sounds/pax/018166a13a07a189.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building_collapse_3.ogg",
+      "files": [
+        "sounds/pax/876191e2c8d1da86.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/building_collapse_3.wav",
+      "files": [
+        "sounds/pax/876191e2c8d1da86.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/explosion.ogg",
+      "files": [
+        "sounds/pax/5cc57437c1fb64e5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/explosion.wav",
+      "files": [
+        "sounds/pax/5cc57437c1fb64e5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/fire_crackling.ogg",
+      "files": [
+        "sounds/pax/ac93bb16aa0cb35c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/fire_crackling.wav",
+      "files": [
+        "sounds/pax/ac93bb16aa0cb35c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_1.ogg",
+      "files": [
+        "sounds/pax/e9881de710163f46.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_1.wav",
+      "files": [
+        "sounds/pax/e9881de710163f46.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_2.ogg",
+      "files": [
+        "sounds/pax/62f431b14b61026f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_2.wav",
+      "files": [
+        "sounds/pax/62f431b14b61026f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_3.ogg",
+      "files": [
+        "sounds/pax/1ebde3cddf8f6c99.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_3.wav",
+      "files": [
+        "sounds/pax/1ebde3cddf8f6c99.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_4.ogg",
+      "files": [
+        "sounds/pax/d7a69dc0baac29ca.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/misc/tree_chopping_4.wav",
+      "files": [
+        "sounds/pax/d7a69dc0baac29ca.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/arrow,spear.ogg",
+      "files": [
+        "sounds/pax/67cb2e78c5a0c833.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/arrow,spear.wav",
+      "files": [
+        "sounds/pax/67cb2e78c5a0c833.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/arrow,spear_hit.ogg",
+      "files": [
+        "sounds/pax/eec8ee5b446e51cf.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/arrow,spear_hit.wav",
+      "files": [
+        "sounds/pax/eec8ee5b446e51cf.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/catapult_fire_explosion.ogg",
+      "files": [
+        "sounds/pax/476724e7a41fabe2.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/catapult_fire_explosion.wav",
+      "files": [
+        "sounds/pax/476724e7a41fabe2.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/catapult_rock_fired.ogg",
+      "files": [
+        "sounds/pax/487188994c069f66.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/catapult_rock_fired.wav",
+      "files": [
+        "sounds/pax/487188994c069f66.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/fireball.ogg",
+      "files": [
+        "sounds/pax/857579a7735101ed.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/fireball.wav",
+      "files": [
+        "sounds/pax/857579a7735101ed.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/fist_attack.ogg",
+      "files": [
+        "sounds/pax/6886b58faa7aa55b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/fist_attack.wav",
+      "files": [
+        "sounds/pax/6886b58faa7aa55b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/sword_attack_1.ogg",
+      "files": [
+        "sounds/pax/85002d5085613239.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/sword_attack_1.wav",
+      "files": [
+        "sounds/pax/85002d5085613239.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/sword_attack_2.ogg",
+      "files": [
+        "sounds/pax/d927aa8fabb71e1f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/sword_attack_2.wav",
+      "files": [
+        "sounds/pax/d927aa8fabb71e1f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/sword_attack_3.ogg",
+      "files": [
+        "sounds/pax/eac58f25d0e8161a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/missiles/sword_attack_3.wav",
+      "files": [
+        "sounds/pax/eac58f25d0e8161a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/normal_spell.ogg",
+      "files": [
+        "sounds/pax/0f138bf2e8510c81.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_1.ogg",
+      "files": [
+        "sounds/pax/ab400fd07ac80c75.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_1.wav",
+      "files": [
+        "sounds/pax/ab400fd07ac80c75.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_2.ogg",
+      "files": [
+        "sounds/pax/504e43675e7c3dcc.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_2.wav",
+      "files": [
+        "sounds/pax/504e43675e7c3dcc.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_3.ogg",
+      "files": [
+        "sounds/pax/9248610f38c37946.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_3.wav",
+      "files": [
+        "sounds/pax/9248610f38c37946.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_4.ogg",
+      "files": [
+        "sounds/pax/de3645d82de1f527.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/acknowledgement_4.wav",
+      "files": [
+        "sounds/pax/de3645d82de1f527.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/annoyed_1.ogg",
+      "files": [
+        "sounds/pax/b2a14c5d19fe1258.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/annoyed_1.wav",
+      "files": [
+        "sounds/pax/b2a14c5d19fe1258.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/annoyed_2.ogg",
+      "files": [
+        "sounds/pax/ded4e5fdd35e80cf.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/annoyed_2.wav",
+      "files": [
+        "sounds/pax/ded4e5fdd35e80cf.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/annoyed_3.ogg",
+      "files": [
+        "sounds/pax/810aece1d1045a28.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/annoyed_3.wav",
+      "files": [
+        "sounds/pax/810aece1d1045a28.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/dead.ogg",
+      "files": [
+        "sounds/pax/57eb7740e08bc166.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/dead.wav",
+      "files": [
+        "sounds/pax/57eb7740e08bc166.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/defeat.ogg",
+      "files": [
+        "sounds/pax/a8845154fb9de8af.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/defeat.wav",
+      "files": [
+        "sounds/pax/a8845154fb9de8af.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_1.ogg",
+      "files": [
+        "sounds/pax/d1ce6d0d2e2543f3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_1.wav",
+      "files": [
+        "sounds/pax/d1ce6d0d2e2543f3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_2.ogg",
+      "files": [
+        "sounds/pax/356a971584a7bd26.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_2.wav",
+      "files": [
+        "sounds/pax/356a971584a7bd26.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_3.ogg",
+      "files": [
+        "sounds/pax/927f3fd273624b53.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_3.wav",
+      "files": [
+        "sounds/pax/927f3fd273624b53.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_4.ogg",
+      "files": [
+        "sounds/pax/012ecc1b96be058e.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/help_4.wav",
+      "files": [
+        "sounds/pax/012ecc1b96be058e.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/kennel.ogg",
+      "files": [
+        "sounds/pax/f513adc768e58bc0.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/kennel.wav",
+      "files": [
+        "sounds/pax/f513adc768e58bc0.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/ready.ogg",
+      "files": [
+        "sounds/pax/023555730bd7cad8.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/ready.wav",
+      "files": [
+        "sounds/pax/023555730bd7cad8.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_1.ogg",
+      "files": [
+        "sounds/pax/5b2aa99802589f97.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_1.wav",
+      "files": [
+        "sounds/pax/5b2aa99802589f97.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_2.ogg",
+      "files": [
+        "sounds/pax/163dc56566c9f0c5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_2.wav",
+      "files": [
+        "sounds/pax/163dc56566c9f0c5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_3.ogg",
+      "files": [
+        "sounds/pax/4334e787db95feee.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_3.wav",
+      "files": [
+        "sounds/pax/4334e787db95feee.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_4.ogg",
+      "files": [
+        "sounds/pax/5419ec345c50bfc0.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_4.wav",
+      "files": [
+        "sounds/pax/5419ec345c50bfc0.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_5.ogg",
+      "files": [
+        "sounds/pax/a8516b7243efd851.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/selected_5.wav",
+      "files": [
+        "sounds/pax/a8516b7243efd851.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/temple.ogg",
+      "files": [
+        "sounds/pax/43b1c232f6e624a9.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/temple.wav",
+      "files": [
+        "sounds/pax/43b1c232f6e624a9.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/victory_1.ogg",
+      "files": [
+        "sounds/pax/950458b790c9e65f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/victory_1.wav",
+      "files": [
+        "sounds/pax/950458b790c9e65f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/victory_2.ogg",
+      "files": [
+        "sounds/pax/606650cc00ca667b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/victory_2.wav",
+      "files": [
+        "sounds/pax/606650cc00ca667b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/victory_3.ogg",
+      "files": [
+        "sounds/pax/700e9d1195d96c7d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/victory_3.wav",
+      "files": [
+        "sounds/pax/700e9d1195d96c7d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/work_complete.ogg",
+      "files": [
+        "sounds/pax/f81cf2f2f17d1087.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/orc/work_complete.wav",
+      "files": [
+        "sounds/pax/f81cf2f2f17d1087.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/005f7ffb16a8c5dd.ogg",
+      "files": [
+        "sounds/pax/005f7ffb16a8c5dd.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/00e1ad5e26082e3c.ogg",
+      "files": [
+        "sounds/pax/00e1ad5e26082e3c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/012ecc1b96be058e.ogg",
+      "files": [
+        "sounds/pax/012ecc1b96be058e.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/018166a13a07a189.ogg",
+      "files": [
+        "sounds/pax/018166a13a07a189.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/023555730bd7cad8.ogg",
+      "files": [
+        "sounds/pax/023555730bd7cad8.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/06b03577bfd89f5a.ogg",
+      "files": [
+        "sounds/pax/06b03577bfd89f5a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/07c575220180938a.ogg",
+      "files": [
+        "sounds/pax/07c575220180938a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/0af7c0c86e32d665.ogg",
+      "files": [
+        "sounds/pax/0af7c0c86e32d665.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/0f138bf2e8510c81.ogg",
+      "files": [
+        "sounds/pax/0f138bf2e8510c81.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/10833e7f590f8c87.ogg",
+      "files": [
+        "sounds/pax/10833e7f590f8c87.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/12f87e3325752391.ogg",
+      "files": [
+        "sounds/pax/12f87e3325752391.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/163dc56566c9f0c5.ogg",
+      "files": [
+        "sounds/pax/163dc56566c9f0c5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/1abac0ece4092fc9.ogg",
+      "files": [
+        "sounds/pax/1abac0ece4092fc9.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/1ebde3cddf8f6c99.ogg",
+      "files": [
+        "sounds/pax/1ebde3cddf8f6c99.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/1fc4e2804f3e357a.ogg",
+      "files": [
+        "sounds/pax/1fc4e2804f3e357a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/287f149f8478335b.ogg",
+      "files": [
+        "sounds/pax/287f149f8478335b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/2c8f62b0be82c708.ogg",
+      "files": [
+        "sounds/pax/2c8f62b0be82c708.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/2ef6159ed6e94e89.ogg",
+      "files": [
+        "sounds/pax/2ef6159ed6e94e89.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/356a971584a7bd26.ogg",
+      "files": [
+        "sounds/pax/356a971584a7bd26.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/3de360cdb2cb4073.ogg",
+      "files": [
+        "sounds/pax/3de360cdb2cb4073.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/41c05612e504ac01.ogg",
+      "files": [
+        "sounds/pax/41c05612e504ac01.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/42eb04c8427cc2e5.ogg",
+      "files": [
+        "sounds/pax/42eb04c8427cc2e5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/4334e787db95feee.ogg",
+      "files": [
+        "sounds/pax/4334e787db95feee.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/43732b1e5d79892c.ogg",
+      "files": [
+        "sounds/pax/43732b1e5d79892c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/43b1c232f6e624a9.ogg",
+      "files": [
+        "sounds/pax/43b1c232f6e624a9.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/476724e7a41fabe2.ogg",
+      "files": [
+        "sounds/pax/476724e7a41fabe2.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/487188994c069f66.ogg",
+      "files": [
+        "sounds/pax/487188994c069f66.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/504e43675e7c3dcc.ogg",
+      "files": [
+        "sounds/pax/504e43675e7c3dcc.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/521483d546143c37.ogg",
+      "files": [
+        "sounds/pax/521483d546143c37.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/528c9af967ff9eb3.ogg",
+      "files": [
+        "sounds/pax/528c9af967ff9eb3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/5419ec345c50bfc0.ogg",
+      "files": [
+        "sounds/pax/5419ec345c50bfc0.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/562a91c275064b99.ogg",
+      "files": [
+        "sounds/pax/562a91c275064b99.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/57eb7740e08bc166.ogg",
+      "files": [
+        "sounds/pax/57eb7740e08bc166.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/5b2aa99802589f97.ogg",
+      "files": [
+        "sounds/pax/5b2aa99802589f97.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/5cc57437c1fb64e5.ogg",
+      "files": [
+        "sounds/pax/5cc57437c1fb64e5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/5d61cc956ef320ae.ogg",
+      "files": [
+        "sounds/pax/5d61cc956ef320ae.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/606650cc00ca667b.ogg",
+      "files": [
+        "sounds/pax/606650cc00ca667b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/606fa17920b9b4b4.ogg",
+      "files": [
+        "sounds/pax/606fa17920b9b4b4.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/62f431b14b61026f.ogg",
+      "files": [
+        "sounds/pax/62f431b14b61026f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/67b2a1bc67f50f45.ogg",
+      "files": [
+        "sounds/pax/67b2a1bc67f50f45.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/67cb2e78c5a0c833.ogg",
+      "files": [
+        "sounds/pax/67cb2e78c5a0c833.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/6886b58faa7aa55b.ogg",
+      "files": [
+        "sounds/pax/6886b58faa7aa55b.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/700e9d1195d96c7d.ogg",
+      "files": [
+        "sounds/pax/700e9d1195d96c7d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/7185ec1458f3e28f.ogg",
+      "files": [
+        "sounds/pax/7185ec1458f3e28f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/71a0f694da2057e3.ogg",
+      "files": [
+        "sounds/pax/71a0f694da2057e3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/726d94f71bfb2f2f.ogg",
+      "files": [
+        "sounds/pax/726d94f71bfb2f2f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/75fc53ba24d47636.ogg",
+      "files": [
+        "sounds/pax/75fc53ba24d47636.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/7603c6ae6ee715c5.ogg",
+      "files": [
+        "sounds/pax/7603c6ae6ee715c5.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/810aece1d1045a28.ogg",
+      "files": [
+        "sounds/pax/810aece1d1045a28.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/85002d5085613239.ogg",
+      "files": [
+        "sounds/pax/85002d5085613239.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/857579a7735101ed.ogg",
+      "files": [
+        "sounds/pax/857579a7735101ed.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/876191e2c8d1da86.ogg",
+      "files": [
+        "sounds/pax/876191e2c8d1da86.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/8831f486df4ff787.ogg",
+      "files": [
+        "sounds/pax/8831f486df4ff787.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/8bb8883d06ed143d.ogg",
+      "files": [
+        "sounds/pax/8bb8883d06ed143d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/9248610f38c37946.ogg",
+      "files": [
+        "sounds/pax/9248610f38c37946.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/927f3fd273624b53.ogg",
+      "files": [
+        "sounds/pax/927f3fd273624b53.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/950458b790c9e65f.ogg",
+      "files": [
+        "sounds/pax/950458b790c9e65f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/9b80efe100f13815.ogg",
+      "files": [
+        "sounds/pax/9b80efe100f13815.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/a8516b7243efd851.ogg",
+      "files": [
+        "sounds/pax/a8516b7243efd851.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/a8845154fb9de8af.ogg",
+      "files": [
+        "sounds/pax/a8845154fb9de8af.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/ab400fd07ac80c75.ogg",
+      "files": [
+        "sounds/pax/ab400fd07ac80c75.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/ac93bb16aa0cb35c.ogg",
+      "files": [
+        "sounds/pax/ac93bb16aa0cb35c.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/b07c1c7614bfa62a.ogg",
+      "files": [
+        "sounds/pax/b07c1c7614bfa62a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/b2a14c5d19fe1258.ogg",
+      "files": [
+        "sounds/pax/b2a14c5d19fe1258.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/bbcb04cfd0dea2eb.ogg",
+      "files": [
+        "sounds/pax/bbcb04cfd0dea2eb.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/beed119d08c3577d.ogg",
+      "files": [
+        "sounds/pax/beed119d08c3577d.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/c580fc35b2085f47.ogg",
+      "files": [
+        "sounds/pax/c580fc35b2085f47.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/d1ce6d0d2e2543f3.ogg",
+      "files": [
+        "sounds/pax/d1ce6d0d2e2543f3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/d7828da44ec85185.ogg",
+      "files": [
+        "sounds/pax/d7828da44ec85185.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/d7a69dc0baac29ca.ogg",
+      "files": [
+        "sounds/pax/d7a69dc0baac29ca.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/d927aa8fabb71e1f.ogg",
+      "files": [
+        "sounds/pax/d927aa8fabb71e1f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/de3645d82de1f527.ogg",
+      "files": [
+        "sounds/pax/de3645d82de1f527.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/ded4e5fdd35e80cf.ogg",
+      "files": [
+        "sounds/pax/ded4e5fdd35e80cf.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/dff36e585da4f3db.ogg",
+      "files": [
+        "sounds/pax/dff36e585da4f3db.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/e161fa9615669907.ogg",
+      "files": [
+        "sounds/pax/e161fa9615669907.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/e9881de710163f46.ogg",
+      "files": [
+        "sounds/pax/e9881de710163f46.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/eac58f25d0e8161a.ogg",
+      "files": [
+        "sounds/pax/eac58f25d0e8161a.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/ed2cbfba9c5e8bb6.ogg",
+      "files": [
+        "sounds/pax/ed2cbfba9c5e8bb6.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/eec8ee5b446e51cf.ogg",
+      "files": [
+        "sounds/pax/eec8ee5b446e51cf.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/f225e5e1f1a81eb8.ogg",
+      "files": [
+        "sounds/pax/f225e5e1f1a81eb8.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/f513adc768e58bc0.ogg",
+      "files": [
+        "sounds/pax/f513adc768e58bc0.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/f704c7c7cb95827f.ogg",
+      "files": [
+        "sounds/pax/f704c7c7cb95827f.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/pax/f81cf2f2f17d1087.ogg",
+      "files": [
+        "sounds/pax/f81cf2f2f17d1087.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/ui/cancel.ogg",
+      "files": [
+        "sounds/pax/12f87e3325752391.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/ui/cancel.wav",
+      "files": [
+        "sounds/pax/12f87e3325752391.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/ui/chime.ogg",
+      "files": [
+        "sounds/pax/528c9af967ff9eb3.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/ui/click.ogg",
+      "files": [
+        "sounds/pax/67b2a1bc67f50f45.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sounds/ui/click.wav",
+      "files": [
+        "sounds/pax/67b2a1bc67f50f45.ogg"
+      ],
+      "annoyed": [],
+      "source": ""
+    },
+    {
+      "name": "sword attack",
+      "files": [
+        "sounds/pax/85002d5085613239.ogg",
+        "sounds/pax/d927aa8fabb71e1f.ogg",
+        "sounds/pax/eac58f25d0e8161a.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    },
+    {
+      "name": "tree chopping",
+      "files": [
+        "sounds/pax/e9881de710163f46.ogg",
+        "sounds/pax/62f431b14b61026f.ogg",
+        "sounds/pax/1ebde3cddf8f6c99.ogg",
+        "sounds/pax/d7a69dc0baac29ca.ogg"
+      ],
+      "annoyed": [],
+      "source": "scripts/sound.lua"
+    }
+  ],
+  "missing": [],
+  "excluded_campaign_narration": [],
+  "policy": "Short FX/voices: lazy 1 MiB PCM cache. Music remains streamed. Callback-driven campaign narration is not yet supported."
+}
