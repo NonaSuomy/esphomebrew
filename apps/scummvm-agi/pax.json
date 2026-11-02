@@ -1,0 +1,38 @@
+{
+  "name": "scummvm-agi",
+  "title": "ScummVM AGI",
+  "version": "2026.3.0",
+  "description": "Classic Sierra AGI adventure games. Add your own game data; game files are not included.",
+  "author": "ScummVM Team; PAX port by RetroESP32-P4",
+  "category": "Game",
+  "license": "GPL-3.0-or-later",
+  "about": "Classic Sierra AGI adventure games. Runs as a standalone ScummVM engine build on ESP32-P4. Copy each game into its own folder under /sd/roms/scummvm, then choose Add Game. The store provides matching ScummVM runtime resources; commercial game data is not bundled.",
+  "changelog": "2026.3.0: PAX engine build with ScummVM game detection, controller and keyboard input, touch/mouse, and persistent ScummVM game saves.",
+  "controls": [
+    "D-pad: navigate / move",
+    "A or Start: select / confirm",
+    "B: back / cancel",
+    "Touch: mouse pointer and click",
+    "USB keyboard: full ScummVM key input",
+    "Save/load: use the game\u2019s own ScummVM save menu"
+  ],
+  "upstream": {
+    "project": "ScummVM",
+    "version": "2026.3.0",
+    "url": "https://www.scummvm.org/"
+  },
+  "icon": "icon.png",
+  "install_recipe": "install_recipe.json",
+  "build": "prebuilt",
+  "source": {
+    "repo": "https://github.com/scummvm/scummvm.git",
+    "ref": "945360cb6978b2e2e6a255b5943e7b03dd7dc7a3",
+    "path": "engines/agi"
+  },
+  "prebuilt": {
+    "artifact": "scummvm-agi.pax",
+    "sha256": "e4c28c77ab56d4e849a33a8b2b10a1f6e6056e9b197be21af2f191df0db3d4fa",
+    "device_tested": true
+  },
+  "publish": true
+}

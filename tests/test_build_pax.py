@@ -32,16 +32,33 @@ class ManifestTests(unittest.TestCase):
             with self.subTest(app=path.parent.name):
                 m = json.loads(path.read_text())
                 self.assertEqual(m["name"], path.parent.name)
-                self.assertIn(m["build"], ("lvgl", "plain", "custom", "workspace"))
+                self.assertIn(m["build"], ("lvgl", "plain", "custom", "workspace", "prebuilt"))
                 self.assertRegex(m["source"]["ref"], r"^[0-9a-f]{40}$")
                 self.assertRegex(m["version"], r"^\d+\.\d+\.\d+$")
                 if m["build"] == "lvgl":
                     self.assertRegex(m["lvgl"]["ref"], r"^[0-9a-f]{40}$")
                 if m["build"] == "custom":
                     self.assertTrue(m["groups"])
+                if m["build"] == "prebuilt":
+                    self.assertTrue((path.parent / m["prebuilt"]["artifact"]).is_file())
+                    self.assertRegex(m["prebuilt"]["sha256"], r"^[0-9a-f]{64}$")
+                    self.assertIs(m["prebuilt"].get("device_tested"), True)
                 bp.check_data(m["name"], m.get("data"))
                 bp.check_submodules(m["name"], m)
                 bp.store_info(m["name"], m, path.parent)
+
+    def test_prebuilt_pax_is_pinned_header_checked_and_staged(self):
+        for name in ("scummvm-sci", "scummvm-agi"):
+            with self.subTest(app=name), tempfile.TemporaryDirectory() as tmp:
+                manifest_path = APPS / name / "pax.json"
+                manifest = json.loads(manifest_path.read_text())
+                result = bp.build_app(manifest_path, Path(tmp) / "cache", Path(tmp) / "out", 1)
+                self.assertEqual(result["sha256"], manifest["prebuilt"]["sha256"])
+                self.assertEqual(result["abi"], bp.PAX_ABI_VERSION)
+                self.assertEqual(result["build"]["type"], "prebuilt")
+                self.assertTrue(result["extract"]["media"])
+                self.assertEqual((Path(tmp) / "out" / result["file"]).read_bytes(),
+                                 (manifest_path.parent / manifest["prebuilt"]["artifact"]).read_bytes())
 
     def test_store_listing_is_checked(self):
         with tempfile.TemporaryDirectory() as tmp:

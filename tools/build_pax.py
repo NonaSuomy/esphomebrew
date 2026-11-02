@@ -760,6 +760,53 @@ def build_workspace_app(manifest: dict, manifest_path: Path, out: Path) -> dict:
     (out / (manifest["name"] + ".json")).write_text(json.dumps(info, indent=2) + "\n")
     return info
 
+def build_prebuilt_app(manifest: dict, manifest_path: Path, out: Path) -> dict:
+    """Stage a pinned, previously device-tested PAX binary.
+
+    Prebuilt packages are for large upstream ports that cannot be rebuilt by
+    the lightweight store builder. The committed artifact is tied to an exact
+    SHA-256 and still gets validated against the ABI header before release.
+    """
+    name = manifest["name"]
+    spec = manifest.get("prebuilt")
+    if not isinstance(spec, dict):
+        raise ValueError(f"{name}: prebuilt must name an artifact and sha256")
+    artifact = spec.get("artifact")
+    digest = spec.get("sha256")
+    if (not isinstance(artifact, str) or Path(artifact).name != artifact
+            or not artifact.endswith(".pax")):
+        raise ValueError(f"{name}: prebuilt artifact must be a .pax file in its app folder")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValueError(f"{name}: prebuilt sha256 must be 64 lowercase hex characters")
+    app_dir = manifest_path.parent.resolve()
+    source_path = (app_dir / artifact).resolve()
+    if source_path.parent != app_dir or not source_path.is_file():
+        raise ValueError(f"{name}: pinned prebuilt artifact is missing")
+    data = source_path.read_bytes()
+    actual = hashlib.sha256(data).hexdigest()
+    if actual != digest:
+        raise ValueError(f"{name}: prebuilt SHA-256 mismatch: expected {digest}, got {actual}")
+    header = parse_header(data)
+    source = manifest["source"]
+    info = {
+        "name": name,
+        "title": manifest.get("title", name),
+        "version": manifest["version"],
+        "description": manifest.get("description", ""),
+        "file": name + ".pax",
+        "size": len(data),
+        "sha256": actual,
+        "abi": PAX_ABI_VERSION,
+        **header,
+        "source": {"repo": source["repo"], "ref": source["ref"], "path": source["path"]},
+        "build": {"type": "prebuilt", "device_tested": spec.get("device_tested", False)},
+        **store_info(name, manifest, app_dir),
+    }
+    out.mkdir(parents=True, exist_ok=True)
+    (out / info["file"]).write_bytes(data)
+    (out / (name + ".json")).write_text(json.dumps(info, indent=2) + "\n")
+    return info
+
 def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     manifest = json.loads(manifest_path.read_text())
     name = manifest["name"]
@@ -769,6 +816,8 @@ def build_app(manifest_path: Path, cache: Path, out: Path, jobs: int) -> dict:
     public_build_manifest(manifest)
     if manifest["build"] == "workspace":
         return build_workspace_app(manifest, manifest_path, out)
+    if manifest["build"] == "prebuilt":
+        return build_prebuilt_app(manifest, manifest_path, out)
     data_files = check_data(name, manifest.get("data"))
     listing = store_info(name, manifest, manifest_path.parent)
 
