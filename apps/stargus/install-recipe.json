@@ -44,7 +44,7 @@
       "note": "Prepared intro soundtrack"
     }
   ],
-  "instructions": "Convert your original StarCraft data with the upstream Stargus extractor. Run prepare_stargus_sd.py on the complete converted tree, then copy that tree, including media/, to /sd/roms/stargus/. All graphics and sound stay on SD; none are bundled in the store executable.",
+  "instructions": "HOST COMPUTER REQUIRED: Startool is not an ESP32-P4 program. On Linux, use your own StarCraft data and build/run the upstream startool extractor using the steps in pax-modules/upstream/retroesp32/GUS_GAME_RECIPES.md (Recipe 1). Then run python3 ~/code/pax/pax-recipe/tools/prepare_stargus_sd.py /path/to/converted-stargus-tree. Copy the complete prepared tree, including media/, to /sd/roms/stargus/. Recipe PAX only creates the SD folders and shows these instructions; it does not run startool. Graphics and sound remain as SD data, not in the store executable.",
   "media": [],
   "sources": []
 }

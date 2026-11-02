@@ -10,9 +10,13 @@
     {
       "path": "/sd/roms/war1gus/scripts/stratagus.lua",
       "note": "Complete converted Warcraft I data tree"
+    },
+    {
+      "path": "/sd/roms/war1gus/media/menu.paxmenu",
+      "note": "PAX video pack generated from extracted PC movie files"
     }
   ],
-  "instructions": "Use the upstream war1gus extractor on your original Warcraft I installation on the computer. Copy the complete output tree to /sd/roms/war1gus.\n\nRun verify_war1gus_data.py and the matching PAX audio/video preparation tools from pax-recipe/tools. An archive of original game files alone is not prepared runtime data.\n\nThese variants are preserved source ports; their complete playable PAX builds are not currently verified.",
+  "instructions": "HOST COMPUTER REQUIRED: war1tool is not an ESP32-P4 program. On Linux, use your own Warcraft I PC ISO and a local Wargus/war1gus source checkout. Install CMake, a C++ compiler, cdrtools (isoinfo), FFmpeg/ffprobe, Python 3, and Pillow. Run: python3 ~/code/pax/pax-recipe/tools/prepare_war1gus_iso.py --iso /path/to/warcraft.iso --source /path/to/war1gus --output /path/to/new-war1gus-data --soundfont /path/to/your.sf2. This builds war1tool, extracts /DATA/*.WAR, converts the assets and movie pack, then verifies the output. Copy the generated tree contents to /sd/roms/war1gus/ and keep media/menu.paxmenu at that exact path. Omit --soundfont to skip OGG music rendering; supplying one also requires FluidSynth. The recipe PAX only creates SD folders and shows these instructions; it does not run war1tool. Game assets stay private and are not uploaded. The PAX game build is not yet verified as playable.",
   "media": [],
   "sources": [
     {

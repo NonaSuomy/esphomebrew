@@ -3,19 +3,27 @@
 #define PAX_APP_SIDE 1
 #include "psram_app.h"
 #include "lvgl.h"
-#define W 800
-#define H 480
+#include <string.h>
+#define W 1024
+#define H 600
+#define BASE_W 800
+#define BASE_H 480
+// Keep the UI layout authored in its original 800x480 coordinate system, then
+// scale every placement and touch target to the full 1024x600 Elecrow panel.
+static int sx(int value) { return (value * W + BASE_W / 2) / BASE_W; }
+static int sy(int value) { return (value * H + BASE_H / 2) / BASE_H; }
 static const app_services_t *svc;
 static lv_display_t *display;
 static lv_indev_t *pointer;
 static lv_obj_t *panels[4], *tabs_ui[4], *status_label, *drag_button;
+static lv_obj_t *remote_keyboard, *modifier_buttons[3];
 static uint16_t *canvas;
 static bool quitting, dragging;
 static unsigned tab, modifiers;
 static uint16_t game_buttons;
 static uint8_t game_hat = 8;
 static lv_point_t last;
-static int source_w = W, source_h = H;
+static int source_w = BASE_W, source_h = BASE_H;
 static uint32_t last_status, click_release_at;
 static bool connected;
 static lv_obj_t *host_buttons[10], *host_info, *forget_button;
@@ -54,12 +62,12 @@ static void read_touch(lv_indev_t *indev,lv_indev_data_t *data) {
     } else data->state=LV_INDEV_STATE_RELEASED;
 }
 static lv_obj_t *label(lv_obj_t *p,const char *text,int x,int y) {
-    lv_obj_t *o=lv_label_create(p); lv_label_set_text(o,text);lv_obj_set_pos(o,x,y);
+    lv_obj_t *o=lv_label_create(p); lv_label_set_text(o,text);lv_obj_set_pos(o,sx(x),sy(y));
     lv_obj_set_style_text_color(o,lv_color_hex(0xd9eaf4),0);return o;
 }
 static lv_obj_t *button(lv_obj_t *p,const char *text,int x,int y,int w,int h,
                         lv_event_cb_t cb,uintptr_t value,lv_event_code_t event) {
-    lv_obj_t *o=lv_button_create(p);lv_obj_set_pos(o,x,y);lv_obj_set_size(o,w,h);
+    lv_obj_t *o=lv_button_create(p);lv_obj_set_pos(o,sx(x),sy(y));lv_obj_set_size(o,sx(w),sy(h));
     lv_obj_set_style_bg_color(o,lv_color_hex(0x235473),0);
     lv_obj_set_style_bg_color(o,lv_color_hex(0x138cb7),LV_STATE_CHECKED);
     lv_obj_t *t=lv_label_create(o);lv_label_set_text(t,text);lv_obj_center(t);
@@ -119,11 +127,11 @@ static void rename_host(lv_event_t *e) {
     name_dialog=lv_obj_create(lv_screen_active());lv_obj_set_pos(name_dialog,0,0);lv_obj_set_size(name_dialog,W,H);
     lv_obj_remove_flag(name_dialog,LV_OBJ_FLAG_SCROLLABLE);lv_obj_set_style_pad_all(name_dialog,0,0);lv_obj_set_style_bg_color(name_dialog,lv_color_hex(0x071e2b),0);
     label(name_dialog,"Name this device",20,14);
-    name_editor=lv_textarea_create(name_dialog);lv_obj_set_pos(name_editor,20,45);lv_obj_set_size(name_editor,760,48);
+    name_editor=lv_textarea_create(name_dialog);lv_obj_set_pos(name_editor,sx(20),sy(45));lv_obj_set_size(name_editor,sx(760),sy(48));
     lv_textarea_set_one_line(name_editor,true);lv_textarea_set_max_length(name_editor,31);lv_textarea_set_text(name_editor,host_names[selected_host]);
-    lv_obj_t *keyboard=lv_keyboard_create(name_dialog);lv_obj_align(keyboard,LV_ALIGN_TOP_LEFT,10,150);lv_obj_set_size(keyboard,780,255);
+    lv_obj_t *keyboard=lv_keyboard_create(name_dialog);lv_obj_align(keyboard,LV_ALIGN_TOP_LEFT,sx(10),sy(150));lv_obj_set_size(keyboard,sx(780),sy(255));
     lv_keyboard_set_textarea(keyboard,name_editor);
-    name_error=label(name_dialog,"Local label only; typing here is not sent over Bluetooth.",20,108);lv_obj_set_width(name_error,760);
+    name_error=label(name_dialog,"Local label only; typing here is not sent over Bluetooth.",20,108);lv_obj_set_width(name_error,sx(760));
     button(name_dialog,"Cancel",20,420,180,45,finish_name,0,LV_EVENT_CLICKED);
     button(name_dialog,"Save name",580,420,200,45,finish_name,1,LV_EVENT_CLICKED);
 }
@@ -151,20 +159,81 @@ static void host_action(lv_event_t *e) {
     }
     refresh_hosts();
 }
-// HID keyboard usages for a US layout. Modifiers latch for the next key.
-static void key(lv_event_t *e) {
-    unsigned usage=(uintptr_t)lv_event_get_user_data(e);
-    if(usage>=256) {
-        unsigned mask=usage-256;
-        modifiers^=mask;
-        if(modifiers&mask)lv_obj_add_state(lv_event_get_target_obj(e),LV_STATE_CHECKED);
-        else lv_obj_remove_state(lv_event_get_target_obj(e),LV_STATE_CHECKED);
-        return;
+// LVGL's keyboard widget supplies the visible layout. Convert its US-layout
+// labels to USB HID usage plus the Shift modifier before sending them remotely.
+static bool hid_key_for_label(const char *text,unsigned *usage,bool *shift) {
+    *shift=false;
+    if(!text||!text[0]||text[1])return false;
+    unsigned char c=(unsigned char)text[0];
+    if(c>='a'&&c<='z'){*usage=4+c-'a';return true;}
+    if(c>='A'&&c<='Z'){*usage=4+c-'A';*shift=true;return true;}
+    if(c>='1'&&c<='9'){*usage=30+c-'1';return true;}
+    if(c=='0'){*usage=39;return true;}
+    switch(c) {
+        case ' ': *usage=44; return true;
+        case '-': *usage=45; return true; case '_': *usage=45; *shift=true; return true;
+        case '=': *usage=46; return true; case '+': *usage=46; *shift=true; return true;
+        case '[': *usage=47; return true; case '{': *usage=47; *shift=true; return true;
+        case ']': *usage=48; return true; case '}': *usage=48; *shift=true; return true;
+        case '\\': *usage=49; return true; case '|': *usage=49; *shift=true; return true;
+        case ';': *usage=51; return true; case ':': *usage=51; *shift=true; return true;
+        case '\'': *usage=52; return true; case '"': *usage=52; *shift=true; return true;
+        case ',': *usage=54; return true; case '<': *usage=54; *shift=true; return true;
+        case '.': *usage=55; return true; case '>': *usage=55; *shift=true; return true;
+        case '/': *usage=56; return true; case '?': *usage=56; *shift=true; return true;
+        case '!': *usage=30; *shift=true; return true; case '@': *usage=31; *shift=true; return true;
+        case '#': *usage=32; *shift=true; return true; case '$': *usage=33; *shift=true; return true;
+        case '%': *usage=34; *shift=true; return true; case '^': *usage=35; *shift=true; return true;
+        case '&': *usage=36; *shift=true; return true; case '*': *usage=37; *shift=true; return true;
+        case '(': *usage=38; *shift=true; return true; case ')': *usage=39; *shift=true; return true;
+        default: return false;
     }
-    remote(PAX_BLE_KEY,modifiers,usage,NULL);
+}
+static void clear_modifiers(void) {
     modifiers=0;
-    uint32_t n=lv_obj_get_child_count(panels[0]);
-    for(uint32_t i=0;i<n;i++)lv_obj_remove_state(lv_obj_get_child(panels[0],i),LV_STATE_CHECKED);
+    for(unsigned i=0;i<3;i++)if(modifier_buttons[i])
+        lv_obj_remove_state(modifier_buttons[i],LV_STATE_CHECKED);
+}
+static void toggle_modifier(lv_event_t *e) {
+    unsigned mask=(uintptr_t)lv_event_get_user_data(e);
+    modifiers^=mask;
+    lv_obj_t *target=lv_event_get_target_obj(e);
+    if(modifiers&mask)lv_obj_add_state(target,LV_STATE_CHECKED);
+    else lv_obj_remove_state(target,LV_STATE_CHECKED);
+}
+static void extra_key(lv_event_t *e) {
+    unsigned usage=(uintptr_t)lv_event_get_user_data(e);
+    remote(PAX_BLE_KEY,modifiers,usage,NULL);
+    clear_modifiers();
+}
+static void keyboard_event(lv_event_t *e) {
+    lv_obj_t *kb=lv_event_get_current_target(e);
+    uint32_t button_id=lv_keyboard_get_selected_button(kb);
+    if(button_id==LV_BUTTONMATRIX_BUTTON_NONE)return;
+    const char *text=lv_keyboard_get_button_text(kb,button_id);
+    if(!text)return;
+    if(strcmp(text,"ABC")==0) {
+        lv_keyboard_set_mode(kb,LV_KEYBOARD_MODE_TEXT_UPPER);return;
+    }
+    if(strcmp(text,"abc")==0) {
+        lv_keyboard_set_mode(kb,LV_KEYBOARD_MODE_TEXT_LOWER);return;
+    }
+    if(strcmp(text,"1#")==0) {
+        lv_keyboard_set_mode(kb,LV_KEYBOARD_MODE_SPECIAL);return;
+    }
+    if(strcmp(text,LV_SYMBOL_KEYBOARD)==0||strcmp(text,LV_SYMBOL_CLOSE)==0) {
+        lv_keyboard_set_mode(kb,LV_KEYBOARD_MODE_TEXT_LOWER);return;
+    }
+    unsigned usage=0;bool shift=false;
+    if(strcmp(text,LV_SYMBOL_BACKSPACE)==0)usage=42;
+    else if(strcmp(text,LV_SYMBOL_NEW_LINE)==0||strcmp(text,LV_SYMBOL_OK)==0)usage=40;
+    else if(strcmp(text,LV_SYMBOL_LEFT)==0)usage=80;
+    else if(strcmp(text,LV_SYMBOL_RIGHT)==0)usage=79;
+    else if(!hid_key_for_label(text,&usage,&shift))return;
+    remote(PAX_BLE_KEY,modifiers|(shift?2u:0u),usage,NULL);
+    clear_modifiers();
+    if(lv_keyboard_get_mode(kb)==LV_KEYBOARD_MODE_TEXT_UPPER)
+        lv_keyboard_set_mode(kb,LV_KEYBOARD_MODE_TEXT_LOWER);
 }
 static int clamp(int x) {return x < -127 ? -127 : x > 127 ? 127 : x;}
 static void mouse(lv_event_t *e) {
@@ -218,37 +287,44 @@ static void build_ui(void) {
     lv_obj_set_style_bg_color(root,lv_color_hex(0x081827),0);
     lv_obj_set_style_text_color(root,lv_color_white(),0);
     status_label=label(root,"BLE Remote - checking firmware",12,10);
-    lv_obj_set_width(status_label,540);lv_label_set_long_mode(status_label,LV_LABEL_LONG_DOT);
+    lv_obj_set_width(status_label,sx(540));lv_label_set_long_mode(status_label,LV_LABEL_LONG_DOT);
     button(root,"Advertise",566,3,126,36,advertise,0,LV_EVENT_CLICKED);
     button(root,"Close",704,3,84,36,close_app,0,LV_EVENT_CLICKED);
     const char *tabs[]={"Keyboard","Mousepad","Gamepad","Hosts"};
     for(unsigned i=0;i<4;i++)tabs_ui[i]=button(root,tabs[i],12+i*196,48,186,42,change_tab,i,LV_EVENT_CLICKED);
     lv_obj_add_state(tabs_ui[0],LV_STATE_CHECKED);
     for(unsigned i=0;i<4;i++) {
-        panels[i]=lv_obj_create(root);lv_obj_set_pos(panels[i],8,100);lv_obj_set_size(panels[i],784,372);
+        panels[i]=lv_obj_create(root);lv_obj_set_pos(panels[i],sx(8),sy(100));lv_obj_set_size(panels[i],sx(784),sy(372));
         lv_obj_set_style_pad_all(panels[i],0,0);lv_obj_set_style_border_width(panels[i],0,0);
         lv_obj_set_style_bg_color(panels[i],lv_color_hex(0x102b43),0);
         lv_obj_remove_flag(panels[i],LV_OBJ_FLAG_SCROLLABLE);
         if(i)lv_obj_add_flag(panels[i],LV_OBJ_FLAG_HIDDEN);
     }
-    const char *rows[]={"1234567890","QWERTYUIOP","ASDFGHJKL","ZXCVBNM"};
-    const unsigned rowcodes[4][10]={{30,31,32,33,34,35,36,37,38,39},{20,26,8,21,23,28,24,12,18,19},{4,22,7,9,10,11,13,14,15},{29,27,6,25,5,17,16}};
-    for(unsigned r=0;r<4;r++)for(unsigned c=0;rows[r][c];c++) {
-        char text[2]={rows[r][c],0};
-        button(panels[0],text,8+c*69+(r>1?(r-1)*25:0),8+r*54,63,48,key,rowcodes[r][c],LV_EVENT_CLICKED);
+    remote_keyboard=lv_keyboard_create(panels[0]);
+    lv_obj_set_size(remote_keyboard,sx(768),sy(306));
+    lv_obj_align(remote_keyboard,LV_ALIGN_TOP_LEFT,sx(8),sy(4));
+    lv_obj_set_style_bg_color(remote_keyboard,lv_color_hex(0x193d54),LV_PART_MAIN);
+    lv_obj_set_style_bg_color(remote_keyboard,lv_color_hex(0x285674),LV_PART_ITEMS);
+    lv_obj_set_style_bg_color(remote_keyboard,lv_color_hex(0x3b708c),LV_PART_ITEMS|LV_STATE_CHECKED);
+    lv_obj_set_style_bg_color(remote_keyboard,lv_color_hex(0x138cb7),LV_PART_ITEMS|LV_STATE_PRESSED);
+    lv_obj_set_style_text_color(remote_keyboard,lv_color_hex(0xf2f7fa),LV_PART_ITEMS);
+    lv_obj_set_style_text_font(remote_keyboard,LV_FONT_DEFAULT,LV_PART_ITEMS);
+    lv_keyboard_set_popovers(remote_keyboard,true);
+    // Keep the LVGL keyboard's maps and visuals; convert selected labels to
+    // HID reports instead of inserting them into an editor's text area.
+    lv_obj_remove_event_cb(remote_keyboard,lv_keyboard_def_event_cb);
+    lv_obj_add_event_cb(remote_keyboard,keyboard_event,LV_EVENT_VALUE_CHANGED,NULL);
+    const char *mods[]={"Ctrl","Alt","Win"};const unsigned masks[]={1,4,8};
+    for(unsigned i=0;i<3;i++) {
+        modifier_buttons[i]=button(panels[0],mods[i],8+i*108,318,100,40,
+                                   toggle_modifier,masks[i],LV_EVENT_CLICKED);
+        lv_obj_set_style_bg_color(modifier_buttons[i],lv_color_hex(0x456176),0);
     }
-    button(panels[0],"Back",700,8,76,48,key,42,LV_EVENT_CLICKED);
-    button(panels[0],"Tab",700,62,76,48,key,43,LV_EVENT_CLICKED);
-    button(panels[0],"Enter",661,116,115,48,key,40,LV_EVENT_CLICKED);
-    button(panels[0],"Esc",580,170,90,48,key,41,LV_EVENT_CLICKED);
-    const char *mods[]={"Ctrl","Shift","Alt","Win"};const unsigned masks[]={1,2,4,8};
-    for(unsigned i=0;i<4;i++)button(panels[0],mods[i],8+i*105,228,96,50,key,256+masks[i],LV_EVENT_CLICKED);
-    button(panels[0],"Space",428,228,348,50,key,44,LV_EVENT_CLICKED);
-    const char *extra[]={"- _","= +","[ {","] }","; :","' \"",", <",". >","/ ?","\\ |"};
-    const unsigned codes[]={45,46,47,48,51,52,54,55,56,49};
-    for(unsigned i=0;i<10;i++)button(panels[0],extra[i],8+i*77,288,70,38,key,codes[i],LV_EVENT_CLICKED);
-    label(panels[0],"US layout. Modifiers apply to the next key. Shift gives capitals / symbols.",12,342);
-    lv_obj_t *pad=lv_obj_create(panels[1]);lv_obj_set_pos(pad,8,8);lv_obj_set_size(pad,768,270);
+    button(panels[0],"Esc",340,318,82,40,extra_key,41,LV_EVENT_CLICKED);
+    button(panels[0],"Tab",430,318,82,40,extra_key,43,LV_EVENT_CLICKED);
+    lv_obj_t *kb_help=label(panels[0],"Ctrl / Alt / Win latch. ABC / 1# switch; ABC is one-shot Shift.",520,331);
+    lv_obj_set_width(kb_help,sx(250));lv_label_set_long_mode(kb_help,LV_LABEL_LONG_WRAP);
+    lv_obj_t *pad=lv_obj_create(panels[1]);lv_obj_set_pos(pad,sx(8),sy(8));lv_obj_set_size(pad,sx(768),sy(270));
     lv_obj_set_style_bg_color(pad,lv_color_hex(0x193d54),0);
     lv_obj_set_style_border_color(pad,lv_color_hex(0x32637e),0);
     lv_obj_remove_flag(pad,LV_OBJ_FLAG_SCROLLABLE);lv_obj_add_event_cb(pad,mouse,LV_EVENT_ALL,(void *)10);
@@ -263,7 +339,7 @@ static void build_ui(void) {
     const int xy[12][2]={{96,40},{182,126},{96,212},{10,126},{390,70},{486,70},{582,70},{678,70},{390,180},{486,180},{582,180},{678,180}};
     label(panels[2],"Touch D-pad and buttons together. Standard BLE HID gamepad.",10,8);
     for(unsigned i=0;i<12;i++) {
-        Control *c=&controls[i]; c->x=8+xy[i][0];c->y=100+xy[i][1];c->w=84;c->h=76;
+        Control *c=&controls[i]; c->x=sx(8+xy[i][0]);c->y=sy(100+xy[i][1]);c->w=sx(84);c->h=sy(76);
         c->bit=bits[i];c->direction=i<4?(1u<<i):0;
         c->obj=button(panels[2],names[i],xy[i][0],xy[i][1],84,76,NULL,0,LV_EVENT_CLICKED);
     }
@@ -274,11 +350,11 @@ static void build_ui(void) {
     for(unsigned i=0;i<host_count;i++) {
         host_buttons[i]=button(panels[3],"",8+(i%5)*154,8+(i/5)*60,146,52,select_host,i,LV_EVENT_CLICKED);
         lv_obj_set_style_pad_all(host_buttons[i],5,0);
-        lv_obj_t *title=lv_obj_get_child(host_buttons[i],0);lv_obj_set_size(title,134,19);
+        lv_obj_t *title=lv_obj_get_child(host_buttons[i],0);lv_obj_set_size(title,sx(134),sy(19));
         lv_label_set_long_mode(title,LV_LABEL_LONG_MODE_DOTS);lv_obj_align(title,LV_ALIGN_TOP_MID,0,0);
-        lv_obj_t *state=label(host_buttons[i],"",0,20);lv_obj_set_width(state,134);lv_obj_set_style_text_align(state,LV_TEXT_ALIGN_CENTER,0);
+        lv_obj_t *state=label(host_buttons[i],"",0,20);lv_obj_set_width(state,sx(134));lv_obj_set_style_text_align(state,LV_TEXT_ALIGN_CENTER,0);
     }
-    host_info=label(panels[3],"",12,138);lv_obj_set_width(host_info,754);lv_label_set_long_mode(host_info,LV_LABEL_LONG_WRAP);
+    host_info=label(panels[3],"",12,138);lv_obj_set_width(host_info,sx(754));lv_label_set_long_mode(host_info,LV_LABEL_LONG_WRAP);
     const char *actions[]={"Connect selected","Disconnect","Pair new device","Forget selected"};
     for(unsigned i=0;i<4;i++){
         lv_obj_t *b=button(panels[3],actions[i],8+i*194,238,186,56,host_action,i,LV_EVENT_CLICKED);

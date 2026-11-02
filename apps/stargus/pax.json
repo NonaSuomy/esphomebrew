@@ -413,9 +413,6 @@
         "pax_singleplayer_stubs.cpp"
       ],
       "prefix": "port_",
-      "cxxflags": [
-        "-fno-rtti"
-      ],
       "force_includes": [
         "local:apps/stratagus/pax_compat.h",
         "local:apps/stratagus/pax_net_compat.h"
@@ -430,7 +427,6 @@
       ],
       "prefix": "hot_port_",
       "cxxflags": [
-        "-fno-rtti",
         "-O2"
       ],
       "force_includes": [

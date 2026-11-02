@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "app": "wargus",
+  "mode": "processor",
+  "archive_dir": "/sd/roms/wargus/incoming",
+  "folders": [
+    "/sd/roms/wargus"
+  ],
+  "requires": [
+    {
+      "path": "/sd/roms/wargus/scripts/stratagus.lua",
+      "note": "Complete converted Warcraft II data tree"
+    }
+  ],
+  "instructions": "HOST COMPUTER REQUIRED: wartool is not an ESP32-P4 program. On Linux, use your own Warcraft II Battle.net Edition data and build/run the upstream wartool extractor using the steps in pax-modules/upstream/retroesp32/GUS_GAME_RECIPES.md (Recipe 3). Then add the matching stock scripts/maps and prepare the SD audio/video companions with the tools documented there, including verify_wargus_data.py and prepare_warcraft_videos.py. Copy the complete prepared tree to /sd/roms/wargus/. Recipe PAX only creates the SD folders and shows instructions; it does not run wartool. An ISO or archive by itself is not prepared runtime data. The PAX game build is not yet verified as playable.",
+  "media": [],
+  "sources": [
+    {
+      "url": "https://github.com/Wargus/wargus",
+      "note": "Extraction tool and original-data instructions"
+    }
+  ]
+}
