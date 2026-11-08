@@ -1,0 +1,34 @@
+{
+  "name": "ble_remote",
+  "title": "BLE Remote",
+  "version": "0.5.0-papp2",
+  "description": "Keyboard, mousepad and game controller with ten named BLE host slots. Requires BLE-peripheral enabled PAX firmware.",
+  "author": "PAX workspace",
+  "category": "Tool",
+  "license": "Apache-2.0 (app); LVGL MIT; BLE backend GPL-3.0",
+  "build": "lvgl",
+  "canvas": {
+    "recommended": "1024x600"
+  },
+  "controls": [
+    "Keyboard: US-layout taps; Ctrl/Shift/Alt/Win latch for the next key",
+    "Mousepad: slide, left/right click, drag toggle and scroll",
+    "Game controller: multitouch D-pad and A/B/X/Y/L/R/Select/Start",
+    "Hosts: select/connect, disconnect, pair a new device or confirm forgetting a saved pairing; Edit name labels a paired device",
+    "Close or physical L3: return to launcher"
+  ],
+  "changelog": "0.5.0: full-screen 1024x600 layout with scaled controls and touch targets.",
+  "file": "ble_remote.pax",
+  "size": 374204,
+  "sha256": "74a68c81817ee35483da1ca920c022b1f439e327470878f384987769e7bf20b1",
+  "abi": 2,
+  "bss_size": 263780,
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.5.0-papp2",
+  "source": {
+    "repo": "https://github.com/NonaSuomy/esphomebrew",
+    "ref": "265148ba7d495eed538cfb5fef869c233ad98f8b",
+    "path": "apps/ble_remote"
+  }
+}

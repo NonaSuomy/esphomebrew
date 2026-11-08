@@ -3,7 +3,7 @@ name: Build PAXs
 on:
   push:
     branches: [main]
-    paths: ["apps/**", "tools/build_pax.py", "tools/make_listing.py", "tests/test_launcher_store.py", "tests/test_store_expansion.py", "tests/test_external_assets.py", "tools/prepare_anotherworld_data.py", "tools/prepare_stargus_sd.py", "tools/dev_build_apps.py", "esphome/components/pax_loader/psram_app.h", "esphome/components/pax_loader/pax_theme_profile.h", "esphome/components/pax_loader/pax_wifi*.h", "esphome/components/pax_loader/pax_c6_update.h", "esphome/components/pax_loader/pax_firmware_update.h", ".github/workflows/build-paxs.yml"]
+    paths: ["papp2-packages/**", "tools/build_papp2_dist.py", "tests/test_launcher_store.py", "tests/test_store_expansion.py", "tests/test_external_assets.py", "tools/prepare_anotherworld_data.py", "tools/prepare_stargus_sd.py", "tools/make_listing.py", ".github/workflows/build-paxs.yml"]
   pull_request:
   workflow_dispatch:
 
@@ -13,19 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # The ESP-IDF image ships the riscv32-esp-elf toolchain the ESP32-P4 needs.
-    container: espressif/idf:v6.1
     steps:
       - uses: actions/checkout@v4
-
-      - name: Cache upstream sources
-        uses: actions/cache@v4
-        with:
-          path: .cache
-          key: pax-sources-${{ hashFiles('apps/*/pax.json', 'tools/build_pax.py') }}
-          restore-keys: |
-            pax-sources-
-            papp-sources-
 
       - name: Check Launcher UI store recipe
         run: python3 -m unittest discover -s tests -p 'test_launcher_store.py'
@@ -38,16 +27,8 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_external_assets.py'
           python3 -m unittest discover -s tests -p 'test_external_asset_preparation.py'
 
-      - name: Build every app
-        shell: bash
-        run: |
-          git config --global --add safe.directory '*'
-          . "$IDF_PATH/export.sh" > /dev/null
-          riscv32-esp-elf-gcc --version | head -1
-          python3 tools/build_pax.py --out dist
-
-      - name: Verify Tulip freezing order
-        run: python3 tests/test_tulip_freezing.py
+      - name: Validate and stage PAPP2 packages
+        run: python3 tools/build_papp2_dist.py --out dist
 
       - name: Summary
         shell: bash
@@ -55,10 +36,10 @@ jobs:
           python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
           import json
           apps = json.load(open("dist/build.json"))["apps"]
-          print("| App | Version | Size | text | bss | sha256 |")
-          print("|---|---|---:|---:|---:|---|")
+          print("| App | Version | ABI | Size | sha256 |")
+          print("|---|---|---:|---:|---|")
           for a in apps:
-              print(f"| {a['file']} | {a['version']} | {a['size']:,} | {a['text_size']:,} | {a['bss_size']:,} | `{a['sha256'][:16]}` |")
+              print(f"| {a['file']} | {a['version']} | {a['abi']} | {a['size']:,} | `{a['sha256'][:16]}` |")
           EOF
 
       # Publish store refuses a new binary under an already released version.
@@ -80,7 +61,7 @@ jobs:
               if old and old != a["sha256"]:
                   bad.append(f"{a['name']} {a['version']}: published {old[:12]}, built {a['sha256'][:12]}")
           for line in bad:
-              print(f"::error::{line}. Bump \"version\" in apps/{line.split()[0]}/pax.json.")
+              print(f"::error::{line}. Bump \"version\" in papp2-packages/{line.split()[0]}.json.")
           sys.exit(1 if bad else 0)
           EOF
 

@@ -1,0 +1,120 @@
+{
+  "name": "war1gus",
+  "title": "War1gus",
+  "version": "0.1.1-papp2",
+  "description": "War1gus Stratagus PAX port; converted Warcraft I assets stay on SD.",
+  "file": "war1gus.pax",
+  "size": 3092656,
+  "sha256": "8c38a1b80ab8dab9d5725721b4be8e0fb8eec07c453dc8331a4e7c674f38dd0b",
+  "abi": 2,
+  "bss_size": 900592,
+  "source": {
+    "repo": "https://github.com/Wargus/stratagus",
+    "ref": "3d87c93f7fd8c0b62ee1be5df0a6d9efc72ca6cc",
+    "path": "src"
+  },
+  "sdk": {
+    "repo": "https://github.com/Wargus/stratagus",
+    "ref": "3d87c93f7fd8c0b62ee1be5df0a6d9efc72ca6cc"
+  },
+  "submodules": [
+    {
+      "path": "fluidsynth",
+      "repo": "https://github.com/FluidSynth/fluidsynth.git",
+      "ref": "3ede3f7c8ffc5d16e5d28f416cbfd71f3ad2b814"
+    }
+  ],
+  "linker_script": "local:apps/war1gus/psram_app.ld",
+  "category": "Game",
+  "license": "GPL-2.0-or-later; dependency notices in source",
+  "about": "Verified ESP32-P4 build of the War1gus Stratagus port. The native menus and first mission path have been exercised on hardware. Requires a complete data tree converted from your original Warcraft I files; game data is not included. Full-campaign, save-state and all-control coverage is not certified. Movie soundtracks are separate optional OGG companions beside media/menu.paxmenu.",
+  "changelog": "0.1.5: retry the MIDI audio worker with smaller internal stacks when the AIO cannot allocate 32 KiB; retain the PAPP2-safe Guichan cleanup.",
+  "controls": [
+    "Mouse or touch: select units and use the game menus",
+    "Keyboard: game shortcuts",
+    "Hold Menu 3 s: return to the launcher"
+  ],
+  "canvas": true,
+  "requires": [
+    {
+      "path": "/sd/roms/war1gus/scripts/stratagus.lua",
+      "note": "Complete converted Warcraft I data tree"
+    },
+    {
+      "path": "/sd/roms/war1gus/media/menu.paxmenu",
+      "note": "PAX video pack generated from extracted PC movie files"
+    },
+    {
+      "path": "/sd/roms/war1gus/media/hintro.ogv.ogg",
+      "note": "Optional audio companion for videos/hintro.ogv; video plays without this soundtrack.",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/war1gus/media/ointro.ogv.ogg",
+      "note": "Optional audio companion for videos/ointro.ogv; video plays without this soundtrack.",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/war1gus/media/cave.ogv.ogg",
+      "note": "Optional audio companion for videos/cave.ogv; video plays without this soundtrack.",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/war1gus/media/title.ogv.ogg",
+      "note": "Optional audio companion for videos/title.ogv; video plays without this soundtrack.",
+      "optional": true
+    }
+  ],
+  "extract": {
+    "version": 2,
+    "app": "war1gus",
+    "mode": "processor",
+    "archive_dir": "/sd/roms/war1gus/incoming",
+    "folders": [
+      "/sd/roms/war1gus"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/war1gus/scripts/stratagus.lua",
+        "note": "Complete converted Warcraft I data tree"
+      },
+      {
+        "path": "/sd/roms/war1gus/media/menu.paxmenu",
+        "note": "PAX video pack generated from extracted PC movie files"
+      },
+      {
+        "path": "/sd/roms/war1gus/media/hintro.ogv.ogg",
+        "note": "Optional audio companion for videos/hintro.ogv; video plays without this soundtrack.",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/war1gus/media/ointro.ogv.ogg",
+        "note": "Optional audio companion for videos/ointro.ogv; video plays without this soundtrack.",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/war1gus/media/cave.ogv.ogg",
+        "note": "Optional audio companion for videos/cave.ogv; video plays without this soundtrack.",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/war1gus/media/title.ogv.ogg",
+        "note": "Optional audio companion for videos/title.ogv; video plays without this soundtrack.",
+        "optional": true
+      }
+    ],
+    "instructions": "HOST COMPUTER REQUIRED: war1tool is not an ESP32-P4 program. On Linux, use your own Warcraft I PC ISO and a local Wargus/war1gus source checkout. Install CMake, a C++ compiler, cdrtools (isoinfo), FFmpeg/ffprobe, Python 3, and Pillow. Run: python3 ~/code/pax/pax-recipe/tools/prepare_war1gus_iso.py --iso /path/to/warcraft.iso --source /path/to/war1gus --output /path/to/new-war1gus-data --soundfont /path/to/your.sf2. This builds war1tool, extracts and converts the game assets, prepares the PAX movie pack, and renders the movie audio companions. Copy the generated tree contents to /sd/roms/war1gus/. For movie sound, keep media/hintro.ogv.ogg, media/ointro.ogv.ogg, media/cave.ogv.ogg, and media/title.ogv.ogg beside media/menu.paxmenu. The movie picture plays without those optional audio files. Omit --soundfont to skip MIDI music rendering; supplying one also requires FluidSynth. The recipe PAX prepares the SD folders and shows these instructions; it does not run war1tool. Game assets stay private and are not uploaded. The PAPP2 build has been exercised on the AIO through movie playback and clean exit.",
+    "media": [],
+    "sources": [
+      {
+        "url": "https://github.com/Wargus/war1gus",
+        "note": "Extraction tool and original-data instructions"
+      }
+    ]
+  },
+  "install_recipe_source": "pax-modules/apps/stratagus/install-recipes/war1gus.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 65536,
+  "package_version": "0.1.1-papp2"
+}

@@ -1,0 +1,74 @@
+{
+  "name": "wargus",
+  "title": "Wargus",
+  "version": "0.1.1-papp2",
+  "description": "Wargus Stratagus PAX port; converted Warcraft II: Tides of Darkness assets stay on SD.",
+  "file": "wargus.pax",
+  "size": 2961368,
+  "sha256": "d2ef49b8052bea80b2b6c62d6e15fd891c594acf2274cfb33ff1b7292e92b686",
+  "abi": 2,
+  "bss_size": 520768,
+  "source": {
+    "repo": "https://github.com/Wargus/stratagus",
+    "ref": "3d87c93f7fd8c0b62ee1be5df0a6d9efc72ca6cc",
+    "path": "src"
+  },
+  "sdk": {
+    "repo": "https://github.com/Wargus/stratagus",
+    "ref": "3d87c93f7fd8c0b62ee1be5df0a6d9efc72ca6cc"
+  },
+  "linker_script": "local:apps/stratagus/psram_warcraft_app.ld",
+  "category": "Game",
+  "license": "GPL-2.0-or-later; dependency notices in source",
+  "about": "Verified ESP32-P4 build of the Wargus Stratagus port. The native menus and first mission path have been exercised on hardware. Requires a complete data tree converted from your original Warcraft II: Tides of Darkness files; game data is not included. Full-campaign, save-state and all-control coverage is not certified.",
+  "changelog": "0.1.3: make Guichan widget cleanup idempotent; verified startup and clean exit on the AIO.",
+  "controls": [
+    "Mouse or touch: select units and use the game menus",
+    "Keyboard: game shortcuts",
+    "Hold Menu 3 s: return to the launcher"
+  ],
+  "canvas": true,
+  "requires": [
+    {
+      "path": "/sd/roms/wargus/scripts/stratagus.lua",
+      "note": "Complete converted Warcraft II data tree"
+    },
+    {
+      "path": "/sd/roms/wargus/media/menu.paxmenu",
+      "note": "PAX video pack generated from extracted PC movie files"
+    }
+  ],
+  "extract": {
+    "version": 2,
+    "app": "wargus",
+    "mode": "processor",
+    "archive_dir": "/sd/roms/wargus/incoming",
+    "folders": [
+      "/sd/roms/wargus",
+      "/sd/roms/wargus/media"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/wargus/scripts/stratagus.lua",
+        "note": "Complete converted Warcraft II data tree"
+      },
+      {
+        "path": "/sd/roms/wargus/media/menu.paxmenu",
+        "note": "PAX video pack generated from extracted PC movie files"
+      }
+    ],
+    "instructions": "HOST COMPUTER REQUIRED: wartool is not an ESP32-P4 program. On Linux, use your own Warcraft II Battle.net Edition data and build/run the upstream wartool extractor using the steps in pax-modules/upstream/retroesp32/GUS_GAME_RECIPES.md (Recipe 3). Add the matching stock scripts/maps, prepare audio, and run prepare_warcraft_videos.py on the output to create media/menu.paxmenu. Copy the complete prepared tree to /sd/roms/wargus/ and keep that movie pack at /sd/roms/wargus/media/menu.paxmenu. Recipe PAX only creates the SD folders and shows instructions; it does not run wartool. An ISO or archive by itself is not prepared runtime data. Hardware testing covers menu/startup and the first mission path; full-campaign, save-state, and all-control coverage is not certified.",
+    "media": [],
+    "sources": [
+      {
+        "url": "https://github.com/Wargus/wargus",
+        "note": "Extraction tool and original-data instructions"
+      }
+    ]
+  },
+  "install_recipe_source": "pax-modules/apps/stratagus/install-recipes/wargus.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 65536,
+  "package_version": "0.1.1-papp2"
+}

@@ -1,0 +1,121 @@
+{
+  "name": "tiberiansun",
+  "title": "Tiberian Sun (OpenTS P4 Port)",
+  "version": "0.0.5-papp2",
+  "description": "Staged ESP32-P4 port of OpenTS Tiberian Sun. It decrypts original MIX indexes, mounts the SD-card data layer, parses campaign and mission metadata, validates IsoMapPack5 terrain framing in PSRAM, and keeps a visible runtime shell alive on the device.",
+  "file": "tiberiansun.pax",
+  "size": 44480,
+  "sha256": "9258162d5d90befaef22de3fcf8c8fe37b7919e4248903bdfcb42a6ddde4d007",
+  "abi": 2,
+  "bss_size": 2224,
+  "source": {
+    "repo": "https://github.com/OpenTS-Developers/OpenTS.git",
+    "ref": "84675569c257529db17fcb0bc6e06889bc258523",
+    "path": "."
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "c07301866e1ebc72dc656c51b94349f2193d28228d8dd6ce3b9239f812602823",
+    "path": "pax-esphome/components/pax_loader/psram_app.h",
+    "ref": "2c18bdf310d5643953fa66e22c9fe1758cee0820"
+  },
+  "linker_script": "local:apps/tiberiansun/pax_cpp.ld",
+  "author": "Westwood / Electronic Arts; OpenTS contributors; PAX port",
+  "category": "Game",
+  "license": "GPL-3.0-or-later with OpenTS additional terms",
+  "about": "This development package follows OpenTS archive precedence, reads encrypted MIX directories directly from the SD card, resolves MAPSEL01 campaign stages, parses mission metadata and object counts, validates IsoMapPack5 Base64/LZO framing in PSRAM, and presents the live port status until the loader close control is used.",
+  "changelog": "0.0.5-dev: run MIX probing and runtime shell on a tracked 64 KiB PSRAM stack; 0.0.4-dev: campaign stage and IsoMapPack5 terrain framing validation; 0.0.3-dev: persistent P4 runtime shell with framebuffer status and orderly close; 0.0.2-dev: encrypted MIX decryption, OpenTS-style archive mounting, and PSRAM INI loading",
+  "upstream": {
+    "project": "OpenTS",
+    "version": "84675569c257",
+    "url": "https://github.com/OpenTS-Developers/OpenTS"
+  },
+  "canvas": [
+    "800x480"
+  ],
+  "canvas_recommended": "800x480",
+  "requires": [
+    {
+      "path": "/sd/roms/tiberiansun/",
+      "note": "Root folder for Tiberian Sun MIX files and game data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiansun/tibsun.mix",
+      "note": "Base Tiberian Sun data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/maps01.mix",
+      "note": "Base map data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/multi.mix",
+      "note": "Multiplayer map data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/scores.mix",
+      "note": "Base music data"
+    },
+    {
+      "path": "/sd/roms/tiberiansun/*.mix",
+      "note": "Optional expansion and movie MIX files",
+      "optional": true
+    }
+  ],
+  "active_source": {
+    "path": "pax-modules/apps",
+    "repository": "pax-modules",
+    "ref": "39bb8dfdf0e95bba63035dde6cd5809a34d51234"
+  },
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "extract": {
+    "version": 2,
+    "app": "tiberiansun",
+    "mode": "development",
+    "archive_dir": "/sd/roms/tiberiansun/incoming",
+    "folders": [
+      "/sd/roms/tiberiansun"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/tiberiansun/",
+        "note": "Root folder for Tiberian Sun MIX files and game data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiansun/tibsun.mix",
+        "note": "Base Tiberian Sun data"
+      },
+      {
+        "path": "/sd/roms/tiberiansun/maps01.mix",
+        "note": "Base map data"
+      },
+      {
+        "path": "/sd/roms/tiberiansun/multi.mix",
+        "note": "Multiplayer map data"
+      },
+      {
+        "path": "/sd/roms/tiberiansun/scores.mix",
+        "note": "Base music data"
+      },
+      {
+        "path": "/sd/roms/tiberiansun/*.mix",
+        "note": "Optional expansion and movie MIX files",
+        "optional": true
+      }
+    ],
+    "instructions": "This is a development data-inspection shell; supplying these files does not turn it into a complete playable game.\n\nFILES / FOLDERS\n\n/sd/roms/tiberiansun/ \u2014 Root folder for Tiberian Sun MIX files and game data\n\n/sd/roms/tiberiansun/tibsun.mix \u2014 Base Tiberian Sun data\n\n/sd/roms/tiberiansun/maps01.mix \u2014 Base map data\n\n/sd/roms/tiberiansun/multi.mix \u2014 Multiplayer map data\n\n/sd/roms/tiberiansun/scores.mix \u2014 Base music data\n\n/sd/roms/tiberiansun/*.mix \u2014 Optional expansion and movie MIX files",
+    "media": [],
+    "sources": [
+      {
+        "url": "https://github.com/OpenTS-Developers/OpenTS",
+        "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+      }
+    ]
+  },
+  "install_recipe_source": "pax-modules/apps/tiberiansun/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.0.5-papp2"
+}

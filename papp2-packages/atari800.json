@@ -1,0 +1,80 @@
+{
+  "name": "atari800",
+  "title": "Atari 800",
+  "version": "0.1.1-papp2",
+  "description": "Atari 8-bit computer emulator. Put an ATR, XEX or compatible image in /sd/roms/atari800/.",
+  "file": "atari800.pax",
+  "size": 334368,
+  "sha256": "11745ca5751711fc26a2cf79bcd0355dcf63d74bf8c3e93d14c42a7d9a09655c",
+  "abi": 2,
+  "bss_size": 35968,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "ae04c88d166c55fa60722276ccc1cc50b7d100f2",
+    "path": "components/psram_app_loader"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "965d9e75d56137bcd22b2fbcefa40cd7696ee0acb052c8523ec8b069f805952b",
+    "linker_repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "linker_ref": "ae04c88d166c55fa60722276ccc1cc50b7d100f2"
+  },
+  "author": "RetroESP32-P4 port",
+  "category": "Emulator",
+  "license": "See the upstream project license.",
+  "about": "Atari 8-bit computer emulator. Put an ATR, XEX or compatible image in /sd/roms/atari800/.",
+  "controls": [
+    "D-pad: directional input",
+    "A / B: primary emulator buttons",
+    "Start / Select: emulator controls",
+    "Menu: quit to launcher",
+    "Slide-down game menu: Atari 800 save/load state and restart."
+  ],
+  "upstream": {
+    "project": "Atari800",
+    "version": "4.2.0",
+    "url": "https://github.com/atari800/atari800"
+  },
+  "requires": [
+    {
+      "path": "/sd/roms/atari800/*",
+      "note": ".atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded"
+    }
+  ],
+  "icon": {
+    "type": "image/png",
+    "width": 64,
+    "height": 64,
+    "base64": "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"
+  },
+  "active_source": {
+    "repository": "pax-modules",
+    "path": "pax-modules/apps/atari800",
+    "working_tree_build": true
+  },
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "extract": {
+    "version": 2,
+    "app": "atari800",
+    "mode": "local-files",
+    "archive_dir": "/sd/roms/atari800/incoming",
+    "folders": [
+      "/sd/roms/atari800"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/atari800/*",
+        "note": ".atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded"
+      }
+    ],
+    "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\n.atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded\n\nFILES / FOLDERS\n\n/sd/roms/atari800/* \u2014 .atr, .xex, .car or supported Atari image; Altirra OS/BASIC fallback is embedded",
+    "media": [],
+    "sources": []
+  },
+  "install_recipe_source": "pax-modules/apps/atari800/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "development_note": "PAPP2 build. Atari audio is resampled to 48 kHz; display submission now uses a three-slot PSRAM queue and a tracked child task to avoid blocking the emulator/audio loop. Live AIO run: about 60 emulated frames/s, complete audio writes, one brief startup I2S underflow then zero in subsequent windows. Acoustic crackle remains unconfirmed.",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.1.1-papp2"
+}

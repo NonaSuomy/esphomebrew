@@ -1,0 +1,128 @@
+{
+  "name": "quake2",
+  "title": "Quake II",
+  "version": "0.1.0-papp2",
+  "description": "Quake II software renderer as a PSRAM app for the PAX launcher.",
+  "file": "quake2.pax",
+  "size": 818200,
+  "sha256": "c7eada7e64e21f078dac910353bfac0b458ff85155660cd0d3b25951b79742d7",
+  "abi": 2,
+  "bss_size": 12510792,
+  "source": {
+    "repo": "https://github.com/alexkid77/ESP32_QUAKE2",
+    "ref": "0c37920e0af6c01bb88d1e8c4a0fcf148be5e57e",
+    "path": "."
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "c07301866e1ebc72dc656c51b94349f2193d28228d8dd6ce3b9239f812602823",
+    "path": "pax-esphome/components/pax_loader/psram_app.h",
+    "ref": "2c18bdf310d5643953fa66e22c9fe1758cee0820"
+  },
+  "submodules": [
+    {
+      "path": "third_party/papp_mp3",
+      "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+      "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2"
+    }
+  ],
+  "patches": [
+    "0001-esp32p4-bringup.patch",
+    "0002-larger-model-hunk-pool.patch",
+    "0002-small-surface-cache.patch",
+    "0003-precache-sound-registration.patch",
+    "0004-fix-8bit-sound-volume-index.patch",
+    "0005-safe-map-allocation.patch",
+    "0006-independent-audio-clock.patch",
+    "0007-compact-sound-cache.patch",
+    "0008-alias-workspace.patch",
+    "0009-isolated-death-test-saves.patch",
+    "0010-large-texture-reserve.patch"
+  ],
+  "linker_script": "local:apps/quake2/psram_app.ld",
+  "author": "id Software / quake2generic; PAX port",
+  "category": "Game",
+  "license": "GPL-2.0",
+  "about": "A 320x240 software-rendered Quake II port. Copy the shareware or retail baseq2 directory to /sd/roms/quake2/baseq2/. Commercial game data is not redistributed.",
+  "controls": [
+    "D-pad: move and turn",
+    "A: fire; B: jump/use",
+    "Menus: A/Start confirms; B backs out",
+    "Select/Minus: Escape / menu / back",
+    "Right analog stick: look around",
+    "L1 (upper-left shoulder): F1 / help computer",
+    "R: strafe right",
+    "Start: enter; Menu (hold 3 s): quit",
+    "USB keyboard and mouse are supported"
+  ],
+  "upstream": {
+    "project": "ESP32_QUAKE2 / quake2generic",
+    "version": "0.1.0",
+    "url": "https://github.com/alexkid77/ESP32_QUAKE2"
+  },
+  "canvas": [
+    "640x480",
+    "800x480"
+  ],
+  "canvas_recommended": "640x480",
+  "requires": [
+    {
+      "path": "/sd/roms/quake2/baseq2/pak0.pak",
+      "note": "Quake II original or demo baseq2 data"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/players",
+      "note": "Required player models and skins from the same installation"
+    },
+    {
+      "path": "/sd/roms/quake2/baseq2/video",
+      "note": "Optional original movies",
+      "optional": true
+    }
+  ],
+  "active_source": {
+    "path": "pax-modules/apps",
+    "repository": "pax-modules",
+    "ref": "39bb8dfdf0e95bba63035dde6cd5809a34d51234"
+  },
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "extract": {
+    "version": 2,
+    "app": "quake2",
+    "mode": "local-files",
+    "archive_dir": "/sd/roms/quake2/incoming",
+    "folders": [
+      "/sd/roms/quake2/baseq2",
+      "/sd/roms/quake2/baseq2/players",
+      "/sd/roms/quake2/baseq2/video"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/quake2/baseq2/pak0.pak",
+        "note": "Quake II original or demo baseq2 data"
+      },
+      {
+        "path": "/sd/roms/quake2/baseq2/players",
+        "note": "Required player models and skins from the same installation"
+      },
+      {
+        "path": "/sd/roms/quake2/baseq2/video",
+        "note": "Optional original movies",
+        "optional": true
+      }
+    ],
+    "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/quake2/baseq2/pak0.pak \u2014 Quake II original or demo baseq2 data\n\n/sd/roms/quake2/baseq2/players \u2014 Required player models and skins from the same installation\n\n/sd/roms/quake2/baseq2/video \u2014 Optional original movies",
+    "media": [],
+    "sources": [
+      {
+        "url": "https://github.com/alexkid77/ESP32_QUAKE2",
+        "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+      }
+    ]
+  },
+  "install_recipe_source": "pax-modules/apps/quake2/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.1.0-papp2"
+}

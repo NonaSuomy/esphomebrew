@@ -1,0 +1,78 @@
+{
+  "name": "gw",
+  "title": "Game & Watch",
+  "version": "0.1.1-papp2",
+  "description": "Nintendo Game & Watch emulator. Put the system ROM in /sd/roms/gw/.",
+  "file": "gw.pax",
+  "size": 113468,
+  "sha256": "2b6b16a3cbae00de618736b6ff86c63e9a3e7aebab92ac6b1599fad2582ef9c8",
+  "abi": 2,
+  "bss_size": 18764,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "ae04c88d166c55fa60722276ccc1cc50b7d100f2",
+    "path": "components/psram_app_loader"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "965d9e75d56137bcd22b2fbcefa40cd7696ee0acb052c8523ec8b069f805952b",
+    "linker_repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "linker_ref": "ae04c88d166c55fa60722276ccc1cc50b7d100f2"
+  },
+  "author": "RetroESP32-P4 port",
+  "category": "Emulator",
+  "license": "See the upstream project license.",
+  "about": "Nintendo Game & Watch emulator. Put the system ROM in /sd/roms/gw/.",
+  "controls": [
+    "D-pad: directional input",
+    "A / B: primary emulator buttons",
+    "Start / Select: emulator controls",
+    "Menu: quit to launcher"
+  ],
+  "upstream": {
+    "project": "GW Emulator",
+    "url": "https://github.com/ghorn/gw-emulator"
+  },
+  "requires": [
+    {
+      "path": "/sd/roms/gw/*",
+      "note": "compatible Game & Watch .gw ROM"
+    }
+  ],
+  "icon": {
+    "type": "image/png",
+    "width": 64,
+    "height": 64,
+    "base64": "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"
+  },
+  "active_source": {
+    "repository": "pax-modules",
+    "path": "pax-modules/apps/gw",
+    "working_tree_build": true
+  },
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "extract": {
+    "version": 2,
+    "app": "gw",
+    "mode": "local-files",
+    "archive_dir": "/sd/roms/gw/incoming",
+    "folders": [
+      "/sd/roms/gw"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/gw/*",
+        "note": "compatible Game & Watch .gw ROM"
+      }
+    ],
+    "instructions": "Choose a compatible game ROM you own or a homebrew release, copy it into the folder below, and use Select game in the launcher.\n\ncompatible Game & Watch .gw ROM\n\nFILES / FOLDERS\n\n/sd/roms/gw/* \u2014 compatible Game & Watch .gw ROM",
+    "media": [],
+    "sources": []
+  },
+  "install_recipe_source": "pax-modules/apps/gw/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "development_note": "Game & Watch uses buffered digital piezo audio. Video frames are copied into a three-slot PSRAM queue and presented by a child task so blocking display work does not stall the 128 Hz emulator/audio loop. AIO runtime check: 3 startup I2S underflows/720 missing frames, then zero underflows in subsequent windows over ~24 seconds; frame/audio production tracked close to the expected rate.",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.1.1-papp2"
+}
