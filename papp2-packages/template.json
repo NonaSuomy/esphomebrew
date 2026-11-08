@@ -1,0 +1,46 @@
+{
+  "name": "template",
+  "title": "PAX SDK test",
+  "version": "0.1.0-papp2",
+  "description": "Current SDK startup, display and input test.",
+  "file": "template.pax",
+  "size": 7060,
+  "sha256": "5b2a0cb66262e12f3c0d6791e93f594981466040cf234b60e4e39d7d0fd60a9b",
+  "abi": 2,
+  "bss_size": 324,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
+    "path": "components/psram_app_loader"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "c07301866e1ebc72dc656c51b94349f2193d28228d8dd6ce3b9239f812602823",
+    "path": "pax-esphome/components/pax_loader/psram_app.h",
+    "ref": "2c18bdf310d5643953fa66e22c9fe1758cee0820"
+  },
+  "category": "Tool",
+  "active_source": {
+    "path": "pax-modules/apps",
+    "repository": "pax-modules",
+    "ref": "39bb8dfdf0e95bba63035dde6cd5809a34d51234"
+  },
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "extract": {
+    "version": 2,
+    "app": "template",
+    "mode": "self-contained",
+    "archive_dir": "/sd/roms/template/incoming",
+    "folders": [],
+    "requires": [],
+    "instructions": "No mandatory external game data is needed by this current build.\n\nFILES / FOLDERS",
+    "media": [],
+    "sources": []
+  },
+  "install_recipe_source": "pax-modules/apps/template/install-recipe.json",
+  "requires": [],
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.1.0-papp2"
+}

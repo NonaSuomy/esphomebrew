@@ -1,0 +1,260 @@
+{
+  "name": "redalert",
+  "title": "Red Alert",
+  "version": "0.2.3-papp2",
+  "description": "Command & Conquer: Red Alert (Vanilla Conquer) as a PAX, with movies, music, touch, keyboard and mouse, and network multiplayer against PCs running Vanilla Conquer. LAN play works out of the box; for other networks or the internet, set [Network] Protocol=tcp and Host=<the host's IP> in /sd/roms/redalert/redalert.ini (the host needs Protocol=tcp and TCP port 1234 open). Needs your own REDALERT.MIX and MAIN.MIX (from the freeware release or your CDs) in /sd/roms/redalert/. Optional Allied, Soviet, Counterstrike, and Aftermath data can be kept in their matching subfolders.",
+  "file": "redalert.pax",
+  "size": 1118172,
+  "sha256": "45d2e8a728e025e52b624ff1dad1b38b6d4e6f2a3d3e1f4951005c9fcb3f105a",
+  "abi": 2,
+  "bss_size": 769332,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/Vanilla-Conquer",
+    "ref": "bcce972e66b95b86a6dfd7e17697ca296bc66486",
+    "path": "redalert"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "c07301866e1ebc72dc656c51b94349f2193d28228d8dd6ce3b9239f812602823",
+    "path": "pax-esphome/components/pax_loader/psram_app.h",
+    "ref": "2c18bdf310d5643953fa66e22c9fe1758cee0820"
+  },
+  "patches": [
+    "0001-sockets-only-with-networking.patch",
+    "0002-smaller-shape-cache.patch",
+    "0003-newlib-has-strupr.patch",
+    "0004-pk-digit-pointer.patch",
+    "0005-prog-end-exits-cleanly.patch",
+    "0006-vqa-audio-ring-bounds.patch",
+    "0007-vqa-palette-table-bounds.patch",
+    "0008-vqa-audio-tempbuf-bounds.patch",
+    "0009-vqa-codebook-bounds.patch",
+    "0013-start-cell-pick-order.patch",
+    "0014-scores-mix-from-main.patch",
+    "0015-save-io-checks.patch",
+    "0016-protect-streaming-audio.patch",
+    "0017-limit-display-work.patch",
+    "0018-trace-movie-source.patch",
+    "0019-present-only-decoded-movie-frames.patch",
+    "0020-profile-movie-pipeline.patch",
+    "0021-buffer-movie-stream.patch",
+    "0022-drain-buffered-movie-frames.patch"
+  ],
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
+  "author": "Westwood / Electronic Arts; Vanilla Conquer port",
+  "category": "Game",
+  "license": "GPL-3.0 (Vanilla Conquer)",
+  "about": "Command & Conquer: Red Alert on Vanilla Conquer, with movies, music, touch, USB keyboard and mouse. Plays network games against PCs running Vanilla Conquer, on the LAN or over TCP across networks. Needs REDALERT.MIX and MAIN.MIX from the freeware release or your own discs in /sd/roms/redalert/. Optional CD data goes in allied/, soviet/, counterstrike/, or aftermath/; Counterstrike uses EXPAND.MIX and Aftermath uses EXPAND2.MIX. The game draws a 640x400 picture, so by default the canvas is exactly that size (no border to copy each frame); the store's Screen setting can switch back to the 800x480 canvas.",
+  "changelog": "0.2.4: Use the 640x400 canvas and current balanced audio/presenter scheduling. Pair with current PAX firmware for guarded audio startup and sufficient I2S DMA headroom.",
+  "controls": [
+    "Touch: move the cursor; tap = click, drag = select",
+    "USB mouse and keyboard: as on a PC",
+    "A: left click at the cursor",
+    "B: right click at the cursor",
+    "Up/Down: menus; scroll the sidebar",
+    "Start: Enter (confirm, skip movies)",
+    "Select: Esc (options menu, skip movies)",
+    "Menu + X: quit to launcher"
+  ],
+  "upstream": {
+    "project": "Vanilla Conquer",
+    "version": "ce83b59",
+    "url": "https://github.com/TheAssemblyArmada/Vanilla-Conquer"
+  },
+  "canvas": [
+    "640x400",
+    "800x480"
+  ],
+  "canvas_recommended": "640x400",
+  "requires": [
+    {
+      "path": "/sd/roms/redalert/REDALERT.MIX",
+      "note": "Required Red Alert base game data"
+    },
+    {
+      "path": "/sd/roms/redalert/MAIN.MIX",
+      "note": "Required Red Alert base game data"
+    },
+    {
+      "path": "/sd/roms/redalert/allied/MAIN.MIX",
+      "note": "Optional Allied CD data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/soviet/MAIN.MIX",
+      "note": "Optional Soviet CD data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/counterstrike/",
+      "note": "Optional Counterstrike folder",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/counterstrike/MAIN.MIX",
+      "note": "Optional Counterstrike game data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/EXPAND.MIX",
+      "note": "Optional Counterstrike expansion data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/aftermath/",
+      "note": "Optional Aftermath folder",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/aftermath/MAIN.MIX",
+      "note": "Optional Aftermath game data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/EXPAND2.MIX",
+      "note": "Optional Aftermath expansion data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/HIRES1.MIX",
+      "note": "Optional high-resolution expansion data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/redalert/LORES1.MIX",
+      "note": "Optional low-resolution expansion data",
+      "optional": true
+    }
+  ],
+  "icon": "icon_msdos.png",
+  "active_source": {
+    "repository": "pax-modules",
+    "path": "pax-modules/apps/redalert",
+    "working_tree_build": true
+  },
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "extract": {
+    "version": 2,
+    "app": "redalert",
+    "mode": "download",
+    "archive_dir": "/sd/roms/redalert/incoming",
+    "folders": [
+      "/sd/roms/redalert",
+      "/sd/roms/redalert/aftermath",
+      "/sd/roms/redalert/allied",
+      "/sd/roms/redalert/counterstrike",
+      "/sd/roms/redalert/soviet"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/redalert/REDALERT.MIX",
+        "note": "Required Red Alert base game data"
+      },
+      {
+        "path": "/sd/roms/redalert/MAIN.MIX",
+        "note": "Required Red Alert base game data"
+      },
+      {
+        "path": "/sd/roms/redalert/allied/MAIN.MIX",
+        "note": "Optional Allied CD data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/soviet/MAIN.MIX",
+        "note": "Optional Soviet CD data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/counterstrike/",
+        "note": "Optional Counterstrike folder",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/counterstrike/MAIN.MIX",
+        "note": "Optional Counterstrike game data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/EXPAND.MIX",
+        "note": "Optional Counterstrike expansion data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/aftermath/",
+        "note": "Optional Aftermath folder",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/aftermath/MAIN.MIX",
+        "note": "Optional Aftermath game data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/EXPAND2.MIX",
+        "note": "Optional Aftermath expansion data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/HIRES1.MIX",
+        "note": "Optional high-resolution expansion data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/redalert/LORES1.MIX",
+        "note": "Optional low-resolution expansion data",
+        "optional": true
+      }
+    ],
+    "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/redalert/REDALERT.MIX \u2014 Required Red Alert base game data\n\n/sd/roms/redalert/MAIN.MIX \u2014 Required Red Alert base game data\n\n/sd/roms/redalert/allied/MAIN.MIX \u2014 Optional Allied CD data\n\n/sd/roms/redalert/soviet/MAIN.MIX \u2014 Optional Soviet CD data\n\n/sd/roms/redalert/counterstrike/ \u2014 Optional Counterstrike folder\n\n/sd/roms/redalert/counterstrike/MAIN.MIX \u2014 Optional Counterstrike game data\n\n/sd/roms/redalert/EXPAND.MIX \u2014 Optional Counterstrike expansion data\n\n/sd/roms/redalert/aftermath/ \u2014 Optional Aftermath folder\n\n/sd/roms/redalert/aftermath/MAIN.MIX \u2014 Optional Aftermath game data\n\n/sd/roms/redalert/EXPAND2.MIX \u2014 Optional Aftermath expansion data\n\n/sd/roms/redalert/HIRES1.MIX \u2014 Optional high-resolution expansion data\n\n/sd/roms/redalert/LORES1.MIX \u2014 Optional low-resolution expansion data",
+    "media": [
+      {
+        "format": "zip-iso9660",
+        "auto_entry": true,
+        "zip_name": "CD2.zip",
+        "iso_name": "CD2.iso",
+        "download_label": "Download base game (Soviet disc)",
+        "files": [
+          {
+            "source": "INSTALL/REDALERT.MIX",
+            "target": "/sd/roms/redalert/REDALERT.MIX",
+            "url": "https://archive.org/download/CCRedAlert/CD2.iso/INSTALL%2FREDALERT.MIX",
+            "size": 25046328
+          },
+          {
+            "source": "MAIN.MIX",
+            "target": "/sd/roms/redalert/MAIN.MIX",
+            "url": "https://archive.org/download/CCRedAlert/CD2.iso/MAIN.MIX",
+            "size": 500577414
+          }
+        ]
+      },
+      {
+        "format": "zip-iso9660",
+        "auto_entry": true,
+        "zip_name": "cncredalertalliedcd1.zip",
+        "iso_name": "CD1.iso",
+        "download_label": "Download Allied disc data (optional)",
+        "files": [
+          {
+            "source": "MAIN.MIX",
+            "target": "/sd/roms/redalert/allied/MAIN.MIX",
+            "optional": true,
+            "url": "https://archive.org/download/CCRedAlert/CD1.iso/MAIN.MIX",
+            "size": 454605294
+          }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "url": "https://archive.org/download/CCRedAlert",
+        "note": "MIX file members listed by View Contents; ISO/ZIP extraction remains available"
+      }
+    ]
+  },
+  "install_recipe_source": "pax-modules/apps/redalert/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.2.3-papp2"
+}

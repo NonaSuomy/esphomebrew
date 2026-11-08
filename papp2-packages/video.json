@@ -1,0 +1,101 @@
+{
+  "name": "video",
+  "title": "Video Player",
+  "version": "0.2.0-papp2",
+  "description": "Plays SD and HTTP(S) video/music with FFmpeg: H.264, MPEG-4, MJPEG, VP8, MSMPEG4v2 and Theora, plus experimental HEVC, VP9 and AV1; AAC, MP3, Opus, Vorbis and PCM audio.",
+  "file": "video.pax",
+  "size": 4166208,
+  "sha256": "4e61845eb671f0f8fa712a08e275c82d35ec5652a9e93a91c6c3003d747eda04",
+  "abi": 2,
+  "bss_size": 1803544,
+  "source": {
+    "repo": "https://github.com/FFmpeg/FFmpeg",
+    "ref": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
+    "path": "libavcodec"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "595f35a9aa4205444b50242126424ce192fa6479b82a15944a127a4d1a9b67b6",
+    "linker_repo": "https://github.com/FFmpeg/FFmpeg",
+    "linker_ref": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587"
+  },
+  "submodules": [
+    {
+      "path": "third_party/aom",
+      "repo": "https://aomedia.googlesource.com/aom",
+      "ref": "8ad484f8a18ed1853c094e7d3a4e023b2a92df28"
+    }
+  ],
+  "patches": [
+    "0001-tx-tables-up-to-32768.patch",
+    "0002-aom-use-int32-transform-buffers.patch",
+    "0003-aom-cdef-int32-pointers.patch",
+    "0004-libaom-request-lowbitdepth-storage.patch"
+  ],
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
+  "author": "The FFmpeg developers; PAX port",
+  "category": "Tool",
+  "license": "LGPL-2.1 (FFmpeg, LGPL configuration)",
+  "about": "A small video player built on FFmpeg 7.1 (libavformat, libavcodec, libswresample; LGPL configuration, no GPL parts). Pick a file from /sd/videos/ or /sd/, type an http:// or https:// address on a USB keyboard, or let another app hand one over (NetSurf opens video and sound links here and gets its page back when you quit). MSMPEG4v2 and Theora are included; HEVC, VP9 and AV1 (libaom) are experimental software decoders and are not promises of real-time playback. Decoding is plain software on the ESP32-P4's two cores, so keep to about 480p: H.264 up to 640x360 or 854x480 plays best; bigger files are shown at half size and drop frames. Sound is the clock: pictures that fall behind are skipped, and the decoder takes shortcuts until it catches up. Streams over https:// use the loader's TLS, which checks certificates against the firmware's bundle; seeking in them uses HTTP Range requests, with a 4 MB read-ahead buffer.",
+  "controls": [
+    "Touch: tap to show or hide the controls",
+    "Touch: tap the bar to seek, the middle to pause",
+    "Touch: < Back (top left) leaves the video",
+    "A, Space or Enter: pause / play",
+    "Left / Right, L / R: seek 10 s back / forward",
+    "Up / Down: seek 1 minute forward / back",
+    "Y or O: controls on / off",
+    "[ and ]: move the sound 50 ms earlier / later",
+    "B or Esc: back to the list (or to the app that opened it)",
+    "Menu held 3 s: quit to the launcher",
+    "File list: D-pad and A, or tap; type to enter a URL"
+  ],
+  "upstream": {
+    "project": "FFmpeg",
+    "version": "7.1.5",
+    "url": "https://ffmpeg.org/"
+  },
+  "canvas": true,
+  "requires": [
+    {
+      "path": "/sd/videos",
+      "note": "Optional media folder; network URLs also work",
+      "optional": true
+    }
+  ],
+  "extract": {
+    "version": 2,
+    "app": "video",
+    "mode": "local-files",
+    "archive_dir": "/sd/roms/video/incoming",
+    "folders": [
+      "/sd/videos"
+    ],
+    "requires": [
+      {
+        "path": "/sd/videos",
+        "note": "Optional media folder; network URLs also work",
+        "optional": true
+      }
+    ],
+    "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/videos \u2014 Optional media folder; network URLs also work",
+    "media": [],
+    "sources": []
+  },
+  "icon": {
+    "type": "image/png",
+    "width": 128,
+    "height": 128,
+    "base64": "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"
+  },
+  "active_source": {
+    "path": "pax-modules/apps/video",
+    "repository": "pax-modules",
+    "ref": "e928e5a6245b367d9bf3adf9461632cfde061086"
+  },
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "install_recipe_source": "pax-modules/apps/video/install-recipe.json",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.2.0-papp2"
+}

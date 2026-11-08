@@ -1,0 +1,99 @@
+{
+  "name": "tulip",
+  "title": "Tulip CC",
+  "version": "0.1.6-papp2",
+  "description": "Tulip Creative Computer (MicroPython, the AMY synthesizer, Tulip's graphics, editor and LVGL UI) as a PAX, at its full 1024x600 with USB keyboard, touch and the loader's speaker. Work in progress.",
+  "file": "tulip.pax",
+  "size": 4621012,
+  "sha256": "c19d7ddab854a12b40e66be0e6f2861d4a1f42a3cb87687ffe86e0219c47a183",
+  "abi": 2,
+  "bss_size": 18156,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/tulipcc",
+    "ref": "4469977fb87b6abfe8bc8ae7646e17d7eeb5c9fa",
+    "path": "tulip/shared"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "c07301866e1ebc72dc656c51b94349f2193d28228d8dd6ce3b9239f812602823",
+    "linker_repo": "https://github.com/NonaSuomy/tulipcc",
+    "linker_ref": "4469977fb87b6abfe8bc8ae7646e17d7eeb5c9fa"
+  },
+  "submodules": [
+    {
+      "path": "micropython",
+      "repo": "https://github.com/micropython/micropython",
+      "ref": "82e69df33e379bf491bea647e217d6d56c5b8090"
+    },
+    {
+      "path": "amy",
+      "repo": "https://github.com/shorepine/amy",
+      "ref": "5c97024f01bd112fc24170299f0d5a0da1f489ed"
+    }
+  ],
+  "patches": [
+    "0002-board-pax.patch",
+    "0003-amy-pax-lock.patch",
+    "0004-reproducible-frozen-order.patch"
+  ],
+  "linker_script": "local:apps/redalert/pax_cpp.ld",
+  "author": "shorepine (Tulip, AMY); PAX port",
+  "category": "Tool",
+  "license": "MIT (Tulip, MicroPython, AMY, LVGL)",
+  "about": "Tulip is a self-contained computer for music, graphics and code: a MicroPython REPL and editor, the AMY synthesizer, sprites, a background layer and an LVGL user interface. This port runs Tulip Desktop's code on the ESP32-P4 loader: Tulip's display at its own 1024x600 shown 1:1 (scaled to 800x480 on loaders without canvas sizes), AMY at 44.1 kHz on the loader's speaker, USB keyboard to the REPL and editor, touch as Tulip's touch and LVGL pointer. Tulip's files live in a 16 MiB filesystem image, /sd/roms/tulip/tulip.lfs, made on first start (create the folder /sd/roms/tulip first); the card itself is at /sd for opening files by name. MIDI in and out through a USB-MIDI cable or keyboard on loaders with usb_midi (tulip.midi_callback, the synths). Network through the device's own connection (Ethernet or Wi-Fi from its firmware): socket and network, and HTTPS through the loader's TLS, which checks certificates (needs a loader with TLS). Tulip World (world.ls(), world.download()), tulip.url_get() and tuliprequests work; tulip.ip() gives the device's address and tulip.wifi() only reports it. webdrop (import webdrop; webdrop.start()) serves a page on port 8080 for running code and dropping files onto Tulip from another computer. No native C modules yet.",
+  "controls": [
+    "USB keyboard: the REPL and editor",
+    "Ctrl, then a key: Ctrl-C, Ctrl-X, Ctrl-Q, Ctrl-Tab",
+    "Arrows / D-pad: history, cursor; Tulip joystick",
+    "Touch: Tulip touch (up to 3 fingers) and LVGL",
+    "Menu or Escape held 3 s: quit to the launcher",
+    "Ctrl-D on an empty line: quit to the launcher"
+  ],
+  "upstream": {
+    "project": "Tulip Creative Computer",
+    "url": "https://github.com/shorepine/tulipcc"
+  },
+  "requires": [
+    {
+      "path": "/sd/roms/tulip/",
+      "note": "For tulip.lfs, Tulip's files (made on first start)",
+      "optional": true
+    }
+  ],
+  "extract": {
+    "version": 2,
+    "app": "tulip",
+    "mode": "local-files",
+    "archive_dir": "/sd/roms/tulip/incoming",
+    "folders": [
+      "/sd/roms/tulip"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/tulip/",
+        "note": "For tulip.lfs, Tulip's files (made on first start)",
+        "optional": true
+      }
+    ],
+    "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nThe app creates tulip.lfs on first start; do not download or overwrite a filesystem image.\n\nFILES / FOLDERS\n\n/sd/roms/tulip/ \u2014 For tulip.lfs, Tulip's files (made on first start)",
+    "media": [],
+    "sources": []
+  },
+  "icon": {
+    "type": "image/png",
+    "width": 256,
+    "height": 256,
+    "base64": "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"
+  },
+  "install_recipe_source": "pax-modules/apps/tulip/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "port": {
+    "ref": "2bd702d533823d1b76ee00b89520b5c25d7f82fa",
+    "repository": "pax-modules"
+  },
+  "validation": "Compiled against current PAX SDK; deterministic frozen-module regression passed. Hardware not tested for this release.",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.1.6-papp2"
+}

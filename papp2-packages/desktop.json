@@ -1,0 +1,67 @@
+{
+  "name": "desktop",
+  "title": "Workspace",
+  "version": "0.6.1-papp2",
+  "description": "VNC, dashboards, on-panel HA/SD media browsing and relay video/audio.",
+  "file": "desktop.pax",
+  "size": 62072,
+  "sha256": "3c325703aaff47273d856fe6db1c86066055951ca8c8615263fea00029210cf9",
+  "abi": 2,
+  "bss_size": 5392,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2",
+    "path": "components/psram_app_loader"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "cd66eae8a75efa54ca240df6d1101047b606b3ed5f29bbf578502557cd9f1e6b",
+    "linker_repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "linker_ref": "5c475e9df46c43463bd85c43f647d513d3b9bfa2"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "category": "Tool",
+  "about": "Connect directly to VNC, or choose LISTEN to receive SVP Relay baseline JPEG pictures on TCP port 5000. Compatible with SVP Relay 0.9.42 panel handshakes, cursor shapes/positions, keyboard/mouse/touch input, statistics, probes and PCM dashboard sound. VIA RELAY asks Home Assistant to start a VNC desktop using the computer fields and the URL/token in /sd/roms/desktop/relay.conf. No firmware change is required on current PAX loaders. Configure the panel address and stream port 5000 in SVP Relay. Receiver runs only while this app is open in relay mode. AVI media reception supports baseline MJPEG video with 16-bit PCM mono/stereo sound, pause/resume, stop/end reporting and mute. MP3/FLAC in AVI and SPICE main/audio/USB channels are not implemented. Use a trusted LAN; receiver traffic has no authentication or encryption. JPEG receiver and network probes validated on ESP32-P4. Home Assistant dashboard display validated on hardware; AVI picture display and PCM speaker submissions validated on ESP32-P4. Version 0.5.0 Video/Audio uses a 512x300 canvas on the 1024x600 panel, mono 16 kHz PCM and a dedicated buffered audio task. Hardware feedback confirms faster pictures and a steady tone, with occasional stall-related audio gaps. Version 0.6.0 adds MEDIA for Home Assistant and SD media browsing through the optional pax_media_bridge firmware component. Playback uses the configured SVP Relay entity; standalone audio requires PAX Audio or another audio player. No HA token is needed for browsing. SD media stays under /sd/media, with 256 entries per folder and 2 GiB per file. Artwork, photos, playlists and seeking are not ported.",
+  "changelog": "0.6.1: rename the app and shared menu to Workspace; retain the desktop package ID and saved connections.\n0.6.0: on-panel Home Assistant and SD media browser through a token-free firmware bridge.\n0.5.0: buffered audio on a dedicated task; 512x300 video canvas and mono 16 kHz negotiation for P4 playback.\n0.4.1: recover picture timing after audio/network backpressure.\n0.4.0: SVP Relay AVI/MJPEG video and PCM audio, playback timing, pause/stop/mute and end reporting.\n0.3.1: allow Chromium cold startup before the first dashboard picture.\n0.3.0: dashboard entry point and setup hints, browser refresh/back controls, and browser text input.\n0.2.0: add SVP Relay JPEG receiver, cursor/input protocol, PCM audio, probes, and authenticated VNC start requests.\n0.1.0: standalone VNC client.",
+  "controls": [
+    "MEDIA: browse HA or /sd/media; tap a folder/file",
+    "Media: HA/SD, Up, Load, Prev/Next, Pause/Stop/Mute",
+    "Media keys: arrows, Enter, Backspace up, Esc view, R reload",
+    "VIDEO/AUDIO: receive relay AVI video with PCM sound",
+    "Shared menu: Pause/Resume, Stop media, Mute/Unmute",
+    "During video: Space pause, Esc stop, M mute",
+    "DASHBOARD: show the configured idle dashboard",
+    "Shared menu > Workspace: refresh page or go back",
+    "LISTEN: receive SVP Relay pictures on port 5000",
+    "VIA RELAY: request a relay VNC desktop (relay.conf needed)",
+    "Touch keyboard or USB keyboard: enter host and password",
+    "Enter: next field / connect; Tab: next control",
+    "Touch desktop: left click and drag",
+    "USB mouse: move, left/right/middle click and scroll",
+    "USB keyboard: send keys to the desktop",
+    "Hold two fingers 1.5 s: disconnect",
+    "Shared menu > Workspace: disconnect",
+    "Hold Menu 3 s: exit to launcher"
+  ],
+  "canvas": true,
+  "extract": {
+    "version": 2,
+    "app": "desktop",
+    "mode": "self-contained",
+    "archive_dir": "/sd/roms/desktop/incoming",
+    "folders": [
+      "/sd/roms/desktop/",
+      "/sd/media/"
+    ],
+    "requires": [],
+    "instructions": "No game data is needed. LISTEN opens the SVP Relay JPEG desktop/dashboard receiver on TCP port 5000 while this app is open. In Home Assistant SVP Relay select this ESPHome device, set its reachable panel address, and enter stream port 5000 manually. Audio player is optional for pictures; select a real audio entity only if needed. Dashboard URL is optional. VIA RELAY requests a VNC desktop using the computer host/port/password fields. It needs /sd/roms/desktop/relay.conf with two lines: Home Assistant origin URL (http://host:8123 or certificate-verified https://host), then a Home Assistant long-lived access token. This is not a worker token. Protect this secret file. CONNECT remains direct VNC. SAVE HOST stores only the computer address and port, never the VNC password. Receiver traffic and direct VNC are unencrypted; use a trusted LAN. VIDEO/AUDIO accepts relay AVI with baseline MJPEG video and 16-bit PCM sound. VIDEO/AUDIO uses a 512x300 canvas upscaled by the panel and mono 16 kHz sound, with a dedicated buffered audio task. Start with video FPS 5, ffmpeg quality 15 and Audio codec Auto or PCM. Shared menu provides Pause/Resume, Stop media and Mute/Unmute. Embedded video sound uses the PAX speaker; standalone HA audio actions still need a separate media-player entity. MP3/FLAC AVI audio and SPICE main/audio/USB channels are not supported. See apps/desktop/README.md for details. MEDIA browses HA and /sd/media using optional firmware package pax-media-browser.yaml. Configure its relay entity and HA IPv4 address; allow HA actions in the existing ESPHome integration. No HA token is needed for this browser. Audio-only files use the relay Audio player (PAX Audio on this device). SD: max 256 entries per folder, 2 GiB per file. See README for controls and remaining limitations.",
+    "media": [],
+    "sources": []
+  },
+  "install_recipe_source": "pax-modules/apps/desktop/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "requires": [],
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.6.1-papp2"
+}

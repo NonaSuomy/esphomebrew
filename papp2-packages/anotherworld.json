@@ -1,0 +1,247 @@
+{
+  "name": "anotherworld",
+  "title": "Another World",
+  "version": "0.2.1-papp2",
+  "description": "Another World interpreter with original DOS game banks loaded from SD.",
+  "file": "anotherworld.pax",
+  "size": 87892,
+  "sha256": "d9e1c4d8686d845ec35bbbb8a3c03b3751562bb3584cc14373291aa1c5238cc2",
+  "abi": 2,
+  "bss_size": 23308,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "d0a449f9e2252881ab1ac297d05353f5bc58c046",
+    "path": "components/psram_app_loader"
+  },
+  "sdk": {
+    "repo": "https://github.com/NonaSuomy/RetroESP32-P4",
+    "ref": "d0a449f9e2252881ab1ac297d05353f5bc58c046"
+  },
+  "linker_script": "local:apps/_shared/psram_app.ld",
+  "category": "Game",
+  "license": "GPL-2.0-or-later; dependency notices in source",
+  "about": "Development build. Raw interpreter port. Supply your original DOS memlist.bin and bank files under /sd/roms/anotherworld/. Game data is kept outside the executable. Starts at the intro; the legacy protection bypass is preserved.",
+  "changelog": "0.2.1: feed audio on a dedicated task to reduce interruptions during rendering. Original DOS game data is still required on SD.",
+  "controls": [
+    "D-pad: move (Up: jump, Down: crouch)",
+    "A or B: action (run, shoot, kick)",
+    "Menu or L3: quit to launcher",
+    "USB keyboard: arrows or WASD move, Space/Enter act",
+    "USB keyboard: Esc quits"
+  ],
+  "canvas": true,
+  "requires": [
+    {
+      "path": "/sd/roms/anotherworld/memlist.bin",
+      "note": "Original DOS resource table"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank01",
+      "note": "Original DOS resource bank 01"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank02",
+      "note": "Original DOS resource bank 02"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank03",
+      "note": "Original DOS resource bank 03"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank04",
+      "note": "Original DOS resource bank 04"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank05",
+      "note": "Original DOS resource bank 05"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank06",
+      "note": "Original DOS resource bank 06"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank07",
+      "note": "Original DOS resource bank 07"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank08",
+      "note": "Original DOS resource bank 08"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank09",
+      "note": "Original DOS resource bank 09"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0a",
+      "note": "Original DOS resource bank 0A"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0b",
+      "note": "Original DOS resource bank 0B"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0c",
+      "note": "Original DOS resource bank 0C"
+    },
+    {
+      "path": "/sd/roms/anotherworld/bank0d",
+      "note": "Original DOS resource bank 0D"
+    }
+  ],
+  "extract": {
+    "version": 2,
+    "app": "anotherworld",
+    "mode": "local-files",
+    "archive_dir": "/sd/roms/anotherworld/incoming",
+    "folders": [
+      "/sd/roms/anotherworld"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/anotherworld/memlist.bin",
+        "note": "Original DOS resource table"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank01",
+        "note": "Original DOS resource bank 01"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank02",
+        "note": "Original DOS resource bank 02"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank03",
+        "note": "Original DOS resource bank 03"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank04",
+        "note": "Original DOS resource bank 04"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank05",
+        "note": "Original DOS resource bank 05"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank06",
+        "note": "Original DOS resource bank 06"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank07",
+        "note": "Original DOS resource bank 07"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank08",
+        "note": "Original DOS resource bank 08"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank09",
+        "note": "Original DOS resource bank 09"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank0a",
+        "note": "Original DOS resource bank 0A"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank0b",
+        "note": "Original DOS resource bank 0B"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank0c",
+        "note": "Original DOS resource bank 0C"
+      },
+      {
+        "path": "/sd/roms/anotherworld/bank0d",
+        "note": "Original DOS resource bank 0D"
+      }
+    ],
+    "instructions": "Place your original DOS floppy ZIP (containing .ima or .img images), or individual floppy images, in /sd/roms/anotherworld/incoming/. Select each disk in Recipe Installer. Existing files are kept. Alternatively copy the matching MEMLIST.BIN and BANK files directly to /sd/roms/anotherworld/. Game data is not included.",
+    "media": [
+      {
+        "format": "zip-dos-floppy",
+        "files": [
+          {
+            "source": "memlist.bin",
+            "target": "/sd/roms/anotherworld/memlist.bin",
+            "optional": true
+          },
+          {
+            "source": "bank01",
+            "target": "/sd/roms/anotherworld/bank01",
+            "optional": true
+          },
+          {
+            "source": "bank02",
+            "target": "/sd/roms/anotherworld/bank02",
+            "optional": true
+          },
+          {
+            "source": "bank03",
+            "target": "/sd/roms/anotherworld/bank03",
+            "optional": true
+          },
+          {
+            "source": "bank04",
+            "target": "/sd/roms/anotherworld/bank04",
+            "optional": true
+          },
+          {
+            "source": "bank05",
+            "target": "/sd/roms/anotherworld/bank05",
+            "optional": true
+          },
+          {
+            "source": "bank06",
+            "target": "/sd/roms/anotherworld/bank06",
+            "optional": true
+          },
+          {
+            "source": "bank07",
+            "target": "/sd/roms/anotherworld/bank07",
+            "optional": true
+          },
+          {
+            "source": "bank08",
+            "target": "/sd/roms/anotherworld/bank08",
+            "optional": true
+          },
+          {
+            "source": "bank09",
+            "target": "/sd/roms/anotherworld/bank09",
+            "optional": true
+          },
+          {
+            "source": "bank0a",
+            "target": "/sd/roms/anotherworld/bank0a",
+            "optional": true
+          },
+          {
+            "source": "bank0b",
+            "target": "/sd/roms/anotherworld/bank0b",
+            "optional": true
+          },
+          {
+            "source": "bank0c",
+            "target": "/sd/roms/anotherworld/bank0c",
+            "optional": true
+          },
+          {
+            "source": "bank0d",
+            "target": "/sd/roms/anotherworld/bank0d",
+            "optional": true
+          }
+        ]
+      }
+    ],
+    "sources": []
+  },
+  "active_source": {
+    "repository": "pax-modules",
+    "path": "pax-modules/apps/anotherworld",
+    "ref": "8af78958f6c1a3f9b7c121c8e09aba7d8131f28c"
+  },
+  "install_recipe_source": "pax-modules/apps/anotherworld/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.2.1-papp2"
+}

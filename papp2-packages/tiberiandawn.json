@@ -1,0 +1,361 @@
+{
+  "name": "tiberiandawn",
+  "title": "Tiberian Dawn",
+  "version": "0.1.4-papp2",
+  "description": "Command & Conquer: Tiberian Dawn (Vanilla Conquer) as a PAX, with movies, music, touch, keyboard and mouse, and network multiplayer against PCs running Vanilla Conquer. Needs CONQUER.MIX and CCLOCAL.MIX in /sd/roms/tiberiandawn/, plus GENERAL.MIX in both the gdi/ and nod/ folders. Optional Covert Ops and CD media files are checked in their original folders.",
+  "file": "tiberiandawn.pax",
+  "size": 833236,
+  "sha256": "8467228e377bbfa14222e2d72b96008e43583b4b70bb4d23041101d550a7cd38",
+  "abi": 2,
+  "bss_size": 203492,
+  "source": {
+    "repo": "https://github.com/NonaSuomy/Vanilla-Conquer",
+    "ref": "ce83b59edd99cccac6cebaae054ca04962c744b7",
+    "path": "tiberiandawn"
+  },
+  "sdk": {
+    "abi": 1,
+    "header_sha256": "c07301866e1ebc72dc656c51b94349f2193d28228d8dd6ce3b9239f812602823",
+    "path": "pax-esphome/components/pax_loader/psram_app.h",
+    "ref": "2c18bdf310d5643953fa66e22c9fe1758cee0820"
+  },
+  "patches": [
+    "0001-smaller-shape-cache.patch",
+    "0002-newlib-has-strupr.patch",
+    "0003-pk-digit-pointer.patch",
+    "0004-prog-end-exits-cleanly.patch",
+    "0005-vqa-audio-ring-bounds.patch",
+    "0006-vqa-palette-table-bounds.patch",
+    "0007-vqa-audio-tempbuf-bounds.patch",
+    "0008-vqa-codebook-bounds.patch"
+  ],
+  "linker_script": "local:apps/tiberiandawn/pax_cpp.ld",
+  "author": "Westwood / Electronic Arts; Vanilla Conquer port",
+  "category": "Game",
+  "license": "GPL-3.0 (Vanilla Conquer)",
+  "about": "Command & Conquer: Tiberian Dawn on Vanilla Conquer, with movies, music, touch, USB keyboard and mouse. Use the original CD layout: CONQUER.MIX, CCLOCAL.MIX, theater files, and optional media at the root, with gdi/, nod/, and covertops/ subfolders. The game draws a native 640x400 picture; the store's Screen setting can switch the surrounding loader canvas to 800x480.",
+  "changelog": "0.1.3: rebuilt after the reproducible source-pin and file-manifest updates\n0.1.2: SD-card checker now matches the original gdi, nod, and covertops folder layout",
+  "controls": [
+    "Touch: move the cursor; tap = click, drag = select",
+    "USB mouse and keyboard: as on a PC",
+    "A: left click at the cursor",
+    "B: right click at the cursor",
+    "Up/Down: menus; scroll the sidebar",
+    "Start: Enter (confirm, skip movies)",
+    "Select: Esc (options menu, skip movies)",
+    "Menu + X: quit to launcher"
+  ],
+  "upstream": {
+    "project": "Vanilla Conquer",
+    "version": "ce83b59",
+    "url": "https://github.com/TheAssemblyArmada/Vanilla-Conquer"
+  },
+  "canvas": [
+    "640x400",
+    "800x480"
+  ],
+  "canvas_recommended": "640x400",
+  "requires": [
+    {
+      "path": "/sd/roms/tiberiandawn/CONQUER.MIX",
+      "note": "Required Tiberian Dawn game data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/CCLOCAL.MIX",
+      "note": "Required Tiberian Dawn interface data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/conquer.ini",
+      "note": "Optional Tiberian Dawn settings",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/DESEICNH.MIX",
+      "note": "Optional desert theater speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/LOCAL.MIX",
+      "note": "Optional low-resolution interface data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SC-000.MIX",
+      "note": "Optional Covert Ops mission data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SC-001.MIX",
+      "note": "Optional Covert Ops mission data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/TEMPICNH.MIX",
+      "note": "Optional temperate theater speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/UPDATE.MIX",
+      "note": "Optional update data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/UPDATEC.MIX",
+      "note": "Optional update data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/WINTICNH.MIX",
+      "note": "Optional winter theater speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/gdi/GENERAL.MIX",
+      "note": "Required GDI game data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/nod/GENERAL.MIX",
+      "note": "Required Nod game data"
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/",
+      "note": "Optional Covert Ops folder",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/GENERAL.MIX",
+      "note": "Optional Covert Ops game data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/MOVIES.MIX",
+      "note": "Optional Covert Ops movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/covertops/SCORES.MIX",
+      "note": "Optional Covert Ops score data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/gdi/MOVIES.MIX",
+      "note": "Optional GDI movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/gdi/SCORES.MIX",
+      "note": "Optional GDI score data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/nod/MOVIES.MIX",
+      "note": "Optional Nod movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/nod/SCORES.MIX",
+      "note": "Optional Nod score data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/TRANSIT.MIX",
+      "note": "Optional transition data and movies",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SPEECH.MIX",
+      "note": "Optional speech data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/SOUNDS.MIX",
+      "note": "Optional sound data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/WINTER.MIX",
+      "note": "Optional winter theater data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/DESERT.MIX",
+      "note": "Optional desert theater data",
+      "optional": true
+    },
+    {
+      "path": "/sd/roms/tiberiandawn/TEMPERAT.MIX",
+      "note": "Optional temperate theater data",
+      "optional": true
+    }
+  ],
+  "icon": {
+    "type": "image/png",
+    "width": 256,
+    "height": 256,
+    "base64": "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"
+  },
+  "active_source": {
+    "path": "pax-modules/apps",
+    "repository": "pax-modules",
+    "ref": "39bb8dfdf0e95bba63035dde6cd5809a34d51234"
+  },
+  "compatibility_report": "validation/module-compatibility.md (workspace root)",
+  "extract": {
+    "version": 2,
+    "app": "tiberiandawn",
+    "mode": "local-files",
+    "archive_dir": "/sd/roms/tiberiandawn/incoming",
+    "folders": [
+      "/sd/roms/tiberiandawn",
+      "/sd/roms/tiberiandawn/covertops",
+      "/sd/roms/tiberiandawn/gdi",
+      "/sd/roms/tiberiandawn/nod"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/tiberiandawn/CONQUER.MIX",
+        "note": "Required Tiberian Dawn game data"
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/CCLOCAL.MIX",
+        "note": "Required Tiberian Dawn interface data"
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/conquer.ini",
+        "note": "Optional Tiberian Dawn settings",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/DESEICNH.MIX",
+        "note": "Optional desert theater speech data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/LOCAL.MIX",
+        "note": "Optional low-resolution interface data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/SC-000.MIX",
+        "note": "Optional Covert Ops mission data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/SC-001.MIX",
+        "note": "Optional Covert Ops mission data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/TEMPICNH.MIX",
+        "note": "Optional temperate theater speech data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/UPDATE.MIX",
+        "note": "Optional update data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/UPDATEC.MIX",
+        "note": "Optional update data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/WINTICNH.MIX",
+        "note": "Optional winter theater speech data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/gdi/GENERAL.MIX",
+        "note": "Required GDI game data"
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/nod/GENERAL.MIX",
+        "note": "Required Nod game data"
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/covertops/",
+        "note": "Optional Covert Ops folder",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/covertops/GENERAL.MIX",
+        "note": "Optional Covert Ops game data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/covertops/MOVIES.MIX",
+        "note": "Optional Covert Ops movies",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/covertops/SCORES.MIX",
+        "note": "Optional Covert Ops score data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/gdi/MOVIES.MIX",
+        "note": "Optional GDI movies",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/gdi/SCORES.MIX",
+        "note": "Optional GDI score data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/nod/MOVIES.MIX",
+        "note": "Optional Nod movies",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/nod/SCORES.MIX",
+        "note": "Optional Nod score data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/TRANSIT.MIX",
+        "note": "Optional transition data and movies",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/SPEECH.MIX",
+        "note": "Optional speech data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/SOUNDS.MIX",
+        "note": "Optional sound data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/WINTER.MIX",
+        "note": "Optional winter theater data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/DESERT.MIX",
+        "note": "Optional desert theater data",
+        "optional": true
+      },
+      {
+        "path": "/sd/roms/tiberiandawn/TEMPERAT.MIX",
+        "note": "Optional temperate theater data",
+        "optional": true
+      }
+    ],
+    "instructions": "Provide the complete matching data set from your original installation or the verified download choice below. Keep filenames and subfolders as listed.\n\nFILES / FOLDERS\n\n/sd/roms/tiberiandawn/CONQUER.MIX \u2014 Required Tiberian Dawn game data\n\n/sd/roms/tiberiandawn/CCLOCAL.MIX \u2014 Required Tiberian Dawn interface data\n\n/sd/roms/tiberiandawn/conquer.ini \u2014 Optional Tiberian Dawn settings\n\n/sd/roms/tiberiandawn/DESEICNH.MIX \u2014 Optional desert theater speech data\n\n/sd/roms/tiberiandawn/LOCAL.MIX \u2014 Optional low-resolution interface data\n\n/sd/roms/tiberiandawn/SC-000.MIX \u2014 Optional Covert Ops mission data\n\n/sd/roms/tiberiandawn/SC-001.MIX \u2014 Optional Covert Ops mission data\n\n/sd/roms/tiberiandawn/TEMPICNH.MIX \u2014 Optional temperate theater speech data\n\n/sd/roms/tiberiandawn/UPDATE.MIX \u2014 Optional update data\n\n/sd/roms/tiberiandawn/UPDATEC.MIX \u2014 Optional update data\n\n/sd/roms/tiberiandawn/WINTICNH.MIX \u2014 Optional winter theater speech data\n\n/sd/roms/tiberiandawn/gdi/GENERAL.MIX \u2014 Required GDI game data\n\n/sd/roms/tiberiandawn/nod/GENERAL.MIX \u2014 Required Nod game data\n\n/sd/roms/tiberiandawn/covertops/ \u2014 Optional Covert Ops folder\n\n/sd/roms/tiberiandawn/covertops/GENERAL.MIX \u2014 Optional Covert Ops game data\n\n/sd/roms/tiberiandawn/covertops/MOVIES.MIX \u2014 Optional Covert Ops movies\n\n/sd/roms/tiberiandawn/covertops/SCORES.MIX \u2014 Optional Covert Ops score data\n\n/sd/roms/tiberiandawn/gdi/MOVIES.MIX \u2014 Optional GDI movies\n\n/sd/roms/tiberiandawn/gdi/SCORES.MIX \u2014 Optional GDI score data\n\n/sd/roms/tiberiandawn/nod/MOVIES.MIX \u2014 Optional Nod movies\n\n/sd/roms/tiberiandawn/nod/SCORES.MIX \u2014 Optional Nod score data\n\n/sd/roms/tiberiandawn/TRANSIT.MIX \u2014 Optional transition data and movies\n\n/sd/roms/tiberiandawn/SPEECH.MIX \u2014 Optional speech data\n\n/sd/roms/tiberiandawn/SOUNDS.MIX \u2014 Optional sound data\n\n/sd/roms/tiberiandawn/WINTER.MIX \u2014 Optional winter theater data\n\n/sd/roms/tiberiandawn/DESERT.MIX \u2014 Optional desert theater data\n\n/sd/roms/tiberiandawn/TEMPERAT.MIX \u2014 Optional temperate theater data",
+    "media": [],
+    "sources": [
+      {
+        "url": "https://github.com/TheAssemblyArmada/Vanilla-Conquer",
+        "note": "Engine source and data instructions; provide original/shareware game files, not source code"
+      }
+    ]
+  },
+  "install_recipe_source": "pax-modules/apps/tiberiandawn/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.1.4-papp2"
+}

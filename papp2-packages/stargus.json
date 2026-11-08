@@ -1,0 +1,126 @@
+{
+  "name": "stargus",
+  "title": "Stargus",
+  "version": "0.2.1-papp2",
+  "description": "Stargus code-only PAX port; converted StarCraft assets stay on SD.",
+  "file": "stargus.pax",
+  "size": 2354472,
+  "sha256": "2b4aefbac2b36d60bfb5f480797b4269c89344d137216cbe0f6fcdc4fd93d6ed",
+  "abi": 2,
+  "bss_size": 522232,
+  "source": {
+    "repo": "https://github.com/Wargus/stratagus",
+    "ref": "3d87c93f7fd8c0b62ee1be5df0a6d9efc72ca6cc",
+    "path": "src"
+  },
+  "sdk": {
+    "repo": "https://github.com/Wargus/stratagus",
+    "ref": "3d87c93f7fd8c0b62ee1be5df0a6d9efc72ca6cc"
+  },
+  "linker_script": "local:apps/stargus/psram_app.ld",
+  "category": "Game",
+  "license": "GPL-2.0-or-later; dependency notices in source",
+  "about": "Development build. Stratagus-based Stargus port. Requires a separately converted game tree and prepared media/runtime.paxassets, media/menu.paxmenu, media/terrain.paxtile and media/stargus_intro.ogg. No game graphics, music or sound samples are linked into the PAX.",
+  "changelog": "0.2.1: include the shared PAX filesystem header and make Guichan widget cleanup idempotent; verified intro menu and clean exit on the AIO.",
+  "controls": [
+    "Mouse or touch: select units and use the game menus",
+    "Keyboard: game shortcuts",
+    "Hold Menu 3 s: return to the launcher"
+  ],
+  "canvas": true,
+  "requires": [
+    {
+      "path": "/sd/roms/stargus/scripts/stratagus.lua",
+      "note": "Startool-converted game scripts"
+    },
+    {
+      "path": "/sd/roms/stargus/graphics",
+      "note": "Converted palette/graphics tree"
+    },
+    {
+      "path": "/sd/roms/stargus/sounds",
+      "note": "Converted sound tree"
+    },
+    {
+      "path": "/sd/roms/stargus/media/terrain.paxtile",
+      "note": "Generate with prepare_stargus_terrain.py from the converted graphics tree"
+    },
+    {
+      "path": "/sd/roms/stargus/media/menu.paxmenu",
+      "note": "Generate with prepare_stargus_menu.py from the converted game tree"
+    },
+    {
+      "path": "/sd/roms/stargus/media/*.ogg",
+      "optional": true,
+      "note": "Converted menu soundtrack companions, if available"
+    },
+    {
+      "path": "/sd/roms/stargus/media/runtime.paxassets",
+      "note": "Generate with prepare_stargus_sd.py"
+    },
+    {
+      "path": "/sd/roms/stargus/media/stargus_intro.ogg",
+      "note": "Prepared intro soundtrack"
+    }
+  ],
+  "extract": {
+    "version": 2,
+    "app": "stargus",
+    "mode": "processor",
+    "archive_dir": "/sd/roms/stargus/incoming",
+    "folders": [
+      "/sd/roms/stargus/graphics",
+      "/sd/roms/stargus/scripts",
+      "/sd/roms/stargus/sounds",
+      "/sd/roms/stargus/media"
+    ],
+    "requires": [
+      {
+        "path": "/sd/roms/stargus/scripts/stratagus.lua",
+        "note": "Startool-converted game scripts"
+      },
+      {
+        "path": "/sd/roms/stargus/graphics",
+        "note": "Converted palette/graphics tree"
+      },
+      {
+        "path": "/sd/roms/stargus/sounds",
+        "note": "Converted sound tree"
+      },
+      {
+        "path": "/sd/roms/stargus/media/terrain.paxtile",
+        "note": "Generate with prepare_stargus_terrain.py from the converted graphics tree"
+      },
+      {
+        "path": "/sd/roms/stargus/media/menu.paxmenu",
+        "note": "Generate with prepare_stargus_menu.py from the converted game tree"
+      },
+      {
+        "path": "/sd/roms/stargus/media/*.ogg",
+        "optional": true,
+        "note": "Converted menu soundtrack companions, if available"
+      },
+      {
+        "path": "/sd/roms/stargus/media/runtime.paxassets",
+        "note": "Generate with prepare_stargus_sd.py"
+      },
+      {
+        "path": "/sd/roms/stargus/media/stargus_intro.ogg",
+        "note": "Prepared intro soundtrack"
+      }
+    ],
+    "instructions": "HOST COMPUTER REQUIRED: Startool is not an ESP32-P4 program. On Linux, use your own StarCraft data and build/run the upstream startool extractor using the steps in pax-modules/upstream/retroesp32/GUS_GAME_RECIPES.md (Recipe 1). Then run python3 ~/code/pax/pax-recipe/tools/prepare_stargus_sd.py /path/to/converted-stargus-tree. Copy the complete prepared tree, including media/, to /sd/roms/stargus/. Recipe PAX only creates the SD folders and shows these instructions; it does not run startool. Graphics and sound remain as SD data, not in the store executable.",
+    "media": [],
+    "sources": []
+  },
+  "active_source": {
+    "repository": "pax-modules",
+    "path": "pax-modules/apps/stargus",
+    "ref": "e705f00c896e0dc06321235cf3b2bb46d978524a"
+  },
+  "install_recipe_source": "pax-modules/apps/stargus/install-recipe.json",
+  "install_recipe_ref": "f8b834084de062ee6b7e46bf188e9cc1ffd74958",
+  "format": "PAPP2",
+  "main_stack": 24576,
+  "package_version": "0.2.1-papp2"
+}
