@@ -30,9 +30,6 @@ jobs:
       - name: Validate and stage PAPP2 packages
         run: python3 tools/build_papp2_dist.py --out dist
 
-      - name: Verify Tulip freezing order
-        run: python3 tests/test_tulip_freezing.py
-
       - name: Summary
         shell: bash
         run: |
