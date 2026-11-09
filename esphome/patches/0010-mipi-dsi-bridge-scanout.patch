@@ -1,0 +1,274 @@
+diff --git a/config/components/mipi_dsi/mipi_dsi.cpp b/config/components/mipi_dsi/mipi_dsi.cpp
+index c6a862ebc..31ad5fc91 100644
+--- a/config/components/mipi_dsi/mipi_dsi.cpp
++++ b/config/components/mipi_dsi/mipi_dsi.cpp
+@@ -56,6 +56,7 @@ void MIPI_DSI::smark_failed(const LogString *message, esp_err_t err) {
+ }
+ 
+ void MIPI_DSI::setup() {
++  const bool ebyte_bridge = std::strcmp(this->model_, "ECA20-MHA1-I") == 0;
+   ESP_LOGCONFIG(TAG, "Running Setup");
+ 
+   if (!this->enable_pins_.empty()) {
+@@ -81,13 +82,17 @@ void MIPI_DSI::setup() {
+           this->lanes_,  // Number of data lanes to use, can't set a value that exceeds the chip's capability
+       .phy_clk_src = MIPI_DSI_PHY_CLK_SRC_DEFAULT,  // Clock source for the DPHY
+       .lane_bit_rate_mbps = this->lane_bit_rate_,   // Bit rate of the data lanes, in Mbps
+-      .flags = {.clock_lane_force_hs = this->continuous_clock_},
++      .flags = {.clock_lane_force_hs = this->continuous_clock_ && !ebyte_bridge},
+   };
+   auto err = esp_lcd_new_dsi_bus(&bus_config, &this->bus_handle_);
+   if (err != ESP_OK) {
+     this->smark_failed(LOG_STR("lcd_new_dsi_bus failed"), err);
+     return;
+   }
++  if (ebyte_bridge) {
++    // Match VC4's conservative initial STOP period before starting video.
++    delay(5);
++  }
+   if (!this->video_mode_only_) {
+     esp_lcd_dbi_io_config_t dbi_config = {
+         .virtual_channel = 0,
+@@ -115,13 +120,16 @@ void MIPI_DSI::setup() {
+       chip.revision < 300 && pixel_format == LCD_COLOR_FMT_RGB565 && output_format == LCD_COLOR_FMT_RGB888;
+   if (this->software_rgb888_) {
+     pixel_format = LCD_COLOR_FMT_RGB888;
+-    this->double_buffer_ = true;
++    // The P4 rev1 RGB888 conversion path can stall permanently waiting for
++    // the DPI frame-buffer-complete callback. Use one scanout buffer for now;
++    // updates may tear, but LVGL cannot deadlock on a missing handoff event.
++    this->double_buffer_ = false;
+     ppa_client_config_t client{};
+     client.oper_type = PPA_OPERATION_SRM;
+     if (ppa_register_client(&client, &this->rgb_conversion_client_) != ESP_OK) {
+       ESP_LOGW(TAG, "RGB888 conversion will use the CPU");
+     }
+-    ESP_LOGI(TAG, "Using RGB565 software conversion to double-buffered RGB888 for P4 rev%u", chip.revision);
++    ESP_LOGW(TAG, "Using single-buffered RGB565 to RGB888 conversion for P4 rev%u", chip.revision);
+   }
+   auto clock_source = MIPI_DSI_DPI_CLK_SRC_DEFAULT;
+   uint32_t clock_hz = 0;
+@@ -165,7 +173,7 @@ void MIPI_DSI::setup() {
+                                                    .vsync_back_porch = this->vsync_back_porch_,
+                                                    .vsync_front_porch = this->vsync_front_porch_,
+                                                },
+-                                           .flags = {.disable_lp = this->video_mode_only_}};
++                                           .flags = {}};
+   err = esp_lcd_new_panel_dpi(this->bus_handle_, &dpi_config, &this->handle_);
+   if (this->use_apll_) {
+     // A successful DPI panel now owns its clock reference; release our setup reference.
+@@ -179,9 +187,14 @@ void MIPI_DSI::setup() {
+   // before initializing scanout so bridges can use non-burst sync packets.
+   mipi_dsi_host_ll_dpi_set_video_burst_type(MIPI_DSI_LL_GET_HOST(0),
+                                             static_cast<mipi_dsi_ll_video_burst_type_t>(this->video_mode_));
+-  if (this->video_mode_only_) {
+-    // A preprogrammed HDMI bridge consumes video without per-frame DCS acknowledgements.
+-    mipi_dsi_host_ll_dpi_enable_frame_ack(MIPI_DSI_LL_GET_HOST(0), false);
++  if (ebyte_bridge) {
++    auto *host = MIPI_DSI_LL_GET_HOST(0);
++    // VC4 uses no EoTp and keeps data lanes in HS within each active frame.
++    mipi_dsi_host_ll_enable_tx_eotp(host, false, false);
++    mipi_dsi_host_ll_dpi_enable_frame_ack(host, false);
++    mipi_dsi_host_ll_dpi_enable_lp_horizontal_timing(host, false, false);
++    mipi_dsi_host_ll_dpi_enable_lp_vertical_timing(host, true, true, true, false);
++    ESP_LOGI(TAG, "ECA20: no EoTp/frame ACK, LP during vertical blanking only");
+   }
+   ESP_LOGI(TAG, "DSI video mode: %s",
+            this->video_mode_ == 0   ? "sync_pulse"
+@@ -203,6 +216,16 @@ void MIPI_DSI::setup() {
+     }
+     ESP_LOGI(TAG, "Double-buffered DSI scanout enabled (%zux%zu RGB%s)", this->width_, this->height_,
+              this->software_rgb888_ || this->color_depth_ == display::COLOR_BITNESS_888 ? "888" : "565");
++  } else if (this->software_rgb888_) {
++    void *fb0 = nullptr;
++    err = esp_lcd_dpi_panel_get_frame_buffer(this->handle_, 1, &fb0);
++    if (err != ESP_OK || fb0 == nullptr) {
++      this->smark_failed(LOG_STR("Could not get RGB888 frame buffer"), err != ESP_OK ? err : ESP_ERR_INVALID_STATE);
++      return;
++    }
++    this->frame_buffers_[0] = static_cast<uint8_t *>(fb0);
++    std::memset(fb0, 0, this->width_ * this->height_ * 3);
++    ESP_LOGI(TAG, "Single-buffered DSI scanout enabled (%zux%zu RGB888)", this->width_, this->height_);
+   }
+   if (!this->video_mode_only_ && this->reset_pin_ != nullptr) {
+     this->reset_pin_->setup();
+@@ -276,8 +299,13 @@ void MIPI_DSI::setup() {
+     }
+   }
+   esp_lcd_dpi_panel_event_callbacks_t cbs = {
+-      .on_color_trans_done = notify_refresh_ready,
++      .on_color_trans_done = this->double_buffer_ ? notify_refresh_ready : nullptr,
+       .on_frame_buf_complete = this->double_buffer_ ? notify_frame_buf_complete : nullptr,
++      .on_vsync = [](esp_lcd_panel_handle_t, esp_lcd_dpi_panel_event_data_t *, void *ctx) -> bool {
++        auto *self = static_cast<MIPI_DSI *>(ctx);
++        self->diagnostic_frames_ = self->diagnostic_frames_ + 1;
++        return false;
++      },
+   };
+ 
+   err = (esp_lcd_dpi_panel_register_event_callbacks(this->handle_, &cbs, this));
+@@ -305,6 +333,18 @@ void MIPI_DSI::set_hardware_test_pattern(bool enabled) {
+   ESP_LOGI(TAG, "DSI host: PHY=%08x errors=%08x/%08x line=%u pixels=%u", static_cast<unsigned>(host->phy_status.val),
+            static_cast<unsigned>(host->int_st0.val), static_cast<unsigned>(host->int_st1.val),
+            static_cast<unsigned>(host->vid_hline_time.val), static_cast<unsigned>(host->vid_pkt_size.val));
++  ESP_LOGI(TAG, "DSI active: power=%08x mode=%08x video=%08x/%08x shadow=%08x clock=%08x lanes=%08x",
++           static_cast<unsigned>(host->pwr_up.val), static_cast<unsigned>(host->mode_cfg.val),
++           static_cast<unsigned>(host->vid_mode_cfg.val), static_cast<unsigned>(host->vid_mode_cfg_act.val),
++           static_cast<unsigned>(host->vid_shadow_ctrl.val), static_cast<unsigned>(host->lpclk_ctrl.val),
++           static_cast<unsigned>(host->phy_if_cfg.val));
++  ESP_LOGI(TAG, "DSI timing cfg/active: H=%u/%u HS=%u/%u HB=%u/%u V=%u/%u pixels=%u/%u color=%u/%u",
++           static_cast<unsigned>(host->vid_hline_time.val), static_cast<unsigned>(host->vid_hline_time_act.val),
++           static_cast<unsigned>(host->vid_hsa_time.val), static_cast<unsigned>(host->vid_hsa_time_act.val),
++           static_cast<unsigned>(host->vid_hbp_time.val), static_cast<unsigned>(host->vid_hbp_time_act.val),
++           static_cast<unsigned>(host->vid_vactive_lines.val), static_cast<unsigned>(host->vid_vactive_lines_act.val),
++           static_cast<unsigned>(host->vid_pkt_size.val), static_cast<unsigned>(host->vid_pkt_size_act.val),
++           static_cast<unsigned>(host->dpi_color_coding.val), static_cast<unsigned>(host->dpi_color_coding_act.val));
+ }
+ 
+ void MIPI_DSI::update() {
+@@ -385,11 +425,14 @@ void MIPI_DSI::write_to_display_(int x_start, int y_start, int w, int h, const u
+   if (this->software_rgb888_) {
+     if (x_start < 0 || y_start < 0 || x_start + w > this->width_ || y_start + h > this->height_)
+       return;
+-    portENTER_CRITICAL(&this->frame_buffer_lock_);
+-    const uint8_t back = this->frame_buffer_handoff_.back_index();
+-    portEXIT_CRITICAL(&this->frame_buffer_lock_);
++    uint8_t back = 0;
++    if (this->double_buffer_) {
++      portENTER_CRITICAL(&this->frame_buffer_lock_);
++      back = this->frame_buffer_handoff_.back_index();
++      portEXIT_CRITICAL(&this->frame_buffer_lock_);
++    }
+     uint8_t *target = this->frame_buffers_[back];
+-    if (x_start != 0 || y_start != 0 || w != this->width_ || h != this->height_)
++    if (this->double_buffer_ && (x_start != 0 || y_start != 0 || w != this->width_ || h != this->height_))
+       std::memcpy(target, this->frame_buffers_[back ^ 1], this->width_ * this->height_ * 3);
+     const bool converted =
+         this->convert_rgb565_to_rgb888_(ptr, target, x_start, y_start, w, h, x_offset, y_offset, x_pad, big_endian);
+@@ -408,13 +451,15 @@ void MIPI_DSI::write_to_display_(int x_start, int y_start, int w, int h, const u
+         dest += 3;
+       }
+     }
+-    portENTER_CRITICAL(&this->frame_buffer_lock_);
+-    this->frame_buffer_handoff_.begin(back);
+-    portEXIT_CRITICAL(&this->frame_buffer_lock_);
++    if (this->double_buffer_) {
++      portENTER_CRITICAL(&this->frame_buffer_lock_);
++      this->frame_buffer_handoff_.begin(back);
++      portEXIT_CRITICAL(&this->frame_buffer_lock_);
++    }
+     const auto error = esp_lcd_panel_draw_bitmap(this->handle_, 0, 0, this->width_, this->height_, target);
+-    if (error == ESP_OK) {
++    if (error == ESP_OK && this->double_buffer_) {
+       xSemaphoreTake(this->io_lock_, portMAX_DELAY);
+-    } else {
++    } else if (error != ESP_OK) {
+       portENTER_CRITICAL(&this->frame_buffer_lock_);
+       this->frame_buffer_handoff_.cancel();
+       portEXIT_CRITICAL(&this->frame_buffer_lock_);
+@@ -442,7 +487,7 @@ void MIPI_DSI::write_to_display_(int x_start, int y_start, int w, int h, const u
+   // x_ and y_offset are offsets into the source buffer, unrelated to our own offsets into the display.
+   if (x_offset == 0 && x_pad == 0) {
+     err = esp_lcd_panel_draw_bitmap(this->handle_, x_start, y_start, x_start + w, y_start + h, ptr);
+-    if (err == ESP_OK)
++    if (err == ESP_OK && this->double_buffer_)
+       xSemaphoreTake(this->io_lock_, portMAX_DELAY);
+ 
+   } else {
+@@ -452,7 +497,8 @@ void MIPI_DSI::write_to_display_(int x_start, int y_start, int w, int h, const u
+       if (err != ESP_OK)
+         break;
+       ptr += stride;  // next line
+-      xSemaphoreTake(this->io_lock_, portMAX_DELAY);
++      if (this->double_buffer_)
++        xSemaphoreTake(this->io_lock_, portMAX_DELAY);
+     }
+   }
+   if (err != ESP_OK) {
+@@ -472,9 +518,10 @@ bool MIPI_DSI::draw_scaled_rgb565(int x, int y, int out_w, int out_h, const uint
+     ESP_LOGI(TAG, "Native RGB888 eligibility: software_rgb888=%d engine=%d", this->software_rgb888_,
+              this->rgb_conversion_client_ != nullptr);
+   }
+-  if (!this->software_rgb888_ || this->rgb_conversion_client_ == nullptr || source == nullptr || presented == nullptr ||
+-      in_w < 16 || in_h < 4 || x < 0 || y < 0 || out_w < 1 || out_h < 1 || x + out_w > this->width_ ||
+-      y + out_h > this->height_ || (reinterpret_cast<uintptr_t>(source) & 15) != 0 || !this->wait_for_frame_buffer_())
++  if (!this->software_rgb888_ || !this->double_buffer_ || this->rgb_conversion_client_ == nullptr ||
++      source == nullptr || presented == nullptr || in_w < 16 || in_h < 4 || x < 0 || y < 0 || out_w < 1 || out_h < 1 ||
++      x + out_w > this->width_ || y + out_h > this->height_ || (reinterpret_cast<uintptr_t>(source) & 15) != 0 ||
++      !this->wait_for_frame_buffer_())
+     return false;
+   const int64_t native_started = esp_timer_get_time();
+   portENTER_CRITICAL(&this->frame_buffer_lock_);
+@@ -524,8 +571,31 @@ bool MIPI_DSI::draw_scaled_rgb565(int x, int y, int out_w, int out_h, const uint
+ 
+ bool MIPI_DSI::draw_rotated_rgb565(int x, int y, int w, int h, const uint8_t *data, int x_offset, int y_offset,
+                                    int x_pad, bool big_endian) {
+-  if (!this->software_rgb888_ || this->rgb_conversion_client_ == nullptr || data == nullptr || w < 16 || h < 4 ||
+-      x < 0 || y < 0 || x + w > this->width_ || y + h > this->height_ || big_endian ||
++  // The single-buffered rev1 HDMI path converts and rotates in one CPU pass.
++  // Keep tiny overlays and cropped source rectangles on this path as well.
++  if (this->software_rgb888_ && !this->double_buffer_ && this->handle_ != nullptr &&
++      this->frame_buffers_[0] != nullptr && data != nullptr && w > 0 && h > 0 && x >= 0 && y >= 0 &&
++      x + w <= this->width_ && y + h <= this->height_ && x_offset >= 0 && y_offset >= 0 && x_pad >= 0) {
++    auto *target = this->frame_buffers_[0];
++    const size_t stride = static_cast<size_t>(x_offset + w + x_pad) * 2;
++    for (int sy = 0; sy < h; ++sy) {
++      const auto *source = data + (sy + y_offset) * stride + x_offset * 2;
++      auto *dest = target + ((y + h - 1 - sy) * this->width_ + x) * 3;
++      for (int sx = 0; sx < w; ++sx) {
++        const uint16_t pixel = big_endian ? (source[0] << 8) | source[1] : source[0] | (source[1] << 8);
++        const uint8_t b = pixel & 31, g = (pixel >> 5) & 63, r = pixel >> 11;
++        auto *out = dest + (w - 1 - sx) * 3;
++        out[0] = (b << 3) | (b >> 2);
++        out[1] = (g << 2) | (g >> 4);
++        out[2] = (r << 3) | (r >> 2);
++        source += 2;
++      }
++    }
++    return esp_lcd_panel_draw_bitmap(this->handle_, 0, 0, this->width_, this->height_, target) == ESP_OK;
++  }
++
++  if (!this->software_rgb888_ || !this->double_buffer_ || this->rgb_conversion_client_ == nullptr || data == nullptr ||
++      w < 16 || h < 4 || x < 0 || y < 0 || x + w > this->width_ || y + h > this->height_ || big_endian ||
+       (reinterpret_cast<uintptr_t>(data) & 15) != 0)
+     return false;
+   if (!this->wait_for_frame_buffer_())
+@@ -590,6 +660,18 @@ bool MIPI_DSI::convert_rgb565_to_rgb888_(const uint8_t *source, uint8_t *target,
+   config.mode = PPA_TRANS_MODE_BLOCKING;
+   if (ppa_do_scale_rotate_mirror(this->rgb_conversion_client_, &config) != ESP_OK)
+     return false;
++  // PPA writes the destination behind the CPU data cache. The DPI driver's
++  // draw_bitmap path performs a C2M sync before selecting the framebuffer, so
++  // invalidate the stale CPU lines first or that later sync can overwrite the
++  // converted RGB888 pixels with old cached data.
++  // IDF forbids UNALIGNED for invalidation. Panel buffers are cache-line
++  // aligned and their allocations are rounded up to whole cache lines.
++  const size_t cache_line = esp_cache_get_line_size_by_addr(target);
++  if (cache_line != 0) {
++    const size_t sync_bytes = ((output_bytes + cache_line - 1) / cache_line) * cache_line;
++    if (esp_cache_msync(target, sync_bytes, ESP_CACHE_MSYNC_FLAG_DIR_M2C) != ESP_OK)
++      return false;
++  }
+   return true;
+ }
+ 
+diff --git a/config/components/mipi_dsi/mipi_dsi.h b/config/components/mipi_dsi/mipi_dsi.h
+index aa921aca3..7731506f5 100644
+--- a/config/components/mipi_dsi/mipi_dsi.h
++++ b/config/components/mipi_dsi/mipi_dsi.h
+@@ -62,6 +62,15 @@ class MIPI_DSI : public display::Display {
+   void set_init_sequence(const std::vector<uint8_t> &init_sequence) { this->init_sequence_ = init_sequence; }
+   void set_model(const char *model) { this->model_ = model; }
+   void set_hardware_test_pattern(bool enabled);
++  uint32_t get_diagnostic_frames() const { return this->diagnostic_frames_; }
++  volatile uint32_t diagnostic_frames_{0};
++  void reset_video_bridge() {
++    if (!this->video_mode_only_ || this->reset_pin_ == nullptr)
++      return;
++    this->reset_pin_->digital_write(false);
++    delay(100);  // NOLINT: explicit, infrequent bridge reset pulse.
++    this->reset_pin_->digital_write(true);
++  }
+   void set_use_apll(bool enabled) { this->use_apll_ = enabled; }
+   void set_video_mode(uint8_t mode) { this->video_mode_ = mode; }
+   void set_lane_bit_rate(float lane_bit_rate) { this->lane_bit_rate_ = lane_bit_rate; }

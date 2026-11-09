@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40145459528,
-  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
+  "build_id": 0,
+  "source_commit": "",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-elecrow.ota.bin",
-  "bytes": 2188944,
-  "sha256": "df4ac422ce38e99ce7dfd48664b2dabc4992f60d30aaa51be918c5963fb493e1",
+  "bytes": 2237776,
+  "sha256": "3a9f3083c8ec96cd7951631dd41904d4fed3556551eec5b92f78d0a93699f2ad",
   "c6": {
     "chip": "ESP32C6",
     "transport": "spi-full-duplex",
@@ -64,6 +64,9 @@
     "spi_mode": 3,
     "idf_version": "5.5.2",
     "note": "Stock ESP-Hosted Wi-Fi/Bluetooth HCI coprocessor, full duplex; never use the SDIO image on this wiring.",
+    "bluetooth_sha256": "4a1ce03d9daba3536604ac09df4b5e56c98c506707cc0a0e8c39b046568601e5",
+    "bluetooth_local_path": "/sd/firmware/c6/aio-spi-bluetooth.bin",
+    "bluetooth_note": "Optional 2.12.12 PAX Bluedroid BLE HID variant; explicit local/URL source selection required. Same full-duplex pins and OTA layout as stock.",
     "profile": "c6-spi-aio"
   }
 }

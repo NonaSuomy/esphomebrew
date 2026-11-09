@@ -1,0 +1,75 @@
+# Optional experimental SC2336 bridge. Not part of the default firmware.
+# Source/API inspected at this pin; requires its external ESP video dependencies.
+external_components:
+  - source:
+      type: git
+      url: https://github.com/youkorr/test2_esp_video_esphome
+      ref: 8c354e3c86ec9e5bb13c5836c34721d04bc686fb
+    components: [esp_video, esp_cam_sensor]
+
+i2c:
+  - id: scratch_camera_i2c
+    sda: GPIO45
+    scl: GPIO46
+    frequency: 400kHz
+
+esp_video:
+  i2c_id: scratch_camera_i2c
+  xclk_pin: GPIO30
+  xclk_freq: 24000000
+  enable_jpeg: true
+  enable_isp: true
+  use_heap_allocator: false
+  enable_xclk_init: true
+
+esp_cam_sensor:
+  id: scratch_camera
+  i2c_id: scratch_camera_i2c
+  sensor_type: SC2336
+  sensor_addr: 0x30
+  xclk_pin: GPIO30
+  xclk_freq: 24000000
+  resolution: "1280x720"
+  pixel_format: JPEG
+  framerate: 15
+  jpeg_quality: 15
+
+sensor:
+  - platform: template
+    id: scratch_camera_ready
+    internal: true
+    update_interval: 1s
+    lambda: |
+      return id(scratch_camera).is_pipeline_ready() ? 1.0f : 0.0f;
+  - platform: template
+    id: scratch_camera_capture_status
+    internal: true
+    update_interval: never
+
+number:
+  - platform: template
+    id: scratch_camera_capture
+    internal: true
+    min_value: 0
+    max_value: 1
+    step: 1
+    optimistic: true
+    restore_value: false
+    initial_value: 0
+    set_action:
+      - lambda: |-
+          if (x >= 0.5f) {
+            // Each trigger writes a distinct snapshot and never overwrites a project asset.
+            std::string path = "/sd/roms/scratch/camera-" + std::to_string(esp_timer_get_time()) + ".jpg";
+            bool ok = id(scratch_camera).capture_snapshot_to_file(path);
+            id(scratch_camera_capture_status).publish_state(ok ? 1.0f : -1.0f);
+            if (ok) ESP_LOGI("scratch", "Camera snapshot: %s", path.c_str());
+          }
+pax_loader:
+  hardware:
+    - name: camera_ready
+      sensor_id: scratch_camera_ready
+    - name: camera_capture
+      number_id: scratch_camera_capture
+    - name: camera_capture_status
+      sensor_id: scratch_camera_capture_status

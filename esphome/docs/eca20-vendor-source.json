@@ -1,0 +1,14 @@
+{
+  "source_directory": "eca20mha1ifirmwareandinitializationdetails",
+  "files": {
+    "CMakeLists.txt": "bdeaebf86ccba9807784deb7c45ec9602659869876df10546118b37177c3351d",
+    "hdmi_out.c": "1f0e8a2fccd0e0d5b12fa8238cf94ff839945a2b0df35bdc37fc1a5bea7eba29",
+    "hdmi_out.h": "da2392fc7a9f1896c37fe4f6b4b84422bcd08992c7f9b735696533ae91567685"
+  },
+  "bridge_firmware": "pending from EBYTE",
+  "hardware_tested": false,
+  "pax_dependency_base": "4a83d6985",
+  "pax_external_component": "dependencies/esphome/config/components/mipi_dsi",
+  "upstream_implementation_commit": "a01d06a47",
+  "recovery_patch": "patches/0003-eca20-mipi-dsi.patch"
+}

@@ -1,10 +1,10 @@
-# CI compile check: builds papp_loader for the real ESP32-P4 target with stock
+# CI compile check: builds pax_loader for the real ESP32-P4 target with stock
 # ESPHome. Hardware blocks mirror the Elecrow ESP32-P4 AIO (MIPI-DSI 1024x600,
 # GT911, IP101 ethernet). lvgl_id is left out on purpose: the loader's LVGL path
 # calls LvglComponent::is_loop_started(), which only exists in the locally
 # modified lvgl component, not in upstream ESPHome.
 esphome:
-  name: papp-loader-p4-compile
+  name: pax-loader-p4-compile
 
 esp32:
   variant: esp32p4
@@ -80,7 +80,7 @@ display:
 
 external_components:
   - source: {type: local, path: ../components}
-    components: [papp_loader, usb_msc, usb_midi]
+    components: [pax_loader, usb_msc, usb_midi]
 
 # USB sticks and USB-MIDI devices next to the other usb_host clients.
 usb_host:
@@ -92,16 +92,16 @@ usb_msc:
 usb_midi:
   id: usb_midi_port
 
-papp_loader:
-  id: papp_runtime
-  path: /sd/roms/papp/app.papp
+pax_loader:
+  id: pax_runtime
+  path: /sd/roms/pax/app.pax
   display_id: main_display
   touchscreen_id: touch_panel
   usb_midi_id: usb_midi_port
   # Several library sources; store_page_config.yaml keeps the single catalog_url form.
   catalogs:
     - name: SD / USB
-      url: /sd/roms/papp/
+      url: /sd/roms/pax/
     - name: Store
       url: https://nonasuomy.github.io/esphomebrew/
   default_catalog: Store

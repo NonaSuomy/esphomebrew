@@ -1,0 +1,35 @@
+# NANO software animation verified: default PLL / 9, 640x480 at about 59.9 Hz.
+display:
+  - platform: mipi_dsi
+    id: main_display
+    show_test_card: false
+    model: ECA20-MHA1-I
+    update_interval: never
+    video_mode_only: true
+    reset_pin: GPIO46
+    continuous_clock: true
+    rotation: 0
+    transform: disabled
+    auto_clear_enabled: false
+    lanes: 2
+    lane_bit_rate: 333.334Mbps
+    video_mode: sync_pulse
+    use_apll: false
+    color_order: rgb
+    color_depth: 16
+    pixel_mode: 24bit
+    pclk_frequency: 26.667MHz
+    hsync_front_porch: 16
+    hsync_pulse_width: 96
+    hsync_back_porch: 96
+    vsync_front_porch: 10
+    vsync_pulse_width: 2
+    vsync_back_porch: 33
+    dimensions:
+      width: 640
+      height: 480
+    init_sequence: []
+
+
+lvgl:
+  touchscreens: []

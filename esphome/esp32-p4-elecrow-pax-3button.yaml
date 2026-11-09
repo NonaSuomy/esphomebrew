@@ -1,0 +1,61 @@
+# PAX profile: shared launcher plus board hardware.
+substitutions:
+  idf_source: !env_var PAX_IDF_SOURCE
+  idf_compat_script: !env_var PAX_IDF_COMPAT
+  device_name: esp32-p4-elecrow-pax-quick
+  friendly_name: "ESP32-P4 PAX Quick Launcher"
+  pax_media_relay_entity: media_player.esp32_p4_pax_quick_launcher_player
+  pax_media_ha_address: "10.42.42.52"
+  launcher_network_url: "http://10.20.30.158:8000/launcher_ui.pax"
+
+# Retain the ESPHome API actions for saving PAXs and arbitrary files to /sd.
+
+packages:
+  pax_base: !include packages/pax-base.yaml
+  hardware: !include boards/elecrow/aio.yaml
+  pax_audio: !include packages/pax-audio.yaml
+  pax_media_player: !include packages/pax-media-player.yaml
+  pax_media_browser: !include packages/pax-media-browser.yaml
+
+wifi:
+  ssid: !secret pax_hosted_wifi_ssid
+  password: !secret pax_hosted_wifi_password
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "ESP32-P4-Fallback"
+    password: !secret pax_hosted_fallback_password
+  #on_connect:
+  #  then:
+  #    - lvgl.label.update:
+  #        id: wifi_status_icon
+  #        text: "\U000F0928"
+  #        text_color: 0x00FF00
+  #on_disconnect:
+  #  then:
+  #    - lvgl.label.update:
+  #        id: wifi_status_icon
+  #        text: "\U000F0929"
+  #        text_color: 0xFF0000
+  #on_sta_connected:
+  #  then:
+  #    - lambda: |-
+  #        int rssi = WiFi.RSSI();
+  #        const char* icon;
+  #        if (rssi >= -55)      icon = "\U000F0928"; // full
+  #        else if (rssi >= -67) icon = "\U000F0925"; // medium-high
+  #        else if (rssi >= -78) icon = "\U000F0922"; // medium-low
+  #        else                  icon = "\U000F091F"; // low
+  #        lv_label_set_text(id(wifi_status_icon)->obj, icon);
+  #        lv_obj_set_style_text_color(id(wifi_status_icon)->obj, lv_color_hex(0x00FF00), LV_PART_MAIN);
+
+captive_portal:
+
+#ethernet:
+#  type: IP101
+#  mdc_pin: GPIO31
+#  mdio_pin: GPIO52
+#  power_pin: GPIO51
+#  clk:
+#    mode: CLK_EXT_IN
+#    pin: GPIO50
+#  phy_addr: 1

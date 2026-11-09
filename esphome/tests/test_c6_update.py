@@ -22,6 +22,15 @@ class C6UpdateTests(unittest.TestCase):
         self.assertEqual(registry['images']['c6-sdio']['transport'],'sdio')
         self.assertNotEqual(image['sha256'],registry['images']['c6-sdio']['sha256'])
 
+    def test_bluetooth_variant_is_separately_approved(self):
+        registry=json.loads((ROOT/'components/pax_loader/c6-firmware.json').read_text())
+        image=registry['images']['c6-spi-aio']
+        artifact=ROOT/'c6/2.12.12/aio-spi-bluetooth/network_adapter.bin'
+        if not artifact.exists():artifact=ROOT.parent/'web-installer/c6/2.12.12/aio-spi-bluetooth/network_adapter.bin'
+        self.assertEqual(hashlib.sha256(artifact.read_bytes()).hexdigest(),image['bluetooth_sha256'])
+        self.assertNotEqual(image['bluetooth_sha256'],image['sha256'])
+        self.assertLess(artifact.stat().st_size,0x1e0000)
+
     def test_transport_selection_rejects_other_wiring(self):
         spec=importlib.util.spec_from_file_location('c6_profiles',ROOT/'components/pax_loader/c6_profiles.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)

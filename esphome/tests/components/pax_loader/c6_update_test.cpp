@@ -38,6 +38,11 @@ int main(){
  // A different, internally valid ESP image still must not match this board.
  auto other_transport=b;other_transport[84]='z';other_transport[303]^=b[84]^other_transport[84];rehash(other_transport);
  FILE *wrong_transport=file(other_transport);assert(!pax_c6::matches_approved_image(wrong_transport,approved.c_str()));fclose(wrong_transport);
+ Sha256 variant_hash;variant_hash.update(other_transport.data(),other_transport.size());std::string alternate=variant_hash.hex();
+ FILE *variant=file(other_transport);bool matched_alternate=false;
+ assert(pax_c6::matches_approved_image(variant,approved.c_str(),[](uint32_t){},alternate.c_str(),&matched_alternate) && matched_alternate);fclose(variant);
+ FILE *stock=file(b);matched_alternate=true;assert(pax_c6::matches_approved_image(stock,approved.c_str(),[](uint32_t){},alternate.c_str(),&matched_alternate) && !matched_alternate);fclose(stock);
+
 
  FILE *progress_file=file(b);uint32_t image_size=0,last_done=0,calls=0;char version[32];
  assert(pax_c6::validate_image(progress_file,image_size,version,sizeof(version),[&](uint32_t done,uint32_t total){assert(total==b.size() && done>=last_done && done<=total);last_done=done;calls++;}));

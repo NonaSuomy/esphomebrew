@@ -5,6 +5,8 @@
 #include "pax_ownership.h"
 #include "pax_stick_mouse.h"
 #include "pax_volume_icon.h"
+#include "papp2_abi.h"
+#include "papp2_runtime.h"
 
 #include <algorithm>
 #include <atomic>
@@ -43,6 +45,7 @@
 #include "esp_http_client.h"
 #include "esp_tls.h"
 #include "esp_mmu_map.h"
+#include "esp_random.h"
 #include "esp_vfs_fat.h"
 #include "driver/ppa.h"
 #include "pax_jpeg.h"
@@ -64,18 +67,57 @@
 // C-compatible struct tag. Keep the concrete implementation type at global
 // scope so the ABI handle and the C++ implementation refer to the same type.
 struct psram_app {
+  char path[160]{};
   void *code_buf{nullptr};
   size_t code_alloc{0};
   void *exec_ptr{nullptr};
   bool mapped{false};
   pax_header_t header{};
+  // PAPP2 uses a different container and entry signature. Keep the original
+  // PAX header intact for ABI-1 packages and dispatch by the on-disk magic.
+  struct papp2_header {
+    uint32_t magic;
+    uint16_t format_version;
+    uint16_t header_size;
+    uint32_t flags;
+    uint32_t image_size;
+    uint32_t bss_size;
+    uint32_t entry_off;
+    uint32_t imports_off;
+    uint32_t imports_count;
+    uint32_t manifest_off;
+    uint32_t relocs_count;
+    uint32_t image_crc32;
+    uint32_t relocs_crc32;
+    uint32_t fast_image_size;
+    uint32_t fast_bss_size;
+    uint32_t reserved[2];
+  } papp2{};
+  bool is_papp2{false};
+  uint32_t papp2_main_stack{0};
+  size_t slow_span{0};
+  size_t fast_span{0};
+  size_t fast_offset{0};
+};
+
+static_assert(sizeof(psram_app::papp2_header) == 64, "PAPP2 header must be 64 bytes");
+
+// papp_abi.h declares this as a global opaque C tag.
+struct papp_surface {
+  uint16_t width, height;
+  uint16_t *buffers[2];
+  uint8_t buffer_count, current_buffer;
 };
 
 #include "pax_wifi_stream.h"
+#include "pax_bluetooth_stream.h"
+#include "pax_controller_stream.h"
+#include "pax_bluetooth_keys.h"
 #include "pax_supply_bootstrap.h"
 #include "pax_c6_update.h"
 #include "pax_firmware_update.h"
 #include "pax_network_setup.h"
+#include "pax_bluetooth_panel.h"
 #ifdef USE_ETHERNET
 #include "esphome/components/ethernet/ethernet_component.h"
 #endif
@@ -93,6 +135,261 @@ static constexpr int EMU_HEIGHT = 240;
 static constexpr size_t MMU_PAGE_SIZE = 0x10000;
 static constexpr size_t MAX_NETWORK_PAX_SIZE = 16 * 1024 * 1024;
 static constexpr size_t HTTP_READ_BUFFER_SIZE = 16 * 1024;
+static constexpr uint16_t PAPP2_FORMAT_VERSION = 1;
+
+struct papp2_reloc_t { uint32_t off_type; uint32_t value; };
+static_assert(sizeof(papp2_reloc_t) == 8, "PAPP2 relocation record must be 8 bytes");
+
+static uint32_t papp2_crc32(uint32_t crc, const uint8_t *data, size_t length) {
+  crc = ~crc;
+  for (size_t i = 0; i < length; ++i) {
+    crc ^= data[i];
+    for (unsigned bit = 0; bit < 8; ++bit)
+      crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+  }
+  return ~crc;
+}
+
+static uint32_t read_le32(const uint8_t *p) {
+  return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) |
+         (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24);
+}
+static void write_le32(uint8_t *p, uint32_t value) {
+  p[0] = static_cast<uint8_t>(value); p[1] = static_cast<uint8_t>(value >> 8);
+  p[2] = static_cast<uint8_t>(value >> 16); p[3] = static_cast<uint8_t>(value >> 24);
+}
+
+// PAPP2 imports are adapted to the launcher's append-only ABI-1 service table.
+// One app runs at a time, so the imported interface context is process-wide.
+static const app_services_t *papp2_services = nullptr;
+
+static void papp2_log_write(const char *s, size_t n) {
+  if (papp2_services && papp2_services->log_printf && s)
+    papp2_services->log_printf("%.*s", static_cast<int>(std::min<size_t>(n, INT_MAX)), s);
+}
+static int papp2_log_vprintf(const char *fmt, va_list ap) {
+  return papp2_services && papp2_services->log_vprintf ? papp2_services->log_vprintf(fmt, ap) : -1;
+}
+static int64_t papp2_time_us() {
+  return papp2_services && papp2_services->get_time_us ? papp2_services->get_time_us() : esp_timer_get_time();
+}
+static void papp2_delay_ms(uint32_t ms) {
+  if (papp2_services && papp2_services->delay_ms)
+    papp2_services->delay_ms(static_cast<int>(std::min<uint32_t>(ms, INT_MAX)));
+}
+static bool papp2_exit_requested() {
+  return papp2_services && papp2_services->exit_requested && papp2_services->exit_requested();
+}
+static const char *papp2_board_id() { return "pax-launcher"; }
+static bool papp2_local_time(papp_datetime_t *out) {
+  if (!out) return false;
+  const time_t now = std::time(nullptr);
+  if (now < 1577836800) return false;
+  struct tm tm{};
+  if (localtime_r(&now, &tm) == nullptr) return false;
+  out->year = static_cast<int16_t>(tm.tm_year + 1900);
+  out->month = static_cast<uint8_t>(tm.tm_mon + 1); out->day = static_cast<uint8_t>(tm.tm_mday);
+  out->hour = static_cast<uint8_t>(tm.tm_hour); out->minute = static_cast<uint8_t>(tm.tm_min);
+  out->second = static_cast<uint8_t>(tm.tm_sec); out->weekday = static_cast<uint8_t>(tm.tm_wday);
+  return true;
+}
+static void *papp2_mem_alloc(size_t size, uint32_t caps, size_t align) {
+  if (!papp2_services) return nullptr;
+  if (align <= alignof(max_align_t)) {
+    if (caps & PAPP_MEM_FAST) return papp2_services->mem_caps_alloc ? papp2_services->mem_caps_alloc(size, PAX_MEM_CAP_INTERNAL) : nullptr;
+    if (caps & PAPP_MEM_DMA) return papp2_services->mem_caps_alloc ? papp2_services->mem_caps_alloc(size, PAX_MEM_CAP_DMA) : nullptr;
+    if (caps & PAPP_MEM_LARGE) return papp2_services->mem_caps_alloc ? papp2_services->mem_caps_alloc(size, PAX_MEM_CAP_SPIRAM) : nullptr;
+    return papp2_services->mem_alloc ? papp2_services->mem_alloc(size) : nullptr;
+  }
+  if ((align & (align - 1)) != 0 || align < sizeof(void *)) return nullptr;
+  uint32_t idf_caps = MALLOC_CAP_8BIT;
+  if (caps & PAPP_MEM_FAST) idf_caps |= MALLOC_CAP_INTERNAL;
+  if (caps & PAPP_MEM_DMA) idf_caps |= MALLOC_CAP_DMA;
+  if (caps & PAPP_MEM_LARGE) idf_caps |= MALLOC_CAP_SPIRAM;
+  return heap_caps_aligned_alloc(align, size, idf_caps);
+}
+static void *papp2_mem_realloc(void *ptr, size_t size) {
+  return papp2_services && papp2_services->mem_realloc ? papp2_services->mem_realloc(ptr, size) : nullptr;
+}
+static void papp2_mem_free(void *ptr) {
+  if (papp2_services && papp2_services->mem_free) papp2_services->mem_free(ptr);
+}
+static size_t papp2_mem_free_size(uint32_t caps) {
+  uint32_t idf_caps = MALLOC_CAP_8BIT;
+  if (caps & PAPP_MEM_FAST) idf_caps |= MALLOC_CAP_INTERNAL;
+  if (caps & PAPP_MEM_DMA) idf_caps |= MALLOC_CAP_DMA;
+  if (caps & PAPP_MEM_LARGE) idf_caps |= MALLOC_CAP_SPIRAM;
+  return heap_caps_get_free_size(idf_caps);
+}
+static papp_file_t *papp2_file_open(const char *path, const char *mode) {
+  return papp2_services && papp2_services->file_open
+      ? reinterpret_cast<papp_file_t *>(papp2_services->file_open(path, mode)) : nullptr;
+}
+static int papp2_file_close(papp_file_t *f) {
+  return papp2_services && papp2_services->file_close ? papp2_services->file_close(f) : -1;
+}
+static size_t papp2_file_read(papp_file_t *f, void *buf, size_t len) {
+  return papp2_services && papp2_services->file_read ? papp2_services->file_read(buf, 1, len, f) : 0;
+}
+static size_t papp2_file_write(papp_file_t *f, const void *buf, size_t len) {
+  return papp2_services && papp2_services->file_write ? papp2_services->file_write(buf, 1, len, f) : 0;
+}
+static int papp2_file_seek(papp_file_t *f, long off, int whence) {
+  return papp2_services && papp2_services->file_seek ? papp2_services->file_seek(f, off, whence) : -1;
+}
+static long papp2_file_tell(papp_file_t *f) {
+  return papp2_services && papp2_services->file_tell ? papp2_services->file_tell(f) : -1;
+}
+static long papp2_file_size(const char *path) {
+  pax_file_stat_t st{};
+  return papp2_services && papp2_services->file_stat && papp2_services->file_stat(path, &st) == 0
+      ? static_cast<long>(st.size) : -1;
+}
+static int papp2_file_remove(const char *path) {
+  return papp2_services && papp2_services->file_remove ? papp2_services->file_remove(path) : -1;
+}
+static int papp2_file_mkdir(const char *path) {
+  return papp2_services && papp2_services->file_mkdir ? papp2_services->file_mkdir(path) : -1;
+}
+
+static void papp2_display_info(papp_disp_info_t *out) {
+  if (!out) return;
+  int w = 0, h = 0;
+  if (papp2_services && papp2_services->display_get_size) papp2_services->display_get_size(&w, &h);
+  out->width = static_cast<uint16_t>(std::max(0, std::min(w, 65535)));
+  out->height = static_cast<uint16_t>(std::max(0, std::min(h, 65535)));
+  out->refresh_hz = 60; out->reserved = 0;
+}
+static papp_surface_t *papp2_surface_create(const papp_surface_cfg_t *cfg) {
+  if (!cfg || cfg->format != PAPP_PIXFMT_RGB565 || !cfg->width || !cfg->height || !papp2_services ||
+      !papp2_services->display_set_canvas || !papp2_services->display_write_frame_rgb565 ||
+      (cfg->buffers != 1 && cfg->buffers != 2)) return nullptr;
+  const uint64_t frame_bytes_64 = static_cast<uint64_t>(cfg->width) * cfg->height * sizeof(uint16_t);
+  if (frame_bytes_64 > SIZE_MAX) return nullptr;
+  if (papp2_services->display_set_canvas(cfg->width, cfg->height) != 0) return nullptr;
+  auto *surface = static_cast<papp_surface_t *>(std::calloc(1, sizeof(papp_surface_t)));
+  if (!surface) return nullptr;
+  surface->width = cfg->width; surface->height = cfg->height;
+  surface->buffer_count = cfg->buffers;
+  const size_t frame_bytes = static_cast<size_t>(frame_bytes_64);
+  surface->buffers[0] = static_cast<uint16_t *>(std::calloc(1, frame_bytes));
+  if (surface->buffer_count == 2)
+    surface->buffers[1] = static_cast<uint16_t *>(std::calloc(1, frame_bytes));
+  if (!surface->buffers[0] || (surface->buffer_count == 2 && !surface->buffers[1])) {
+    std::free(surface->buffers[0]); std::free(surface->buffers[1]); std::free(surface); return nullptr;
+  }
+  return surface;
+}
+static void papp2_surface_destroy(papp_surface_t *s) {
+  if (!s) return;
+  std::free(s->buffers[0]); std::free(s->buffers[1]); std::free(s);
+}
+static void *papp2_surface_lock(papp_surface_t *s, int *stride) {
+  if (!s) return nullptr;
+  if (stride) *stride = s->width;
+  return s->buffers[s->current_buffer];
+}
+static int papp2_surface_present(papp_surface_t *s, uint32_t) {
+  if (!s || !papp2_services || !papp2_services->display_flush ||
+      !papp2_services->display_write_frame_rgb565) return -1;
+  papp2_services->display_write_frame_rgb565(s->buffers[s->current_buffer]);
+  papp2_services->display_flush();
+  if (s->buffer_count == 2) s->current_buffer ^= 1;
+  return 0;
+}
+static int papp2_touch_read(papp_surface_t *s, papp_touch_point_t *pts, int max) {
+  if (!papp2_services || !papp2_services->touch_read || !pts || max <= 0) return 0;
+  int x = 0, y = 0;
+  if (!papp2_services->touch_read(&x, &y)) return 0;
+  if (s && (x < 0 || y < 0 || x >= s->width || y >= s->height)) return 0;
+  pts[0] = {static_cast<uint16_t>(x), static_cast<uint16_t>(y), 1, 1, 0};
+  return 1;
+}
+static int papp2_surface_present_ext(papp_surface_t *s, const void *pixels, uint32_t flags) {
+  if (!s || !pixels || !papp2_services || !papp2_services->display_write_frame_rgb565 ||
+      !papp2_services->display_flush) return -1;
+  papp2_services->display_write_frame_rgb565(static_cast<const uint16_t *>(pixels));
+  papp2_services->display_flush();
+  (void) flags;
+  if (s->buffer_count == 2) s->current_buffer ^= 1;
+  return 0;
+}
+
+static papp_if_sys_t papp2_sys{{PAPP_IF_SYS, PAPP_IF_SYS_VER, sizeof(papp_if_sys_t)}, (2u << 16),
+  papp2_log_write, papp2_log_vprintf, papp2_time_us, papp2_delay_ms, papp2_exit_requested,
+  papp2_board_id, papp2_local_time};
+static papp_if_mem_t papp2_mem{{PAPP_IF_MEM, PAPP_IF_MEM_VER, sizeof(papp_if_mem_t)},
+  papp2_mem_alloc, papp2_mem_realloc, papp2_mem_free, papp2_mem_free_size};
+static papp_if_fs_t papp2_fs{{PAPP_IF_FS, PAPP_IF_FS_VER, sizeof(papp_if_fs_t)},
+  papp2_file_open, papp2_file_close, papp2_file_read, papp2_file_write, papp2_file_seek,
+  papp2_file_tell, papp2_file_size, papp2_file_remove, papp2_file_mkdir};
+static papp_if_disp_t papp2_disp{{PAPP_IF_DISP, PAPP_IF_DISP_VER, sizeof(papp_if_disp_t)},
+  papp2_display_info, papp2_surface_create, papp2_surface_destroy, papp2_surface_lock,
+  papp2_surface_present, papp2_touch_read, papp2_surface_present_ext};
+
+static const papp_iface_hdr_t *papp2_find_interface(uint32_t id, uint16_t min_version) {
+  const papp_iface_hdr_t *interfaces[] = {
+    &papp2_sys.hdr, &papp2_mem.hdr, &papp2_fs.hdr, &papp2_disp.hdr,
+    papp2_runtime_audi() ? &papp2_runtime_audi()->hdr : nullptr,
+    papp2_runtime_inpt() ? &papp2_runtime_inpt()->hdr : nullptr,
+    papp2_runtime_thrd() ? &papp2_runtime_thrd()->hdr : nullptr,
+    papp2_runtime_ui() ? &papp2_runtime_ui()->hdr : nullptr
+  };
+  for (const auto *iface : interfaces)
+    if (iface != nullptr && iface->id == id && iface->version >= min_version) return iface;
+  return nullptr;
+}
+
+// Apply the relocations emitted by papp-sdk/tools/papp_pack.py.
+static esp_err_t papp2_apply_relocs(psram_app_handle_t app, const papp2_reloc_t *relocs,
+                                    uint32_t count, uint32_t *ring_key, uint32_t *ring_delta,
+                                    uint32_t *ring_pos) {
+  auto &h = app->papp2;
+  const uint32_t slow_base = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(app->exec_ptr));
+  const uint32_t fast_base = slow_base + static_cast<uint32_t>(app->fast_offset);
+  for (uint32_t i = 0; i < count; ++i) {
+    const uint32_t off = relocs[i].off_type & 0x07FFFFFFu;
+    uint32_t type = relocs[i].off_type >> 28;
+    const bool site_fast = (relocs[i].off_type & PAPP2_RELOC_SITE_FAST) != 0;
+    const bool value_fast = (relocs[i].value & PAPP2_RELOC_VAL_FAST) != 0;
+    const uint32_t value_off = relocs[i].value & ~PAPP2_RELOC_VAL_FAST;
+    const uint32_t site_span = site_fast ? h.fast_image_size : h.image_size;
+    const uint32_t target_span = value_fast ? h.fast_image_size + h.fast_bss_size : h.image_size + h.bss_size;
+    if (off > site_span || site_span - off < 4 || type < 1 || type > 8 ||
+        (type <= 5 && value_off > target_span)) return ESP_ERR_INVALID_SIZE;
+    uint8_t *site = static_cast<uint8_t *>(app->code_buf) + (site_fast ? app->fast_offset : 0) + off;
+    const uint32_t pc = (site_fast ? fast_base : slow_base) + off;
+    uint32_t value = (value_fast ? fast_base : slow_base) + value_off;
+    uint32_t insn = read_le32(site);
+    if (type == 5) {
+      value -= pc;
+      const uint32_t slot = (*ring_pos)++ % 32;
+      ring_key[slot] = off | (site_fast ? PAPP2_RELOC_VAL_FAST : 0);
+      ring_delta[slot] = value;
+      type = 2;
+    } else if (type == 6 || type == 7) {
+      uint32_t slot = 0;
+      while (slot < 32 && ring_key[slot] != relocs[i].value) ++slot;
+      if (slot == 32) return ESP_ERR_INVALID_ARG;
+      value = ring_delta[slot];
+      type = type == 6 ? 3 : 4;
+    } else if (type == 8) {
+      const uint32_t shift = (fast_base - PAPP2_FAST_LINK_BASE) - slow_base;
+      write_le32(site, insn + (relocs[i].value == 1 ? shift : 0u - shift));
+      continue;
+    }
+    const uint32_t lo = value & 0xFFFu;
+    switch (type) {
+      case 1: insn = value; break;
+      case 2: insn = (insn & 0xFFFu) | ((value + 0x800u) & 0xFFFFF000u); break;
+      case 3: insn = (insn & 0x000FFFFFu) | (lo << 20); break;
+      case 4: insn = (insn & 0x01FFF07Fu) | ((lo >> 5) << 25) | ((lo & 0x1Fu) << 7); break;
+      default: return ESP_ERR_NOT_SUPPORTED;
+    }
+    write_le32(site, insn);
+  }
+  return ESP_OK;
+}
 static constexpr uint32_t HTTP_TIMEOUT_MS = 15000;
 static constexpr uint8_t HTTP_MAX_REDIRECTIONS = 5;
 static constexpr int64_t PAX_CLOSE_GRACE_US = 4000000;
@@ -403,7 +700,7 @@ static constexpr size_t GAME_MENU_FRAME_PIXELS = GAME_MENU_FRAME_WIDTH * GAME_ME
 static constexpr size_t GAME_MENU_PREVIEW_PIXELS = PAX_GAME_MENU_PREVIEW_WIDTH * PAX_GAME_MENU_PREVIEW_HEIGHT;
 static constexpr size_t GAME_MENU_ALLOC_PIXELS = GAME_MENU_FRAME_PIXELS + GAME_MENU_PREVIEW_PIXELS;
 static constexpr uint8_t GAME_MENU_BASE_ITEM_COUNT = 5;
-static constexpr uint8_t GAME_MENU_NES_ITEM_COUNT = GAME_MENU_BASE_ITEM_COUNT + 1;
+static constexpr uint8_t GAME_MENU_MAX_ITEM_COUNT = GAME_MENU_BASE_ITEM_COUNT + 2;
 
 static const uint8_t *game_menu_glyph(char character) {
   static constexpr uint8_t blank[7] = {};
@@ -484,6 +781,29 @@ static void game_menu_draw_text(uint16_t *frame, int stride, int width, int heig
       for (int column = 0; column < 5; ++column) {
         if ((glyph[row] & (1U << (4 - column))) != 0)
           game_menu_fill_rect(frame, stride, width, height, x + column * scale, y + row * scale,
+                              scale, scale, color);
+      }
+    }
+  }
+}
+
+static void game_menu_draw_marquee(uint16_t *frame, int stride, int width, int height,
+                                   int x, int y, int clip_x, int clip_width,
+                                   const std::string &text, uint16_t color, int scale, size_t offset) {
+  if (text.empty() || clip_width <= 0 || scale < 1) return;
+  const size_t cycle = text.size() + 4;
+  const int visible_chars = (clip_width + 6 * scale - 1) / (6 * scale) + 1;
+  for (int i = 0; i < visible_chars; ++i) {
+    const size_t source = (offset + static_cast<size_t>(i)) % cycle;
+    const char character = source < text.size() ? text[source] : ' ';
+    const uint8_t *glyph = game_menu_glyph(character);
+    const int char_x = x + i * 6 * scale;
+    for (int row = 0; row < 7; ++row) {
+      for (int column = 0; column < 5; ++column) {
+        const int pixel_x = char_x + column * scale;
+        if ((glyph[row] & (1U << (4 - column))) != 0 && pixel_x >= clip_x &&
+            pixel_x + scale <= clip_x + clip_width)
+          game_menu_fill_rect(frame, stride, width, height, pixel_x, y + row * scale,
                               scale, scale, color);
       }
     }
@@ -1454,10 +1774,10 @@ static const ArchiveSystemDefinition ARCHIVE_SYSTEMS[] = {
     {"Nintendo - Game Boy", "Nintendo%20-%20Game%20Boy.zip", "gb", "/sd/roms/gb", ".gb|.zip|"},
     {"Nintendo - Game Boy Color", "Nintendo%20-%20Game%20Boy%20Color.zip", "gb", "/sd/roms/gb", ".gbc|.zip|"},
     {"Nintendo - Game Boy Advance", "Nintendo%20-%20Game%20Boy%20Advance.zip", "gba", "/sd/roms/gba", ".gba|.zip|"},
-    {"Sega - Genesis", "Sega%20-%20Genesis.zip", "genesis", "/sd/roms/gen", ".md|.gen|.bin|.zip|"},
+    {"Sega - Genesis", "Sega%20-%20Genesis.zip", "genesis", "/sd/roms/genesis", ".md|.gen|.bin|.zip|"},
     {"Sega - Master System", "Sega%20-%20Master%20System.zip", "sms", "/sd/roms/sms", ".sms|.zip|"},
     {"Sega - Game Gear", "Sega%20-%20Game%20Gear.zip", "sms", "/sd/roms/sms", ".gg|.zip|"},
-    {"Atari - 2600", "Atari%20-%202600.zip", "stella", "/sd/roms/a26", ".a26|.bin|.zip|"},
+    {"Atari - 2600", "Atari%20-%202600.zip", "stella", "/sd/roms/stella", ".a26|.bin|.zip|"},
     {"NEC - TurboGrafx-16", "NEC%20-%20TurboGrafx-16.zip", "pce", "/sd/roms/pce", ".pce|.zip|"},
     {"Arcade - Mame 2003 Plus", "Arcade%20-%20Mame%202003%20Plus.zip", "mame", "/sd/roms/mame", ".zip|"},
 };
@@ -1509,6 +1829,9 @@ static bool usb_mouse_button_pressed(binary_sensor::BinarySensor *sensor) {
 #endif
 
 void PaxLoader::setup() {
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  this->ble_remote_task_ = xTaskGetCurrentTaskHandle();
+#endif
   if (PaxLoader::active_ != nullptr) {
     ESP_LOGE(TAG, "Only one PAX loader can be active");
     this->mark_failed();
@@ -1520,16 +1843,15 @@ void PaxLoader::setup() {
     return;
   }
 
-  // The panel: the YAML size, else the display's own. A display that reports
-  // less than the 800x480 canvas (or no size at all) is taken to be the
-  // 1024x600 panel this loader was written for.
+  // Use the panel's actual size, including panels smaller than the legacy
+  // app canvas. Retain the fallback only when no usable size is available.
   const bool panel_configured = this->panel_config_w_ > 0 && this->panel_config_h_ > 0;
   int panel_w = panel_configured ? this->panel_config_w_ : this->display_->get_native_width();
   int panel_h = panel_configured ? this->panel_config_h_ : this->display_->get_native_height();
-  const bool panel_known = panel_w >= canvas::LEGACY_WIDTH && panel_h >= canvas::LEGACY_HEIGHT;
+  const bool panel_known = panel_w >= canvas::MIN_WIDTH && panel_h >= canvas::MIN_HEIGHT;
   if (!panel_known) {
-    ESP_LOGW(TAG, "Display reports %dx%d, less than the %dx%d canvas; assuming a %dx%d panel", panel_w, panel_h,
-             canvas::LEGACY_WIDTH, canvas::LEGACY_HEIGHT, canvas::FALLBACK_PANEL_WIDTH, canvas::FALLBACK_PANEL_HEIGHT);
+    ESP_LOGW(TAG, "Display reports no usable panel size (%dx%d); assuming %dx%d", panel_w, panel_h,
+             canvas::FALLBACK_PANEL_WIDTH, canvas::FALLBACK_PANEL_HEIGHT);
     panel_w = canvas::FALLBACK_PANEL_WIDTH;
     panel_h = canvas::FALLBACK_PANEL_HEIGHT;
   }
@@ -1540,10 +1862,11 @@ void PaxLoader::setup() {
   this->geometry_.canvas_w = canvas::LEGACY_WIDTH;
   this->geometry_.canvas_h = canvas::LEGACY_HEIGHT;
 
-  // Frame buffers for the largest canvas, the whole panel (canvas sizes are
-  // even), allocated once. Short of PSRAM, every app stays at 800x480.
-  if (!this->allocate_frame_buffers_(panel_w - panel_w % 2, panel_h - panel_h % 2) &&
-      (panel_w - panel_w % 2 != canvas::LEGACY_WIDTH || panel_h - panel_h % 2 != canvas::LEGACY_HEIGHT)) {
+  // Keep capacity for legacy apps even when the physical panel is smaller.
+  const int buffer_w = std::max(panel_w - panel_w % 2, canvas::LEGACY_WIDTH);
+  const int buffer_h = std::max(panel_h - panel_h % 2, canvas::LEGACY_HEIGHT);
+  if (!this->allocate_frame_buffers_(buffer_w, buffer_h) &&
+      (buffer_w != canvas::LEGACY_WIDTH || buffer_h != canvas::LEGACY_HEIGHT)) {
     ESP_LOGW(TAG, "No PSRAM for %dx%d frame buffers; apps are limited to %dx%d", panel_w, panel_h,
              canvas::LEGACY_WIDTH, canvas::LEGACY_HEIGHT);
     this->allocate_frame_buffers_(canvas::LEGACY_WIDTH, canvas::LEGACY_HEIGHT);
@@ -1613,6 +1936,7 @@ void PaxLoader::setup() {
   }
 
   PaxLoader::active_ = this;
+  pax_controller::setup([](){return PaxLoader::active_->read_controller_buttons_();});
   if(esphome::global_preferences){
     runtime_settings_preference=esphome::global_preferences->make_preference<SavedRuntimeSettings>(RUNTIME_SETTINGS_KEY,true);
     SavedRuntimeSettings restored{};
@@ -1865,7 +2189,7 @@ bool PaxLoader::apply_canvas_(int width, int height, bool blank_panel) {
     const int rows = std::max(1, static_cast<int>(this->frame_alloc_bytes_ / sizeof(uint16_t) / panel_w));
     ESP_LOGI(TAG, "PAX canvas panel clear begin: panel=%dx%d rows=%d", panel_w, panel_h, rows);
     for (int y = 0; y < panel_h; y += rows) {
-      this->display_->draw_pixels_at(0, y, panel_w, std::min(rows, panel_h - y),
+      this->draw_panel_pixels_(0, y, panel_w, std::min(rows, panel_h - y),
                                      reinterpret_cast<const uint8_t *>(this->rotated_framebuffer_),
                                      display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
     }
@@ -2066,6 +2390,20 @@ void PaxLoader::process_ui_call_() {
   xSemaphoreGive(this->ui_call_done_);
 }
 
+bool PaxLoader::scan_bluetooth(){
+ if(pax_c6::busy() || pax_firmware::busy())return false;
+ pax_bluetooth_request_t request{};request.magic=PAX_BLUETOOTH_MAGIC;request.command.version=PAX_BT_DISCOVERY_VERSION;request.command.operation=PAX_BT_SCAN;
+ return pax_bluetooth::submit(&request)==0;
+}
+void PaxLoader::show_bluetooth_setup(){
+#ifdef PAX_LOADER_USE_LVGL
+ if(this->launched_ || this->pax_loading_ || this->launch_pending_ || pax_c6::busy() || pax_firmware::busy())return;
+ pax_bluetooth_panel_backend_t backend{};
+ backend.read=[](pax_bluetooth_status_t *out)->int{return pax_bluetooth::get(out)?0:-1;};
+ backend.write=[](const pax_bluetooth_request_t *request)->int{return pax_bluetooth::submit(request);};
+ pax_bt_panel_open(backend);
+#endif
+}
 void PaxLoader::show_network_setup() {
 #ifdef PAX_LOADER_USE_LVGL
   if (this->launched_ || this->launch_pending_ || this->pax_loading_ || pax_c6::busy() || pax_firmware::busy()) return;
@@ -2109,6 +2447,7 @@ void PaxLoader::show_network_setup() {
     int result = fclose(file);
     return ok && result == 0 ? 0 : -1;
   };
+  backend.bluetooth_open=[](){if(PaxLoader::active_)PaxLoader::active_->show_bluetooth_setup();};
   native_network_panel.open(backend);
 #endif
 }
@@ -2120,7 +2459,8 @@ void PaxLoader::loop() {
     if(runtime_settings_preference.save(&current))saved_runtime_settings=current;
   }
   // Avoid unrelated Wi-Fi status RPCs while the coprocessor is being updated.
-  if (!pax_c6::busy()) pax_wifi::loop();
+  pax_controller::loop();
+  if (!pax_c6::busy()) {pax_wifi::loop();pax_bluetooth::loop();}
   pax_c6::loop();
   if (pax_firmware::pending() && this->app_handle_ != nullptr && !this->global_close_requested_)
     this->request_close();
@@ -2167,13 +2507,59 @@ void PaxLoader::loop() {
       // SDMMC driver and avoids a retry loop before any sound is requested.
     }
   }
+  // Radio callbacks only copy bounded reports; feed app input from the owner loop.
+  static int bluetooth_keys[256]={};
+  for(unsigned i=0;i<64;i++){
+    pax_bluetooth::KeyEvent event{};bool reset=false;bool present=pax_bluetooth::pop_key(&event,&reset);
+    if(reset)for(int &key:bluetooth_keys)if(key){this->enqueue_keyboard_event_(key,false);key=0;}
+    if(!present)break;
+    if(event.down){int key=pax_bluetooth_key(event.usage,event.modifiers);bluetooth_keys[event.usage]=key;if(key){
+#ifdef PAX_LOADER_USE_LVGL
+      if(!this->launched_){
+        if(pax_bt_panel_root)pax_bt_panel_key(key);
+        else if(native_network_panel.active())native_network_panel.key(key);
+        else if(lv_group_t *group=lv_group_get_default()){
+          if(key==PAX_KEY_UP || key==PAX_KEY_LEFT)lv_group_focus_prev(group);
+          else if(key==PAX_KEY_DOWN || key==PAX_KEY_RIGHT || key==9)lv_group_focus_next(group);
+          else if(key==13 || key==32)lv_group_send_data(group,LV_KEY_ENTER);
+        }
+      }else
+#endif
+        this->enqueue_keyboard_event_(key,true);
+    }}
+    else {int key=bluetooth_keys[event.usage];bluetooth_keys[event.usage]=0;if(key)this->enqueue_keyboard_event_(key,false);}
+  }
+#ifdef PAX_LOADER_USE_LVGL
+  if(!this->launched_){
+    bluepad32_hosted_state_t pad{};bool live=pax_bluetooth::pad(&pad);
+    const bool buttons[]={live&&((pad.dpad&1)||pad.axis_ly < -100),live&&((pad.dpad&2)||pad.axis_ly > 100),live&&((pad.dpad&4)||pad.axis_lx < -100),live&&((pad.dpad&8)||pad.axis_lx > 100),live&&(pad.buttons&1),live&&(pad.buttons&2)};
+    const int keycodes[]={PAX_KEY_UP,PAX_KEY_DOWN,PAX_KEY_LEFT,PAX_KEY_RIGHT,13,27};
+    static bool previous[6]={};static int64_t next[6]={};const int64_t now=esp_timer_get_time();
+    for(unsigned i=0;i<6;i++){
+      if(buttons[i] && (!previous[i] || (i<4 && now>=next[i]))){
+        int key=keycodes[i];next[i]=now+(previous[i]?110000:400000);
+        if(pax_bt_panel_root)pax_bt_panel_key(key);
+        else if(native_network_panel.active())native_network_panel.key(key);
+        else if(lv_group_t *group=lv_group_get_default()){
+          if(i==0 || i==2)lv_group_focus_prev(group);
+          else if(i==1 || i==3)lv_group_focus_next(group);
+          else lv_group_send_data(group,i==4?LV_KEY_ENTER:LV_KEY_ESC);
+        }
+      }
+      previous[i]=buttons[i];
+    }
+  }
+#endif
+  int32_t bluetooth_x,bluetooth_y,bluetooth_wheel;pax_bluetooth::take_mouse(&bluetooth_x,&bluetooth_y,&bluetooth_wheel);
+  if(bluetooth_x || bluetooth_y)this->enqueue_mouse_delta(bluetooth_x,bluetooth_y);
+  if(bluetooth_wheel)this->enqueue_mouse_wheel(bluetooth_wheel);
   this->update_auto_brightness_();
 #ifdef PAX_LOADER_USE_LVGL
   this->ensure_background_();
   this->update_catalog_status_();
   if(native_network_panel.active()){
     pax_keyboard_event_t event{};
-    while(this->read_keyboard_(&event))if(event.down)native_network_panel.key(event.key);
+    while(this->read_keyboard_(&event))if(event.down){if(pax_bt_panel_root)pax_bt_panel_key(event.key);else native_network_panel.key(event.key);}
     native_network_panel.tick(millis());
   }
 #endif
@@ -2940,6 +3326,7 @@ bool PaxLoader::launch_() {
   if (pax_firmware::busy()) { this->launched_ = false; return false; }
   const std::string source = this->path_;
 #ifdef PAX_LOADER_USE_LVGL
+  pax_bt_panel_close();
   native_network_panel.close();
   // Evict the launcher before reading/mapping the next PAX. This gives the
   // loader and its bootstrap task the reclaimed heap during file/URL loading,
@@ -2953,8 +3340,10 @@ bool PaxLoader::launch_() {
       return false;
     }
 
-    // Download in its own task. HTTP/TLS setup and a several-megabyte PAX
-    // transfer must not block the ESPHome loop, USB host, LVGL, or watchdog.
+    // Download in its own internal-RAM task. HTTP/TLS setup and a several-
+    // megabyte PAX transfer must not block the ESPHome loop, USB host, LVGL,
+    // or watchdog. PSRAM allocations temporarily disable caches, so a task
+    // with a PSRAM stack would abort in esp_task_stack_is_sane_cache_disabled.
     this->pax_load_source_ = source;
     this->pax_load_handle_ = nullptr;
     this->pax_load_done_ = false;
@@ -2962,7 +3351,7 @@ bool PaxLoader::launch_() {
     this->pax_loading_ = true;
     const BaseType_t task_result = xTaskCreatePinnedToCoreWithCaps(
         &PaxLoader::pax_load_task_entry_, "pax_http", 20480, this, 5,
-        &this->pax_load_task_handle_, 0, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        &this->pax_load_task_handle_, 0, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     if (task_result != pdPASS) {
       ESP_LOGE(TAG, "Could not create network PAX loader task");
       this->pax_loading_ = false;
@@ -3003,11 +3392,24 @@ bool PaxLoader::start_loaded_app_(psram_app_handle_t app, const std::string &sou
   pax_entry_services = pax_entry_display_leases = 0;
   portEXIT_CRITICAL(&pax_tasks_mux);
   this->running_app_source_ = source;
+  this->running_app_version_.clear();
+  const uint32_t packed_version = app->header.reserved;
+  if ((packed_version & 0xF0000000u) == PAX_VERSION_TAG) {
+    char version[16];
+    std::snprintf(version, sizeof(version), "%u.%u.%u",
+                  (packed_version >> 16) & 0xFFFu,
+                  (packed_version >> 8) & 0xFFu,
+                  packed_version & 0xFFu);
+    this->running_app_version_ = version;
+  } else {
+    this->running_app_version_ = handoff::version_of(source);
+  }
   ESP_LOGI(TAG, "Starting PAX in worker task: %s", source.c_str());
   this->begin_report_(source);
   if (!this->prepare_canvas_for_app_(source)) {
     ESP_LOGE(TAG, "App start refused: cannot allocate legacy canvas");
     this->running_app_source_.clear();
+    this->running_app_version_.clear();
     this->set_progress_(false, 0, 0, "%s", "App start failed: canvas memory unavailable");
     this->send_report_("start_failed", -1, source);
     psram_app_unload(app);
@@ -3088,8 +3490,24 @@ bool PaxLoader::start_loaded_app_(psram_app_handle_t app, const std::string &sou
   // PAX's large buffers and app-created tasks still use PSRAM through the
   // service API.
   constexpr uint32_t PAX_BOOTSTRAP_STACK = 8192;
+  // PAPP2 records its requested entry stack in the manifest. Honor it for
+  // apps whose initialization needs more than the legacy PAX bootstrap stack.
+  // This task must stay in internal RAM because it performs MMU map/unmap calls.
+  constexpr uint32_t PAPP2_MIN_STACK = 8192;
+  constexpr uint32_t PAPP2_MAX_INTERNAL_STACK = 128 * 1024;
+  uint32_t app_stack = PAX_BOOTSTRAP_STACK;
+  if (app->is_papp2 && app->papp2_main_stack != 0) {
+    app_stack = std::clamp(app->papp2_main_stack, PAPP2_MIN_STACK,
+                           PAPP2_MAX_INTERNAL_STACK);
+    if (app_stack != app->papp2_main_stack)
+      ESP_LOGW(TAG, "PAPP2 main stack request clamped from %lu to %lu bytes",
+               static_cast<unsigned long>(app->papp2_main_stack),
+               static_cast<unsigned long>(app_stack));
+  }
+  ESP_LOGI(TAG, "PAX worker stack: %lu bytes (%s)",
+           static_cast<unsigned long>(app_stack), app->is_papp2 ? "PAPP2" : "ABI-1");
   const BaseType_t task_result = xTaskCreatePinnedToCore(
-      &PaxLoader::pax_task_entry_, "pax_main", PAX_BOOTSTRAP_STACK, this, 5,
+      &PaxLoader::pax_task_entry_, "pax_main", app_stack, this, 5,
       &this->pax_task_handle_, 0);
   this->pax_task_uses_caps_ = false;
   if (task_result != pdPASS) {
@@ -3101,6 +3519,7 @@ bool PaxLoader::start_loaded_app_(psram_app_handle_t app, const std::string &sou
     this->pax_task_uses_caps_ = false;
     this->launched_ = false;
     this->running_app_source_.clear();
+    this->running_app_version_.clear();
     this->set_progress_(false, 0, 0, "%s", "App start failed: not enough internal memory");
     this->send_report_("start_failed", -1, source);
     psram_app_unload(app);
@@ -3226,6 +3645,8 @@ void PaxLoader::enqueue_keyboard_text(const std::string &text) {
     this->enqueue_keyboard_tap_(key);
 }
 
+void PaxLoader::read_bluetooth_pointer(int *dx,int *dy,bool *down){pax_bluetooth::take_pointer(dx,dy,down);}
+
 void PaxLoader::enqueue_mouse_delta(float dx, float dy) {
   if (!std::isfinite(dx) || !std::isfinite(dy))
     return;
@@ -3316,14 +3737,15 @@ int PaxLoader::read_mouse_(int *dx, int *dy, int *buttons) {
   // RetroESP32-P4 launcher.
   int canvas_x = static_cast<int>(x);
   int canvas_y = static_cast<int>(y);
-  pax_mouse_delta_to_canvas(&canvas_x, &canvas_y);
+  if (this->app_rotation_ == 180)
+    pax_mouse_delta_to_canvas(&canvas_x, &canvas_y);
 
   if (dx != nullptr)
     *dx = canvas_x;
   if (dy != nullptr)
     *dy = canvas_y;
 
-  int state = 0;
+  int state = pax_bluetooth::buttons();
 #ifdef PAX_LOADER_USE_USB_HIDX
   if (this->usb_hidx_ != nullptr) {
     if (this->usb_hidx_->get_mouse_left_sensor() != nullptr &&
@@ -4615,9 +5037,17 @@ void PaxLoader::update_rom_selector_ui_() {
     relative.pop_back();
 
   std::vector<std::pair<std::string, std::string>> entries;
-  if (!relative.empty()) {
+  std::vector<std::string> folders{relative};
+  // Keep older SD card layouts readable while using the current app folders.
+  if (relative == "roms/stella") folders.emplace_back("roms/a26");
+  if (relative == "roms/atari800") folders.emplace_back("roms/a800");
+  if (relative == "roms/prosystem") folders.emplace_back("roms/a78");
+  if (relative == "roms/handy") folders.emplace_back("roms/lynx");
+  if (relative == "roms/genesis") folders.emplace_back("roms/gen");
+  for (const auto &rom_folder : folders) {
+    if (rom_folder.empty()) continue;
     for (const auto &root : this->data_search_) {
-      const std::string folder = root + "/" + relative;
+      const std::string folder = root + "/" + rom_folder;
       const std::string fs_folder = runtime_path(folder.c_str());
       DIR *dir = opendir(fs_folder.c_str());
       if (dir == nullptr)
@@ -4730,21 +5160,23 @@ static const RomSelectorDefinition ROM_SELECTOR_DEFINITIONS[] = {
     {"nes", "roms/nes", ".nes|.zip|"},
     {"nesplus", "roms/nes", ".nes|.fds|.nsf|.zip|"},
     {"gb", "roms/gb", ".gb|.gbc|.zip|"},
-    {"sms", "roms/sms", ".sms|.gg|.col|.zip|"},
+    {"gba", "roms/gba", ".gba|.agb|.zip|"},
+    {"sms", "roms/sms", ".sms|.gg|.zip|"},
     {"spectrum", "roms/spectrum", ".z80|.sna|.tap|.tzx|.zip|"},
-    {"stella", "roms/a26", ".a26|.bin|.zip|"},
-    {"handy", "roms/lynx", ".lnx|.lyx|.zip|"},
+    {"stella", "roms/stella", ".a26|.bin|.zip|"},
+    {"handy", "roms/handy", ".lnx|.lyx|.zip|"},
     {"pce", "roms/pce", ".pce|.zip|"},
-    {"atari800", "roms/a800", ".atr|.xex|.com|.cas|.a52|.car|.rom|.bin|.zip|"},
+    {"atari800", "roms/atari800", ".atr|.xex|.com|.cas|.a52|.car|.rom|.bin|.zip|"},
     {"snes", "roms/snes", ".smc|.sfc|.zip|"},
-    {"genesis", "roms/gen", ".md|.gen|.bin|.smd|.zip|"},
-    {"prosystem", "roms/a78", ".a78|.bin|.zip|"},
+    {"genesis", "roms/genesis", ".md|.gen|.bin|.smd|.zip|"},
+    {"prosystem", "roms/prosystem", ".a78|.bin|.zip|"},
     {"neogeo", "roms/neogeo", ".zip|"},
     {"ngp", "roms/ngp", ".ngp|.ngc|.zip|"},
     {"ws", "roms/ws", ".ws|.wsc|.zip|"},
     {"msx", "roms/msx", ".rom|.mx1|.mx2|.zip|"},
     {"gx4000", "roms/gx4000", ".cpr|.bin|.zip|"},
     {"gw", "roms/gw", ".gw|.lcd|.zip|"},
+    {"arduboy", "roms/arduboy", ".hex|.arduboy|"},
 };
 
 static std::string rom_selector_app_id(const std::string &source) {
@@ -4815,11 +5247,116 @@ void PaxLoader::back_from_rom_selector() {
 bool PaxLoader::supports_rom_selector(const std::string &source) const {
   return rom_selector_definition_for(source) != nullptr;
 }
+
+void PaxLoader::open_game_menu_rom_picker_() {
+  const RomSelectorDefinition *definition = rom_selector_definition_for(this->running_app_source_);
+  if (definition == nullptr) return;
+  this->rom_selector_app_ = definition->app;
+  this->rom_selector_folder_ = definition->folder;
+  this->rom_selector_extensions_ = definition->extensions;
+  this->rom_selector_source_ = this->running_app_source_;
+  this->rom_selector_sidecar_ = std::string("/sd/roms/pax/") + definition->app + ".rom";
+  this->game_menu_rom_paths_.clear();
+  this->game_menu_rom_labels_.clear();
+
+  std::string relative = definition->folder;
+  while (!relative.empty() && relative.front() == '/') relative.erase(relative.begin());
+  std::vector<std::string> folders{relative};
+  const std::pair<const char *, const char *> aliases[] = {
+      {"roms/stella", "roms/a26"}, {"roms/atari800", "roms/a800"},
+      {"roms/prosystem", "roms/a78"}, {"roms/handy", "roms/lynx"},
+      {"roms/genesis", "roms/gen"}};
+  for (const auto &alias : aliases)
+    if (relative == alias.first) folders.emplace_back(alias.second);
+  std::vector<std::pair<std::string, std::string>> entries;
+  for (const auto &folder : folders) {
+    for (const auto &root : this->data_search_) {
+      const std::string virtual_folder = root + "/" + folder;
+      const std::string fs_folder = runtime_path(virtual_folder.c_str());
+      DIR *dir = opendir(fs_folder.c_str());
+      if (dir == nullptr) continue;
+      while (dirent *entry = readdir(dir)) {
+        const std::string name = entry->d_name;
+        if (name == "." || name == ".." ||
+            !rom_selector_extension_matches(name, this->rom_selector_extensions_)) continue;
+        struct stat info{};
+        if (stat((fs_folder + "/" + name).c_str(), &info) != 0 || !S_ISREG(info.st_mode)) continue;
+        std::string label = name;
+        const size_t extension = label.rfind('.');
+        if (extension != std::string::npos) {
+          size_t end = extension;
+          while (end > 0 && std::isspace(static_cast<unsigned char>(label[end - 1]))) --end;
+          if (end != extension) label.erase(end, extension - end);
+        }
+        entries.emplace_back(label + (root == "/sd" ? "" : " (USB)"), virtual_folder + "/" + name);
+      }
+      closedir(dir);
+    }
+  }
+  std::sort(entries.begin(), entries.end(), [](const auto &left, const auto &right) {
+    std::string a = left.first, b = right.first;
+    for (char &c : a) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    for (char &c : b) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return a < b;
+  });
+  for (auto &entry : entries) {
+    this->game_menu_rom_labels_.push_back(std::move(entry.first));
+    this->game_menu_rom_paths_.push_back(std::move(entry.second));
+  }
+  this->game_menu_rom_selection_ = this->game_menu_rom_first_ = 0;
+  this->game_menu_rom_marquee_selection_ = 0xFFFFU;
+  this->game_menu_rom_marquee_started_us_ = 0;
+  this->game_menu_rom_marquee_last_update_us_ = 0;
+  const int compact_row_height = 7 * this->game_menu_font_scale_ + 4;
+  const uint8_t visible_rows = static_cast<uint8_t>(std::max(
+      4, std::min(8, (this->game_menu_height_ - 84) / compact_row_height)));
+  this->game_menu_item_count_ = this->game_menu_rom_paths_.empty() ? 1 :
+      static_cast<uint8_t>(std::min<size_t>(visible_rows, this->game_menu_rom_paths_.size()));
+  this->game_menu_selection_ = 0;
+  this->game_menu_row_height_ = (this->game_menu_height_ - 84) / this->game_menu_item_count_;
+  this->game_menu_rom_picker_ = true;
+  this->game_menu_frame_dirty_ = true;
+  ESP_LOGI(TAG, "In-menu ROM list: %u game(s) for %s",
+           static_cast<unsigned>(this->game_menu_rom_paths_.size()), definition->app);
+  this->redraw_control_overlay_now_(true);
+}
+
+void PaxLoader::select_game_menu_rom_() {
+  if (this->game_menu_rom_selection_ >= this->game_menu_rom_paths_.size()) return;
+  std::string path = this->game_menu_rom_paths_[this->game_menu_rom_selection_];
+  std::string extension = path.substr(path.rfind('.') == std::string::npos ? path.size() : path.rfind('.'));
+  for (char &c : extension) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  if (extension == ".zip" && this->rom_selector_app_ != "neogeo") {
+    std::string allowed = this->rom_selector_extensions_;
+    const size_t zip = allowed.find(".zip|");
+    if (zip != std::string::npos) allowed.erase(zip, 5);
+    char extracted[256] = {};
+    const std::string stem = launcher_zip_cache_stem(this->rom_selector_app_, path);
+    if (PaxLoader::svc_file_zip_extract_first(path.c_str(), allowed.c_str(), "/sd/roms/pax/.zipcache",
+          stem.c_str(), extracted, sizeof(extracted)) != 0 || !extracted[0]) {
+      ESP_LOGW(TAG, "In-menu ROM ZIP extraction failed: %s", path.c_str());
+      return;
+    }
+    path = extracted;
+  }
+  PaxLoader::svc_settings_rom_path_set(path.c_str());
+  this->write_file(this->rom_selector_sidecar_, path + "\n");
+  this->reload_source_ = this->running_app_source_;
+  this->reload_after_close_ = !this->reload_source_.empty();
+  if (this->reload_after_close_) {
+    this->game_menu_rom_picker_ = false;
+    this->game_menu_rom_paths_.clear();
+    this->game_menu_rom_labels_.clear();
+    this->begin_close_();
+    ESP_LOGI(TAG, "Selected ROM %s; restarting %s", path.c_str(), this->reload_source_.c_str());
+  }
+}
 #endif
 
 void PaxLoader::finish_app_() {
   if (!begin_pax_quiesce()) return;
   this->close_game_menu_();
+  svc_ble_remote(PAX_BLE_RELEASE, 0, 0, nullptr);
   svc_game_menu_register(nullptr, nullptr, nullptr);
   const int result = this->pax_task_result_;
   ESP_LOGI(TAG, "PAX worker returned %d", result);
@@ -4845,6 +5382,10 @@ void PaxLoader::finish_app_() {
   // FILE storage may belong to a task's Newlib context. Close SDK handles
   // while those contexts still exist, before deleting their owning tasks.
   close_pax_files();
+  // Normal PAPP2 returns tear down their runtime from psram_app_run(). A
+  // forced close can stop that worker before it returns; reclaim runtime
+  // objects now, while its service table is still alive on the worker stack.
+  papp2_runtime_end();
   if (this->pax_task_handle_ != nullptr) {
     ESP_LOGI(TAG, "PAX close: deleting worker task");
     if (this->pax_task_uses_caps_)
@@ -4876,6 +5417,7 @@ void PaxLoader::finish_app_() {
   this->global_close_requested_ = false;
   this->launched_ = false;
   this->running_app_source_.clear();
+  this->running_app_version_.clear();
   this->reload_after_close_ = false;
   this->reload_source_.clear();
   this->control_overlay_offset_ = 0;
@@ -5015,11 +5557,27 @@ void PaxLoader::build_game_menu_frame_() {
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, width - 2, 0, 2, height, border);
   game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 2, 2, width - 4, 37, header);
   const int title_scale = width >= 360 ? 2 : 1;
+  const char *base_title = this->game_menu_app_page_ ? this->game_menu_page_.title :
+                           this->game_menu_rom_picker_ ? "SELECT GAME" : "GAME MENU";
+  std::string versioned_title(base_title);
+  if (!this->running_app_version_.empty() &&
+      versioned_title.find(this->running_app_version_) == std::string::npos) {
+    versioned_title += " ";
+    versioned_title += this->running_app_version_;
+  }
   game_menu_draw_text(this->game_menu_frame_, stride, width, height, 18, 12,
-                      this->game_menu_app_page_ ? this->game_menu_page_.title : "GAME MENU", accent, title_scale);
+                      versioned_title.c_str(), accent, title_scale);
 
-  static constexpr const char *const labels[GAME_MENU_NES_ITEM_COUNT] = {
-      "RESUME GAME", "RESTART APP", "EXIT TO LAUNCHER", "VOLUME", "BRIGHTNESS", "NES OPTIONS"};
+  static constexpr const char *const labels[GAME_MENU_MAX_ITEM_COUNT] = {
+      "RESUME GAME", "RESTART APP", "EXIT TO LAUNCHER", "VOLUME", "BRIGHTNESS",
+      "CHANGE GAME", "SYSTEM OPTIONS"};
+  bool can_change_game = false;
+#ifdef PAX_LOADER_USE_LVGL
+  can_change_game = this->supports_rom_selector(this->running_app_source_);
+#endif
+  const uint8_t options_row = GAME_MENU_BASE_ITEM_COUNT + (can_change_game ? 1 : 0);
+  const bool has_app_options = this->game_menu_callback_ != nullptr ||
+                               canvas::app_key(this->running_app_source_) == "nes";
   const int row_top = this->game_menu_row_top_;
   const int row_height = this->game_menu_row_height_;
   const int scale = this->game_menu_font_scale_;
@@ -5028,21 +5586,88 @@ void PaxLoader::build_game_menu_frame_() {
   for (uint8_t row = 0; row < this->game_menu_item_count_; ++row) {
     const int y = row_top + row * row_height;
     if (row == this->game_menu_selection_)
-      game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 8, y, width - 16, row_height - 2, selected);
+      game_menu_fill_rect(this->game_menu_frame_, stride, width, height, 8, y, width - 16,
+                          row_height - (this->game_menu_rom_picker_ ? 1 : 2), selected);
     const int text_y = y + std::max(1, (row_height - 7 * scale) / 2);
     const uint16_t color = text;
     if (row == this->game_menu_selection_)
       game_menu_draw_text(this->game_menu_frame_, stride, width, height, 17, text_y, ">", accent, scale);
-    const char *label = this->game_menu_app_page_ ? this->game_menu_page_.items[row].label :
-                        row == GAME_MENU_BASE_ITEM_COUNT && this->game_menu_callback_ != nullptr ?
-                        this->game_menu_provider_label_ : labels[row];
-    game_menu_draw_text(this->game_menu_frame_, stride, width, height, 34, text_y, label, color, scale);
-    if (!this->game_menu_app_page_ && (row == 3 || row == 4)) {
+    std::string rom_label;
+    const char *label = nullptr;
+    if (this->game_menu_rom_picker_) {
+      if (this->game_menu_rom_paths_.empty()) {
+        label = "NO GAMES FOUND";
+      } else {
+        rom_label = this->game_menu_rom_labels_[this->game_menu_rom_first_ + row];
+        label = rom_label.c_str();
+      }
+    } else if (this->game_menu_app_page_) {
+      label = this->game_menu_page_.items[row].label;
+    } else {
+      label =
+                        row == options_row && has_app_options ?
+                        (this->game_menu_callback_ != nullptr ? this->game_menu_provider_label_ : "NES OPTIONS") : labels[row];
+    }
+    if (this->game_menu_rom_picker_ && row == this->game_menu_selection_ && !rom_label.empty()) {
+      const int clip_x = 34;
+      const int clip_right = width - 25;
+      const int clip_width = std::max(0, clip_right - clip_x);
+      const size_t max_chars = static_cast<size_t>(clip_width / (6 * scale));
+      if (rom_label.size() > max_chars) {
+        if (this->game_menu_rom_marquee_selection_ != this->game_menu_rom_selection_) {
+          this->game_menu_rom_marquee_selection_ = this->game_menu_rom_selection_;
+          this->game_menu_rom_marquee_started_us_ = esp_timer_get_time();
+          this->game_menu_rom_marquee_last_update_us_ = this->game_menu_rom_marquee_started_us_;
+        }
+        const int64_t elapsed = std::max<int64_t>(0, esp_timer_get_time() - this->game_menu_rom_marquee_started_us_);
+        const size_t offset = elapsed < 750000 ? 0 :
+            static_cast<size_t>((elapsed - 750000) / 220000) % (rom_label.size() + 4);
+        game_menu_draw_marquee(this->game_menu_frame_, stride, width, height, clip_x, text_y,
+                               clip_x, clip_width, rom_label, color, scale, offset);
+      } else {
+        game_menu_draw_text(this->game_menu_frame_, stride, width, height, clip_x, text_y, label, color, scale);
+      }
+    } else if (this->game_menu_rom_picker_) {
+      const int clip_x = 34;
+      const size_t max_chars = static_cast<size_t>(std::max(0, width - 25 - clip_x) / (6 * scale));
+      std::string clipped = label != nullptr ? label : "";
+      if (clipped.size() > max_chars) {
+        if (max_chars > 3) {
+          clipped.resize(max_chars - 3);
+          clipped += "...";
+        } else {
+          clipped.resize(max_chars);
+        }
+      }
+      game_menu_draw_text(this->game_menu_frame_, stride, width, height, clip_x, text_y,
+                          clipped.c_str(), color, scale);
+    } else {
+      game_menu_draw_text(this->game_menu_frame_, stride, width, height, 34, text_y, label, color, scale);
+    }
+    if (!this->game_menu_rom_picker_ && !this->game_menu_app_page_ && (row == 3 || row == 4)) {
       const int bar_y = y + row_height / 2 - 4;
       const int level = row == 3 ? this->master_volume_ : s_brightness;
       game_menu_fill_rect(this->game_menu_frame_, stride, width, height, bar_x, bar_y, bar_width, 8, overlay_theme::MUTED);
       game_menu_fill_rect(this->game_menu_frame_, stride, width, height, bar_x, bar_y,
                           bar_width * std::max(0, std::min(100, level)) / 100, 8, accent);
+    }
+  }
+  if (this->game_menu_rom_picker_) {
+    const int track_x = width - 13;
+    const int track_y = row_top + 1;
+    const int track_h = std::max(1, row_height * this->game_menu_item_count_ - 2);
+    game_menu_fill_rect(this->game_menu_frame_, stride, width, height,
+                        track_x, track_y, 4, track_h, overlay_theme::MUTED);
+    if (!this->game_menu_rom_paths_.empty()) {
+      const size_t total = this->game_menu_rom_paths_.size();
+      const size_t visible = this->game_menu_item_count_;
+      const int thumb_h = std::max(10, static_cast<int>(track_h * visible / total));
+      const size_t max_first = total > visible ? total - visible : 0;
+      const int thumb_range = std::max(0, track_h - thumb_h);
+      const int thumb_y = track_y + (max_first == 0 ? 0 :
+          static_cast<int>(thumb_range * this->game_menu_rom_first_ / max_first));
+      game_menu_fill_rect(this->game_menu_frame_, stride, width, height,
+                          track_x, thumb_y, 4, thumb_h, overlay_theme::ACCENT);
     }
   }
   const int footer_y = height - 20;
@@ -5055,6 +5680,7 @@ void PaxLoader::build_game_menu_frame_() {
                   PAX_GAME_MENU_PREVIEW_WIDTH * sizeof(uint16_t));
   }
   const char *status = this->game_menu_busy_ ? "WORKING..." :
+      this->game_menu_rom_picker_ ? "UP/DOWN MOVE  A SELECT  B BACK" :
       this->game_menu_app_page_ && this->game_menu_page_.status[0] != '\0' ? this->game_menu_page_.status :
       "UP DOWN MOVE LEFT RIGHT ADJUST A SELECT B BACK";
   game_menu_draw_text(this->game_menu_frame_, stride, width, height, 12, footer_y, status, overlay_theme::MUTED, 1);
@@ -5083,7 +5709,7 @@ void PaxLoader::draw_game_menu_() {
   const int raw_y = this->geometry_.panel_h - this->game_menu_screen_y_ - this->game_menu_height_;
   if (!overlay_rect_on_panel(this->geometry_, raw_x, raw_y, this->game_menu_width_, this->game_menu_height_))
     return;
-  this->display_->draw_pixels_at(raw_x, raw_y, this->game_menu_width_, this->game_menu_height_,
+  this->draw_panel_pixels_(raw_x, raw_y, this->game_menu_width_, this->game_menu_height_,
                                  reinterpret_cast<const uint8_t *>(this->game_menu_frame_),
                                  display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false, 0, 0,
                                  GAME_MENU_FRAME_WIDTH - this->game_menu_width_);
@@ -5103,7 +5729,7 @@ void PaxLoader::draw_game_menu_button_() {
       game_menu_button_overlay_buffer[(y + 1) * GAME_MENU_BUTTON_SIZE + x] = overlay_theme::TEXT;
     }
   }
-  this->display_->draw_pixels_at(raw_x, raw_y, GAME_MENU_BUTTON_SIZE, GAME_MENU_BUTTON_SIZE,
+  this->draw_panel_pixels_(raw_x, raw_y, GAME_MENU_BUTTON_SIZE, GAME_MENU_BUTTON_SIZE,
                                  reinterpret_cast<const uint8_t *>(game_menu_button_overlay_buffer),
                                  display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
 }
@@ -5116,7 +5742,7 @@ void PaxLoader::clear_game_menu_button_(int slide) {
   if (!overlay_rect_on_panel(this->geometry_, raw_x, raw_y, GAME_MENU_BUTTON_SIZE, GAME_MENU_BUTTON_SIZE))
     return;
   std::fill_n(game_menu_button_overlay_buffer, GAME_MENU_BUTTON_SIZE * GAME_MENU_BUTTON_SIZE, 0x0000);
-  this->display_->draw_pixels_at(raw_x, raw_y, GAME_MENU_BUTTON_SIZE, GAME_MENU_BUTTON_SIZE,
+  this->draw_panel_pixels_(raw_x, raw_y, GAME_MENU_BUTTON_SIZE, GAME_MENU_BUTTON_SIZE,
                                  reinterpret_cast<const uint8_t *>(game_menu_button_overlay_buffer),
                                  display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
 }
@@ -5143,10 +5769,16 @@ void PaxLoader::open_game_menu_() {
   this->game_menu_height_ = std::min(GAME_MENU_FRAME_HEIGHT, this->geometry_.canvas_h - 24);
   this->game_menu_width_ = std::max(240, this->game_menu_width_);
   this->game_menu_height_ = std::max(200, this->game_menu_height_);
-  this->game_menu_item_count_ =
-      this->game_menu_callback_ != nullptr || canvas::app_key(this->running_app_source_) == "nes" ?
-      GAME_MENU_NES_ITEM_COUNT : GAME_MENU_BASE_ITEM_COUNT;
+  bool can_change_game = false;
+#ifdef PAX_LOADER_USE_LVGL
+  can_change_game = this->supports_rom_selector(this->running_app_source_);
+#endif
+  const bool has_app_options = this->game_menu_callback_ != nullptr ||
+                               canvas::app_key(this->running_app_source_) == "nes";
+  this->game_menu_item_count_ = GAME_MENU_BASE_ITEM_COUNT + (can_change_game ? 1 : 0) +
+                                (has_app_options ? 1 : 0);
   this->game_menu_app_page_ = false;
+  this->game_menu_rom_picker_ = false;
   this->game_menu_page_ = {};
   this->game_menu_screen_x_ = this->geometry_.x() + (this->geometry_.canvas_w - this->game_menu_width_) / 2;
   this->game_menu_screen_y_ = this->geometry_.y() + (this->geometry_.canvas_h - this->game_menu_height_) / 2;
@@ -5203,7 +5835,19 @@ void PaxLoader::close_game_menu_() {
 }
 
 void PaxLoader::activate_game_menu_item_() {
+  if (this->game_menu_rom_picker_) {
+#ifdef PAX_LOADER_USE_LVGL
+    this->select_game_menu_rom_();
+#endif
+    return;
+  }
   if (this->game_menu_app_page_) {
+    if (this->papp2_ui_modal_active_) {
+      this->papp2_ui_modal_result_ = this->game_menu_selection_;
+      this->papp2_ui_modal_active_ = false;
+      this->close_game_menu_();
+      return;
+    }
     const auto &item = this->game_menu_page_.items[this->game_menu_selection_];
     if ((item.flags & PAX_GAME_MENU_ITEM_DISABLED) == 0)
       this->queue_game_menu_action_(item.action);
@@ -5231,17 +5875,35 @@ void PaxLoader::activate_game_menu_item_() {
     case 4:
       this->set_brightness_level(s_brightness + 5);
       break;
-    case 5:
-      if (this->game_menu_item_count_ > GAME_MENU_BASE_ITEM_COUNT) {
-        if (this->game_menu_callback_ != nullptr) {
-          this->queue_game_menu_action_(PAX_GAME_MENU_ACTION_OPEN);
-          return;
-        }
+    case 5: {
+      bool can_change_game = false;
+#ifdef PAX_LOADER_USE_LVGL
+      can_change_game = this->supports_rom_selector(this->running_app_source_);
+#endif
+      if (can_change_game) {
+#ifdef PAX_LOADER_USE_LVGL
+        this->open_game_menu_rom_picker_();
+#endif
+        return;
+      }
+      if (this->game_menu_callback_ != nullptr) {
+        this->queue_game_menu_action_(PAX_GAME_MENU_ACTION_OPEN);
+      } else if (canvas::app_key(this->running_app_source_) == "nes") {
         portENTER_CRITICAL(&this->game_menu_button_lock_);
         this->game_menu_open_app_options_pending_ = true;
         portEXIT_CRITICAL(&this->game_menu_button_lock_);
         this->close_game_menu_();
-        ESP_LOGI(TAG, "PAX in-game menu requested NES options");
+      }
+      return;
+    }
+    case 6:
+      if (this->game_menu_callback_ != nullptr) {
+        this->queue_game_menu_action_(PAX_GAME_MENU_ACTION_OPEN);
+      } else if (canvas::app_key(this->running_app_source_) == "nes") {
+        portENTER_CRITICAL(&this->game_menu_button_lock_);
+        this->game_menu_open_app_options_pending_ = true;
+        portEXIT_CRITICAL(&this->game_menu_button_lock_);
+        this->close_game_menu_();
       }
       return;
     default:
@@ -5288,7 +5950,30 @@ void PaxLoader::poll_game_menu_() {
   }
 
   bool redraw = false;
-  if ((pressed & (1U << PAX_INPUT_DOWN)) != 0) {
+  if (this->game_menu_rom_picker_ && !this->game_menu_rom_paths_.empty() &&
+      (pressed & (1U << PAX_INPUT_DOWN)) != 0) {
+    this->game_menu_rom_selection_ = static_cast<uint16_t>(
+        (this->game_menu_rom_selection_ + 1) % this->game_menu_rom_paths_.size());
+    if (this->game_menu_rom_selection_ < this->game_menu_rom_first_)
+      this->game_menu_rom_first_ = this->game_menu_rom_selection_;
+    else if (this->game_menu_rom_selection_ >= this->game_menu_rom_first_ + this->game_menu_item_count_)
+      this->game_menu_rom_first_ = this->game_menu_rom_selection_ - this->game_menu_item_count_ + 1;
+    this->game_menu_selection_ = static_cast<uint8_t>(this->game_menu_rom_selection_ - this->game_menu_rom_first_);
+    this->game_menu_frame_dirty_ = true;
+    redraw = true;
+  } else if (this->game_menu_rom_picker_ && !this->game_menu_rom_paths_.empty() &&
+             (pressed & (1U << PAX_INPUT_UP)) != 0) {
+    this->game_menu_rom_selection_ = this->game_menu_rom_selection_ == 0 ?
+        static_cast<uint16_t>(this->game_menu_rom_paths_.size() - 1) :
+        static_cast<uint16_t>(this->game_menu_rom_selection_ - 1);
+    if (this->game_menu_rom_selection_ < this->game_menu_rom_first_)
+      this->game_menu_rom_first_ = this->game_menu_rom_selection_;
+    else if (this->game_menu_rom_selection_ >= this->game_menu_rom_first_ + this->game_menu_item_count_)
+      this->game_menu_rom_first_ = this->game_menu_rom_selection_ - this->game_menu_item_count_ + 1;
+    this->game_menu_selection_ = static_cast<uint8_t>(this->game_menu_rom_selection_ - this->game_menu_rom_first_);
+    this->game_menu_frame_dirty_ = true;
+    redraw = true;
+  } else if ((pressed & (1U << PAX_INPUT_DOWN)) != 0) {
     const bool locked = this->display_mutex_ != nullptr &&
                         xSemaphoreTakeRecursive(this->display_mutex_, portMAX_DELAY) == pdTRUE;
     this->game_menu_selection_ =
@@ -5312,21 +5997,35 @@ void PaxLoader::poll_game_menu_() {
         (item.flags & PAX_GAME_MENU_ITEM_DISABLED) == 0)
       this->queue_game_menu_action_(item.action, (pressed & (1U << PAX_INPUT_LEFT)) != 0 ? -1 : 1);
     return;
-  } else if (!this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_LEFT)) != 0 && this->game_menu_selection_ == 3) {
+  } else if (!this->game_menu_rom_picker_ && !this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_LEFT)) != 0 && this->game_menu_selection_ == 3) {
     this->set_master_volume(this->master_volume_ - 5);
     redraw = true;
-  } else if (!this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_RIGHT)) != 0 && this->game_menu_selection_ == 3) {
+  } else if (!this->game_menu_rom_picker_ && !this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_RIGHT)) != 0 && this->game_menu_selection_ == 3) {
     this->set_master_volume(this->master_volume_ + 5);
     redraw = true;
-  } else if (!this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_LEFT)) != 0 && this->game_menu_selection_ == 4) {
+  } else if (!this->game_menu_rom_picker_ && !this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_LEFT)) != 0 && this->game_menu_selection_ == 4) {
     this->set_brightness_level(s_brightness - 5);
     redraw = true;
-  } else if (!this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_RIGHT)) != 0 && this->game_menu_selection_ == 4) {
+  } else if (!this->game_menu_rom_picker_ && !this->game_menu_app_page_ && (pressed & (1U << PAX_INPUT_RIGHT)) != 0 && this->game_menu_selection_ == 4) {
     this->set_brightness_level(s_brightness + 5);
     redraw = true;
   } else if ((pressed & ((1U << PAX_INPUT_A) | (1U << PAX_INPUT_START))) != 0) {
     this->activate_game_menu_item_();
     return;
+  }
+  if (this->game_menu_rom_picker_ &&
+      this->game_menu_rom_selection_ < this->game_menu_rom_labels_.size()) {
+    const int clip_width = std::max(0, this->game_menu_width_ - 25 - 34);
+    const size_t max_chars = static_cast<size_t>(clip_width / (6 * this->game_menu_font_scale_));
+    const int64_t now = esp_timer_get_time();
+    if (this->game_menu_rom_labels_[this->game_menu_rom_selection_].size() > max_chars &&
+        this->game_menu_rom_marquee_selection_ == this->game_menu_rom_selection_ &&
+        now - this->game_menu_rom_marquee_started_us_ >= 750000 &&
+        now - this->game_menu_rom_marquee_last_update_us_ >= 220000) {
+      this->game_menu_rom_marquee_last_update_us_ = now;
+      this->game_menu_frame_dirty_ = true;
+      redraw = true;
+    }
   }
   if (redraw)
     this->redraw_control_overlay_now_(true);
@@ -5372,7 +6071,23 @@ void PaxLoader::queue_game_menu_action_(uint32_t action, int32_t direction) {
 }
 
 void PaxLoader::back_game_menu_() {
-  if (this->game_menu_app_page_)
+  if (this->papp2_ui_modal_active_) {
+    this->papp2_ui_modal_result_ = -1;
+    this->papp2_ui_modal_active_ = false;
+    this->close_game_menu_();
+    return;
+  }
+  if (this->game_menu_rom_picker_) {
+    this->game_menu_rom_picker_ = false;
+    this->game_menu_rom_paths_.clear();
+    this->game_menu_rom_labels_.clear();
+    const bool options = this->game_menu_callback_ != nullptr || canvas::app_key(this->running_app_source_) == "nes";
+    this->game_menu_item_count_ = GAME_MENU_BASE_ITEM_COUNT + 1 + (options ? 1 : 0);
+    this->game_menu_selection_ = GAME_MENU_BASE_ITEM_COUNT;
+    this->game_menu_row_height_ = (this->game_menu_height_ - 84) / this->game_menu_item_count_;
+    this->game_menu_frame_dirty_ = true;
+    this->redraw_control_overlay_now_(true);
+  } else if (this->game_menu_app_page_)
     this->queue_game_menu_action_(this->game_menu_page_.back_action);
   else
     this->close_game_menu_();
@@ -5406,6 +6121,8 @@ bool PaxLoader::game_menu_touch_(int x, int y) {
       const bool locked = this->display_mutex_ != nullptr &&
                           xSemaphoreTakeRecursive(this->display_mutex_, portMAX_DELAY) == pdTRUE;
       this->game_menu_selection_ = row;
+      if (this->game_menu_rom_picker_)
+        this->game_menu_rom_selection_ = static_cast<uint16_t>(this->game_menu_rom_first_ + row);
       if (locked)
         xSemaphoreGiveRecursive(this->display_mutex_);
       if (!this->game_menu_app_page_ && (row == 3 || row == 4)) {
@@ -5554,7 +6271,7 @@ void PaxLoader::draw_close_overlay_() {
     }
   }
 
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       raw_x, raw_y, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE,
       reinterpret_cast<const uint8_t *>(close_overlay_buffer), display::COLOR_ORDER_RGB,
       display::COLOR_BITNESS_565, false);
@@ -5570,7 +6287,7 @@ void PaxLoader::clear_close_overlay_(int slide) {
     return;
 
   std::fill_n(close_overlay_buffer, CLOSE_BUTTON_SIZE * CLOSE_BUTTON_SIZE, 0x0000);
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       raw_x, raw_y, CLOSE_BUTTON_SIZE, CLOSE_BUTTON_SIZE,
       reinterpret_cast<const uint8_t *>(close_overlay_buffer), display::COLOR_ORDER_RGB,
       display::COLOR_BITNESS_565, false);
@@ -5630,7 +6347,7 @@ void PaxLoader::draw_reload_overlay_() {
   const int tip_y = center_y + static_cast<int>(std::lround(radius * std::sin(318 * 0.017453292519943295f)));
   draw_arrow_stroke(tip_x, tip_y, tip_x - 9, tip_y - 2);
   draw_arrow_stroke(tip_x, tip_y, tip_x - 3, tip_y - 9);
-  this->display_->draw_pixels_at(raw_x, raw_y, RELOAD_BUTTON_SIZE, RELOAD_BUTTON_SIZE,
+  this->draw_panel_pixels_(raw_x, raw_y, RELOAD_BUTTON_SIZE, RELOAD_BUTTON_SIZE,
       reinterpret_cast<const uint8_t *>(reload_overlay_buffer), display::COLOR_ORDER_RGB,
       display::COLOR_BITNESS_565, false);
 }
@@ -5643,7 +6360,7 @@ void PaxLoader::clear_reload_overlay_(int slide) {
   if (!overlay_rect_on_panel(this->geometry_, raw_x, raw_y, RELOAD_BUTTON_SIZE, RELOAD_BUTTON_SIZE))
     return;
   std::fill_n(reload_overlay_buffer, RELOAD_BUTTON_SIZE * RELOAD_BUTTON_SIZE, 0x0000);
-  this->display_->draw_pixels_at(raw_x, raw_y, RELOAD_BUTTON_SIZE, RELOAD_BUTTON_SIZE,
+  this->draw_panel_pixels_(raw_x, raw_y, RELOAD_BUTTON_SIZE, RELOAD_BUTTON_SIZE,
       reinterpret_cast<const uint8_t *>(reload_overlay_buffer), display::COLOR_ORDER_RGB,
       display::COLOR_BITNESS_565, false);
 }
@@ -5661,7 +6378,7 @@ void PaxLoader::draw_volume_overlay_() {
   static_assert(VOLUME_BUTTON_SIZE == volume_icon::SIZE, "Volume icon must match its hit target");
   volume_icon::render(volume_overlay_buffer, this->master_volume_);
 
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       raw_x, raw_y, VOLUME_BUTTON_SIZE, VOLUME_BUTTON_SIZE,
       reinterpret_cast<const uint8_t *>(volume_overlay_buffer), display::COLOR_ORDER_RGB,
       display::COLOR_BITNESS_565, false);
@@ -5689,7 +6406,7 @@ void PaxLoader::draw_volume_slider_overlay_() {
     for (int x = std::max(track_left, knob_x - 5); x <= std::min(track_right, knob_x + 5); x++)
       volume_slider_overlay_buffer[y * VOLUME_SLIDER_WIDTH + x] = overlay_theme::TEXT;
   }
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       this->geometry_.volume_slider_raw_x(), this->geometry_.volume_slider_raw_y(),
       VOLUME_SLIDER_WIDTH, VOLUME_SLIDER_HEIGHT,
       reinterpret_cast<const uint8_t *>(volume_slider_overlay_buffer), display::COLOR_ORDER_RGB,
@@ -5700,7 +6417,7 @@ void PaxLoader::clear_volume_slider_overlay_() {
   if (this->display_ == nullptr)
     return;
   std::fill_n(volume_slider_overlay_buffer, VOLUME_SLIDER_WIDTH * VOLUME_SLIDER_HEIGHT, 0x0000);
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       this->geometry_.volume_slider_raw_x(), this->geometry_.volume_slider_raw_y(), VOLUME_SLIDER_WIDTH,
       VOLUME_SLIDER_HEIGHT, reinterpret_cast<const uint8_t *>(volume_slider_overlay_buffer),
       display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
@@ -5750,7 +6467,7 @@ void PaxLoader::draw_brightness_overlay_() {
     }
   }
 
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       raw_x, raw_y, BRIGHTNESS_BUTTON_SIZE,
       BRIGHTNESS_BUTTON_SIZE, reinterpret_cast<const uint8_t *>(brightness_overlay_buffer),
       display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
@@ -5781,7 +6498,7 @@ void PaxLoader::draw_brightness_slider_overlay_() {
     for (int x = std::max(track_left, knob_x - 5); x <= std::min(track_right, knob_x + 5); x++)
       brightness_slider_overlay_buffer[y * BRIGHTNESS_SLIDER_WIDTH + x] = overlay_theme::TEXT;
   }
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       this->geometry_.brightness_slider_raw_x(), this->geometry_.brightness_slider_raw_y(),
       BRIGHTNESS_SLIDER_WIDTH, BRIGHTNESS_SLIDER_HEIGHT,
       reinterpret_cast<const uint8_t *>(brightness_slider_overlay_buffer), display::COLOR_ORDER_RGB,
@@ -5792,7 +6509,7 @@ void PaxLoader::clear_brightness_slider_overlay_() {
   if (this->display_ == nullptr)
     return;
   std::fill_n(brightness_slider_overlay_buffer, BRIGHTNESS_SLIDER_WIDTH * BRIGHTNESS_SLIDER_HEIGHT, 0x0000);
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       this->geometry_.brightness_slider_raw_x(), this->geometry_.brightness_slider_raw_y(),
       BRIGHTNESS_SLIDER_WIDTH, BRIGHTNESS_SLIDER_HEIGHT,
       reinterpret_cast<const uint8_t *>(brightness_slider_overlay_buffer), display::COLOR_ORDER_RGB,
@@ -5809,7 +6526,7 @@ void PaxLoader::clear_volume_overlay_(int slide) {
     return;
 
   std::fill_n(volume_overlay_buffer, VOLUME_BUTTON_SIZE * VOLUME_BUTTON_SIZE, 0x0000);
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       raw_x, raw_y, VOLUME_BUTTON_SIZE, VOLUME_BUTTON_SIZE,
       reinterpret_cast<const uint8_t *>(volume_overlay_buffer), display::COLOR_ORDER_RGB,
       display::COLOR_BITNESS_565, false);
@@ -5825,7 +6542,7 @@ void PaxLoader::clear_brightness_overlay_(int slide) {
     return;
 
   std::fill_n(brightness_overlay_buffer, BRIGHTNESS_BUTTON_SIZE * BRIGHTNESS_BUTTON_SIZE, 0x0000);
-  this->display_->draw_pixels_at(
+  this->draw_panel_pixels_(
       raw_x, raw_y, BRIGHTNESS_BUTTON_SIZE,
       BRIGHTNESS_BUTTON_SIZE, reinterpret_cast<const uint8_t *>(brightness_overlay_buffer),
       display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
@@ -6055,6 +6772,19 @@ void PaxLoader::snapshot_touches_() {
   portEXIT_CRITICAL(&this->touch_points_lock_);
 }
 
+void PaxLoader::draw_panel_pixels_(int x, int y, int w, int h, const uint8_t *data,
+                                   display::ColorOrder order, display::ColorBitness bitness,
+                                   bool big_endian, int x_offset, int y_offset, int x_pad) {
+  // Legacy app renderers and overlays produce 180-degree panel coordinates.
+  // HDMI panels need the inverse transform at the raw output boundary.
+  if (this->app_rotation_ == 0 && this->mipi_dsi_ != nullptr &&
+      bitness == display::COLOR_BITNESS_565 && order == display::COLOR_ORDER_RGB &&
+      this->mipi_dsi_->draw_rotated_rgb565(this->geometry_.panel_w - x - w,
+          this->geometry_.panel_h - y - h, w, h, data, x_offset, y_offset, x_pad, big_endian))
+    return;
+  this->display_->draw_pixels_at(x, y, w, h, data, order, bitness, big_endian, x_offset, y_offset, x_pad);
+}
+
 void PaxLoader::flush_framebuffer_() {
   if (this->display_ == nullptr || this->framebuffer_ == nullptr)
     return;
@@ -6093,6 +6823,25 @@ void PaxLoader::flush_framebuffer_() {
     }
     if (this->display_mutex_ != nullptr)
       xSemaphoreGiveRecursive(this->display_mutex_);
+    return;
+  }
+
+  // Upright HDMI frames already have the desired orientation. Present the
+  // app canvas directly instead of rotating it and undoing that rotation.
+  if (this->app_rotation_ == 0 && this->mipi_dsi_ != nullptr &&
+      !this->stream_client_connected_ && !this->control_overlay_repaint_pending_ &&
+      !this->volume_slider_visible_ && !this->brightness_slider_visible_ && !this->game_menu_open_) {
+    const int64_t start = esp_timer_get_time();
+    if (this->display_mutex_ != nullptr)
+      xSemaphoreTakeRecursive(this->display_mutex_, portMAX_DELAY);
+    ++this->pax_frame_count_;
+    this->last_frame_direct_ = false;
+    this->native_rgb888_frame_ = nullptr;
+    this->send_display_buffer_(this->framebuffer_, start, this->geometry_.x(), this->geometry_.y(),
+        this->geometry_.canvas_w, this->geometry_.canvas_h, this->geometry_.canvas_w, false, true);
+    if (this->display_mutex_ != nullptr)
+      xSemaphoreGiveRecursive(this->display_mutex_);
+    this->log_render_time_(start, this->geometry_.canvas_w, this->geometry_.canvas_h, 1.0f);
     return;
   }
 
@@ -6310,7 +7059,7 @@ void PaxLoader::flush_framebuffer_() {
 }
 
 void PaxLoader::send_display_buffer_(const uint16_t *display_buffer, int64_t flush_start_us, int raw_x, int raw_y,
-                                      int width, int height, int source_stride, bool panel_frame_buffer) {
+                                      int width, int height, int source_stride, bool panel_frame_buffer, bool upright_source) {
   // One motion sample per second is enough for remote diagnosis and keeps the
   // raw video traffic small enough that it cannot starve the audio stream.
   static int64_t last_stream_frame_us = 0;
@@ -6338,7 +7087,11 @@ void PaxLoader::send_display_buffer_(const uint16_t *display_buffer, int64_t flu
         const int sample_y = y * (panel_frame_buffer ? geometry.panel_h : geometry.canvas_h) / SCREEN_STREAM_HEIGHT;
         for (int x = 0; x < SCREEN_STREAM_WIDTH; x++) {
           const int sample_x = x * (panel_frame_buffer ? geometry.panel_w : geometry.canvas_w) / SCREEN_STREAM_WIDTH;
-          if (panel_frame_buffer) {
+          if (upright_source) {
+    this->display_->draw_pixels_at(raw_x, raw_y, width, height,
+                                   reinterpret_cast<const uint8_t *>(display_buffer),
+                                   display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
+  } else if (panel_frame_buffer) {
             target[x] = display_buffer[static_cast<size_t>(sample_y) * geometry.panel_w + sample_x];
           } else if (sample_x >= region_x && sample_x < region_x + width && sample_y >= region_y &&
               sample_y < region_y + height) {
@@ -6367,11 +7120,11 @@ void PaxLoader::send_display_buffer_(const uint16_t *display_buffer, int64_t flu
   // corner: (112, 60) for 800x480 on 1024x600, (0, 0) for a full-panel canvas.
   const int64_t dsi_start_us = esp_timer_get_time();
   if (panel_frame_buffer) {
-    this->display_->draw_pixels_at(0, 0, geometry.panel_w, geometry.panel_h,
+    this->draw_panel_pixels_(0, 0, geometry.panel_w, geometry.panel_h,
                                    reinterpret_cast<const uint8_t *>(display_buffer),
                                    display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
   } else {
-    this->display_->draw_pixels_at(raw_x, raw_y, width, height,
+    this->draw_panel_pixels_(raw_x, raw_y, width, height,
                                    reinterpret_cast<const uint8_t *>(display_buffer),
                                    display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, false);
   }
@@ -7017,7 +7770,7 @@ void PaxLoader::render_custom_(const uint16_t *buffer, uint16_t in_w, uint16_t i
       std::memset(this->rotated_framebuffer_, 0, canvas_bytes);
       esp_cache_msync(this->rotated_framebuffer_, canvas_bytes,
                       ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_INVALIDATE);
-      this->display_->draw_pixels_at(
+      this->draw_panel_pixels_(
           this->geometry_.raw_x(), this->geometry_.raw_y(), canvas_w, canvas_h,
           reinterpret_cast<const uint8_t *>(this->rotated_framebuffer_), display::COLOR_ORDER_RGB,
           display::COLOR_BITNESS_565, false);
@@ -7201,6 +7954,31 @@ bool PaxLoader::right_stick_mouse_enabled_() const {
          app.find("redalert") != std::string::npos || app.find("quake2") != std::string::npos;
 }
 
+uint32_t PaxLoader::read_controller_buttons_() {
+  uint32_t raw=0;
+  for(unsigned i=0;i<BUTTON_COUNT && i<PAX_INPUT_MAX;i++)
+    if(this->buttons_[i] && this->buttons_[i]->get_state_default(false))raw|=1U<<i;
+  bluepad32_hosted_state_t p{};
+  if(pax_bluetooth::pad(&p)){
+    const int map[]={PAX_INPUT_A,PAX_INPUT_B,PAX_INPUT_X,PAX_INPUT_Y,PAX_INPUT_L,PAX_INPUT_R,PAX_INPUT_L,PAX_INPUT_R,PAX_INPUT_SELECT,PAX_INPUT_START};
+    for(unsigned i=0;i<sizeof(map)/sizeof(map[0]);i++)if(p.buttons&(1U<<i))raw|=1U<<map[i];
+    if((p.dpad&1) || p.axis_ly < -100)raw|=1U<<PAX_INPUT_UP;
+    if((p.dpad&2) || p.axis_ly > 100)raw|=1U<<PAX_INPUT_DOWN;
+    if((p.dpad&4) || p.axis_lx < -100)raw|=1U<<PAX_INPUT_LEFT;
+    if((p.dpad&8) || p.axis_lx > 100)raw|=1U<<PAX_INPUT_RIGHT;
+    if(p.buttons&(1U<<12))raw|=1U<<PAX_INPUT_MENU;
+  }
+  if(this->running_source_.find("redalert")==std::string::npos){
+    const float x=this->left_stick_x_sensor_ && this->left_stick_x_sensor_->has_state()?this->left_stick_x_sensor_->get_state():0;
+    const float y=this->left_stick_y_sensor_ && this->left_stick_y_sensor_->has_state()?this->left_stick_y_sensor_->get_state():0;
+    if(x < -40)raw|=1U<<PAX_INPUT_LEFT;
+    if(x > 40)raw|=1U<<PAX_INPUT_RIGHT;
+    if(y < -40)raw|=1U<<PAX_INPUT_UP;
+    if(y > 40)raw|=1U<<PAX_INPUT_DOWN;
+  }
+  return raw;
+}
+
 void PaxLoader::read_input_(pax_gamepad_state_t *state, bool include_hid) {
   if (state == nullptr)
     return;
@@ -7234,11 +8012,9 @@ void PaxLoader::read_input_(pax_gamepad_state_t *state, bool include_hid) {
   // looking like a held direction after a map/portal transition.
   constexpr float stick_deadzone = 40.0f;
   std::memset(state, 0, sizeof(*state));
-  if (include_hid) {
-    for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
-      if (this->buttons_[i] != nullptr)
-        state->values[i] = this->buttons_[i]->get_state_default(false) ? 1 : 0;
-    }
+  if(include_hid){
+    const uint32_t mapped=pax_controller::apply(this->read_controller_buttons_());
+    for(unsigned i=0;i<PAX_INPUT_MAX;i++)state->values[i]=(mapped>>i)&1;
   }
   this->read_remote_ui_input_(state);
 
@@ -7286,9 +8062,6 @@ void PaxLoader::read_input_(pax_gamepad_state_t *state, bool include_hid) {
     if (redalert_pointer) {
       if (std::fabs(x) > stick_deadzone)
         this->enqueue_mouse_delta(x * 0.10f, 0.0f);
-    } else {
-      if (x < -stick_deadzone) state->values[PAX_INPUT_LEFT] = 1;
-      if (x > stick_deadzone) state->values[PAX_INPUT_RIGHT] = 1;
     }
   }
   if (this->left_stick_y_sensor_ != nullptr) {
@@ -7296,11 +8069,6 @@ void PaxLoader::read_input_(pax_gamepad_state_t *state, bool include_hid) {
     if (redalert_pointer) {
       if (std::fabs(y) > stick_deadzone)
         this->enqueue_mouse_delta(0.0f, y * 0.10f);
-    } else {
-      // USB gamepad Y follows the usual HID convention: negative is physically
-      // up and positive is physically down. Keep this separate from the D-pad.
-      if (y < -stick_deadzone) state->values[PAX_INPUT_UP] = 1;
-      if (y > stick_deadzone) state->values[PAX_INPUT_DOWN] = 1;
     }
   }
   // Mouse-oriented PAXs use the right stick as a relative pointer. Mouse and
@@ -7417,14 +8185,23 @@ void PaxLoader::request_remote_ui_input(const std::string &command) {
 
   const bool launcher_running = this->launched_ && source.size() >= launcher_name.size() &&
       source.compare(source.size() - launcher_name.size(), launcher_name.size(), launcher_name) == 0;
-  // Diagnostic button presses exercise the same path as the physical pad.
-  // Permit them in the native quick launcher, Quake II and registered shared
-  // menu apps for regression QA. Other apps retain the existing guard.
-  const bool diagnostic_pad = action.rfind("press ", 0) == 0 &&
-      (!this->launched_ || pax_stick_mouse_is_quake2(this->running_source_.c_str()) ||
-       this->game_menu_callback_ != nullptr);
+  // A remote `press` is the device-control tool's virtual gamepad. Keep it
+  // available while a PAX is running so it can control emulators that do not
+  // register an in-game menu callback (including the Arduboy ROM runner).
+  // Restrict other UI actions to the launcher or their dedicated handlers.
+  const bool diagnostic_pad = action.rfind("press ", 0) == 0;
   const bool diagnostic_menu_touch = this->game_menu_open_ && action.rfind("tap ", 0) == 0;
-  if (!launcher_running && !diagnostic_pad && !diagnostic_menu_touch) {
+  // The BLE Remote app opts into the same existing API touch harness.
+  // Keep other applications behind the existing guard.
+  bool diagnostic_ble_touch = false;
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  static const std::string ble_name = "ble_remote.pax";
+  diagnostic_ble_touch = this->ble_remote_ != nullptr && this->launched_ &&
+      source.size() >= ble_name.size() &&
+      source.compare(source.size() - ble_name.size(), ble_name.size(), ble_name) == 0 &&
+      (action.rfind("tap ", 0) == 0 || action.rfind("swipe ", 0) == 0);
+#endif
+  if (!launcher_running && !diagnostic_pad && !diagnostic_menu_touch && !diagnostic_ble_touch) {
     ESP_LOGW(TAG, "Remote UI input ignored: launcher_ui.pax is not running");
     return;
   }
@@ -7527,7 +8304,7 @@ void PaxLoader::request_remote_ui_input(const std::string &command) {
     this->remote_ui_button_ = button;
     this->remote_ui_button_until_us_ = esp_timer_get_time() + 180000;
     portEXIT_CRITICAL(&this->remote_ui_input_lock_);
-    ESP_LOGI(TAG, "Remote launcher button: %s", name.c_str());
+    ESP_LOGI(TAG, "Remote gamepad button: %s", name.c_str());
     return;
   }
 
@@ -8190,8 +8967,16 @@ int PaxLoader::svc_game_menu_set_page(const pax_game_menu_page_t *page) {
     }
   } else {
     self->game_menu_page_ = {};
-    self->game_menu_item_count_ = GAME_MENU_NES_ITEM_COUNT;
-    self->game_menu_selection_ = GAME_MENU_BASE_ITEM_COUNT;
+    bool can_change_game = false;
+#ifdef PAX_LOADER_USE_LVGL
+    can_change_game = self->supports_rom_selector(self->running_app_source_);
+#endif
+    const bool has_app_options = self->game_menu_callback_ != nullptr ||
+                                 canvas::app_key(self->running_app_source_) == "nes";
+    self->game_menu_item_count_ = GAME_MENU_BASE_ITEM_COUNT + (can_change_game ? 1 : 0) +
+                                  (has_app_options ? 1 : 0);
+    self->game_menu_selection_ = has_app_options ?
+        GAME_MENU_BASE_ITEM_COUNT + (can_change_game ? 1 : 0) : 0;
     self->game_menu_font_scale_ = self->game_menu_width_ >= 360 ? 2 : 1;
   }
   self->game_menu_row_height_ = (self->game_menu_height_ - 84) / self->game_menu_item_count_;
@@ -8210,6 +8995,13 @@ int PaxLoader::svc_game_menu_set_page(const pax_game_menu_page_t *page) {
 void PaxLoader::svc_game_menu_close() {
   if (active_ != nullptr)
     active_->close_game_menu_();
+}
+
+int PaxLoader::svc_random_bytes(void *buffer, size_t length) {
+  if (buffer == nullptr && length != 0)
+    return 0;
+  esp_fill_random(buffer, length);
+  return 1;
 }
 
 int PaxLoader::svc_input_l3_read() {
@@ -8241,6 +9033,16 @@ int PaxLoader::svc_input_mouse_scroll_read(int *wheel) {
 int PaxLoader::svc_input_keyboard_read(pax_keyboard_event_t *event) {
   return active_ != nullptr ? active_->read_keyboard_(event) : 0;
 }
+int PaxLoader::svc_ble_remote(uint32_t command, int32_t a, int32_t b, const char *text) {
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  if (active_ == nullptr || active_->ble_remote_ == nullptr) return -1;
+  if (xTaskGetCurrentTaskHandle() != active_->ble_remote_task_) return -3;
+  return ble_remote::dispatch(active_->ble_remote_, command, a, b, text);
+#else
+  return -1;
+#endif
+}
+
 int PaxLoader::svc_ui_call_sync(pax_ui_call_fn_t callback, void *arg, uint32_t timeout_ms) {
   PaxLoader *self = active_;
   if (self == nullptr || callback == nullptr || self->ui_call_done_ == nullptr)
@@ -8295,6 +9097,71 @@ int PaxLoader::svc_ui_call_sync(pax_ui_call_fn_t callback, void *arg, uint32_t t
     self->ui_call_state_ = 0;
   portEXIT_CRITICAL(&self->ui_call_lock_);
   return result;
+}
+
+int PaxLoader::svc_papp2_ui_choose(const char *title, const char *status,
+                                   const char *const *items, int count, int initial) {
+  PaxLoader *self = active_;
+  if (self == nullptr || items == nullptr || count <= 0 || count > PAX_GAME_MENU_MAX_ITEMS ||
+      !self->launched_ || self->global_close_requested_ || self->game_menu_open_)
+    return -1;
+  self->open_game_menu_();
+  if (!self->game_menu_open_)
+    return -1;
+
+  pax_game_menu_page_t page{};
+  std::snprintf(page.title, sizeof(page.title), "%s", title != nullptr ? title : "SELECT");
+  std::snprintf(page.status, sizeof(page.status), "%s", status != nullptr ? status : "UP/DOWN SELECT  B BACK");
+  page.count = static_cast<uint32_t>(count);
+  page.selected = static_cast<uint32_t>(std::max(0, std::min(initial, count - 1)));
+  for (int i = 0; i < count; ++i) {
+    page.items[i].action = static_cast<uint32_t>(i);
+    std::snprintf(page.items[i].label, sizeof(page.items[i].label), "%s", items[i] != nullptr ? items[i] : "");
+  }
+  if (svc_game_menu_set_page(&page) != 0) {
+    self->close_game_menu_();
+    return -1;
+  }
+  const uint16_t current_buttons = self->game_menu_buttons_();
+  portENTER_CRITICAL(&self->game_menu_button_lock_);
+  self->papp2_ui_modal_result_ = -1;
+  self->papp2_ui_modal_active_ = true;
+  self->game_menu_previous_buttons_ = current_buttons;
+  portEXIT_CRITICAL(&self->game_menu_button_lock_);
+  self->redraw_control_overlay_now_(true);
+
+  while (self->papp2_ui_modal_active_ && self->launched_ && !self->global_close_requested_)
+    vTaskDelay(pdMS_TO_TICKS(10));
+  const int result = self->papp2_ui_modal_result_;
+  self->papp2_ui_modal_active_ = false;
+  if (self->game_menu_open_ && !self->global_close_requested_)
+    self->close_game_menu_();
+  return result;
+}
+
+int PaxLoader::svc_papp2_ui_volume() {
+  static const char *const choices[] = {"0%", "15%", "30%", "45%", "60%", "75%", "90%", "100%"};
+  const int current = active_ != nullptr ? active_->get_master_volume() : 0;
+  const int selected = std::max(0, std::min(7, (current + 7) / 15));
+  const int result = svc_papp2_ui_choose("VOLUME", "CHOOSE OUTPUT LEVEL", choices, 8, selected);
+  if (result >= 0 && active_ != nullptr)
+    active_->set_master_volume(result == 7 ? 100 : result * 15);
+  return active_ != nullptr ? active_->get_master_volume() : -1;
+}
+
+bool PaxLoader::svc_papp2_exit_requested() {
+  return active_ == nullptr || !active_->launched_ || active_->global_close_requested_ ||
+         active_->toggle_close_requested_;
+}
+
+void PaxLoader::svc_papp2_app_exit(int code) {
+  if (active_ != nullptr) {
+    ESP_LOGI(TAG, "PAPP2 requested application exit (%d)", code);
+    active_->request_close();
+  }
+  // PAPP2 exit() is non-returning for both the main task and app threads.
+  vTaskSuspend(nullptr);
+  for (;;) vTaskDelay(portMAX_DELAY);
 }
 
 int PaxLoader::svc_touch_read(int *x, int *y) { return active_ != nullptr ? active_->read_touch_(x, y) : 0; }
@@ -8648,11 +9515,13 @@ int PaxLoader::svc_network_config_set(const pax_network_config_t *config) {
   // Reapplying/restoring DHCP must not clear the lease and DNS servers on
   // an interface whose DHCP client is already running.
   if (!(config->dhcp_enabled && dhcp_status == ESP_NETIF_DHCP_STARTED)) {
-    if (dhcp_status == ESP_NETIF_DHCP_STARTED) {
-      err = esp_netif_dhcpc_stop(netif);
-      if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
-        return -1;
-    }
+    // INIT is not STOPPED in ESP-IDF: at boot the interface can have an
+    // initialized DHCP client that has not started yet. Explicitly stop it
+    // before setting IP information, or IDF rejects the write with
+    // ESP_ERR_ESP_NETIF_DHCP_NOT_STOPPED.
+    err = esp_netif_dhcpc_stop(netif);
+    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED)
+      return -1;
 
     esp_netif_ip_info_t ip{};
     if (!config->dhcp_enabled) {
@@ -9337,9 +10206,65 @@ int PaxLoader::svc_app_set_resume_arg(const char *arg) {
   return 0;
 }
 
+#include "pax_directory_page.h"
+// Bounded pages use the existing ABI slot. Each request owns and closes its
+// directory, including unplug/error paths; no idle iterator consumes RAM.
+static int list_app_directory_page(const std::string &folder, uint32_t skip, char *buf, int len) {
+  if (buf == nullptr || len <= static_cast<int>(sizeof(pax_directory_page))) return -1;
+  DIR *dir = opendir(folder.c_str());
+  if (dir == nullptr) return -1;
+  pax_directory_page page{PAX_DIRECTORY_MAGIC, skip, 0, 0, 0};
+  char *names = buf + sizeof(page);
+  const size_t capacity = len - sizeof(page);
+  uint32_t position = 0;
+  for (;;) {
+    errno = 0;
+    dirent *entry = readdir(dir);
+    if (entry == nullptr) {
+      const int error = errno;
+      closedir(dir);
+      if (error != 0) return -1;
+      std::memcpy(buf, &page, sizeof(page));
+      return static_cast<int>(page.count);
+    }
+    const char *name = entry->d_name;
+    if (std::strcmp(name, ".") == 0 || std::strcmp(name, "..") == 0) continue;
+    if (position++ < skip) continue;
+    if (page.count == PAX_DIRECTORY_PAGE_ENTRIES) { page.more = 1; break; }
+    bool is_dir = entry->d_type == DT_DIR;
+    if (entry->d_type == DT_UNKNOWN) {
+      struct stat st{};
+      const std::string full = folder + (folder.back() == '/' ? "" : "/") + name;
+      is_dir = stat(full.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+    }
+    const size_t length = std::strlen(name);
+    const size_t need = length + (is_dir ? 1 : 0) + 1;
+    if (need > capacity) { closedir(dir); return -1; }
+    if (page.bytes + need > capacity) { page.more = 1; break; }
+    std::memcpy(names + page.bytes, name, length);
+    page.bytes += length;
+    if (is_dir) names[page.bytes++] = '/';
+    names[page.bytes++] = 0;
+    page.count++;
+    page.next_offset++;
+  }
+  closedir(dir);
+  std::memcpy(buf, &page, sizeof(page));
+  return static_cast<int>(page.count);
+}
+
 int PaxLoader::svc_file_list_dir(const char *path, char *buf, int len) {
   if (path == nullptr)
     return -1;
+  if (std::strncmp(path, PAX_DIRECTORY_PREFIX, sizeof(PAX_DIRECTORY_PREFIX) - 1) == 0) {
+    const char *number = path + sizeof(PAX_DIRECTORY_PREFIX) - 1;
+    char *end = nullptr;
+    errno = 0;
+    const unsigned long offset = strtoul(number, &end, 10);
+    if (end == number || *end != ':' || errno != 0 || offset > UINT32_MAX || *number == '-') return -1;
+    const std::string folder = app_file_path_(end + 1);
+    return folder.empty() ? -1 : list_app_directory_page(folder, static_cast<uint32_t>(offset), buf, len);
+  }
   const std::string folder = runtime_path(path);
   DIR *dir = opendir(folder.c_str());
   if (dir == nullptr)
@@ -9841,10 +10766,14 @@ void *PaxLoader::svc_file_open(const char *path, const char *mode) {
     if(mode && mode[0]=='w')(void)restore_active_dns_if_missing_();
     return own_pax_file(pax_c6::open(mode));
   }
+  if(path && std::strcmp(path,PAX_BLUETOOTH_FILE)==0)
+    return own_pax_file(pax_bluetooth::open(mode));
   if(path && std::strcmp(path,PAX_WIFI_SCAN_FILE)==0)
     return own_pax_file(pax_wifi_scan::open(mode));
   if(path && std::strcmp(path,PAX_WIFI_SETTINGS_FILE)==0)
     return own_pax_file(pax_wifi::open(mode));
+  if(path && std::strcmp(path,PAX_CONTROLLER_FILE)==0)
+    return own_pax_file(pax_controller::open(mode));
   const std::string mapped = runtime_path(path);
   FILE *file = std::fopen(mapped.c_str(), mode);
   // Apps open their data at fixed /sd/... paths. When a read-only open misses
@@ -10252,6 +11181,12 @@ void PaxLoader::svc_ui_sound(uint8_t sound, uint8_t param) {
 
 int PaxLoader::svc_task_create(void (*fn)(void *), const char *name, uint32_t stack_depth, void *arg,
                                 int priority, void *out_handle, int core) {
+  return svc_task_create_with_caps(fn, name, stack_depth, arg, priority, out_handle, core, 0);
+}
+
+int PaxLoader::svc_task_create_with_caps(void (*fn)(void *), const char *name, uint32_t stack_depth,
+                                          void *arg, int priority, void *out_handle, int core,
+                                          uint32_t caps) {
   if (out_handle != nullptr)
     *static_cast<TaskHandle_t *>(out_handle) = nullptr;
   if (fn == nullptr || active_ == nullptr || active_->global_close_requested_)
@@ -10262,8 +11197,8 @@ int PaxLoader::svc_task_create(void (*fn)(void *), const char *name, uint32_t st
   *start = {fn, arg};
   TaskHandle_t handle = nullptr;
   const BaseType_t affinity = core < 0 ? tskNO_AFFINITY : static_cast<BaseType_t>(core);
-  const bool caps = stack_depth > 32768;
-  const BaseType_t result = caps ? xTaskCreatePinnedToCoreWithCaps(
+  const bool use_caps = stack_depth > 32768 || (caps & PAX_MEM_CAP_SPIRAM) != 0;
+  const BaseType_t result = use_caps ? xTaskCreatePinnedToCoreWithCaps(
       pax_child_task, name, stack_depth, nullptr, priority, &handle, affinity,
       MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) : xTaskCreatePinnedToCore(
       pax_child_task, name, stack_depth, nullptr, priority, &handle, affinity);
@@ -10271,8 +11206,8 @@ int PaxLoader::svc_task_create(void (*fn)(void *), const char *name, uint32_t st
     free(start);
     return -1;
   }
-  if (!remember_pax_task(handle, caps, start)) {
-    if (caps) vTaskDeleteWithCaps(handle); else vTaskDelete(handle);
+  if (!remember_pax_task(handle, use_caps, start)) {
+    if (use_caps) vTaskDeleteWithCaps(handle); else vTaskDelete(handle);
     free(start);
     ESP_LOGE("PAX", "App task registry is full");
     return -1;
@@ -10295,6 +11230,9 @@ void PaxLoader::svc_task_delete(void *handle) {
 void PaxLoader::populate_services(app_services_t *services) {
   std::memset(services, 0, sizeof(*services));
   services->abi_version = PAX_ABI_VERSION;
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  services->ble_remote = &PaxServiceGate<&PaxLoader::svc_ble_remote>::call;
+#endif
   services->display_get_framebuffer = &PaxServiceGate<&PaxLoader::svc_display_get_framebuffer>::call;
   services->display_get_emu_buffer = &PaxServiceGate<&PaxLoader::svc_display_get_emu_buffer>::call;
   services->display_flush = &PaxServiceGate<&PaxLoader::svc_display_flush>::call;
@@ -10336,6 +11274,7 @@ void PaxLoader::populate_services(app_services_t *services) {
   services->settings_brightness_get = &PaxServiceGate<&PaxLoader::svc_settings_brightness_get>::call;
   services->settings_brightness_set = &PaxServiceGate<&PaxLoader::svc_settings_brightness_set>::call;
   services->task_create = &PaxServiceGate<&PaxLoader::svc_task_create>::call;
+  services->task_create_with_caps = &PaxServiceGate<&PaxLoader::svc_task_create_with_caps>::call;
   services->task_delete = &PaxLoader::svc_task_delete;
   services->touch_read = &PaxServiceGate<&PaxLoader::svc_touch_read>::call;
   services->input_mouse_read = &PaxServiceGate<&PaxLoader::svc_input_mouse_read>::call;
@@ -10384,6 +11323,7 @@ void PaxLoader::populate_services(app_services_t *services) {
   services->game_menu_register = &PaxServiceGate<&PaxLoader::svc_game_menu_register>::call;
   services->game_menu_set_page = &PaxServiceGate<&PaxLoader::svc_game_menu_set_page>::call;
   services->game_menu_close = &PaxServiceGate<&PaxLoader::svc_game_menu_close>::call;
+  services->random_bytes = &PaxServiceGate<&PaxLoader::svc_random_bytes>::call;
   services->ui_call_sync = &PaxServiceGate<&PaxLoader::svc_ui_call_sync>::call;
   services->store_install_start = &PaxServiceGate<&PaxLoader::svc_store_install_start>::call;
   services->store_install_status = &PaxServiceGate<&PaxLoader::svc_store_install_status>::call;
@@ -10399,6 +11339,10 @@ void PaxLoader::populate_services(app_services_t *services) {
   services->storage_set_mounted = &PaxServiceGate<&PaxLoader::svc_storage_set_mounted>::call;
   services->archive_auth_set = &PaxServiceGate<&PaxLoader::svc_archive_auth_set>::call;
   services->archive_auth_get = &PaxServiceGate<&PaxLoader::svc_archive_auth_get>::call;
+  services->exit_requested = &PaxServiceGate<&PaxLoader::svc_papp2_exit_requested>::call;
+  services->papp2_ui_choose = &PaxServiceGate<&PaxLoader::svc_papp2_ui_choose>::call;
+  services->papp2_ui_volume = &PaxServiceGate<&PaxLoader::svc_papp2_ui_volume>::call;
+  services->papp2_app_exit = &PaxLoader::svc_papp2_app_exit;
 }
 
 esp_err_t psram_app_load(const char *path, psram_app_handle_t *out_handle) {
@@ -10410,6 +11354,134 @@ esp_err_t psram_app_load(const char *path, psram_app_handle_t *out_handle) {
   FILE *file = std::fopen(path, "rb");
   if (file == nullptr)
     return ESP_ERR_NOT_FOUND;
+  uint32_t magic = 0;
+  if (std::fread(&magic, 1, sizeof(magic), file) != sizeof(magic) || std::fseek(file, 0, SEEK_SET) != 0) {
+    std::fclose(file);
+    return ESP_ERR_INVALID_SIZE;
+  }
+
+  if (magic == PAPP2_MAGIC) {
+    auto app = static_cast<psram_app_handle_t>(std::calloc(1, sizeof(struct psram_app)));
+    if (app == nullptr) { std::fclose(file); return ESP_ERR_NO_MEM; }
+    if (std::fread(&app->papp2, 1, sizeof(app->papp2), file) != sizeof(app->papp2)) {
+      std::free(app); std::fclose(file); return ESP_ERR_INVALID_SIZE;
+    }
+    auto &h = app->papp2;
+    if (h.magic != PAPP2_MAGIC || h.format_version != PAPP2_FORMAT_VERSION ||
+        h.header_size != PAPP2_HEADER_SIZE || h.flags != 0 || h.reserved[0] != 0 || h.reserved[1] != 0 ||
+        h.image_size == 0 || h.entry_off >= h.image_size ||
+        h.image_size + static_cast<uint64_t>(h.bss_size) > MAX_NETWORK_PAX_SIZE ||
+        h.fast_image_size + static_cast<uint64_t>(h.fast_bss_size) > MAX_NETWORK_PAX_SIZE) {
+      ESP_LOGE(TAG, "Invalid PAPP2 header");
+      std::free(app); std::fclose(file); return ESP_ERR_INVALID_ARG;
+    }
+    const uint64_t wire_size = PAPP2_HEADER_SIZE + static_cast<uint64_t>(h.image_size) + h.fast_image_size +
+                               static_cast<uint64_t>(h.relocs_count) * sizeof(papp2_reloc_t);
+    if (wire_size > MAX_NETWORK_PAX_SIZE || h.relocs_count > (MAX_NETWORK_PAX_SIZE / sizeof(papp2_reloc_t)) ||
+        (h.imports_count && (h.imports_off & 3 || h.imports_off +
+         static_cast<uint64_t>(h.imports_count) * 12 > h.image_size)) ||
+        (h.manifest_off && (h.manifest_off & 3 || h.manifest_off + 96 > h.image_size))) {
+      std::free(app); std::fclose(file); return ESP_ERR_INVALID_SIZE;
+    }
+    app->is_papp2 = true;
+    std::snprintf(app->path, sizeof(app->path), "%s", path);
+    app->slow_span = align_up(static_cast<size_t>(h.image_size) + h.bss_size, 64);
+    app->fast_span = align_up(static_cast<size_t>(h.fast_image_size) + h.fast_bss_size, 64);
+    app->fast_offset = app->slow_span;
+    const size_t body_size = app->slow_span + app->fast_span;
+    app->code_alloc = align_up(body_size, MMU_PAGE_SIZE);
+    if (app->code_alloc == 0 || app->code_alloc > MAX_NETWORK_PAX_SIZE) {
+      std::free(app); std::fclose(file); return ESP_ERR_INVALID_SIZE;
+    }
+    app->code_buf = heap_caps_aligned_alloc(MMU_PAGE_SIZE, app->code_alloc,
+                                            MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (app->code_buf == nullptr) { std::free(app); std::fclose(file); return ESP_ERR_NO_MEM; }
+    auto *bytes = static_cast<uint8_t *>(app->code_buf);
+    if (std::fread(bytes, 1, h.image_size, file) != h.image_size ||
+        std::fread(bytes + app->fast_offset, 1, h.fast_image_size, file) != h.fast_image_size) {
+      heap_caps_free(app->code_buf); std::free(app); std::fclose(file); return ESP_ERR_INVALID_SIZE;
+    }
+    std::memset(bytes + h.image_size, 0, app->slow_span - h.image_size);
+    if (app->fast_span) std::memset(bytes + app->fast_offset + h.fast_image_size, 0,
+                                    app->fast_span - h.fast_image_size);
+    if (papp2_crc32(papp2_crc32(0, bytes, h.image_size), bytes + app->fast_offset,
+                    h.fast_image_size) != h.image_crc32) {
+      heap_caps_free(app->code_buf); std::free(app); std::fclose(file); return ESP_ERR_INVALID_CRC;
+    }
+    // Keep the launcher's existing local-version display working for PAPP2
+    // manifests. The PAPP2 manifest stores version as a string at byte 72.
+    if (h.manifest_off != 0 && read_le32(bytes + h.manifest_off) == 0x464E414Du) {
+      const char *version = reinterpret_cast<const char *>(bytes + h.manifest_off + 72);
+      app->papp2_main_stack = read_le32(bytes + h.manifest_off + 88);
+      unsigned major = 0, minor = 0, patch = 0;
+      if (std::sscanf(version, "%u.%u.%u", &major, &minor, &patch) == 3 &&
+          major <= 4095 && minor <= 255 && patch <= 255) {
+        app->header.reserved = 0xA0000000u | (major << 16) | (minor << 8) | patch;
+      }
+    }
+    esp_paddr_t physical = 0;
+    mmu_target_t target = MMU_TARGET_PSRAM0;
+    esp_err_t err = esp_mmu_vaddr_to_paddr(app->code_buf, &physical, &target);
+    if (err == ESP_OK) {
+      const mmu_mem_caps_t caps = static_cast<mmu_mem_caps_t>(
+          MMU_MEM_CAP_EXEC | MMU_MEM_CAP_READ | MMU_MEM_CAP_32BIT);
+      err = esp_mmu_map(physical, app->code_alloc, MMU_TARGET_PSRAM0,
+                        caps, ESP_MMU_MMAP_FLAG_PADDR_SHARED, &app->exec_ptr);
+    }
+    if (err != ESP_OK) {
+      if (app->exec_ptr) esp_mmu_unmap(app->exec_ptr);
+      heap_caps_free(app->code_buf); std::free(app); std::fclose(file); return err;
+    }
+    app->mapped = true;
+    auto *relocs = static_cast<papp2_reloc_t *>(heap_caps_malloc(
+        std::max<size_t>(sizeof(papp2_reloc_t), static_cast<size_t>(h.relocs_count) * sizeof(papp2_reloc_t)),
+        MALLOC_CAP_8BIT));
+    if (relocs == nullptr || std::fread(relocs, sizeof(papp2_reloc_t), h.relocs_count, file) != h.relocs_count) {
+      if (relocs != nullptr)
+        heap_caps_free(relocs);
+      esp_mmu_unmap(app->exec_ptr);
+      heap_caps_free(app->code_buf);
+      std::free(app);
+      std::fclose(file);
+      return relocs != nullptr ? ESP_ERR_INVALID_SIZE : ESP_ERR_NO_MEM;
+    }
+    std::fclose(file);
+    if (papp2_crc32(0, reinterpret_cast<const uint8_t *>(relocs),
+                    static_cast<size_t>(h.relocs_count) * sizeof(papp2_reloc_t)) != h.relocs_crc32) {
+      heap_caps_free(relocs); esp_mmu_unmap(app->exec_ptr); heap_caps_free(app->code_buf);
+      std::free(app); return ESP_ERR_INVALID_CRC;
+    }
+    uint32_t ring_key[32], ring_delta[32], ring_pos = 0;
+    std::memset(ring_key, 0xFF, sizeof(ring_key));
+    err = papp2_apply_relocs(app, relocs, h.relocs_count, ring_key, ring_delta, &ring_pos);
+    heap_caps_free(relocs);
+    if (err != ESP_OK) {
+      esp_mmu_unmap(app->exec_ptr); heap_caps_free(app->code_buf); std::free(app); return err;
+    }
+    if (h.imports_count != 0) {
+      auto *imports = reinterpret_cast<papp_import_t *>(bytes + h.imports_off);
+      for (uint32_t i = 0; i < h.imports_count; ++i) {
+        const papp_iface_hdr_t *iface = papp2_find_interface(imports[i].id, imports[i].min_version);
+        if (iface == nullptr && !(imports[i].flags & PAPP_IMPORT_OPTIONAL)) {
+          char id[5]; std::memcpy(id, &imports[i].id, 4); id[4] = '\0';
+          ESP_LOGE(TAG, "PAPP2 requires unsupported interface %.4s v%u", id, imports[i].min_version);
+          esp_mmu_unmap(app->exec_ptr); heap_caps_free(app->code_buf); std::free(app);
+          return ESP_ERR_NOT_SUPPORTED;
+        }
+        imports[i].iface = iface;
+      }
+    }
+    esp_cache_msync(app->code_buf, app->code_alloc,
+                    ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_TYPE_DATA);
+    esp_cache_msync(app->exec_ptr, app->code_alloc,
+                    ESP_CACHE_MSYNC_FLAG_DIR_M2C | ESP_CACHE_MSYNC_FLAG_TYPE_INST);
+    *out_handle = app;
+    ESP_LOGI(TAG, "PAPP2 loaded as .pax: image=%lu fast=%lu relocs=%lu entry=%lu",
+             static_cast<unsigned long>(h.image_size), static_cast<unsigned long>(h.fast_image_size),
+             static_cast<unsigned long>(h.relocs_count), static_cast<unsigned long>(h.entry_off));
+    return ESP_OK;
+  }
+
   pax_header_t header{};
   if (std::fread(&header, 1, sizeof(header), file) != sizeof(header)) {
     std::fclose(file);
@@ -10555,6 +11627,159 @@ static esp_err_t http_read_exact(esp_http_client_handle_t client, uint8_t *buffe
     }
     return static_cast<esp_err_t>(-result);
   }
+  return ESP_OK;
+}
+
+static esp_err_t psram_app_load_papp2_http(esp_http_client_handle_t client, int64_t content_length,
+                                            const char *url, psram_app_handle_t *out_handle) {
+  auto app = static_cast<psram_app_handle_t>(std::calloc(1, sizeof(struct psram_app)));
+  if (!app) return http_finish(client, ESP_ERR_NO_MEM);
+  auto &h = app->papp2;
+  h.magic = PAPP2_MAGIC;
+  esp_err_t err = http_read_exact(client, reinterpret_cast<uint8_t *>(&h) + sizeof(uint32_t),
+                                  sizeof(h) - sizeof(uint32_t));
+  if (err != ESP_OK) { std::free(app); return http_finish(client, err); }
+  if (h.format_version != PAPP2_FORMAT_VERSION || h.header_size != PAPP2_HEADER_SIZE || h.flags != 0 ||
+      h.reserved[0] || h.reserved[1] || h.image_size == 0 || h.entry_off >= h.image_size ||
+      (h.imports_count && ((h.imports_off & 3) || h.imports_off +
+       static_cast<uint64_t>(h.imports_count) * sizeof(papp_import_t) > h.image_size)) ||
+      (h.manifest_off && ((h.manifest_off & 3) || h.manifest_off + 96 > h.image_size))) {
+    std::free(app); return http_finish(client, ESP_ERR_INVALID_ARG);
+  }
+  ESP_LOGI(TAG, "Network PAPP2 header: image=%lu bss=%lu fast=%lu relocs=%lu imports=%lu content=%lld",
+           static_cast<unsigned long>(h.image_size), static_cast<unsigned long>(h.bss_size),
+           static_cast<unsigned long>(h.fast_image_size), static_cast<unsigned long>(h.relocs_count),
+           static_cast<unsigned long>(h.imports_count), static_cast<long long>(content_length));
+  const uint64_t wire_size = sizeof(h) + static_cast<uint64_t>(h.image_size) + h.fast_image_size +
+                             static_cast<uint64_t>(h.relocs_count) * sizeof(papp2_reloc_t);
+  if (wire_size > MAX_NETWORK_PAX_SIZE || (content_length > 0 &&
+      static_cast<uint64_t>(content_length) != wire_size) ||
+      static_cast<uint64_t>(h.image_size) + h.bss_size + h.fast_image_size + h.fast_bss_size >
+          MAX_NETWORK_PAX_SIZE || h.relocs_count > MAX_NETWORK_PAX_SIZE / sizeof(papp2_reloc_t)) {
+    std::free(app); return http_finish(client, ESP_ERR_INVALID_SIZE);
+  }
+  app->is_papp2 = true;
+  std::snprintf(app->path, sizeof(app->path), "%s", url ? url : "app.pax");
+  app->slow_span = align_up(static_cast<size_t>(h.image_size) + h.bss_size, 64);
+  app->fast_span = align_up(static_cast<size_t>(h.fast_image_size) + h.fast_bss_size, 64);
+  app->fast_offset = app->slow_span;
+  app->code_alloc = align_up(app->slow_span + app->fast_span, MMU_PAGE_SIZE);
+  if (!app->code_alloc || app->code_alloc > MAX_NETWORK_PAX_SIZE) {
+    std::free(app); return http_finish(client, ESP_ERR_INVALID_SIZE);
+  }
+  app->code_buf = heap_caps_aligned_alloc(MMU_PAGE_SIZE, app->code_alloc,
+                                          MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (!app->code_buf) { std::free(app); return http_finish(client, ESP_ERR_NO_MEM); }
+  auto *bytes = static_cast<uint8_t *>(app->code_buf);
+  const size_t transfer_total = static_cast<size_t>(h.image_size) + h.fast_image_size +
+                                static_cast<size_t>(h.relocs_count) * sizeof(papp2_reloc_t);
+  size_t transferred = 0;
+  const char *slash = url ? std::strrchr(url, '/') : nullptr;
+  const char *file_name = slash ? slash + 1 : (url ? url : "PAPP2");
+  if (PaxLoader::active())
+    PaxLoader::active()->set_progress_(true, 0, static_cast<uint32_t>(transfer_total),
+                                       "Loading %.40s  0 / %u KB", file_name,
+                                       static_cast<unsigned>(transfer_total / 1024));
+  auto read_progress_segment = [&](uint8_t *destination, size_t segment_size) {
+    while (transferred < transfer_total && segment_size > 0) {
+      const size_t chunk = std::min<size_t>(HTTP_READ_BUFFER_SIZE, segment_size);
+      const esp_err_t read_err = http_read_exact(client, destination, chunk);
+      if (read_err != ESP_OK) return read_err;
+      destination += chunk;
+      segment_size -= chunk;
+      transferred += chunk;
+      if (PaxLoader::active())
+        PaxLoader::active()->set_progress_(true, static_cast<uint32_t>(transferred),
+                                           static_cast<uint32_t>(transfer_total),
+                                           "Loading %.40s  %u / %u KB", file_name,
+                                           static_cast<unsigned>(transferred / 1024),
+                                           static_cast<unsigned>(transfer_total / 1024));
+    }
+    return ESP_OK;
+  };
+  err = read_progress_segment(bytes, h.image_size);
+  if (err == ESP_OK)
+    err = read_progress_segment(bytes + app->fast_offset, h.fast_image_size);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Network PAPP2 image transfer failed after %u/%u bytes: %s",
+             static_cast<unsigned>(transferred), static_cast<unsigned>(transfer_total), esp_err_to_name(err));
+    heap_caps_free(app->code_buf); std::free(app); return http_finish(client, err);
+  }
+  std::memset(bytes + h.image_size, 0, app->slow_span - h.image_size);
+  if (app->fast_span) std::memset(bytes + app->fast_offset + h.fast_image_size, 0,
+                                  app->fast_span - h.fast_image_size);
+  if (papp2_crc32(papp2_crc32(0, bytes, h.image_size), bytes + app->fast_offset,
+                  h.fast_image_size) != h.image_crc32) {
+    ESP_LOGE(TAG, "Network PAPP2 image CRC mismatch");
+    heap_caps_free(app->code_buf); std::free(app); return http_finish(client, ESP_ERR_INVALID_CRC);
+  }
+  ESP_LOGI(TAG, "Network PAPP2 image received and CRC verified; reading %lu relocation records",
+           static_cast<unsigned long>(h.relocs_count));
+  if (h.manifest_off && read_le32(bytes + h.manifest_off) == PAPP_MANIFEST_MAGIC) {
+    const char *version = reinterpret_cast<const char *>(bytes + h.manifest_off + 72);
+    app->papp2_main_stack = read_le32(bytes + h.manifest_off + 88);
+    unsigned major = 0, minor = 0, patch = 0;
+    if (std::sscanf(version, "%u.%u.%u", &major, &minor, &patch) == 3 &&
+        major <= 4095 && minor <= 255 && patch <= 255)
+      app->header.reserved = 0xA0000000u | (major << 16) | (minor << 8) | patch;
+  }
+  auto *relocs = static_cast<papp2_reloc_t *>(heap_caps_malloc(
+      std::max<size_t>(sizeof(papp2_reloc_t), static_cast<size_t>(h.relocs_count) * sizeof(papp2_reloc_t)),
+      MALLOC_CAP_8BIT));
+  const esp_err_t reloc_read_err = relocs ? read_progress_segment(
+      reinterpret_cast<uint8_t *>(relocs), static_cast<size_t>(h.relocs_count) * sizeof(papp2_reloc_t))
+      : ESP_ERR_NO_MEM;
+  if (reloc_read_err != ESP_OK) {
+    ESP_LOGE(TAG, "Network PAPP2 relocation transfer failed after %u/%u bytes: %s",
+             static_cast<unsigned>(transferred), static_cast<unsigned>(transfer_total),
+             esp_err_to_name(reloc_read_err));
+    if (relocs) heap_caps_free(relocs);
+    heap_caps_free(app->code_buf); std::free(app); return http_finish(client, reloc_read_err);
+  }
+  if (papp2_crc32(0, reinterpret_cast<uint8_t *>(relocs),
+                  static_cast<size_t>(h.relocs_count) * sizeof(papp2_reloc_t)) != h.relocs_crc32) {
+    ESP_LOGE(TAG, "Network PAPP2 relocation CRC mismatch");
+    heap_caps_free(relocs); heap_caps_free(app->code_buf); std::free(app);
+    return http_finish(client, ESP_ERR_INVALID_CRC);
+  }
+  esp_paddr_t physical = 0; mmu_target_t target = MMU_TARGET_PSRAM0;
+  err = esp_mmu_vaddr_to_paddr(app->code_buf, &physical, &target);
+  if (err == ESP_OK) {
+    const mmu_mem_caps_t caps = static_cast<mmu_mem_caps_t>(MMU_MEM_CAP_EXEC | MMU_MEM_CAP_READ | MMU_MEM_CAP_32BIT);
+    err = esp_mmu_map(physical, app->code_alloc, MMU_TARGET_PSRAM0, caps,
+                      ESP_MMU_MMAP_FLAG_PADDR_SHARED, &app->exec_ptr);
+  }
+  if (err != ESP_OK) {
+    heap_caps_free(relocs); heap_caps_free(app->code_buf); std::free(app);
+    return http_finish(client, err);
+  }
+  app->mapped = true;
+  uint32_t ring_key[32], ring_delta[32], ring_pos = 0;
+  std::memset(ring_key, 0xFF, sizeof(ring_key));
+  err = papp2_apply_relocs(app, relocs, h.relocs_count, ring_key, ring_delta, &ring_pos);
+  heap_caps_free(relocs);
+  if (err != ESP_OK)
+    ESP_LOGE(TAG, "Network PAPP2 relocation failed: %s", esp_err_to_name(err));
+  if (err == ESP_OK && h.imports_count) {
+    auto *imports = reinterpret_cast<papp_import_t *>(bytes + h.imports_off);
+    for (uint32_t i = 0; i < h.imports_count; ++i) {
+      const auto *iface = papp2_find_interface(imports[i].id, imports[i].min_version);
+      if (!iface && !(imports[i].flags & PAPP_IMPORT_OPTIONAL)) { err = ESP_ERR_NOT_SUPPORTED; break; }
+      imports[i].iface = iface;
+    }
+  }
+  if (err != ESP_OK) {
+    esp_mmu_unmap(app->exec_ptr); heap_caps_free(app->code_buf); std::free(app);
+    return http_finish(client, err);
+  }
+  esp_cache_msync(app->code_buf, app->code_alloc,
+                  ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_TYPE_DATA);
+  esp_cache_msync(app->exec_ptr, app->code_alloc,
+                  ESP_CACHE_MSYNC_FLAG_DIR_M2C | ESP_CACHE_MSYNC_FLAG_TYPE_INST);
+  http_finish(client, ESP_OK);
+  *out_handle = app;
+  ESP_LOGI(TAG, "Network PAPP2 loaded as .pax: image=%lu relocs=%lu",
+           static_cast<unsigned long>(h.image_size), static_cast<unsigned long>(h.relocs_count));
   return ESP_OK;
 }
 
@@ -11657,12 +12882,13 @@ esp_err_t PaxLoader::download_data_file_(const data::DataFile &file, const std::
 }
 
 
-bool PaxLoader::request_c6_update(uint32_t command) {
+bool PaxLoader::request_c6_update(uint32_t command, const std::string &source) {
+  if(source.empty() || source.size()>=sizeof(pax_c6_request_t::source) || source.find('\0')!=std::string::npos)return false;
   if(command!=PAX_C6_PREPARE && command!=PAX_C6_INSTALL && command!=PAX_C6_PREPARE_UNKNOWN)return false;
   if(pax_firmware::busy() || install_task_handle_ || web_storage_busy_)return false;
   (void)restore_active_dns_if_missing_();
   pax_c6_request_t request{};request.magic=PAX_C6_UPDATE_MAGIC;request.command=command;
-  snprintf(request.source,sizeof(request.source),"%s",PAX_C6_RECOMMENDED);
+  snprintf(request.source,sizeof(request.source),"%s",source.c_str());
   FILE *file=pax_c6::open("wb");if(!file)return false;
   bool ok=fwrite(&request,1,sizeof(request),file)==sizeof(request);
   return fclose(file)==0 && ok;
@@ -11815,8 +13041,16 @@ esp_err_t psram_app_load_url(const char *url, psram_app_handle_t *out_handle) {
     return http_finish(client, ESP_ERR_INVALID_RESPONSE);
   }
 
+  uint32_t magic = 0;
+  err = http_read_exact(client, reinterpret_cast<uint8_t *>(&magic), sizeof(magic));
+  if (err != ESP_OK)
+    return http_finish(client, err);
+  if (magic == PAPP2_MAGIC)
+    return psram_app_load_papp2_http(client, content_length, url, out_handle);
+
   pax_header_t header{};
-  err = http_read_exact(client, reinterpret_cast<uint8_t *>(&header), sizeof(header));
+  header.magic = magic;
+  err = http_read_exact(client, reinterpret_cast<uint8_t *>(&header) + sizeof(magic), sizeof(header) - sizeof(magic));
   if (err != ESP_OK)
     return http_finish(client, err);
 
@@ -11933,19 +13167,21 @@ int psram_app_run(psram_app_handle_t handle) {
   if (handle == nullptr || handle->code_buf == nullptr || PaxLoader::active() == nullptr)
     return -1;
 
-  esp_paddr_t physical = 0;
-  mmu_target_t target = MMU_TARGET_PSRAM0;
-  esp_err_t err = esp_mmu_vaddr_to_paddr(handle->code_buf, &physical, &target);
-  if (err != ESP_OK)
-    return -1;
+  if (!handle->is_papp2) {
+    esp_paddr_t physical = 0;
+    mmu_target_t target = MMU_TARGET_PSRAM0;
+    esp_err_t err = esp_mmu_vaddr_to_paddr(handle->code_buf, &physical, &target);
+    if (err != ESP_OK)
+      return -1;
 
-  const mmu_mem_caps_t caps = static_cast<mmu_mem_caps_t>(
-      MMU_MEM_CAP_EXEC | MMU_MEM_CAP_READ | MMU_MEM_CAP_32BIT);
-  err = esp_mmu_map(physical, handle->code_alloc, MMU_TARGET_PSRAM0, caps,
-                    ESP_MMU_MMAP_FLAG_PADDR_SHARED, &handle->exec_ptr);
-  if (err != ESP_OK)
-    return -1;
-  handle->mapped = true;
+    const mmu_mem_caps_t caps = static_cast<mmu_mem_caps_t>(
+        MMU_MEM_CAP_EXEC | MMU_MEM_CAP_READ | MMU_MEM_CAP_32BIT);
+    err = esp_mmu_map(physical, handle->code_alloc, MMU_TARGET_PSRAM0, caps,
+                      ESP_MMU_MMAP_FLAG_PADDR_SHARED, &handle->exec_ptr);
+    if (err != ESP_OK)
+      return -1;
+    handle->mapped = true;
+  }
   esp_cache_msync(handle->exec_ptr, handle->code_alloc,
                   ESP_CACHE_MSYNC_FLAG_DIR_M2C | ESP_CACHE_MSYNC_FLAG_TYPE_INST);
 
@@ -11956,9 +13192,27 @@ int psram_app_run(psram_app_handle_t handle) {
     void *appended_later[PAX_SERVICES_SPARE_SLOTS];
   } table{};
   PaxLoader::populate_services(&table.services);
-  auto entry = reinterpret_cast<pax_entry_fn_t>(static_cast<uint8_t *>(handle->exec_ptr) + handle->header.entry_off);
-  ESP_LOGI(TAG, "Calling PAX entry point at %p", reinterpret_cast<void *>(entry));
-  const int result = entry(&table.services);
+  int result = 0;
+  if (handle->is_papp2) {
+    // PAPP2 entry points use int start(int argc, char **argv).
+    using papp2_entry_fn_t = int (*)(int, char **);
+    char path_arg[sizeof(handle->path)];
+    std::snprintf(path_arg, sizeof(path_arg), "%s", handle->path[0] ? handle->path : "app.pax");
+    char *argv[] = {path_arg, nullptr};
+    auto entry = reinterpret_cast<papp2_entry_fn_t>(
+        static_cast<uint8_t *>(handle->exec_ptr) + handle->papp2.entry_off);
+    ESP_LOGI(TAG, "Calling PAPP2 entry point at %p", reinterpret_cast<void *>(entry));
+    papp2_services = &table.services;
+    papp2_runtime_begin(&table.services);
+    result = entry(1, argv);
+    papp2_runtime_end();
+    papp2_services = nullptr;
+  } else {
+    auto entry = reinterpret_cast<pax_entry_fn_t>(
+        static_cast<uint8_t *>(handle->exec_ptr) + handle->header.entry_off);
+    ESP_LOGI(TAG, "Calling PAX entry point at %p", reinterpret_cast<void *>(entry));
+    result = entry(&table.services);
+  }
 
   unmap_exec_alias(handle);
   return result;
@@ -11969,6 +13223,8 @@ void psram_app_unload(psram_app_handle_t handle) {
     return;
   if (handle->mapped && handle->exec_ptr != nullptr)
     unmap_exec_alias(handle);
+  else if (handle->is_papp2 && handle->exec_ptr != nullptr)
+    esp_mmu_unmap(handle->exec_ptr);
   if (handle->code_buf != nullptr)
     heap_caps_free(handle->code_buf);
   std::free(handle);

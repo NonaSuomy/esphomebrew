@@ -1,0 +1,4 @@
+# NANO hardware with Pi-verified 640x480 EBYTE VGA timing.
+packages:
+  board: !include nano.yaml
+  panel: !include ../../displays/hdmi-vga640.yaml

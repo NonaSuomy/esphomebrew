@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40145459528,
-  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
+  "build_id": 0,
+  "source_commit": "",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-m3-lcd101.ota.bin",
-  "bytes": 2101136,
-  "sha256": "0e45200326d6923ca9be8a1313d0fe914574ff4b7dfbeeb53dbb9d469e942189",
+  "bytes": 2149808,
+  "sha256": "6d50bb6ba362d9f5d95810653f4f86e1640cddea4d8f4eea8660d18dc9d85be6",
   "c6": {
     "chip": "ESP32C6",
     "transport": "sdio",

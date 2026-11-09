@@ -35252,10 +35252,10 @@ index 000000000..108a93415
 +        cg.add(var.set_writer(lambda_))
 diff --git a/config/components/mipi_dsi/frame_buffer_handoff.h b/config/components/mipi_dsi/frame_buffer_handoff.h
 new file mode 100644
-index 000000000..af28e1216
+index 000000000..1368a7b9e
 --- /dev/null
 +++ b/config/components/mipi_dsi/frame_buffer_handoff.h
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,43 @@
 +#pragma once
 +
 +#include <cstdint>
@@ -35270,9 +35270,12 @@ index 000000000..af28e1216
 +    pending_ = true;
 +    completions_left_ = 0;
 +  }
-+  void submitted() {
++  // On the DMA interrupt's core, submission cannot interleave with the ISR
++  // between its buffer selection and completion callback. Other cores need
++  // a second completion to cover exactly that race.
++  void submitted(bool on_dma_core = false) {
 +    if (pending_ && completions_left_ == 0)
-+      completions_left_ = 2;
++      completions_left_ = on_dma_core ? 1 : 2;
 +  }
 +  bool frame_complete() {
 +    if (!pending_ || completions_left_ == 0 || --completions_left_ != 0)
@@ -35298,10 +35301,10 @@ index 000000000..af28e1216
 +}  // namespace esphome::mipi_dsi
 diff --git a/config/components/mipi_dsi/mipi_dsi.cpp b/config/components/mipi_dsi/mipi_dsi.cpp
 new file mode 100644
-index 000000000..b5ae1f11a
+index 000000000..45fae9c8e
 --- /dev/null
 +++ b/config/components/mipi_dsi/mipi_dsi.cpp
-@@ -0,0 +1,711 @@
+@@ -0,0 +1,714 @@
 +#ifdef USE_ESP32_VARIANT_ESP32P4
 +#include <utility>
 +#include "hal/mipi_dsi_host_ll.h"
@@ -35326,7 +35329,7 @@ index 000000000..b5ae1f11a
 +  // IDF updates its requested scanout buffer before this callback. A frame
 +  // interrupt before this point must not release the previous front buffer.
 +  portENTER_CRITICAL_ISR(&self->frame_buffer_lock_);
-+  self->frame_buffer_handoff_.submitted();
++  self->frame_buffer_handoff_.submitted(xPortGetCoreID() == self->dma_core_);
 +  portEXIT_CRITICAL_ISR(&self->frame_buffer_lock_);
 +  BaseType_t need_yield = pdFALSE;
 +  xSemaphoreGiveFromISR(self->io_lock_, &need_yield);
@@ -35338,9 +35341,12 @@ index 000000000..b5ae1f11a
 +  (void) panel;
 +  (void) edata;
 +  auto *self = static_cast<MIPI_DSI *>(user_ctx);
-+  // DMA may have sampled the old requested buffer just before submission.
-+  // Two completions after submission guarantee it has selected the new one.
++  // On the DMA core one completion selects the submitted buffer. A draw
++  // from the other core keeps the conservative two-completion handoff.
 +  portENTER_CRITICAL_ISR(&self->frame_buffer_lock_);
++  // Observe the actual interrupt core: IDF may share a private DMA interrupt
++  // group that was previously allocated by another peripheral.
++  self->dma_core_ = xPortGetCoreID();
 +  const bool ready = self->frame_buffer_handoff_.frame_complete();
 +  portEXIT_CRITICAL_ISR(&self->frame_buffer_lock_);
 +  BaseType_t need_yield = pdFALSE;
@@ -36015,10 +36021,10 @@ index 000000000..b5ae1f11a
 +#endif  // USE_ESP32_VARIANT_ESP32P4
 diff --git a/config/components/mipi_dsi/mipi_dsi.h b/config/components/mipi_dsi/mipi_dsi.h
 new file mode 100644
-index 000000000..98ad30d6e
+index 000000000..b22f99258
 --- /dev/null
 +++ b/config/components/mipi_dsi/mipi_dsi.h
-@@ -0,0 +1,151 @@
+@@ -0,0 +1,152 @@
 +//
 +// Created by Clyde Stubbs on 29/10/2023.
 +//
@@ -36148,6 +36154,7 @@ index 000000000..98ad30d6e
 +  bool continuous_clock_{false};
 +  uint8_t *frame_buffers_[2]{nullptr, nullptr};
 +  FrameBufferHandoff frame_buffer_handoff_{};
++  int dma_core_{-1};
 +  portMUX_TYPE frame_buffer_lock_ = portMUX_INITIALIZER_UNLOCKED;
 +
 +  bool invert_colors_{};
@@ -46360,7 +46367,7 @@ index ecd8bdcb3..7b26f0209 100644
            if (parent_->gamepad_button_y_sensor_)
              parent_->gamepad_button_y_sensor_->publish_state(false);
 diff --git a/esphome/components/wifi/wifi_component.cpp b/esphome/components/wifi/wifi_component.cpp
-index 694e61647..272cb0662 100644
+index 694e61647..91b4121f1 100644
 --- a/esphome/components/wifi/wifi_component.cpp
 +++ b/esphome/components/wifi/wifi_component.cpp
 @@ -662,7 +662,12 @@ void WiFiComponent::start() {
@@ -46376,3 +46383,37 @@ index 694e61647..272cb0662 100644
  
    this->pref_ = global_preferences->make_preference<wifi::SavedWifiSettings>(hash, true);
  #ifdef USE_WIFI_FAST_CONNECT
+@@ -778,6 +783,11 @@ void WiFiComponent::loop() {
+     this->update_connected_state_();
+   }
+ 
++  // Keep consuming driver events while a caller scans, but do not let an old
++  // association failure start another connection and cancel that scan.
++  if (this->connection_attempts_paused_ && !this->connected_)
++    return;
++
+   if (this->has_sta()) {
+ #if defined(USE_WIFI_CONNECT_TRIGGER) || defined(USE_WIFI_DISCONNECT_TRIGGER)
+     if (this->is_connected() != this->handled_connected_state_) {
+diff --git a/esphome/components/wifi/wifi_component.h b/esphome/components/wifi/wifi_component.h
+index cfdbc1a96..9b4e46e30 100644
+--- a/esphome/components/wifi/wifi_component.h
++++ b/esphome/components/wifi/wifi_component.h
+@@ -464,6 +464,9 @@ class WiFiComponent final : public Component {
+   void enable();
+   void disable();
+   bool is_disabled() { return this->state_ == WIFI_COMPONENT_STATE_DISABLED; }
++  // Main-loop callers may pause automatic retries for an external scan.
++  // Events and scan records still drain; callers must resume on completion or failure.
++  void set_connection_attempts_paused(bool paused) { this->connection_attempts_paused_ = paused; }
+   void start_scanning();
+   void check_scanning_finished();
+   void start_connecting(const WiFiAP &ap);
+@@ -926,6 +929,7 @@ class WiFiComponent final : public Component {
+ #endif
+ 
+   // 1-byte enums and integers
++  bool connection_attempts_paused_{false};
+   WiFiComponentState state_{WIFI_COMPONENT_STATE_OFF};
+   WiFiPowerSaveMode power_save_{WIFI_POWER_SAVE_NONE};
+ #if defined(USE_ESP32) && defined(SOC_WIFI_SUPPORT_5G)

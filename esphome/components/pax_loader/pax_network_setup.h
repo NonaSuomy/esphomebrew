@@ -19,6 +19,7 @@ struct Backend {
   int (*wifi_apply)(const pax_wifi_request_t*);
   bool (*scan_get)(pax_wifi_scan_status_t*);
   int (*scan_start)();
+  void (*bluetooth_open)();
 };
 class Panel {
  public:
@@ -77,6 +78,7 @@ class Panel {
     lv_obj_set_width(dhcp_caption, lv_pct(75));
     dhcp_ = lv_checkbox_create(dhcp_row);
     lv_checkbox_set_text(dhcp_, "");
+    controls(dhcp_, LV_PART_INDICATOR);
     lv_obj_set_user_data(dhcp_, reinterpret_cast<void*>(7));
     wire(dhcp_, LV_EVENT_VALUE_CHANGED);
     wire(dhcp_, LV_EVENT_KEY);
@@ -89,6 +91,7 @@ class Panel {
     lv_obj_set_width(aps_, lv_pct(100));
     lv_obj_set_height(aps_, 150);
     lv_obj_set_style_bg_color(aps_, lv_color_hex(0x0B2A4A), 0);
+    surface(aps_);
     lv_obj_add_flag(aps_, LV_OBJ_FLAG_HIDDEN);
     scan_status_ = label(body_, "Scan nearby, or enter a Wi-Fi name manually.");
     ssid_ = field(body_, "Wi-Fi name (SSID)", "Network name", 32, 1, false);
@@ -102,8 +105,11 @@ class Panel {
       for (auto* object : {scan_, ssid_, password_, show_, apply_}) lv_obj_add_state(object, LV_STATE_DISABLED);
       lv_label_set_text(scan_status_, "Wi-Fi is not configured in this firmware.");
     }
+    if(backend_.bluetooth_open)button(body_, "BLUETOOTH DEVICES", 40);
     message_ = label(body_, "Changes apply only when you choose an interface or press APPLY.");
     keyboard_ = lv_keyboard_create(panel_);
+    surface(keyboard_);
+    controls(keyboard_, LV_PART_ITEMS);
     lv_obj_set_width(keyboard_, lv_pct(100));
     lv_obj_align(keyboard_, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_add_flag(keyboard_, LV_OBJ_FLAG_HIDDEN);
@@ -177,6 +183,26 @@ class Panel {
   int selected_mode_ = -1;
   pax_wifi_status_t wifi_{};
   pax_wifi_scan_status_t scan_result_{};
+  // Native widgets do not inherit ESPHome YAML widget styles. Cover each
+  // interactive state explicitly so LVGL's default white surfaces cannot leak in.
+  static void surface(lv_obj_t* object) {
+    lv_obj_set_style_bg_color(object, lv_color_hex(0x061326), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(object, LV_OPA_COVER, LV_PART_MAIN);
+    lv_obj_set_style_text_color(object, lv_color_hex(0xD7F3FF), LV_PART_MAIN);
+    lv_obj_set_style_border_color(object, lv_color_hex(0x1EA7D7), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(object, lv_color_hex(0x55D6FF), LV_PART_SCROLLBAR);
+  }
+  static void controls(lv_obj_t* object, lv_part_t part = LV_PART_MAIN) {
+    for (lv_state_t state : {LV_STATE_DEFAULT, LV_STATE_FOCUSED, LV_STATE_FOCUS_KEY,
+                             LV_STATE_PRESSED, LV_STATE_CHECKED, LV_STATE_DISABLED}) {
+      const auto selector = static_cast<lv_style_selector_t>(part) | static_cast<lv_style_selector_t>(state);
+      const bool highlighted = state != LV_STATE_DEFAULT && state != LV_STATE_DISABLED;
+      lv_obj_set_style_bg_color(object, lv_color_hex(highlighted ? 0x14527A : 0x0B2A4A), selector);
+      lv_obj_set_style_bg_opa(object, LV_OPA_COVER, selector);
+      lv_obj_set_style_text_color(object, lv_color_hex(state == LV_STATE_DISABLED ? 0x8BA7C4 : 0xD7F3FF), selector);
+      lv_obj_set_style_border_color(object, lv_color_hex(highlighted ? 0x55D6FF : 0x1EA7D7), selector);
+    }
+  }
   void wire(lv_obj_t* object, lv_event_code_t code) {
     lv_obj_add_event_cb(
         object, [](lv_event_t* event) { static_cast<Panel*>(lv_event_get_user_data(event))->event(event); }, code,
@@ -203,6 +229,7 @@ class Panel {
   }
   lv_obj_t* button(lv_obj_t* parent, const char* text, int action) {
     lv_obj_t* object = lv_button_create(parent);
+    controls(object);
     lv_obj_set_size(object, lv_pct(100), 42);
     lv_obj_set_style_pad_all(object, 5, 0);
     lv_obj_set_user_data(object, reinterpret_cast<void*>(static_cast<uintptr_t>(action)));
@@ -217,11 +244,15 @@ class Panel {
     lv_obj_t* caption = label(parent, name);
     if (kind >= 10 && kind <= 13) ip_labels_[kind - 10] = caption;
     lv_obj_t* object = lv_textarea_create(parent);
+    controls(object);
     lv_obj_set_size(object, lv_pct(100), 42);
     lv_textarea_set_one_line(object, true);
     lv_textarea_set_max_length(object, max);
     lv_textarea_set_placeholder_text(object, placeholder);
     lv_textarea_set_password_mode(object, secret);
+    lv_obj_set_style_text_color(object, lv_color_hex(0x8BA7C4), LV_PART_TEXTAREA_PLACEHOLDER);
+    lv_obj_set_style_bg_color(object, lv_color_hex(0x14527A), LV_PART_SELECTED);
+    lv_obj_set_style_border_color(object, lv_color_hex(0x55D6FF), LV_PART_CURSOR);
     lv_obj_set_style_bg_color(object, lv_color_hex(0x0B2A4A), 0);
     lv_obj_set_style_text_color(object, lv_color_hex(0xD7F3FF), 0);
     lv_obj_set_user_data(object, reinterpret_cast<void*>(static_cast<uintptr_t>(kind)));
@@ -351,6 +382,7 @@ class Panel {
           lv_snprintf(text, sizeof(text), "%s  %ld dBm  %s", name, static_cast<long>(scan.aps[i].rssi),
                       scan.aps[i].secured ? "Secured" : "Open");
           lv_obj_t* item = lv_list_add_button(aps_, nullptr, text);
+          controls(item);
           lv_obj_set_user_data(item, reinterpret_cast<void*>(static_cast<uintptr_t>(100 + i)));
           wire(item, LV_EVENT_CLICKED);
           wire(item, LV_EVENT_KEY);
@@ -395,6 +427,7 @@ class Panel {
       return;
     }
     if (code != LV_EVENT_CLICKED) return;
+    if (action == 40 && backend_.bluetooth_open) { backend_.bluetooth_open(); return; }
     if (action == 1) {
       close();
       return;

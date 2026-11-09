@@ -103,12 +103,23 @@ int main() {
   lv_obj_send_event(ip, LV_EVENT_FOCUSED, nullptr);
   auto* keyboard = typed(&lv_keyboard_class);
   assert(!lv_obj_has_flag(keyboard, LV_OBJ_FLAG_HIDDEN));
+  assert(lv_color_eq(lv_obj_get_style_bg_color(keyboard, LV_PART_MAIN), lv_color_hex(0x061326)));
+  assert(lv_color_eq(lv_obj_get_style_bg_color(keyboard, LV_PART_ITEMS), lv_color_hex(0x0B2A4A)));
+  lv_obj_add_state(keyboard, LV_STATE_PRESSED);
+  assert(lv_color_eq(lv_obj_get_style_bg_color(keyboard, LV_PART_ITEMS), lv_color_hex(0x14527A)));
+  lv_obj_remove_state(keyboard, LV_STATE_PRESSED);
   lv_obj_add_state(dhcp, LV_STATE_CHECKED);
   lv_obj_send_event(dhcp, LV_EVENT_VALUE_CHANGED, nullptr);
   assert(lv_obj_has_flag(keyboard, LV_OBJ_FLAG_HIDDEN));
   click("SCAN NEARBY");
   panel.tick(1000);
   assert(scans == 1);
+  auto* ap = lv_obj_get_parent(find(lv_layer_top(), "TestNetwork"));
+  lv_obj_remove_state(ap, static_cast<lv_state_t>(LV_STATE_FOCUSED | LV_STATE_FOCUS_KEY | LV_STATE_PRESSED));
+  lv_obj_update_layout(lv_layer_top());
+  assert(lv_color_eq(lv_obj_get_style_bg_color(ap, LV_PART_MAIN), lv_color_hex(0x0B2A4A)));
+  lv_obj_add_state(ap, LV_STATE_FOCUSED);
+  assert(lv_color_eq(lv_obj_get_style_bg_color(ap, LV_PART_MAIN), lv_color_hex(0x14527A)));
   click("TestNetwork");
   auto* ssid = typed(&lv_textarea_class, 4);
   auto* password = typed(&lv_textarea_class, 5);
@@ -127,5 +138,5 @@ int main() {
   panel.open(backend);
   panel.close();
   assert(lv_indev_get_group(input) == old);
-  std::puts("Native LVGL panel: DHCP, keyboard, scan, staging, validation, apply, selection and close passed");
+  std::puts("Native LVGL panel: keyboard/list colours and focus, DHCP, scan, staging, validation, apply, selection and close passed");
 }

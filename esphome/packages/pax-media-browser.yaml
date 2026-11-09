@@ -1,0 +1,11 @@
+# Optional token-free bridge for the desktop PAX media browser.
+# The device's existing HA integration must allow Home Assistant actions.
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [pax_media_bridge]
+
+pax_media_bridge:
+  relay_entity: ${pax_media_relay_entity}
+  home_assistant_address: ${pax_media_ha_address}

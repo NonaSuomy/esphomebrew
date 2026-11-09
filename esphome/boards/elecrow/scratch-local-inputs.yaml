@@ -1,0 +1,18 @@
+# Optional: include only on profiles WITHOUT esp32_hosted/radio wiring on GPIO2/7.
+binary_sensor:
+  - platform: gpio
+    pin: GPIO2
+    id: scratch_touch_pad
+    internal: true
+  - platform: gpio
+    pin:
+      number: GPIO7
+      inverted: true
+    id: scratch_hall
+    internal: true
+pax_loader:
+  hardware:
+    - name: touch_pad
+      binary_sensor_id: scratch_touch_pad
+    - name: hall
+      binary_sensor_id: scratch_hall

@@ -1,0 +1,25 @@
+{
+  "reviewed": "2026-10-12",
+  "status": "design assessment; no functional GSV1172 control driver or hardware test",
+  "documents": [
+    {
+      "file": "ECA20-MH_ProductManual_EN_V1.1.pdf",
+      "sha256": "2ac3b1729e23e873fb3fe8913a6443d4a530f4b2ff3721f7c9c6e4250889ae8d"
+    },
+    {
+      "file": "GSV1172_v0.10.pdf",
+      "sha256": "af7aeab4ad3d6d37f575cdb647335c654cc77eda70e023567a3f6e57143f0f19"
+    }
+  ],
+  "references": {
+    "espressif_esp_bsp": "f259a6abd5808019b1903a422092a4234ca95a51",
+    "olimex_esp32_p4_devkit": "26705d36407a07324348927dfd30fbf4ffc1d94c"
+  },
+  "missing": [
+    "GSV1172 register map and initialization sequence",
+    "module firmware control/mailbox API and MCU ownership",
+    "exact two-lane input firmware configuration"
+  ],
+  "hardware_changed": false,
+  "firmware_changed": false
+}

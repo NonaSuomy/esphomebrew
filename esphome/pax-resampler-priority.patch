@@ -1,0 +1,8 @@
+diff --git a/esphome/components/resampler/speaker/resampler_speaker.cpp b/esphome/components/resampler/speaker/resampler_speaker.cpp
+--- a/esphome/components/resampler/speaker/resampler_speaker.cpp
++++ b/esphome/components/resampler/speaker/resampler_speaker.cpp
+@@ -18 +18,3 @@
+-static const UBaseType_t RESAMPLER_TASK_PRIORITY = 1;
++// PAPP engines/mixers run at priorities 5/8. Drain their input ahead of those
++// producers, but below ESPHome's mixer (10) and I2S speaker (19).
++static const UBaseType_t RESAMPLER_TASK_PRIORITY = 9;

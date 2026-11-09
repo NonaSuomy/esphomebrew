@@ -57,6 +57,7 @@ CONF_CANVAS_WIDTH = "canvas_width"
 CONF_CANVAS_HEIGHT = "canvas_height"
 CONF_PANEL_WIDTH = "panel_width"
 CONF_PANEL_HEIGHT = "panel_height"
+CONF_APP_ROTATION = "app_rotation"
 
 # The canvas apps draw on (psram_app.h display_get_size / display_set_canvas):
 # apps that never ask stay at 800x480; these limits match pax_canvas.h.
@@ -66,6 +67,7 @@ LEGACY_CANVAS = (800, 480)
 MAX_SIDE = 4096
 
 pax_loader_ns = cg.esphome_ns.namespace("pax_loader")
+BleRemote = cg.esphome_ns.namespace("espidf_ble_keyboard").class_("EspidfBleKeyboard", cg.Component)
 PaxLoader = pax_loader_ns.class_("PaxLoader", cg.Component)
 LaunchUrlAction = pax_loader_ns.class_("LaunchUrlAction", automation.Action)
 LaunchRomAction = pax_loader_ns.class_("LaunchRomAction", automation.Action)
@@ -236,9 +238,11 @@ CONFIG_SCHEMA = cv.Schema(
         # found files are not downloaded, and app reads of /sd/... fall back here.
         cv.Optional(CONF_DATA_SEARCH, default=["/sd", "/usb0"]): cv.ensure_list(validate_data_root),
         cv.Required(CONF_DISPLAY_ID): cv.use_id(display.Display),
+        cv.Optional("ble_remote_id"): cv.use_id(BleRemote),
         # Optional MIPI DSI fast path: render directly into an idle panel
         # framebuffer instead of copying each full PAX frame into scanout.
         cv.Optional(CONF_MIPI_DSI_ID): cv.use_id(MIPI_DSI),
+        cv.Optional(CONF_APP_ROTATION, default=180): cv.one_of(0, 180, int=True),
         # The panel's size; by default the display's own (1024x600 on the Elecrow).
         # The frame buffers are sized for a canvas this large.
         cv.Optional(CONF_PANEL_WIDTH): even_pixels(CANVAS_MIN_WIDTH),
@@ -290,7 +294,7 @@ def _require_runtime_lvgl_widgets(config):
     # C++; they are not represented by YAML widget declarations, so LVGL's
     # normal usage scan would otherwise compile their APIs out.
     if config.get(CONF_LVGL_ID):
-        lvgl_helpers.add_lv_use("keyboard", "textarea")
+        lvgl_helpers.add_lv_use("keyboard", "textarea", "dropdown")
     return config
 
 
@@ -336,7 +340,7 @@ async def to_code(config):
     c6_profile = select_profile(CORE.config.get("esp32_hosted"))
     image = c6_registry["images"].get(c6_profile, {})
     cg.add_define("PAX_C6_PROFILE", c6_profile)
-    for key in ("version", "url", "sha256"):
+    for key in ("version", "url", "sha256", "bluetooth_sha256"):
         cg.add_define("PAX_C6_" + key.upper(), image.get(key, ""))
     cg.add_define("PAX_FIRMWARE_PROFILE", profile)
     cg.add_define("PAX_FIRMWARE_BUILD_ID", cg.RawExpression(build_id + "ULL"))
@@ -358,6 +362,7 @@ async def to_code(config):
     elif hasattr(esp32, "require_full_certificate_bundle"):
         esp32.require_full_certificate_bundle()
     # Apps' TLS connections (net_tls_*) verify servers against the same bundle.
+    esp32.add_idf_sdkconfig_option("CONFIG_ESP_HOSTED_MAX_CUSTOM_MSG_HANDLERS", 8)
     esp32.add_idf_sdkconfig_option("CONFIG_MBEDTLS_CERTIFICATE_BUNDLE", True)
     # And set them here as well: this runs after the esp32 component's to_code,
     # so it wins over its "off" even on ESPHome versions whose require helper
@@ -412,6 +417,7 @@ async def to_code(config):
 
     display_var = await cg.get_variable(config[CONF_DISPLAY_ID])
     cg.add(var.set_display(display_var))
+    cg.add(var.set_app_rotation(config[CONF_APP_ROTATION]))
     if mipi_dsi_id := config.get(CONF_MIPI_DSI_ID):
         cg.add(var.set_mipi_dsi(await cg.get_variable(mipi_dsi_id)))
     if CONF_PANEL_WIDTH in config:
@@ -476,6 +482,10 @@ async def to_code(config):
         if sensor_id := config.get(key):
             sensor_var = await cg.get_variable(sensor_id)
             cg.add(getattr(var, setter)(sensor_var))
+
+    if ble_remote_id := config.get("ble_remote_id"):
+        cg.add_define("PAX_LOADER_USE_BLE_REMOTE")
+        cg.add(var.set_ble_remote(await cg.get_variable(ble_remote_id)))
 
     if usb_hidx_id := config.get(CONF_USB_HIDX_ID):
         cg.add_define("PAX_LOADER_USE_USB_HIDX")

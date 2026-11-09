@@ -24,6 +24,11 @@ extern "C" {
 #define PAX_MAGIC       0x50415050   /* legacy wire magic; ABI 1 remains unchanged */
 #define PAX_ABI_VERSION 1
 #define PAX_HEADER_SIZE 32
+/* Header reserved word: 0 for legacy binaries, or 0xAmmmpppp for a
+ * manifest semantic version (A is the marker, then 12-bit major, 8-bit
+ * minor and 8-bit patch).
+ * This is package metadata; it does not change the PAX service ABI. */
+#define PAX_VERSION_TAG 0xA0000000u
 /* Zeroed pointer slots a loader leaves after app_services_t (see the
  * APPEND-ONLY ZONE), so services appended later read NULL. */
 #define PAX_SERVICES_SPARE_SLOTS 64
@@ -70,7 +75,7 @@ typedef struct __attribute__((packed)) {
     uint32_t data_size;    /* Size of .data segment (initialized)       */
     uint32_t bss_size;     /* Size of .bss segment (zero-filled)        */
     uint32_t flags;        /* Reserved, must be 0                       */
-    uint32_t reserved;     /* Padding to 32 bytes                       */
+    uint32_t reserved;     /* Optional package version, see PAX_VERSION_TAG */
 } pax_header_t;
 
 #ifdef __cplusplus
@@ -117,6 +122,8 @@ typedef struct {
 #define PAX_KEY_ENTER    13
 #define PAX_KEY_UP       153
 #define PAX_KEY_RIGHT    154
+#define PAX_KEY_DOWN     155
+#define PAX_KEY_LEFT     156
 
 /* Optional BLE HID peripheral bridge. Call from ui_call_sync callbacks only.
  * STATUS returns flags; output returns 0 accepted, -1 unavailable, -2 invalid,
@@ -145,9 +152,6 @@ enum { PAX_BLE_STATUS=0, PAX_BLE_TEXT=1, PAX_BLE_KEY=2, PAX_BLE_MOUSE_MOVE=3,
 enum { PAX_BLE_HOST_SAVED=1, PAX_BLE_HOST_ACTIVE=2, PAX_BLE_HOST_CONNECTED=4,
        PAX_BLE_HOST_ADVERTISING=8, PAX_BLE_HOST_ENABLED=16 };
 enum { PAX_BLE_AVAILABLE=1, PAX_BLE_CONNECTED=2, PAX_BLE_PAIRED=4, PAX_BLE_ADVERTISING=8 };
-
-#define PAX_KEY_DOWN     155
-#define PAX_KEY_LEFT     156
 
 /* One finger on the touch panel (touch_read_points), in canvas coordinates
  * like touch_read. id stays the same while that finger stays down. */
@@ -730,6 +734,10 @@ typedef struct {
     int (*game_menu_set_page)(const pax_game_menu_page_t *page);
     void (*game_menu_close)(void);
 
+    /* Cryptographically strong random bytes from the device RNG. Appended so
+     * older PAX binaries continue to read the preceding ABI fields unchanged. */
+    int (*random_bytes)(void *buffer, size_t length);
+
     /* Optional, append-only named I/O bridge. NULL on older firmware.
      * count/info enumerate configured channels. read returns 0 on success,
      * -1 unknown, -2 no current sample. write queues a validated command for
@@ -751,8 +759,22 @@ typedef struct {
      * The loader owns/caches DMA buffers and reclaims them on app exit. */
     int (*jpeg_decode_rgb565)(const uint8_t *data, uint32_t size, uint16_t *out,
                               uint32_t capacity, int width, int height, int stride);
-    /* Optional append-only BLE HID bridge; NULL on older firmware. */
+    /* Append-only: NULL on older firmware and profiles without ble_remote_id. */
     int (*ble_remote)(uint32_t command, int32_t a, int32_t b, const char *text);
+
+    /* True once the launcher has asked this app to stop. Appended to preserve
+     * every ABI-v1 field offset; NULL on older launchers. */
+    bool (*exit_requested)(void);
+
+    /* PAPP2 launcher UI bridge. Appended so all prior ABI-1 offsets remain
+     * stable and older app binaries continue to see NULL in spare slots. */
+    int (*papp2_ui_choose)(const char *title, const char *status,
+                           const char *const *items, int count, int initial);
+    int (*papp2_ui_volume)(void);
+    void (*papp2_app_exit)(int code);
+    int (*task_create_with_caps)(void (*fn)(void *), const char *name,
+                                 uint32_t stack_depth, void *arg, int priority,
+                                 void *out_handle, int core, uint32_t caps);
 } app_services_t;
 
 /* Relative HID movement is already in the visible direction. The loader's

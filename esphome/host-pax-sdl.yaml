@@ -1,0 +1,157 @@
+# ESPHome SDL2 desktop preview of the shared PAX three-button screen.
+substitutions:
+  device_name: pax-desktop
+  friendly_name: "PAX Desktop SDL"
+  panel_width: "1024"
+  panel_height: "600"
+  button_width: "270"
+  button_height: "150"
+  storage_x: "70"
+  network_x: "377"
+  github_x: "684"
+  storage_y: "225"
+  network_y: "225"
+  github_y: "225"
+  launcher_network_url: "http://10.13.37.84:8000/launcher_ui.pax"
+  launcher_github_url: "https://nonasuomy.github.io/esphomebrew/install/sd/launcher_ui.pax"
+
+packages:
+  pax_ui: !include packages/pax-three-button-ui.yaml
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  includes:
+    - pax_launcher_layout.h
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          // SDL has no startup key report; seed released states before the first key press.
+          for (auto *key : {id(launcher_key_tab), id(launcher_key_enter), id(launcher_key_space), id(launcher_key_left), id(launcher_key_right), id(launcher_key_up), id(launcher_key_down), id(pax_dpad_left), id(pax_dpad_right), id(pax_dpad_up), id(pax_dpad_down), id(pax_a), id(pax_b)}) {
+            key->publish_initial_state(false);
+          }
+          id(pax_runtime)->set_network_url("${launcher_network_url}");
+          id(pax_runtime)->bind(id(desktop_status), id(storage_button), id(network_button), id(github_button));
+          ESP_LOGI("pax_desktop", "Desktop ready. Select a source to open launcher_ui through desktop PAX services.");
+
+host:
+
+external_components:
+  - source:
+      type: local
+      path: dependencies/esphome/config/components
+    components: [lvgl]
+  - source:
+      type: local
+      path: components
+    components: [pax_desktop]
+
+logger:
+  level: INFO
+
+# Desktop adapter: launches the selected image through the desktop PAX service host.
+pax_desktop:
+  id: pax_runtime
+
+interval:
+  - interval: 50ms
+    then:
+      - lambda: id(pax_runtime)->tick();
+
+display:
+  - platform: sdl
+    id: main_display
+    dimensions:
+      width: ${panel_width}
+      height: ${panel_height}
+    auto_clear_enabled: false
+    update_interval: 33ms
+
+touchscreen:
+  - platform: sdl
+    id: desktop_mouse
+    display: main_display
+    sdl_id: main_display
+
+lvgl:
+  displays: [main_display]
+  touchscreens: [desktop_mouse]
+  top_layer:
+    widgets:
+      - label:
+          id: desktop_status
+          text: "PAX Desktop | Storage opens local SD | Network downloads launcher | mouse / arrows / Enter"
+          align: BOTTOM_MID
+          y: -16
+          width: 990
+          long_mode: WRAP
+          text_align: CENTER
+          text_color: 0xD7F3FF
+
+binary_sensor:
+  - platform: sdl
+    id: launcher_key_tab
+    sdl_id: main_display
+    key: SDLK_TAB
+    internal: true
+  - platform: sdl
+    id: launcher_key_enter
+    sdl_id: main_display
+    key: SDLK_RETURN
+    internal: true
+  - platform: sdl
+    id: launcher_key_space
+    sdl_id: main_display
+    key: SDLK_SPACE
+    internal: true
+  - platform: sdl
+    id: launcher_key_left
+    sdl_id: main_display
+    key: SDLK_LEFT
+    internal: true
+  - platform: sdl
+    id: launcher_key_right
+    sdl_id: main_display
+    key: SDLK_RIGHT
+    internal: true
+  - platform: sdl
+    id: launcher_key_up
+    sdl_id: main_display
+    key: SDLK_UP
+    internal: true
+  - platform: sdl
+    id: launcher_key_down
+    sdl_id: main_display
+    key: SDLK_DOWN
+    internal: true
+  - platform: sdl
+    id: pax_dpad_left
+    sdl_id: main_display
+    key: SDLK_a
+    internal: true
+  - platform: sdl
+    id: pax_dpad_right
+    sdl_id: main_display
+    key: SDLK_d
+    internal: true
+  - platform: sdl
+    id: pax_dpad_up
+    sdl_id: main_display
+    key: SDLK_w
+    internal: true
+  - platform: sdl
+    id: pax_dpad_down
+    sdl_id: main_display
+    key: SDLK_s
+    internal: true
+  - platform: sdl
+    id: pax_a
+    sdl_id: main_display
+    key: SDLK_f
+    internal: true
+  - platform: sdl
+    id: pax_b
+    sdl_id: main_display
+    key: SDLK_ESCAPE
+    internal: true

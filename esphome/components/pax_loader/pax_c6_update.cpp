@@ -149,9 +149,10 @@ static void worker(void *arg) {
     report(PAX_C6_ERROR, "Invalid/incomplete C6 network_adapter image, source unavailable, or SD full");
     vTaskDelete(nullptr); return;
   }
+  bool bluetooth_image=false;
   if(!matches_approved_image(file,PAX_C6_SHA256,[&](uint32_t done){
       verification_progress(done,size);
-    })){
+    },PAX_C6_BLUETOOTH_SHA256,&bluetooth_image)){
     fclose(file);remove(STAGE);
     report(PAX_C6_ERROR,"Rejected: C6 image does not match this board's approved transport/wiring hash");
     vTaskDelete(nullptr);return;
@@ -175,7 +176,11 @@ static void worker(void *arg) {
       bool known = result == ESP_OK;
       bool newer = known && (major>current.major1 || (major==current.major1 &&
           (minor>current.minor1 || (minor==current.minor1 && patch>current.patch1))));
-      uint32_t next = prepare_state(command, known, newer);
+      // A manually selected, separately hash-approved Bluetooth variant can
+      // share the upstream networking version with the installed stock image.
+      bool variant_change=bluetooth_image && known && strcmp(source,PAX_C6_RECOMMENDED) &&
+        major==current.major1 && minor==current.minor1 && patch==current.patch1;
+      uint32_t next = prepare_state(command, known, newer || variant_change);
       if (!known) {
         portENTER_CRITICAL(&lock);installed_version[0]=0;portEXIT_CRITICAL(&lock);
         if (next == PAX_C6_READY)
@@ -185,8 +190,8 @@ static void worker(void *arg) {
       } else {
         char installed[32];snprintf(installed,sizeof(installed),"%lu.%lu.%lu",(unsigned long)current.major1,(unsigned long)current.minor1,(unsigned long)current.patch1);
         portENTER_CRITICAL(&lock);snprintf(installed_version,sizeof(installed_version),"%s",installed);portEXIT_CRITICAL(&lock);
-        snprintf(message,sizeof(message),"%s | Installed %s; recommended %s. %s",PAX_C6_PROFILE,installed,version,
-          newer ? "Matching image verified. Install to update and restart." : "No newer approved version. Version matches or is newer.");
+        snprintf(message,sizeof(message),"%.24s | Installed %.16s; image %.16s. %.65s",PAX_C6_PROFILE,installed,version,
+          variant_change ? "Bluetooth variant verified. Install to enable Bluetooth and restart." : newer ? "Matching image verified. Install to update and restart." : "No newer approved version. Version matches or is newer.");
       }
       if (next == PAX_C6_READY) memcpy(prepared_source, source, sizeof(prepared_source));
       else remove(STAGE);

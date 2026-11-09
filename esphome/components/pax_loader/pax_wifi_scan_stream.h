@@ -14,24 +14,36 @@ static portMUX_TYPE lock=portMUX_INITIALIZER_UNLOCKED;
 static pax_wifi_scan_status_t snapshot{PAX_WIFI_SCAN_MAGIC,0,0,0,{0},{}};
 static bool queued=false, event_done=false, registered=false;
 static uint32_t event_status=0;
-static unsigned drain_loops=0;
+static unsigned drain_loops=0, prepare_loops=0;
+static bool preparing=false;
+static esphome::wifi::WiFiComponent *paused_wifi=nullptr;
+static void resume_attempts(){
+ if(paused_wifi){paused_wifi->set_connection_attempts_paused(false);paused_wifi=nullptr;}
+}
 static int64_t deadline=0;
 static bool busy(){portENTER_CRITICAL(&lock);bool result=queued || snapshot.state==1;portEXIT_CRITICAL(&lock);return result;}
 static void finished_event(void *,esp_event_base_t,int32_t,void *data){
  auto *event=static_cast<wifi_event_sta_scan_done_t *>(data);
  portENTER_CRITICAL(&lock);
- if(snapshot.state==1){event_status=event->status;event_done=true;}
+ if(snapshot.state==1 && !preparing){event_status=event->status;event_done=true;}
  portEXIT_CRITICAL(&lock);
 }
 static void fail(const char *message){
+ resume_attempts();prepare_loops=0;
  ESP_LOGW("pax_wifi_scan","%s",message);
  portENTER_CRITICAL(&lock);snapshot.state=-1;snapshot.count=0;
  std::snprintf(snapshot.message,sizeof(snapshot.message),"%s",message);snapshot.generation++;
- event_done=false;portEXIT_CRITICAL(&lock);drain_loops=0;
+ event_done=false;preparing=false;portEXIT_CRITICAL(&lock);drain_loops=0;
 }
-/* Runs on ESPHome's main loop. ESPHome alone consumes the IDF AP records;
- * read its retained, complete result vector after the queued Wi-Fi event has
- * had two main-loop passes to drain. Never change its connection state. */
+static void begin_scan(){
+ wifi_scan_config_t config{};config.show_hidden=true;
+ config.scan_type=WIFI_SCAN_TYPE_ACTIVE;config.scan_time.active.min=80;config.scan_time.active.max=160;
+ auto error=esp_wifi_scan_start(&config,false);
+ ESP_LOGD("pax_wifi_scan","Scan start: error=%d",static_cast<int>(error));
+ if(error!=ESP_OK)fail("Wi-Fi is busy; try again or enter the name manually");
+}
+/* ESPHome owns AP record consumption. Hold only disconnected-station retries
+ * during discovery; its event queue still drains before we read retained APs. */
 static void loop(esphome::wifi::WiFiComponent *wifi,bool connecting){
  if(!registered){
   if(esp_event_handler_register(WIFI_EVENT,WIFI_EVENT_SCAN_DONE,finished_event,nullptr)!=ESP_OK){
@@ -44,20 +56,32 @@ static void loop(esphome::wifi::WiFiComponent *wifi,bool connecting){
  if(start){
   if(!wifi || wifi->is_disabled()){fail("Wi-Fi is unavailable; enter the network name manually");return;}
   if(connecting){fail("Wi-Fi is connecting; try scanning again shortly");return;}
-  wifi_scan_config_t config{};config.show_hidden=true;
-  config.scan_type=WIFI_SCAN_TYPE_ACTIVE;config.scan_time.active.min=80;config.scan_time.active.max=160;
   portENTER_CRITICAL(&lock);event_done=false;portEXIT_CRITICAL(&lock);drain_loops=0;
   deadline=esp_timer_get_time()+20000000;
-  auto error=esp_wifi_scan_start(&config,false);
-  ESP_LOGD("pax_wifi_scan","Scan start: error=%d",static_cast<int>(error));
-  if(error!=ESP_OK)fail("Wi-Fi is busy; try again or enter the name manually");
+  if(!wifi->is_connected()){
+   paused_wifi=wifi;wifi->set_connection_attempts_paused(true);
+   portENTER_CRITICAL(&lock);preparing=true;portEXIT_CRITICAL(&lock);
+   esp_wifi_scan_stop();esp_wifi_disconnect();
+   prepare_loops=2;
+   ESP_LOGI("pax_wifi_scan","Scanning with automatic Wi-Fi retries paused");
+  }else begin_scan();
   return;
  }
  if(!busy())return;
  if(esp_timer_get_time()>=deadline){fail("Scan timed out; try again or enter the name manually");return;}
+ if(prepare_loops){
+  if(--prepare_loops)return;
+  portENTER_CRITICAL(&lock);preparing=false;event_done=false;portEXIT_CRITICAL(&lock);
+  begin_scan();return;
+ }
  if(!done)return;
  ESP_LOGD("pax_wifi_scan","Scan event: status=%u",static_cast<unsigned>(status));
- if(status){fail("Scan failed; try again or enter the name manually");return;}
+ if(status){
+  // Stopping the old association/scan can deliver a delayed cancellation.
+  // Keep waiting for our scan's successful event, bounded by the deadline.
+  if(paused_wifi){portENTER_CRITICAL(&lock);event_done=false;portEXIT_CRITICAL(&lock);return;}
+  fail("Scan failed; try again or enter the name manually");return;
+ }
  if(++drain_loops<2)return;
  pax_wifi_scan_status_t result{};result.magic=PAX_WIFI_SCAN_MAGIC;result.state=2;
  for(const auto &ap:wifi->get_scan_result())
@@ -65,6 +89,7 @@ static void loop(esphome::wifi::WiFiComponent *wifi,bool connecting){
  ESP_LOGD("pax_wifi_scan","Scan complete: retained=%u displayed=%u",static_cast<unsigned>(wifi->get_scan_result().size()),static_cast<unsigned>(result.count));
  std::snprintf(result.message,sizeof(result.message),result.count ? "Choose a network, or enter its name manually" : "No named networks found; rescan or enter manually");
  portENTER_CRITICAL(&lock);result.generation=snapshot.generation+1;snapshot=result;event_done=false;portEXIT_CRITICAL(&lock);drain_loops=0;
+ resume_attempts();
 }
 struct Stream {bool writing;size_t offset;pax_wifi_scan_request_t request;pax_wifi_scan_status_t response;};
 static ssize_t read(void *cookie,char *out,size_t count){

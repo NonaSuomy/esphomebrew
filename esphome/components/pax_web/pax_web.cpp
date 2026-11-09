@@ -293,7 +293,9 @@ esp_err_t PaxWeb::serve_(httpd_req_t *req) {
       return reply_(req,"409 Conflict","Check matching C6 firmware and confirm its profile first");
     bool allow_unknown=header(req,"X-PAX-C6-Allow-Unknown",8)=="yes";
     uint32_t command=install ? PAX_C6_INSTALL : (allow_unknown ? PAX_C6_PREPARE_UNKNOWN : PAX_C6_PREPARE);
-    if(transfer_.load() || !loader_->request_c6_update(command))
+    std::string source=header(req,"X-PAX-C6-Source",511);
+    if(source.empty())source=PAX_C6_RECOMMENDED;
+    if(transfer_.load() || !loader_->request_c6_update(command,source))
       return reply_(req,"409 Conflict","C6 update unavailable or device busy");
     return reply_(req,"202 Accepted",install ? "Installing matching C6 firmware" : "Checking matching C6 firmware");
   }

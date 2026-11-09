@@ -1,0 +1,11 @@
+# Wi-Fi recovery on SD
+
+PAX automatically saves a working Wi-Fi SSID and password to `/roms/pax/wifi.bin` on the SD card (firmware path `/sdcard/roms/pax/wifi.bin`). The folder is created when needed. This also backs up an existing working connection without re-entering it in Settings.
+
+At startup, after the SD card mounts, PAX reads a valid backup once and restores its credentials into internal flash if they differ. The card therefore supplies the recovery credentials after a full flash erase or a build with different compiled defaults. A queued user change takes precedence over startup recovery. Normal Settings changes retain the existing 45-second connection test and rollback; only a successful connection replaces the backup. Without a mounted card or valid backup, normal internal-flash and compiled Wi-Fi settings continue to work.
+
+The file uses the `PAXWIFI1` format: 8-byte signature, 33-byte zero-terminated SSID, 65-byte zero-terminated password, and little-endian CRC32 over the preceding 106 bytes. Exact length, termination, and supported password lengths are checked before use. CRC32 detects corruption; it does not authenticate the card. Credentials are **not encrypted**. Keep this file private; do not commit it or share it with an SD image. It is generated automatically, rather than edited in a text editor.
+
+Writes flush and sync a temporary file, move the old backup to `wifi.bin.prev`, then rename the new file into place. The previous copy is removed after success and is accepted at startup if the primary file is missing or corrupt after an interrupted write. A fully validated temporary file is the final recovery fallback if neither copy survives. This supports FAT cards, which cannot rename directly over an existing file. Missing cards and write failures are retried every five seconds while connected. Deleting the backup allows the current working connection to recreate it. To deliberately replace the credentials, use Settings → Apply Wi-Fi; the backup updates after that network connects.
+
+Validation: portable tests cover round trips, open networks, every single-byte corruption, truncation, trailing data, invalid requests preserving the previous file, and unavailable storage. Device erase-and-restore testing remains to be performed.

@@ -9,7 +9,7 @@ class WifiScan(unittest.TestCase):
   with tempfile.TemporaryDirectory() as td:
    p=Path(td);(p/'esphome/components/wifi').mkdir(parents=True)
    (p/'esphome/core').mkdir()
-   (p/'esphome/core/log.h').write_text('#pragma once\n#define ESP_LOGD(...) ((void)0)\n#define ESP_LOGW(...) ((void)0)\n')
+   (p/'esphome/core/log.h').write_text('#pragma once\n#define ESP_LOGD(...) ((void)0)\n#define ESP_LOGI(...) ((void)0)\n#define ESP_LOGW(...) ((void)0)\n')
    (p/'esphome/components/wifi/wifi_component.h').write_text(r'''
 #pragma once
 #include <vector>
@@ -18,8 +18,8 @@ namespace esphome::wifi {
 struct AP {std::string ssid;int rssi,channel;bool secured;
  const std::string &get_ssid() const{return ssid;}int get_rssi() const{return rssi;}
  int get_channel() const{return channel;}bool get_with_auth() const{return secured;}};
-struct WiFiComponent {bool disabled=false;std::vector<AP> results;
- bool is_disabled() const{return disabled;}const std::vector<AP> &get_scan_result() const{return results;}};
+struct WiFiComponent {bool disabled=false,connected=true,attempts_paused=false;std::vector<AP> results;
+ bool is_disabled() const{return disabled;}bool is_connected() const{return connected;}void set_connection_attempts_paused(bool value){attempts_paused=value;}const std::vector<AP> &get_scan_result() const{return results;}};
 }
 ''')
    (p/'esp_wifi.h').write_text(r'''
@@ -28,7 +28,9 @@ struct WiFiComponent {bool disabled=false;std::vector<AP> results;
 using esp_event_base_t=int;constexpr int ESP_OK=0,WIFI_EVENT=1,WIFI_EVENT_SCAN_DONE=2,WIFI_SCAN_TYPE_ACTIVE=3;
 struct wifi_event_sta_scan_done_t {uint32_t status;};
 struct wifi_scan_config_t {bool show_hidden;int scan_type;struct {struct {int min,max;}active;}scan_time;};
-static int starts,result;static int64_t now;
+static int starts,result,disconnects,stops;static int64_t now;
+static int esp_wifi_disconnect(){disconnects++;return ESP_OK;}
+static int esp_wifi_scan_stop(){stops++;return ESP_OK;}
 static int64_t esp_timer_get_time(){return now;}
 static int esp_wifi_scan_start(wifi_scan_config_t *c,bool block){assert(!block && c->show_hidden);starts++;return result;}
 ''')
@@ -64,6 +66,30 @@ int main(){
  result=1;assert(request()==0);loop(&wifi,false);assert(status().state==-1);result=0;
  assert(request()==0);loop(&wifi,true);assert(status().state==-1);
  wifi.disabled=true;assert(request()==0);loop(&wifi,false);assert(status().state==-1);wifi.disabled=false;
+ // An unreachable saved SSID must not keep aborting discovery over Ethernet.
+ wifi.connected=false;int direct_starts=starts;
+ assert(request()==0);loop(&wifi,false);
+ assert(wifi.attempts_paused && disconnects==1 && stops==1 && starts==direct_starts);
+ // A stale cancellation during preparation must not finish the new scan.
+ wifi_event_sta_scan_done_t canceled{1};finished_event(nullptr,0,0,&canceled);
+ loop(&wifi,false);loop(&wifi,false);
+ assert(starts==direct_starts+1 && status().state==1 && wifi.attempts_paused);
+ // Late cancellation after the scan started also leaves retries paused.
+ finished_event(nullptr,0,0,&canceled);loop(&wifi,false);
+ assert(status().state==1 && wifi.attempts_paused);
+ wifi.results={{"Nearby",-35,6,true}};complete(wifi);
+ assert(status().state==2 && status().count==1 && !strcmp(status().aps[0].ssid,"Nearby") && !wifi.attempts_paused);
+ // Timeout and driver-start errors must always restore automatic retries.
+ assert(request()==0);loop(&wifi,false);now+=21000000;loop(&wifi,false);
+ assert(status().state==-1 && !wifi.attempts_paused);
+ result=1;assert(request()==0);loop(&wifi,false);loop(&wifi,false);loop(&wifi,false);
+ assert(status().state==-1 && !wifi.attempts_paused);result=0;
+ // Connected Wi-Fi uses a background scan and never disconnects its live link.
+ int previous_disconnects=disconnects;wifi.connected=true;assert(request()==0);loop(&wifi,false);
+ assert(disconnects==previous_disconnects && !wifi.attempts_paused);complete(wifi);
+ // A user-requested association retains priority over discovery.
+ wifi.connected=false;assert(request()==0);loop(&wifi,true);
+ assert(status().state==-1 && disconnects==previous_disconnects && !wifi.attempts_paused);
  pax_wifi_scan_status_t capped{};capped.magic=PAX_WIFI_SCAN_MAGIC;capped.state=2;
  for(int i=0;i<60;i++){char name[33];snprintf(name,sizeof(name),"Network %d",i);pax_wifi_scan_add(&capped,name,-100+i,1,true);}
  assert(capped.count==24 && capped.aps[0].rssi==-41 && capped.aps[23].rssi==-64 && pax_wifi_scan_valid(&capped));

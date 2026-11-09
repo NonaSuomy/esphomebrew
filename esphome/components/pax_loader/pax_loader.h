@@ -36,6 +36,11 @@
 #include "esphome/components/sd_mmc_card/sd_mmc_card.h"
 #endif
 
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+#include "esphome/components/espidf_ble_keyboard/espidf_ble_keyboard.h"
+#include "pax_ble_remote.h"
+#endif
+
 #include "pax_canvas.h"
 #include "pax_sound.h"
 #include "pax_data.h"
@@ -56,6 +61,13 @@ class CatalogActionTrigger : public Trigger<> {};
 class PaxLoader : public Component {
  public:
   static constexpr uint8_t BUTTON_COUNT = PAX_INPUT_MAX;
+
+#ifdef PAX_LOADER_USE_BLE_REMOTE
+  void set_ble_remote(espidf_ble_keyboard::EspidfBleKeyboard *device) { ble_remote_ = device; }
+  espidf_ble_keyboard::EspidfBleKeyboard *ble_remote_{nullptr};
+  TaskHandle_t ble_remote_task_{nullptr};
+#endif
+  static int svc_ble_remote(uint32_t command, int32_t a, int32_t b, const char *text);
 
   void set_path(const std::string &path) { this->path_ = path; }
   void set_catalog_url(const std::string &url) { this->catalog_url_ = url; }
@@ -131,6 +143,8 @@ class PaxLoader : public Component {
   // a fraction 0..1 (-1 when unknown or idle), and a one-line status that
   // stays after a failure until the next launch ("" when there is nothing to say).
   void show_network_setup();
+  void show_bluetooth_setup();
+  bool scan_bluetooth();
   bool is_loading() const { return this->pax_loading_; }
   float get_load_progress();
   std::string get_load_status();
@@ -140,7 +154,7 @@ class PaxLoader : public Component {
   // The web component reserves storage on the main loop before doing I/O on its worker.
   bool begin_web_transfer();
   bool request_firmware_update(uint32_t command, uint64_t expected_build);
-  bool request_c6_update(uint32_t command);
+  bool request_c6_update(uint32_t command, const std::string &source = "board-recommended");
   void end_web_transfer();
   // Worker-only snapshot; caller owns the returned heap_caps allocation.
   bool capture_screenshot(uint16_t *&copy, uint16_t &width, uint16_t &height);
@@ -226,9 +240,10 @@ class PaxLoader : public Component {
     this->stream_enabled_ = true;
     ESP_LOGI("pax_loader", "Screenshot requested remotely");
   }
-  // Test-only remote input for launcher_ui. Accepts taps, timed holds/swipes,
+  // Test-only remote input for launcher_ui and the optional BLE Remote app.
+  // Accepts taps, timed holds/swipes,
   // all launcher gamepad buttons, wheel scrolling, keyboard keys and text;
-  // requests are ignored unless launcher_ui.pax is active.
+  // requests are ignored unless a supported app is active.
   void request_remote_ui_input(const std::string &command);
   // One file from the SD card (or, for a path ending in '/', a directory
   // listing), sent to the diagnostic stream as a PAXFL01 packet. Only paths
@@ -244,6 +259,7 @@ class PaxLoader : public Component {
   // ── Canvas size (pax_canvas.h) ──
   // The panel's size (YAML panel_width/panel_height); by default the
   // display's own. Frame buffers are allocated for a canvas this large.
+  void set_app_rotation(int rotation) { this->app_rotation_ = rotation; }
   void set_panel_size(int width, int height) {
     this->panel_config_w_ = width;
     this->panel_config_h_ = height;
@@ -437,6 +453,7 @@ class PaxLoader : public Component {
   // because the PAX worker and USB host run concurrently.
   void enqueue_mouse_delta(float dx, float dy);
   void enqueue_mouse_wheel(float wheel);
+  void read_bluetooth_pointer(int *dx, int *dy, bool *down);
 #ifdef PAX_LOADER_USE_USB_HIDX
   void set_usb_hidx(usb_hidx::USBHIDXComponent *usb_hidx) { this->usb_hidx_ = usb_hidx; }
 #endif
@@ -567,6 +584,11 @@ class PaxLoader : public Component {
       const char *named_entry = nullptr, const char *destination = nullptr,
       uint32_t max_bytes = 0xffffffffU, uint32_t *written_bytes = nullptr);
   static int svc_ui_call_sync(pax_ui_call_fn_t callback, void *arg, uint32_t timeout_ms);
+  static int svc_papp2_ui_choose(const char *title, const char *status,
+                                 const char *const *items, int count, int initial);
+  static int svc_papp2_ui_volume();
+  static bool svc_papp2_exit_requested();
+  static void svc_papp2_app_exit(int code);
   static int svc_store_install_start(const char *url, const char *name, const char *title,
                                      const char *version, uint32_t size, const char *sha256);
   static int svc_store_install_status(pax_install_progress_t *out);
@@ -605,11 +627,14 @@ class PaxLoader : public Component {
   static void svc_settings_brightness_set(int32_t level);
   static int svc_task_create(void (*fn)(void *), const char *name, uint32_t stack_depth, void *arg,
                              int priority, void *out_handle, int core);
+  static int svc_task_create_with_caps(void (*fn)(void *), const char *name, uint32_t stack_depth,
+                                       void *arg, int priority, void *out_handle, int core, uint32_t caps);
   static void svc_task_delete(void *handle);
   static void populate_services(app_services_t *services);
   static int svc_game_menu_register(const char *label, pax_game_menu_action_fn_t callback, void *context);
   static int svc_game_menu_set_page(const pax_game_menu_page_t *page);
   static void svc_game_menu_close();
+  static int svc_random_bytes(void *buffer, size_t length);
 
  protected:
   bool launch_();
@@ -669,11 +694,16 @@ class PaxLoader : public Component {
   // canvas; the direct PPA path can send only its visible rectangle. The
   // caller holds display_mutex_.
   void send_display_buffer_(const uint16_t *display_buffer, int64_t start_us, int raw_x = -1, int raw_y = -1,
-                            int width = -1, int height = -1, int source_stride = -1, bool panel_frame_buffer = false);
+                            int width = -1, int height = -1, int source_stride = -1, bool panel_frame_buffer = false,
+                            bool upright_source = false);
   // Canvas size. geometry_ is the panel and the running app's canvas; it only
   // changes under display_mutex_ (tasks that just hit-test touches read it
   // without the lock). Working buffers follow the selected canvas; maximum
   // dimensions remain the board limits across shrinking and growing.
+  int app_rotation_{180};
+  void draw_panel_pixels_(int x, int y, int w, int h, const uint8_t *data, display::ColorOrder order,
+                          display::ColorBitness bitness, bool big_endian, int x_offset = 0,
+                          int y_offset = 0, int x_pad = 0);
   canvas::Geometry geometry_{};
   int max_canvas_w_{canvas::LEGACY_WIDTH};
   int max_canvas_h_{canvas::LEGACY_HEIGHT};
@@ -737,6 +767,10 @@ class PaxLoader : public Component {
   void draw_game_menu_();
   void build_game_menu_frame_();
   void activate_game_menu_item_();
+#ifdef PAX_LOADER_USE_LVGL
+  void open_game_menu_rom_picker_();
+  void select_game_menu_rom_();
+#endif
   bool game_menu_touch_(int x, int y);
   void wait_for_game_menu_();
   void queue_game_menu_action_(uint32_t action, int32_t direction = 0);
@@ -759,6 +793,7 @@ class PaxLoader : public Component {
   void send_report_(const char *outcome, int result, const std::string &source);
   static void report_task_entry_(void *arg);
   bool right_stick_mouse_enabled_() const;
+  uint32_t read_controller_buttons_();
   void read_input_(pax_gamepad_state_t *state, bool include_hid = true);
   int read_mouse_(int *dx, int *dy, int *buttons);
   int read_mouse_scroll_(int *wheel);
@@ -972,8 +1007,18 @@ class PaxLoader : public Component {
   char game_menu_provider_label_[32]{};
   pax_game_menu_page_t game_menu_page_{};
   volatile bool game_menu_app_page_{false};
+  volatile bool papp2_ui_modal_active_{false};
+  volatile int papp2_ui_modal_result_{-1};
   volatile bool game_menu_busy_{false};
   bool game_menu_action_pending_{false};
+  bool game_menu_rom_picker_{false};
+  uint16_t game_menu_rom_selection_{0};
+  uint16_t game_menu_rom_first_{0};
+  uint16_t game_menu_rom_marquee_selection_{0xFFFFU};
+  int64_t game_menu_rom_marquee_started_us_{0};
+  int64_t game_menu_rom_marquee_last_update_us_{0};
+  std::vector<std::string> game_menu_rom_labels_;
+  std::vector<std::string> game_menu_rom_paths_;
   uint32_t game_menu_action_{0};
   int32_t game_menu_direction_{0};
   // Select+Start is the hardware-independent PAX exit shortcut. It is
@@ -1029,6 +1074,7 @@ class PaxLoader : public Component {
   // Exact source of the active PAX; used to restrict store-install ABI
   // actions to the standalone launcher rather than running game binaries.
   std::string running_app_source_;
+  std::string running_app_version_;
   volatile bool pax_loading_{false};
   // Warned once that LVGL woke on input while an app ran (loop()).
   bool lvgl_resume_warned_{false};

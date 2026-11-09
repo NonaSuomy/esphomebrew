@@ -16,7 +16,7 @@ if len(libraries) != 1:
 with tempfile.TemporaryDirectory() as folder:
     executable = Path(folder) / "native-network-panel"
     subprocess.run([
-        "c++", "-std=c++17", "-DLV_CONF_INCLUDE_SIMPLE",
+        "c++", "-std=c++20", "-Werror=deprecated-enum-enum-conversion", "-DLV_CONF_INCLUDE_SIMPLE",
         "-I" + str(ROOT / "components/pax_loader"), "-I" + str(build / "src"),
         "-I" + str(build / ".piolibdeps/pax-desktop/lvgl"),
         str(ROOT / "tests/components/pax_loader/native_network_panel_test.cpp"),

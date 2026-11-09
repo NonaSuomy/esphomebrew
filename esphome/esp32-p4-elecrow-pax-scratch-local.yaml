@@ -1,0 +1,20 @@
+# All onboard local inputs; the GPIO2/7 radio conflicts are removed in this variant.
+packages:
+  launcher: !include esp32-p4-elecrow-pax-3button.yaml
+  local_inputs: !include boards/elecrow/scratch-local-inputs.yaml
+substitutions:
+  device_name: esp32-p4-elecrow-pax-scratch
+  friendly_name: "Elecrow PAX Scratch I/O"
+esp32_hosted: !remove
+wifi: !remove
+captive_portal: !remove
+improv_serial: !remove
+ethernet:
+  type: IP101
+  mdc_pin: GPIO31
+  mdio_pin: GPIO52
+  power_pin: GPIO51
+  clk:
+    mode: CLK_EXT_IN
+    pin: GPIO50
+  phy_addr: 1

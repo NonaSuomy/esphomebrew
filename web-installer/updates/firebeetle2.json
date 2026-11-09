@@ -4,8 +4,8 @@
   "chip": "ESP32-P4",
   "min_revision": 0,
   "max_revision": 65535,
-  "build_id": 40145459528,
-  "source_commit": "0742c103c2b7b7e8ddc7afe79a46a773b135312d",
+  "build_id": 0,
+  "source_commit": "",
   "partitions": [
     {
       "label": "otadata",
@@ -44,8 +44,8 @@
     }
   ],
   "url": "https://nonasuomy.github.io/esphomebrew/install/ota/pax-firebeetle2.ota.bin",
-  "bytes": 1933472,
-  "sha256": "70cfe6343019ceab8c29265879b643b0db75b2d31c94c31c964cb5b40e7fb707",
+  "bytes": 1981728,
+  "sha256": "e9004aa993fa4b6da78e2815838384a01c65099281721a8e2cab40c3972b9299",
   "c6": {
     "chip": "ESP32C6",
     "transport": "sdio",

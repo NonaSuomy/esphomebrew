@@ -149,7 +149,15 @@ esp32_hosted:
 
 esp32:
   flash_size: 16MB
+  # Verified on fitted 16 MB flash; 80 MHz requires P4 revision v1.0 or newer.
+  flash_frequency: 80MHz
   engineering_sample: true
+  framework:
+    sdkconfig_options:
+      CONFIG_ESP32P4_REV_MIN_0: "n"
+      CONFIG_ESP32P4_REV_MIN_100: "y"
+      # Vendor driver selection for our pinned ESPHome runtime (no flash_chip schema).
+      CONFIG_SPI_FLASH_SUPPORT_WINBOND_CHIP: "y"
 
 speaker:
   - platform: i2s_audio

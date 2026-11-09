@@ -1,0 +1,41 @@
+{
+  "version": "2.12.12",
+  "variant": "pax-bluedroid-hid",
+  "chip": "esp32c6",
+  "idf": "6.1.0",
+  "bytes": 1814496,
+  "sha256": "4a1ce03d9daba3536604ac09df4b5e56c98c506707cc0a0e8c39b046568601e5",
+  "radio_capabilities": [
+    "BLE"
+  ],
+  "effective_config": {
+    "CONFIG_ESP_SPI_HOST_INTERFACE": "y",
+    "CONFIG_ESP_SPI_MODE": "3",
+    "CONFIG_BT_BLUEDROID_ENABLED": "y",
+    "CONFIG_BT_BLE_ENABLED": "y",
+    "CONFIG_BT_GATTC_ENABLE": "y",
+    "CONFIG_ESP_HOSTED_ENABLE_PEER_DATA_TRANSFER": "y",
+    "CONFIG_ESP_SPI_GPIO_MOSI": "20",
+    "CONFIG_ESP_SPI_GPIO_MISO": "21",
+    "CONFIG_ESP_SPI_GPIO_CLK": "18",
+    "CONFIG_ESP_SPI_GPIO_CS": "19",
+    "CONFIG_ESP_SPI_GPIO_HANDSHAKE": "23",
+    "CONFIG_ESP_SPI_GPIO_DATA_READY": "22",
+    "CONFIG_BT_GATTC_NOTIF_REG_MAX": "32",
+    "CONFIG_BT_GATTC_MAX_CACHE_CHAR": "100"
+  },
+  "source": "pax-recipe/firmware/bluedroid-hid/prepare-hosted.py",
+  "hardware_test": {
+    "board": "Elecrow ESP32-P4 AIO",
+    "installed_and_version_confirmed": "2.12.12",
+    "nearby_devices_found": 9,
+    "wifi_after_update": "connected",
+    "pairing": "Verified with PAX NANO BLE Test: keyboard press/release, relative mouse and both buttons, all 12 gamepad controls and neutral releases.",
+    "classic": "original ESP32 Classic+BLE build passed; hardware unavailable",
+    "touchscreen_controls_verified": true,
+    "forced_reconnect": "Unreliable after forced advertising-off disconnect; AIO restart restored input.",
+    "ota": "Final image installed after a clean AIO restart; two earlier write RPCs timed out and retained the old image."
+  },
+  "discovery": "On-demand bounded nearby discovery; reconnect scan only when bonded peers are missing.",
+  "source_commit": "244e92d5e027d49b50bbd2bab37d4b128f0b1fe1"
+}

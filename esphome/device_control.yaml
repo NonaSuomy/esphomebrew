@@ -91,6 +91,12 @@ api:
         path: string
       then:
         - lambda: id(${pax_loader_id})->request_file(path);
+    - action: pax_bluetooth_setup
+      then:
+        - lambda: id(${pax_loader_id})->show_bluetooth_setup();
+    - action: pax_bluetooth_scan
+      then:
+        - lambda: id(${pax_loader_id})->scan_bluetooth();
     - action: pax_write_file
       variables:
         path: string
