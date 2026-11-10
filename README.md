@@ -1,5 +1,8 @@
 # ESPHomeBrew
+
 ESPHomeBrew is a GitHub-hosted store of PSRAM apps (`.pax`) for the ESP32-P4.
+
+[![Join Discord](https://discord.com)](https://discord.gg/nf5tPjMbUY)
 
 - `apps/<name>/pax.json` describes each app; GitHub Actions builds them into `.pax` files. See [docs/building.md](docs/building.md).
 - ESP32-P4 devices running ESPHome with the `papp_loader` (legacy ABI-compatible component name) component browse the store from an LVGL page and stream apps into PSRAM.
